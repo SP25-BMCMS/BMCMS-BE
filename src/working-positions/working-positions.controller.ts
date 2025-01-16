@@ -3,7 +3,7 @@ import { WorkingPositionsService } from './working-positions.service';
 import { CreateWorkingPositionDto } from './dto/create-working-position.dto';
 import { UpdateWorkingPositionDto } from './dto/update-working-position.dto';
 
-@Controller('working-positions')
+@Controller('workingpositions')
 export class WorkingPositionsController {
   constructor(private readonly workingPositionsService: WorkingPositionsService) { }
 
