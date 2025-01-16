@@ -12,3 +12,311 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model User {
+  userId      Int       @id @default(autoincrement())
+  username    String    @unique
+  password    String
+  email       String    @unique
+  phone       String?
+  role        Role
+  dateOfBirth DateTime?
+  gender      Gender?
+  resident    Resident?
+  employee    Employee?
+}
+
+model Resident {
+  residentId      Int        @id @default(autoincrement())
+  userId          Int        @unique
+  apartmentNumber String?
+  buildingId      Int
+  feedbacks       Feedback[]
+  user            User       @relation(fields: [userId], references: [userId])
+}
+
+model Employee {
+  employeeId      Int              @id @default(autoincrement())
+  userId          Int              @unique
+  positionId      Int
+  departmentId    Int
+  status          EmploymentStatus
+  taskAssignments TaskAssignment[]
+  inspections     Inspection[]
+  department      Department       @relation(fields: [departmentId], references: [departmentId])
+  workingPosition WorkingPosition  @relation(fields: [positionId], references: [positionId])
+  user            User             @relation(fields: [userId], references: [userId])
+}
+
+model Feedback {
+  feedbackId Int      @id @default(autoincrement())
+  taskId     Int      @unique
+  feedbackBy Int
+  comments   String
+  rating     Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  resident   Resident @relation(fields: [feedbackBy], references: [residentId])
+  task       Task     @relation(fields: [taskId], references: [taskId])
+}
+
+model Task {
+  taskId          Int              @id @default(autoincrement())
+  crackId         Int?
+  description     String
+  scheduleJobId   Int
+  status          TaskStatus
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  workLogs        WorkLog[]
+  feedback        Feedback?
+  taskAssignments TaskAssignment[]
+  crackDetail     CrackDetail?     @relation(fields: [crackId], references: [crackDetailsId])
+  scheduleJob     ScheduleJob      @relation(fields: [scheduleJobId], references: [scheduleJobId])
+}
+
+model WorkLog {
+  workLogId   Int      @id @default(autoincrement())
+  taskId      Int
+  title       String
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  task        Task     @relation(fields: [taskId], references: [taskId])
+}
+
+model Schedule {
+  scheduleId   Int           @id @default(autoincrement())
+  scheduleName String
+  scheduleType ScheduleType
+  description  String?
+  startDate    DateTime?
+  endDate      DateTime?
+  scheduleJobs ScheduleJob[]
+}
+
+model ScheduleJob {
+  scheduleJobId Int       @id @default(autoincrement())
+  scheduleId    Int
+  runDate       DateTime
+  status        JobStatus
+  buildingId    Int
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  schedule      Schedule  @relation(fields: [scheduleId], references: [scheduleId])
+  building      Building  @relation(fields: [buildingId], references: [buildingId])
+  tasks         Task[]
+}
+
+model Building {
+  buildingId      Int              @id @default(autoincrement())
+  name            String
+  description     String?
+  numberFloor     Int
+  imageCover      String?
+  area            Area?            @relation(fields: [areaId], references: [areaId])
+  buildingDetails BuildingDetail[]
+  scheduleJobs    ScheduleJob[]
+  areaId          Int?
+}
+
+model Area {
+  areaId      Int        @id @default(autoincrement())
+  name        String
+  description String?
+  buildings   Building[]
+}
+
+model BuildingDetail {
+  buildingDetailId Int              @id @default(autoincrement())
+  buildingId       Int
+  name             String
+  description      String?
+  areaType         AreaType
+  floorNumber      Int
+  locationDetails  LocationDetail[]
+  crackReports     CrackReport[]
+  building         Building         @relation(fields: [buildingId], references: [buildingId])
+}
+
+model LocationDetail {
+  locationDetailId Int            @id @default(autoincrement())
+  buildingDetailId Int
+  roomNumber       String?
+  floorNumber      Int
+  positionSide     PositionSide
+  areaType         AreaType
+  description      String?
+  buildingDetail   BuildingDetail @relation(fields: [buildingDetailId], references: [buildingDetailId])
+}
+
+model CrackReport {
+  crackId          Int            @id @default(autoincrement())
+  buildingDetailId Int
+  photoUrl         String
+  status           ReportStatus
+  reportedBy       Int
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  crackDetails     CrackDetail[]
+  buildingDetail   BuildingDetail @relation(fields: [buildingDetailId], references: [buildingDetailId])
+}
+
+model CrackDetail {
+  crackDetailsId Int         @id @default(autoincrement())
+  crackId        Int
+  photoUrl       String
+  description    String
+  status         CrackStatus
+  severity       Severity
+  reportedBy     Int
+  verifiedBy     Int
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  crackReport    CrackReport @relation(fields: [crackId], references: [crackId])
+  tasks          Task[]
+}
+
+model TaskAssignment {
+  assignmentId Int              @id @default(autoincrement())
+  taskId       Int
+  employeeId   Int
+  description  String
+  status       AssignmentStatus
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  task         Task             @relation(fields: [taskId], references: [taskId])
+  employee     Employee         @relation(fields: [employeeId], references: [employeeId])
+  Inspection   Inspection[]
+}
+
+model Inspection {
+  inspectionId   Int              @id @default(autoincrement())
+  crackId        Int
+  inspectedBy    Int
+  inspectionDate DateTime
+  imageUrl       String?
+  assignmentId   Int
+  description    String?
+  status         InspectionStatus
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  taskAssignment TaskAssignment   @relation(fields: [assignmentId], references: [assignmentId])
+  employee       Employee         @relation(fields: [inspectedBy], references: [employeeId])
+}
+
+model Department {
+  departmentId   Int        @id @default(autoincrement())
+  departmentName String     @unique
+  description    String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  employees      Employee[]
+}
+
+model WorkingPosition {
+  positionId   Int            @id @default(autoincrement())
+  positionName PositionName
+  description  String?
+  status       PositionStatus
+  employees    Employee[]
+}
+
+enum Role {
+  Resident
+  Employee
+}
+
+enum Gender {
+  Male
+  Female
+  Other
+}
+
+enum EmploymentStatus {
+  Active
+  Inactive
+  Probation
+}
+
+enum TaskStatus {
+  NotAssigned
+  InProgress
+  RequiresAssistance
+}
+
+enum JobStatus {
+  Pending
+  InProgress
+  Completed
+  Missed
+}
+
+enum AreaType {
+  SwimmingPool
+  Terrace
+  Garden
+  Parking
+  Gym
+  Lobby
+  Other
+}
+
+enum PositionSide {
+  Left
+  Right
+  Center
+}
+
+enum ReportStatus {
+  Reported
+  Verified
+  Completed
+}
+
+enum CrackStatus {
+  Desscription
+  Verified
+  InProgress
+  Completed
+}
+
+enum Severity {
+  Low
+  Medium
+  High
+}
+
+enum AssignmentStatus {
+  Pending
+  InProgress
+  Alert
+  Completed
+  NotCompleted
+}
+
+enum InspectionStatus {
+  InProgress
+  Completed
+  Alert
+}
+
+enum PositionName {
+  Staff
+  Leader
+  Manager
+  Admin
+}
+
+enum PositionStatus {
+  Active
+  Inactive
+}
+
+enum ScheduleType {
+  Daily
+  Weekly
+  Monthly
+  Yearly
+  Specific
+}
