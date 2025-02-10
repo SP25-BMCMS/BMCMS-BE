@@ -1,5 +1,5 @@
 import { USERS_PATTERN } from '@app/contracts/users/users.patterns'
-import { HttpException, Inject, Injectable } from '@nestjs/common'
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common'
 import { ClientProxy } from '@nestjs/microservices'
 import { USERS_CLIENT } from '../constraints'
 import { createUserDto } from '@app/contracts/users/create-user.dto'
