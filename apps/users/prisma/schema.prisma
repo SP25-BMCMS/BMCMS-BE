@@ -1,0 +1,94 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  userId      String   @id @default(uuid())
+  username    String   @unique
+  password    String
+  email       String   @unique
+  phone       String?
+  role        Role
+  dateOfBirth DateTime?
+  gender      Gender?
+  resident    Resident?
+  employee    Employee?
+}
+
+model Resident {
+  residentId      String    @id @default(uuid())
+  userId          String    @unique
+  apartmentNumber String?
+  buildingId      String
+  user            User      @relation(fields: [userId], references: [userId])
+}
+
+model Employee {
+  employeeId      String         @id @default(uuid())
+  userId          String         @unique
+  positionId      String
+  departmentId    String
+  status          EmploymentStatus
+  department      Department      @relation(fields: [departmentId], references: [departmentId])
+  workingPosition WorkingPosition @relation(fields: [positionId], references: [positionId])
+  user            User            @relation(fields: [userId], references: [userId])
+}
+
+model Department {
+  departmentId   String     @id @default(uuid())
+  departmentName String     @unique
+  description    String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  employees      Employee[]
+}
+
+model WorkingPosition {
+  positionId   String        @id @default(uuid())
+  positionName PositionName
+  description  String?
+  status       PositionStatus
+  employees    Employee[]
+}
+
+enum Role {
+  Admin
+  Manager
+  Resident
+  Employee
+}
+
+enum Gender {
+  Male
+  Female
+  Other
+}
+
+enum EmploymentStatus {
+  Active
+  Inactive
+  Probation
+}
+
+enum PositionName {
+  Staff
+  Leader
+  Manager
+  Admin
+}
+
+enum PositionStatus {
+  Active
+  Inactive
+}

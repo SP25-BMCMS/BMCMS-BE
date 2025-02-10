@@ -1,0 +1,34 @@
+import { Injectable } from "@nestjs/common"
+import { ConfigService } from "@nestjs/config"
+import { ClientOptions, Transport } from "@nestjs/microservices"
+
+@Injectable()
+export class ClientConfigService {
+    constructor(private config: ConfigService) { }
+
+    getUsersClientPort(): number {
+        return this.config.get<number>('USERS_CLIENT_PORT')
+    }
+
+    getBuildingsClientPort(): number {
+        return this.config.get<number>('BUILDINGS_CLIENT_PORT')
+    }
+
+    get usersClientOptions(): ClientOptions {
+        return {
+            transport: Transport.TCP,
+            options: {
+                port: this.getUsersClientPort()
+            }
+        }
+    }
+
+    get buildingsClientOptions(): ClientOptions {
+        return {
+            transport: Transport.TCP,
+            options: {
+                port: this.getBuildingsClientPort()
+            }
+        }
+    }
+}

@@ -1,0 +1,34 @@
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+    "username": "john",
+    "password": "password"
+}
+
+###
+GET http://localhost:3000/auth/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJqb2huIiwiaWF0IjoxNzM5MTE4ODkwLCJleHAiOjE3MzkyMDUyOTB9.D30dDdfdivzKDiYdexOzqU8E6WGEX3wm3kSWFH358bQ
+
+
+###
+POST http://localhost:3000/auth/signup
+Content-Type: application/json
+
+{
+    "username": "john",
+    "email": "example@gmail.com",
+    "password": "password",
+    "dateOfBirth": "1990-01-01",
+    "phone": "123456789",
+    "role": "Admin",
+    "gender": "Male"
+}
+
+### 
+GET http://localhost:3000/auth/all-users
+
+#BUG: API signup is not working properly. It is not saving the user in the database.
+#TODO: Show the error from microservice. Implement refresh token
+#TODO: Based on role of user created, create the related table (eg: user role Resident then create data Resident)
+#FIXME: authorization, refresh token, logout, error message, user management, setup buildings microservice, docker, rabbitMQ, etc.
