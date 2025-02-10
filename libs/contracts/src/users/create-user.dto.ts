@@ -14,6 +14,7 @@ export class createUserDto {
 
     @IsString()
     phone: string
+    
     @IsString()
     role: $Enums.Role
 
