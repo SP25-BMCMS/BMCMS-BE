@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt'
 import * as bcrypt from 'bcrypt'
 import { UsersService } from '../users/users.service'
 import { createUserDto } from '@app/contracts/users/create-user.dto'
+import { RpcException } from '@nestjs/microservices'
 
 type AuthInput = { username: string; password: string }
 type SignInData = { userId: string; username: string }
@@ -16,19 +17,33 @@ export class AuthService {
     ) { }
 
     async authenticate(input: AuthInput): Promise<AuthResult> {
+    
         const user = await this.validateUser(input)
+        
         if (!user) {
-            throw new UnauthorizedException('Invalid username or password')
+            console.error("🚀 Sending RpcException: 404 - invalid username and password");
+
+            throw new RpcException({status: 404, message: 'invalid username and password'})
         }
         return this.signIn(user)
     }
 
     async validateUser(input: AuthInput) {
         const user = await this.usersService.getUserByUsername(input.username)
-        if (!user) return null
+        console.log("🚀 ~ AuthService ~ validateUser ~ user:", user)
+        
+        if (!user)  
+            throw new RpcException({status: 404, message: 'invalid1 username and password'})
+
+            
+
 
         const isPasswordValid = await bcrypt.compare(input.password, user.password)
-        if (!isPasswordValid) return null
+        console.log("🚀 ~ AuthService ~ validateUser ~ isPasswordValid:", isPasswordValid)
+       
+        if (!isPasswordValid)
+            
+            throw new RpcException({status: 404, message: 'invalid2 username and password'})
 
         return { userId: user.userId, username: user.username }
     }

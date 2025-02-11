@@ -4,8 +4,11 @@ import { ConfigModule } from '@nestjs/config'
 
 @Global()
 @Module({
-    imports: [ConfigModule],
-    providers: [PrismaService],
+    imports: [
+        ConfigModule.forRoot({
+          isGlobal: true, // Quan trọng để load `.env`
+        }),
+      ],    providers: [PrismaService],
     exports: [PrismaService],
 })
 export class PrismaModule { }

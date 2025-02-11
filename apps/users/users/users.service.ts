@@ -10,14 +10,23 @@ export class UsersService {
     constructor(private prisma: PrismaService) { }
 
     async getUserByUsername(username: string): Promise<UserDto | null> {
+
         const user = await this.prisma.user.findUnique({ where: { username } })
-        if (!user) throw new NotFoundException(`User with username ${username} not found`)
+        if (!user) throw new RpcException({
+            statusCode: 404,
+            message: `userId not found ${username}`,
+
+        })
         return user
     }
 
     async getUserById(userId: string): Promise<UserDto | null> {
         const user = await this.prisma.user.findUnique({ where: { userId } })
-        if (!user) throw new NotFoundException(`User with ID ${userId} not found`)
+        if (!user) throw new RpcException({
+            statusCode: 404,
+message: `userId not found ${userId}`,
+
+        })
         return user
     }
 
