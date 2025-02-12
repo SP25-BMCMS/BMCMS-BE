@@ -1,37 +1,32 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, UnauthorizedException, NotFoundException, ConflictException, HttpStatus, Logger } from '@nestjs/common'
+import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus } from '@nestjs/common'
 import { RpcException } from '@nestjs/microservices'
-import { response } from 'express';
 
-
-Catch(RpcException)
+@Catch(RpcException)
 export class RpcToHttpExceptionFilter implements ExceptionFilter {
-    private readonly logger = new Logger(RpcToHttpExceptionFilter.name);
-
     catch(exception: RpcException, host: ArgumentsHost) {
-       // const ctx = host.switchToRpc(); // ✅ Chuyển sang RPC context (vì đang dùng TCP)
-      //  const error: any = exception.message; // Lấy lỗi từ Microservice
-        //const error = exception.getError ? exception.getError() : exception.message;
-        const error: any = exception.getError ? exception.getError() : exception.message;
-        let statusCode = (exception as any).statusCode || HttpStatus.INTERNAL_SERVER_ERROR;
-        //console.log("🚀 ~ RpcToHttpExceptionFilter ~ statusCode:", statusCode)
-        let message = 'Internal Server Error';
-        // ✅ Log lỗi để debug
-        this.logger.error(`🚀 Received RpcException from Microservice:`, error);
-        // ✅ Nếu error là object có `status` & `message`
-        if (typeof error === 'object' && error !== null) {
-            statusCode = error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR;
-            message = error.message || 'Internal Server Error';
+        const ctx = host.switchToHttp()
+        const response = ctx.getResponse()
+        const request = ctx.getRequest<Request>()
+        // Lấy thông tin lỗi từ RpcException
+        const errorResponse: any = exception.getError()
+        console.log("🚀 Kha ne ~ errorResponse:", errorResponse)
+
+
+        let status = HttpStatus.INTERNAL_SERVER_ERROR
+        let message = 'Internal Server Error'
+
+        if (typeof errorResponse === 'object' && errorResponse !== null) {
+            status = errorResponse.statusCode || HttpStatus.INTERNAL_SERVER_ERROR
+            message = errorResponse.message || 'Unexpected Error'
+        } else if (typeof errorResponse === 'string') {
+            message = errorResponse
         }
-        else if (typeof error === 'string') {
-            message = error;
-        }
-        // ✅ Trả về lỗi dạng JSON object cho API Gateway xử lý
-        const httpContext = host.switchToHttp();
-        if (httpContext.getResponse()) {
-       console.log("🚀 ~ htttpsssss ~ Final Response:", { statusCode, message });
-            const response = httpContext.getResponse();
-            return response.status(statusCode).json({ statusCode, message });
-        }
-       return { statusCode, message };
+
+        response.status(status).json({
+            message,
+            statusCode: status,
+            path: request.url,
+            timestamp: new Date().toISOString(),
+        })
     }
 }

@@ -14,7 +14,6 @@ export class UsersService {
     const user = await this.usersClient.send(USERS_PATTERN.LOGIN, { username, password })
     return user
   }
-
   async signup(userData) {
     try {
       return await firstValueFrom(
