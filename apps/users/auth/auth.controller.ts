@@ -6,7 +6,6 @@ import { UsersService } from '../users/users.service'
 import { AuthService } from './auth.service'
 
 @Controller()
-
 export class AuthController {
     constructor(
         private readonly authService: AuthService,
@@ -31,6 +30,11 @@ export class AuthController {
     @MessagePattern(USERS_PATTERN.ALL_USERS)
     async getAllUsers() {
         return this.usersService.getAllUsers()
+    }
+
+    @MessagePattern(USERS_PATTERN.LOGOUT)
+    async logout() {
+        return this.authService.logout()
     }
 
     @MessagePattern(USERS_PATTERN.TEST)

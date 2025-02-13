@@ -3,6 +3,8 @@ import { PassportJwtAuthGuard } from './guards/passport-jwt-guard'
 import { PassportLocalGuard } from './guards/passport-local-guard'
 import { UsersService } from './users.service'
 import { createUserDto } from '@app/contracts/users/create-user.dto'
+import { Role } from '@prisma/client'
+import { Roles } from './decorator/roles.decarator'
 
 @Controller('auth')
 export class UsersController {
@@ -21,17 +23,25 @@ export class UsersController {
         return this.UsersService.getUserInfo(req.user)
     }
 
-    // @UseGuards(PassportJwtAuthGuard)
+    @UseGuards(PassportJwtAuthGuard)
+    @Roles(Role.Admin)
     @Post('signup')
     signup(@Body() data: createUserDto) {
         return this.UsersService.signup(data)
     }
 
+    @UseGuards(PassportJwtAuthGuard)
+    @Post('logout')
+    logout() {
+        return this.UsersService.logout()
+    }
+
     @Get('all-users')
+    @Roles(Role.Admin)
     getAllUsers() {
         return this.UsersService.getAllUsers()
     }
-    
+
     @Get()
     test() {
         return this.UsersService.test({})

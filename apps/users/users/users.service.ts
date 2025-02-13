@@ -40,7 +40,7 @@ export class UsersService {
                     statusCode: 400,
                     message: `Invalid role. Allowed roles: ${Object.values(Role).join(', ')}`,
                 })
-            }  
+            }
 
             // ✅ Kiểm tra user có tồn tại chưa
             const existingUser = await this.prisma.user.findFirst({
@@ -89,6 +89,21 @@ export class UsersService {
                 message: error.message || 'Internal server error',
             })
         }
+    }
+
+    async updateUser(userId: string, data: Partial<createUserDto>): Promise<UserDto> {
+        const user = await this.getUserById(userId)
+        if (!user) throw new RpcException({ statusCode: 404, message: 'User not found' })
+
+        return this.prisma.user.update({
+            where: { userId },
+            data,
+        })
+    }
+
+    async deleteUser(userId: string): Promise<{ message: string }> {
+        await this.prisma.user.delete({ where: { userId } })
+        return { message: 'User deleted successfully' }
     }
 
     async getAllUsers(): Promise<UserDto[]> {

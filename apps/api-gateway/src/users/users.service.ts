@@ -1,10 +1,9 @@
+import { UserDto } from '@app/contracts/users/user.dto'
 import { USERS_PATTERN } from '@app/contracts/users/users.patterns'
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common'
 import { ClientProxy } from '@nestjs/microservices'
-import { USERS_CLIENT } from '../constraints'
-import { createUserDto } from '@app/contracts/users/create-user.dto'
-import { UserDto } from '@app/contracts/users/user.dto'
 import { catchError, firstValueFrom } from 'rxjs'
+import { USERS_CLIENT } from '../constraints'
 
 @Injectable()
 export class UsersService {
@@ -35,6 +34,10 @@ export class UsersService {
   async getAllUsers() {
     const users = await this.usersClient.send(USERS_PATTERN.ALL_USERS, {})
     return users
+  }
+
+  async logout() {
+    return this.usersClient.send(USERS_PATTERN.LOGOUT, {})
   }
 
   async test(data: any) {

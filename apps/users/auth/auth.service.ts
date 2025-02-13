@@ -42,6 +42,22 @@ export class AuthService {
         }
     }
 
+    async refreshToken(token: string): Promise<AuthResult> {
+        if (!token) throw new UnauthorizedException('Refresh token is required')
+
+        try {
+            const decoded = this.jwtService.verify(token)
+            const user = { userId: decoded.sub, username: decoded.username }
+            return this.signIn(user) 
+        } catch (error) {
+            throw new UnauthorizedException('Invalid or expired refresh token')
+        }
+    }
+
+    async logout(): Promise<{ message: string }> {
+        return { message: 'Logged out successfully' } 
+    }
+
     async signup(data: createUserDto) {
         return this.usersService.createUser(data)
     }
