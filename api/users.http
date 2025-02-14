@@ -2,13 +2,13 @@ POST http://localhost:3000/auth/login
 Content-Type: application/json
 
 {
-    "username": "kha1",
-    "password": "123"
+    "username": "john_doe",
+    "password": "securePass123"
 }
 
 ###
 GET http://localhost:3000/auth/me
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJqb2huIiwiaWF0IjoxNzM5MTE4ODkwLCJleHAiOjE3MzkyMDUyOTB9.D30dDdfdivzKDiYdexOzqU8E6WGEX3wm3kSWFH358bQ
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxNmM0NGI4Ni05NzYwLTRlNDUtYTVhOC01NWNlMDdjZDMzNWQiLCJ1c2VybmFtZSI6ImpvaG5fZG9lIiwiaWF0IjoxNzM5NTE1MDMwLCJleHAiOjE3Mzk1MTg2MzB9.UXfzs8ZvFf5a87uQu-Ae256Xt4kpDoIuf7iZjMatxBM
 
 
 ###
@@ -29,5 +29,19 @@ Content-Type: application/json
 GET http://localhost:3000/auth/all-users
 
 
+###
+POST http://localhost:3000/auth/logout
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxNmM0NGI4Ni05NzYwLTRlNDUtYTVhOC01NWNlMDdjZDMzNWQiLCJ1c2VybmFtZSI6ImpvaG5fZG9lIiwiaWF0IjoxNzM5NTEyODIxLCJleHAiOjE3Mzk1MTY0MjF9.0-YPrn99iB3gPwTVRyF6SVfidI-G3VxKgEt5GixwV_Q
+
+###
+GET http://localhost:3000/auth
+Content-Type: application/json
+
+{
+    "username": "john_doe",
+    "password": "securePass123"
+}
+
+#TODO: implement gRPC for this service. 
 #TODO: Based on role of user created, create the related table (eg: user role Resident then create data Resident)
-#FIXME: authorization, refresh token, logout, error message, user management, setup buildings microservice, docker, rabbitMQ, etc.
+#TODO: CRUD for Resident, WorkingPositions, Departments, Employees

@@ -1,20 +1,19 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common'
+import { createUserDto } from '@app/contracts/users/create-user.dto'
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common'
+import { Role } from '@prisma/client'
+import { Roles } from './decorator/roles.decarator'
 import { PassportJwtAuthGuard } from './guards/passport-jwt-guard'
 import { PassportLocalGuard } from './guards/passport-local-guard'
 import { UsersService } from './users.service'
-import { createUserDto } from '@app/contracts/users/create-user.dto'
-import { Role } from '@prisma/client'
-import { Roles } from './decorator/roles.decarator'
 
 @Controller('auth')
 export class UsersController {
     constructor(private UsersService: UsersService) { }
 
-    @HttpCode(HttpStatus.OK)
     @UseGuards(PassportLocalGuard)
     @Post('login')
     login(@Body() data: { username: string, password: string }) {
-        return this.UsersService.login(data.username, data.password)
+        return this.UsersService.login(data)
     }
 
     @UseGuards(PassportJwtAuthGuard)
@@ -43,7 +42,8 @@ export class UsersController {
     }
 
     @Get()
-    test() {
-        return this.UsersService.test({})
+    test(@Body() data: { username: string, password: string }) {
+        return this.UsersService.test(data)
     }
+
 }

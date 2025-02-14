@@ -24,7 +24,8 @@ import { UsersService } from './users.service'
       return ClientProxyFactory.create(clientOptions)
     },
     inject: [ClientConfigService]
-  }],
+  },],
+  
   controllers: [UsersController],
 })
 export class UsersModule { }

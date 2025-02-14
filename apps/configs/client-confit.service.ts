@@ -16,9 +16,11 @@ export class ClientConfigService {
 
     get usersClientOptions(): ClientOptions {
         return {
-            transport: Transport.TCP,
+            transport: Transport.GRPC,
             options: {
-                port: this.getUsersClientPort()
+                package: 'users',
+                protoPath: "libs/contracts/src/users/users.proto",
+                url: `localhost:3001`
             }
         }
     }

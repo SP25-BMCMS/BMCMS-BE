@@ -48,14 +48,14 @@ export class AuthService {
         try {
             const decoded = this.jwtService.verify(token)
             const user = { userId: decoded.sub, username: decoded.username }
-            return this.signIn(user) 
+            return this.signIn(user)
         } catch (error) {
             throw new UnauthorizedException('Invalid or expired refresh token')
         }
     }
 
     async logout(): Promise<{ message: string }> {
-        return { message: 'Logged out successfully' } 
+        return { message: 'Logged out successfully' }
     }
 
     async signup(data: createUserDto) {

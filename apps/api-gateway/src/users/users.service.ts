@@ -1,51 +1,43 @@
-import { UserDto } from '@app/contracts/users/user.dto'
-import { USERS_PATTERN } from '@app/contracts/users/users.patterns'
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common'
-import { ClientProxy } from '@nestjs/microservices'
-import { catchError, firstValueFrom } from 'rxjs'
+import { createUserDto } from '@app/contracts/users/create-user.dto'
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common'
+import { ClientGrpc } from '@nestjs/microservices'
+import { lastValueFrom } from 'rxjs'
 import { USERS_CLIENT } from '../constraints'
+import { UserInterface } from './users.interface'
 
 @Injectable()
-export class UsersService {
-  constructor(@Inject(USERS_CLIENT) private usersClient: ClientProxy) { }
+export class UsersService implements OnModuleInit {
+  private userService: UserInterface
 
-  async login(username: string, password: string) {
-    const user = await this.usersClient.send(USERS_PATTERN.LOGIN, { username, password })
-    return user
-  }
-  async signup(userData) {
-    try {
-      return await firstValueFrom(
-        this.usersClient.send(USERS_PATTERN.SIGNUP, userData).pipe(
-          catchError((error) => {
-            throw new HttpException(error.response?.message || 'Internal Server Error', error.response?.statusCode || HttpStatus.INTERNAL_SERVER_ERROR)
-          }),
-        ),
-      )
-    } catch (error) {
-      throw new HttpException(error.message, error.getStatus())
-    }
+  constructor(@Inject(USERS_CLIENT) private readonly client: ClientGrpc) { }
+
+  onModuleInit() {
+    this.userService = this.client.getService<UserInterface>('UserService')
   }
 
-  async getUserInfo(user: UserDto) {
-    return this.usersClient.send(USERS_PATTERN.ME, user)
+  async login(data: { username: string, password: string }) {
+    return await lastValueFrom(this.userService.login(data))
   }
 
-  async getAllUsers() {
-    const users = await this.usersClient.send(USERS_PATTERN.ALL_USERS, {})
-    return users
+  async signup(userData: createUserDto) {
+    return await lastValueFrom(this.userService.signup(userData))
   }
 
   async logout() {
-    return this.usersClient.send(USERS_PATTERN.LOGOUT, {})
+    return await lastValueFrom(this.userService.logout())
   }
 
-  async test(data: any) {
-    try {
-      const response = await this.usersClient.send(USERS_PATTERN.TEST, data)
-      return response
-    } catch (error) {
-      throw error
-    }
+  async getUserInfo(data: { userId: string, username: string }) {
+    return await lastValueFrom(this.userService.getUserInfo(data))
   }
+
+  async getAllUsers() {
+    return await lastValueFrom(this.userService.getAllUsers())
+  }
+
+  async test(data: { username: string; password: string }) {
+    return await lastValueFrom(this.userService.test(data))
+  }
+
+
 }
