@@ -1,9 +1,10 @@
-import { createUserDto } from '@app/contracts/users/create-user.dto'
+
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import * as bcrypt from 'bcrypt'
 import { UsersService } from '../users/users.service'
 import { RpcException } from '@nestjs/microservices'
+import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto';
 
 type AuthInput = { username: string; password: string }
 type SignInData = { userId: string; username: string }

@@ -1,0 +1,85 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/@prisma/client-cracks"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DB_CRACK_SERVICE")
+}
+
+model CrackReport {
+  crackId          String        @id @default(uuid())
+  buildingDetailId String
+  photoUrl         String
+  status           ReportStatus
+  reportedBy       Int
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  crackDetails     CrackDetail[]
+}
+
+model CrackDetail {
+  crackDetailsId String      @id @default(uuid())
+  crackId        String
+  photoUrl       String
+  description    String
+  status         CrackStatus
+  severity       Severity
+  reportedBy     Int
+  verifiedBy     Int
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  crackReport    CrackReport @relation(fields: [crackId], references: [crackId])
+
+  CrackRepairMaterial CrackRepairMaterial[]
+}
+
+model Material {
+  materialId   String                @id @default(uuid())
+  name         String                @unique
+  description  String?
+  unit         String // Đơn vị đo lường (kg, L, m³,...)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  crackRepairs CrackRepairMaterial[]
+}
+
+model CrackRepairMaterial {
+  crackRepairMaterialId String   @id @default(uuid())
+  crackDetailsId        String
+  materialId            String
+  quantity              Float // Số lượng vật liệu sử dụng
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  crackDetail CrackDetail @relation(fields: [crackDetailsId], references: [crackDetailsId])
+  material    Material    @relation(fields: [materialId], references: [materialId])
+
+  @@unique([crackDetailsId, materialId]) // Đảm bảo mỗi vết nứt chỉ có một bản ghi cho từng loại vật liệu
+}
+
+enum ReportStatus {
+  Reported
+  Verified
+  Completed
+}
+
+enum CrackStatus {
+  Description
+  Verified
+  InProgress
+  Completed
+}
+
+enum Severity {
+  Low
+  Medium
+  High
+}

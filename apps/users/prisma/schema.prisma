@@ -6,6 +6,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../../../node_modules/@prisma/client-users"
 }
 
 datasource db {
@@ -14,10 +15,10 @@ datasource db {
 }
 
 model User {
-  userId      String   @id @default(uuid())
-  username    String   @unique
+  userId      String    @id @default(uuid())
+  username    String    @unique
   password    String
-  email       String   @unique
+  email       String    @unique
   phone       String?
   role        Role
   dateOfBirth DateTime?
@@ -27,22 +28,22 @@ model User {
 }
 
 model Resident {
-  residentId      String    @id @default(uuid())
-  userId          String    @unique
+  residentId      String  @id @default(uuid())
+  userId          String  @unique
   apartmentNumber String?
   buildingId      String
-  user            User      @relation(fields: [userId], references: [userId])
+  user            User    @relation(fields: [userId], references: [userId])
 }
 
 model Employee {
-  employeeId      String         @id @default(uuid())
-  userId          String         @unique
+  employeeId      String           @id @default(uuid())
+  userId          String           @unique
   positionId      String
   departmentId    String
   status          EmploymentStatus
-  department      Department      @relation(fields: [departmentId], references: [departmentId])
-  workingPosition WorkingPosition @relation(fields: [positionId], references: [positionId])
-  user            User            @relation(fields: [userId], references: [userId])
+  department      Department       @relation(fields: [departmentId], references: [departmentId])
+  workingPosition WorkingPosition  @relation(fields: [positionId], references: [positionId])
+  user            User             @relation(fields: [userId], references: [userId])
 }
 
 model Department {
@@ -55,7 +56,7 @@ model Department {
 }
 
 model WorkingPosition {
-  positionId   String        @id @default(uuid())
+  positionId   String         @id @default(uuid())
   positionName PositionName
   description  String?
   status       PositionStatus

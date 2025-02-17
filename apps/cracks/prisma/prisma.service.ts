@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client-users'
+import { PrismaClient } from '@prisma/client-cracks';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { log } from 'console'
 
 @Injectable()
 export class PrismaService
@@ -9,7 +8,7 @@ export class PrismaService
     implements OnModuleInit, OnModuleDestroy {
     constructor(config: ConfigService) {
 
-        const url = config.get<string>('DATABASE_URL')
+        const url = config.get<string>('DB_CRACK_SERVICE')
 
         super({
             datasources: {
@@ -26,12 +25,5 @@ export class PrismaService
 
     async onModuleDestroy() {
         await this.$disconnect()
-    }
-
-    async cleanDatabase() {
-        if (process.env.NODE_ENV === 'production') return
-
-        // teardown logic
-        return Promise.all([this.user.deleteMany()])
     }
 }

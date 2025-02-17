@@ -1,4 +1,5 @@
-import { createUserDto } from '@app/contracts/users/create-user.dto'
+
+import { createUserDto } from 'libs/contracts/src/users/create-user.dto'
 import { Observable } from 'rxjs'
 
 export interface UserInterface {

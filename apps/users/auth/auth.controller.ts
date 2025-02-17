@@ -2,7 +2,8 @@ import { Controller } from '@nestjs/common'
 import { GrpcMethod } from '@nestjs/microservices'
 import { UsersService } from '../users/users.service'
 import { AuthService } from './auth.service'
-import { createUserDto } from '@app/contracts/users/create-user.dto'
+import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto';
+
 
 @Controller()
 export class AuthController {

@@ -1,10 +1,10 @@
-import { createUserDto } from '@app/contracts/users/create-user.dto'
-import { UserDto } from '@app/contracts/users/user.dto'
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { RpcException } from '@nestjs/microservices'
 import * as bcrypt from 'bcrypt'
 import { PrismaService } from '../prisma/prisma.service'
 import { Gender, Role } from '@prisma/client'
+import { UserDto } from '../../../libs/contracts/src/users/user.dto'
+import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto'
 
 @Injectable()
 export class UsersService {
@@ -89,21 +89,6 @@ export class UsersService {
                 message: error.message || 'Internal server error',
             })
         }
-    }
-
-    async updateUser(userId: string, data: Partial<createUserDto>): Promise<UserDto> {
-        const user = await this.getUserById(userId)
-        if (!user) throw new RpcException({ statusCode: 404, message: 'User not found' })
-
-        return this.prisma.user.update({
-            where: { userId },
-            data,
-        })
-    }
-
-    async deleteUser(userId: string): Promise<{ message: string }> {
-        await this.prisma.user.delete({ where: { userId } })
-        return { message: 'User deleted successfully' }
     }
 
     async getAllUsers(): Promise<UserDto[]> {

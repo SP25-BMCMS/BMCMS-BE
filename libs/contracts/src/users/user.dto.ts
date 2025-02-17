@@ -1,13 +1,12 @@
-import { $Enums } from '@prisma/client'
+import { $Enums } from '@prisma/client-users'
 
 export type UserDto = {
     userId: string
     username: string
     password: string
     email: string
-    phone: string
+    phone: string | null
     role: $Enums.Role
-    dateOfBirth: Date
-    gender: $Enums.Gender
+    dateOfBirth: Date | null
+    gender: $Enums.Gender | null
 }
-

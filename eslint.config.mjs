@@ -1,11 +1,22 @@
-import globals from "globals"
-import pluginJs from "@eslint/js"
-import tseslint from "typescript-eslint"
-
-export default [
-  { files: ["**/*.{js,mjs,cjs,ts}"] },
-  { files: ["**/*.js"], languageOptions: { sourceType: "script" } },
-  { languageOptions: { globals: globals.browser } },
-  pluginJs.configs.recommended,
-  ...tseslint.configs.recommended,
-]
+// import globals from "globals";
+// import js from "@eslint/js";
+// import ts from "@typescript-eslint/eslint-plugin";
+// import tsParser from "@typescript-eslint/parser";
+//
+// export default [
+//   {
+//     files: ["**/*.{js,mjs,cjs,ts}"],
+//     languageOptions: {
+//       parser: tsParser,
+//       sourceType: "module",
+//       globals: globals.browser,
+//     },
+//     plugins: {
+//       "@typescript-eslint": ts,
+//     },
+//     rules: {
+//       ...ts.configs.recommended.rules,
+//     },
+//   },
+//   js.configs.recommended,
+// ];
