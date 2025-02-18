@@ -6,7 +6,7 @@ import { ClientConfigService } from "./client-confit.service"
 @Module({
     imports: [
         ConfigModule.forRoot({
-            isGlobal: false,
+            isGlobal: true,
             validationSchema: joi.object({
                 USERS_CLIENT_PORT: joi.number().default(3001),
                 BUILDINGS_CLIENT_PORT: joi.number().default(3002),

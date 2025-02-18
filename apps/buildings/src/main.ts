@@ -1,21 +1,32 @@
 import { NestFactory } from '@nestjs/core';
-import { BuildingsModule } from './buildings.module';
+import { BuildingModule } from './building.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
- const app = await NestFactory.createMicroservice<MicroserviceOptions>(
-  BuildingsModule,
-    {
-      transport: Transport.RMQ,
-      options: {
-          urls: ['amqp://localhost:5672'], // Địa chỉ RabbitMQ
-          queue: 'buildings_queue', // Tên hàng đợi
-          queueOptions: {
-            durable: false, // Cấu hình để hàng đợi không bền vững (tùy theo yêu cầu)
-          },    
-          },
-    },
-  )
-  await app.listen()
+  const app = await NestFactory.create(BuildingModule);
+  const configService = app.get(ConfigService);
+  const microservicePort  = configService.get<number>('BUILDINGS_SERVICE_PORT') || 3002;  // Đổi cổng Microservice Buildings
+  console.log("🚀 ~ bootstrap ~ BUILDINGS_SERVICE_PORT:", microservicePort)
+
+  const user = configService.get('RABBITMQ_USER');
+  const password = configService.get('RABBITMQ_PASSWORD');
+  const host = configService.get('RABBITMQ_HOST');
+  const queueName = configService.get('RABBITMQ_QUEUE_NAME');
+
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.RMQ,
+    options: {
+      urls: [`amqp://${user}:${password}@${host}`],
+      queue: queueName,
+      queueOptions: {
+        durable: true,
+      }
+    }
+  });
+  await app.listen(3005); // Đảm bảo ứng dụng NestJS lắng nghe đúng cổng HTTP
+
+  await app.startAllMicroservices();
+
 }
 bootstrap();

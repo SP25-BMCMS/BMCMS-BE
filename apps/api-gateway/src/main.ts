@@ -12,6 +12,7 @@ async function bootstrap() {
   }))
   app.useGlobalFilters(new HttpExceptionFilter())
   app.useGlobalFilters(new RpcToHttpExceptionFilter())
+  console.log("🚀 ~ bootstrap ~ process.env.port:", process.env.port)
   await app.listen(process.env.port ?? 3000)
 }
 bootstrap()

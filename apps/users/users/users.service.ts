@@ -3,7 +3,7 @@ import { UserDto } from '@app/contracts/users/user.dto'
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { RpcException } from '@nestjs/microservices'
 import * as bcrypt from 'bcrypt'
-import { PrismaService } from '../prisma/prisma.service'
+import { PrismaService  } from '../prisma/prisma.service'
 import { Gender, Role } from '@prisma/client'
 
 @Injectable()

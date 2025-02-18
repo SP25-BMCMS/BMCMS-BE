@@ -1,0 +1,25 @@
+services:
+  rabbitmq:
+    image: rabbitmq:4.0.6-management
+    container_name: rabbitmq
+    hostname: rabbitmq
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"   # AMQP protocol port
+      - "15672:15672" # Management UI port
+      - "15692:15692" # Prometheus metrics
+    env_file:
+      - rabbitmq.env
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,info}]"
+    command: >
+      /bin/bash -c "
+      rabbitmq-plugins enable --offline rabbitmq_management &&
+      rabbitmq-server"
+
+volumes:
+  rabbitmq_data:
