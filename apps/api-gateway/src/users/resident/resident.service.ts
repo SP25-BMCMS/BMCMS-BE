@@ -17,4 +17,33 @@ export class ResidentService {
   async getAllResidents() {
     return await lastValueFrom(this.userService.getAllResidents({}))
   }
+
+  async getResidentById(id: string) {
+    return await lastValueFrom(this.userService.getResidentById({ id }))
+  }
+
+  async createResident(data: { username: string, password: string }) {
+    return await lastValueFrom(this.userService.createResident(data))
+  }
+
+  async updateResident(id: string, data: { username: string, password: string }) {
+    return await lastValueFrom(this.userService.updateResident({ id, data }))
+  }
+
+  async deleteResident(id: string) {
+    return await lastValueFrom(this.userService.deleteResident({ id }))
+  }
+
+  async getResidentByUsername(username: string) {
+    return await lastValueFrom(this.userService.getResidentByUsername({ username }))
+  }
+
+  async getResidentByEmail(email: string) {
+    return await lastValueFrom(this.userService.getResidentByEmail({ email }))
+  }
+
+  async getResidentByPhone(phone: string) {
+    return await lastValueFrom(this.userService.getResidentByPhone({ phone }))
+  }
+
 }

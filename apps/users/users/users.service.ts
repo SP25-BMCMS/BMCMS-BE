@@ -1,5 +1,6 @@
 import { createUserDto } from '@app/contracts/users/create-user.dto'
 import { UserDto } from '@app/contracts/users/user.dto'
+import { status } from '@grpc/grpc-js'
 import { Injectable } from '@nestjs/common'
 import { RpcException } from '@nestjs/microservices'
 import { Gender, Role } from '@prisma/client'
@@ -29,7 +30,7 @@ export class UsersService {
             // ✅ Kiểm tra dữ liệu đầu vào
             if (!data.username || !data.email || !data.password || !data.role) {
                 throw new RpcException({
-                    statusCode: 400,
+                    code: status.INVALID_ARGUMENT,
                     message: 'Missing required fields (username, email, password, role)',
                 })
             }
@@ -37,7 +38,7 @@ export class UsersService {
             // ✅ Kiểm tra role có hợp lệ không
             if (!Object.values(Role).includes(data.role)) {
                 throw new RpcException({
-                    statusCode: 400,
+                    code: status.INVALID_ARGUMENT,
                     message: `Invalid role. Allowed roles: ${Object.values(Role).join(', ')}`,
                 })
             }
@@ -50,8 +51,8 @@ export class UsersService {
             })
 
             if (existingUser) {
-                 throw new RpcException({
-                    statusCode: 409,
+                throw new RpcException({
+                    code: status.ALREADY_EXISTS, 
                     message: 'Username or email already exists',
                 })
             }
@@ -82,14 +83,19 @@ export class UsersService {
                 gender: newUser.gender,
             }
         } catch (error) {
-            console.error('Error creating user:', error)
+            console.error('🔥 Error creating user:', error)
+
+            if (error instanceof RpcException) {
+                throw error
+            }
 
             throw new RpcException({
-                statusCode: 500,
+                code: 500,
                 message: error.message || 'Internal server error',
             })
         }
     }
+
 
     async updateUser(userId: string, data: Partial<createUserDto>): Promise<UserDto> {
         const user = await this.getUserById(userId)

@@ -32,7 +32,6 @@ model Resident {
   apartmentNumber String?
   buildingId      String
   user            User      @relation("UserResident", fields: [userId], references: [userId], onDelete: Cascade)
-
   @@unique([userId]) 
 }
 

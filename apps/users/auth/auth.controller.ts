@@ -19,12 +19,12 @@ export class AuthController {
 
     @GrpcMethod('UserService', 'Signup')
     async signup(data: createUserDto) {
-        return this.authService.signup(data)
+        return await this.authService.signup(data)
     }
 
     @GrpcMethod('UserService', 'GetUserInfo')
-    getUserInfo(data: { userId: string; username: string }) {
-        return this.authService.getUserInfo(data.userId)
+    async getUserInfo(data: { userId: string; username: string }) {
+        return await this.authService.getUserInfo(data.userId)
     }
 
     @GrpcMethod('UserService', 'GetAllUsers')

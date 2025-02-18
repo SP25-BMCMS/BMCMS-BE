@@ -12,4 +12,12 @@ export interface UserInterface {
 
   //Resident
   getAllResidents({ }): Observable<any>
+  getResidentById(data: { id: string }): Observable<any>
+  createResident(data: { username: string, password: string }): Observable<any>
+  updateResident(data: { id: string, data: { username: string, password: string } }): Observable<any>
+  deleteResident(data: { id: string }): Observable<any>
+  getResidentByUsername(data: { username: string }): Observable<any>
+  getResidentByEmail(data: { email: string }): Observable<any>
+  getResidentByPhone(data: { phone: string }): Observable<any>
+
 }

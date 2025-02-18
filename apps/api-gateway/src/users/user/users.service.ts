@@ -1,3 +1,4 @@
+import { handleGrpcError } from '@app/contracts/helper/grpc-error-handler'
 import { createUserDto } from '@app/contracts/users/create-user.dto'
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common'
 import { ClientGrpc } from '@nestjs/microservices'
@@ -20,7 +21,12 @@ export class UsersService implements OnModuleInit {
   }
 
   async signup(userData: createUserDto) {
-    return await lastValueFrom(this.userService.signup(userData))
+    try {
+      const result = await lastValueFrom(this.userService.signup(userData))
+      return result
+    } catch (err) {
+      handleGrpcError(err)
+    }
   }
 
   async logout() {

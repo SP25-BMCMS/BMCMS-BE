@@ -23,8 +23,8 @@ export class UsersController {
         return this.UsersService.getUserInfo(req.user)
     }
 
-    @UseGuards(PassportJwtAuthGuard, RolesGuard)
-    @Roles(Role.Admin)
+    // @UseGuards(PassportJwtAuthGuard, RolesGuard)
+    // @Roles(Role.Admin)
     @Post('signup')
     signup(@Body() data: createUserDto) {
         return this.UsersService.signup(data)
