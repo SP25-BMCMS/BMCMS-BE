@@ -32,7 +32,7 @@ export class AuthService {
     async signIn(user: SignInData): Promise<AuthResult> {
         const tokenPayload = { sub: user.userId, username: user.username, role: user.role }
         const accessToken = await this.jwtService.signAsync(tokenPayload, { expiresIn: '1h' })
-        const refreshToken = await this.jwtService.signAsync(tokenPayload, { expiresIn: '7d' })
+        const refreshToken = await this.jwtService.signAsync(tokenPayload, { expiresIn: '1d' })
 
         return {
             accessToken,

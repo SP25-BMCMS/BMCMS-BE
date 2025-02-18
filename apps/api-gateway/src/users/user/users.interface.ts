@@ -9,4 +9,7 @@ export interface UserInterface {
   getAllUsers({ }): Observable<any>
   test(data: { username: string; password: string }): Observable<any>
   validateUser(data: { username: string, password: string }): Promise<any>
+
+  //Resident
+  getAllResidents({ }): Observable<any>
 }

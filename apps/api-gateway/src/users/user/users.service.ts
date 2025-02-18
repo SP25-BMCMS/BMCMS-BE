@@ -2,7 +2,7 @@ import { createUserDto } from '@app/contracts/users/create-user.dto'
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common'
 import { ClientGrpc } from '@nestjs/microservices'
 import { lastValueFrom } from 'rxjs'
-import { USERS_CLIENT } from '../constraints'
+import { USERS_CLIENT } from '../../constraints'
 import { UserInterface } from './users.interface'
 
 @Injectable()

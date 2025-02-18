@@ -35,7 +35,7 @@ export class AuthController {
 
     @GrpcMethod('UserService', 'Logout')
     async logout() {
-        return { message: 'Logged out successfully' }
+        return await this.authService.logout()
     }
 
     @GrpcMethod('UserService', 'ValidateUser')

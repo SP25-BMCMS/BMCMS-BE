@@ -50,7 +50,7 @@ export class UsersService {
             })
 
             if (existingUser) {
-                throw new RpcException({
+                 throw new RpcException({
                     statusCode: 409,
                     message: 'Username or email already exists',
                 })

@@ -9,8 +9,6 @@ export class RpcToHttpExceptionFilter implements ExceptionFilter {
         const request = ctx.getRequest<Request>()
         // Lấy thông tin lỗi từ RpcException
         const errorResponse: any = exception.getError()
-
-
         let status = HttpStatus.INTERNAL_SERVER_ERROR
         let message = 'Internal Server Error'
 

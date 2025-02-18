@@ -1,11 +1,11 @@
 import { createUserDto } from '@app/contracts/users/create-user.dto'
 import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common'
 import { Role } from '@prisma/client'
-import { Roles } from './decorator/roles.decarator'
-import { PassportJwtAuthGuard } from './guards/passport-jwt-guard'
-import { PassportLocalGuard } from './guards/passport-local-guard'
+import { Roles } from '../../decorator/roles.decarator'
+import { PassportJwtAuthGuard } from '../../guards/passport-jwt-guard'
+import { PassportLocalGuard } from '../../guards/passport-local-guard'
 import { UsersService } from './users.service'
-import { RolesGuard } from './guards/role.guard'
+import { RolesGuard } from '../../guards/role.guard'
 
 @Controller('auth')
 export class UsersController {
