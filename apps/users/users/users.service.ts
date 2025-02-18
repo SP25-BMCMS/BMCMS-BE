@@ -1,10 +1,10 @@
 import { createUserDto } from '@app/contracts/users/create-user.dto'
 import { UserDto } from '@app/contracts/users/user.dto'
-import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
 import { RpcException } from '@nestjs/microservices'
+import { Gender, Role } from '@prisma/client'
 import * as bcrypt from 'bcrypt'
 import { PrismaService } from '../prisma/prisma.service'
-import { Gender, Role } from '@prisma/client'
 
 @Injectable()
 export class UsersService {
@@ -66,7 +66,7 @@ export class UsersService {
                     email: data.email,
                     password: hashedPassword,
                     phone: data.phone || null,
-                    role: data.role as Role, // Chắc chắn role là kiểu dữ liệu Role
+                    role: data.role as Role,
                     dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
                     gender: data.gender as Gender,
                 },
@@ -106,7 +106,9 @@ export class UsersService {
         return { message: 'User deleted successfully' }
     }
 
-    async getAllUsers(): Promise<UserDto[]> {
-        return this.prisma.user.findMany()
+    async getAllUsers()
+        : Promise<{ users: UserDto[] }> {
+        const users = await this.prisma.user.findMany()
+        return { users: users }
     }
 }

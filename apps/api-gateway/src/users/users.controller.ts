@@ -5,6 +5,7 @@ import { Roles } from './decorator/roles.decarator'
 import { PassportJwtAuthGuard } from './guards/passport-jwt-guard'
 import { PassportLocalGuard } from './guards/passport-local-guard'
 import { UsersService } from './users.service'
+import { RolesGuard } from './guards/role.guard'
 
 @Controller('auth')
 export class UsersController {
@@ -22,7 +23,7 @@ export class UsersController {
         return this.UsersService.getUserInfo(req.user)
     }
 
-    @UseGuards(PassportJwtAuthGuard)
+    @UseGuards(PassportJwtAuthGuard, RolesGuard)
     @Roles(Role.Admin)
     @Post('signup')
     signup(@Body() data: createUserDto) {
@@ -35,6 +36,7 @@ export class UsersController {
         return this.UsersService.logout()
     }
 
+    @UseGuards(PassportJwtAuthGuard, RolesGuard)
     @Get('all-users')
     @Roles(Role.Admin)
     getAllUsers() {

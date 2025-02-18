@@ -23,7 +23,6 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'my-local') implem
 
     async validate(username: string, password: string): Promise<any> {
         try {
-            // Gọi gRPC service
             const user = await lastValueFrom(await this.usersService.validateUser({ username, password }))
 
             if (!user) {

@@ -6,7 +6,7 @@ import { UsersService } from '../users/users.service'
 import { RpcException } from '@nestjs/microservices'
 
 type AuthInput = { username: string; password: string }
-type SignInData = { userId: string; username: string }
+type SignInData = { userId: string; username: string, role: string }
 type AuthResult = { accessToken: string; refreshToken: string; userId: string; username: string }
 
 @Injectable()
@@ -26,11 +26,11 @@ export class AuthService {
         const isPasswordValid = await bcrypt.compare(input.password, user.password)
         if (!isPasswordValid)
             throw new RpcException({ statusCode: 401, message: 'invalid credentials!' })
-        return { userId: user.userId, username: user.username }
+        return { userId: user.userId, username: user.username, role: user.role }
     }
 
     async signIn(user: SignInData): Promise<AuthResult> {
-        const tokenPayload = { sub: user.userId, username: user.username }
+        const tokenPayload = { sub: user.userId, username: user.username, role: user.role }
         const accessToken = await this.jwtService.signAsync(tokenPayload, { expiresIn: '1h' })
         const refreshToken = await this.jwtService.signAsync(tokenPayload, { expiresIn: '7d' })
 
@@ -47,7 +47,7 @@ export class AuthService {
 
         try {
             const decoded = this.jwtService.verify(token)
-            const user = { userId: decoded.sub, username: decoded.username }
+            const user = { userId: decoded.sub, username: decoded.username, role: decoded.role }
             return this.signIn(user)
         } catch (error) {
             throw new UnauthorizedException('Invalid or expired refresh token')

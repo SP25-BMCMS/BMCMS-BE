@@ -8,7 +8,7 @@ Content-Type: application/json
 
 ###
 GET http://localhost:3000/auth/me
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxNmM0NGI4Ni05NzYwLTRlNDUtYTVhOC01NWNlMDdjZDMzNWQiLCJ1c2VybmFtZSI6ImpvaG5fZG9lIiwiaWF0IjoxNzM5NTE1MDMwLCJleHAiOjE3Mzk1MTg2MzB9.UXfzs8ZvFf5a87uQu-Ae256Xt4kpDoIuf7iZjMatxBM
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMyMTMxMiIsInVzZXJuYW1lIjoiam9obl9kb2UiLCJpYXQiOjE3Mzk4NTkyNjIsImV4cCI6MTczOTg2Mjg2Mn0.IuVkHvo2NTv4_PMKWUbcjpEyP-y9DR2as55GGVybvmw
 
 
 ###
@@ -27,11 +27,11 @@ Content-Type: application/json
 
 ### 
 GET http://localhost:3000/auth/all-users
-
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMyMTMxMiIsInVzZXJuYW1lIjoiam9obl9kb2UiLCJyb2xlIjoiUmVzaWRlbnQiLCJpYXQiOjE3Mzk4NjM1OTIsImV4cCI6MTczOTg2NzE5Mn0.ggpreMkk-hEh4xxphLQfp6gSMrQVK3PbhEluQRfMpPM
 
 ###
 POST http://localhost:3000/auth/logout
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxNmM0NGI4Ni05NzYwLTRlNDUtYTVhOC01NWNlMDdjZDMzNWQiLCJ1c2VybmFtZSI6ImpvaG5fZG9lIiwiaWF0IjoxNzM5NTEyODIxLCJleHAiOjE3Mzk1MTY0MjF9.0-YPrn99iB3gPwTVRyF6SVfidI-G3VxKgEt5GixwV_Q
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMyMTMxMiIsInVzZXJuYW1lIjoiam9obl9kb2UiLCJpYXQiOjE3Mzk4NjIxMjcsImV4cCI6MTczOTg2NTcyN30.NNkzdtspbZRuUykeJwswR0QHfq8ckBul2b-4aNfrEt4
 
 ###
 GET http://localhost:3000/auth

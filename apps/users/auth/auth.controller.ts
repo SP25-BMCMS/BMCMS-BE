@@ -30,7 +30,7 @@ export class AuthController {
     @GrpcMethod('UserService', 'GetAllUsers')
     async getAllUsers() {
         const users = await this.usersService.getAllUsers()
-        return { users }
+        return users
     }
 
     @GrpcMethod('UserService', 'Logout')
@@ -47,6 +47,4 @@ export class AuthController {
     async test(data: { data: string }) {
         return { success: true }
     }
-
-
 }

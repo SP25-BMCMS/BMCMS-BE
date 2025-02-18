@@ -24,7 +24,7 @@ export class UsersService implements OnModuleInit {
   }
 
   async logout() {
-    return await lastValueFrom(this.userService.logout())
+    return await lastValueFrom(this.userService.logout({}))
   }
 
   async getUserInfo(data: { userId: string, username: string }) {
@@ -32,12 +32,12 @@ export class UsersService implements OnModuleInit {
   }
 
   async getAllUsers() {
-    return await lastValueFrom(this.userService.getAllUsers())
+    return await lastValueFrom(this.userService.getAllUsers({}))
   }
+
 
   async test(data: { username: string; password: string }) {
     return await lastValueFrom(this.userService.test(data))
   }
-
 
 }
