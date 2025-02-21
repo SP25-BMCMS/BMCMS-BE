@@ -3,6 +3,7 @@ export const BUILDINGS_PATTERN  = {
     CREATE: 'create',
     UPDATE: 'update',
     DELELTE: 'delete',
+    GET_BY_ID : 'get-by-id',
 }
 
   

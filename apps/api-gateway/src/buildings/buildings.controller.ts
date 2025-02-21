@@ -1,5 +1,6 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, Post, Put, Req, UseGuards } from '@nestjs/common'
 import { BuildingsService } from './Buildings.service'
+import { catchError, NotFoundError } from 'rxjs';
 
 @Controller('building')
 export class BuildingsController {
@@ -11,25 +12,30 @@ export class BuildingsController {
     //     return this.UsersService.login(data.username, data.password)
     // }
 
-    @Get('abc') 
-    getBuilding() {
-        console.log("🚀 ~ BuildingsController ~ getBuilding ~ GetBuilding:")
+   
+  @Get()
+  async getAllBuildings() {
+    return await this.BuildingsService.getBuildings();
+  }
 
-        return this.BuildingsService.GetBuilding()
-    }
+  @Get(':id')
+  async getBuildingById(@Param('id') id: string) {
+    return this.BuildingsService.getBuildingById(id);
+  }
 
-    // @Post('signup')
-    // signup(@Body() data: createUserDto) {
-    //     return this.UsersService.signup(data)
-    // }
+  @Post()
+  async createBuilding(@Body() createBuildingDto: any) {
+    return (await this.BuildingsService.createBuilding(createBuildingDto))
 
-    // @Get('all-users')
-    // getAllUsers() {
-    //     return this.UsersService.getAllUsers()
-    // }
-    
-    // @Get()
-    // test() {
-    //     return this.UsersService.test({})
-    // }
+  }
+
+  @Put(':id')
+  async updateBuilding(@Param('id') id: string, @Body() updateBuildingDto: any) {
+    return this.BuildingsService.updateBuilding({ ...updateBuildingDto, buildingId: id });
+  }
+
+  @Delete(':id')
+  async deleteBuilding(@Param('id') id: string) {
+    return this.BuildingsService.deleteBuilding(id);
+  }
 }

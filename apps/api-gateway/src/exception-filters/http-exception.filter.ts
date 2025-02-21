@@ -17,6 +17,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
         const exceptionResponse = exception.getResponse() as ExceptionResponse
         const status = exceptionResponse?.statusCode ?? 500
         const message = exceptionResponse?.message ?? 'Internal Server Error'
+        console.log("🚀 ~ HttpExceptionFilter ~ message:", message)
+        console.log("🚀 ~ HttpExceptionFilter ~ status:", status)
 
         response.status(status).json({
             statusCode: status,

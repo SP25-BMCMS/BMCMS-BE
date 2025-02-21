@@ -28,7 +28,7 @@ Content-Type: application/json
 ### 
 GET http://localhost:3000/auth/all-users
 ###
-GET http://localhost:3000/building/abc
+GET http://localhost:3000/building
 
 
 #BUG: API signup is not working properly. It is not saving the user in the database.

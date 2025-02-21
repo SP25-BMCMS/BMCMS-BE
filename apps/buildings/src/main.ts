@@ -24,7 +24,7 @@ async function bootstrap() {
       }
     }
   });
-  await app.listen(3005); // Đảm bảo ứng dụng NestJS lắng nghe đúng cổng HTTP
+  await app.listen(microservicePort); // Đảm bảo ứng dụng NestJS lắng nghe đúng cổng HTTP
 
   await app.startAllMicroservices();
 
