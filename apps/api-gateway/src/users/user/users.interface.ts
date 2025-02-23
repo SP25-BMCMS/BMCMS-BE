@@ -1,5 +1,5 @@
-import { createUserDto } from '@app/contracts/users/create-user.dto'
 import { Observable } from 'rxjs'
+import { createUserDto } from '../../../../../libs/contracts/src/users/create-user.dto';
 
 export interface UserInterface {
   login(data: { username: string, password: string }): Observable<any>

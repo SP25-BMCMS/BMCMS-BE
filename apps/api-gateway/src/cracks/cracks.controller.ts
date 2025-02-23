@@ -13,7 +13,8 @@ import { catchError, firstValueFrom } from 'rxjs';
 import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto';
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
 import { CreateCrackDetailDto } from '../../../../libs/contracts/src/cracks/create-crack-detail.dto';
-import { PassportJwtAuthGuard } from '../users/guards/passport-jwt-guard';
+import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard';
+
 
 @Controller('cracks')
 @UseGuards(PassportJwtAuthGuard)

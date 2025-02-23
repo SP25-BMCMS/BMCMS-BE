@@ -27,11 +27,7 @@
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^10.0.0",
     "@nestjs/jwt": "^11.0.0",
-<<<<<<< HEAD
-    "@nestjs/mapped-types": "*",
-=======
     "@nestjs/mapped-types": "^2.1.0",
->>>>>>> 32c4253c608e51476c68ac46945cd77b1564d30f
     "@nestjs/microservices": "^11.0.9",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^10.0.0",
