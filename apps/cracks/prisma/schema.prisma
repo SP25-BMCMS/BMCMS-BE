@@ -15,11 +15,11 @@ datasource db {
 }
 
 model CrackReport {
-  crackId          String        @id @default(uuid())
+  crackReportId          String        @id @default(uuid())
   buildingDetailId String
   photoUrl         String
   status           ReportStatus
-  reportedBy       Int
+  reportedBy       String
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
   crackDetails     CrackDetail[]
@@ -27,16 +27,16 @@ model CrackReport {
 
 model CrackDetail {
   crackDetailsId String      @id @default(uuid())
-  crackId        String
+  crackReportId        String
   photoUrl       String
   description    String
   status         CrackStatus
   severity       Severity
-  reportedBy     Int
-  verifiedBy     Int
+  reportedBy     String
+  verifiedBy     String
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
-  crackReport    CrackReport @relation(fields: [crackId], references: [crackId])
+  crackReport    CrackReport @relation(fields: [crackReportId], references: [crackReportId])
 
   CrackRepairMaterial CrackRepairMaterial[]
 }
