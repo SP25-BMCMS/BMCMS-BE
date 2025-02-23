@@ -1,26 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import { CreateResidentDto } from './dto/create-resident.dto';
-import { UpdateResidentDto } from './dto/update-resident.dto';
+import { ResidentDto } from '@app/contracts/residents/resident.dto'
+import { Injectable } from '@nestjs/common'
+import { PrismaService } from '../prisma/prisma.service'
 
 @Injectable()
 export class ResidentsService {
-  create(createResidentDto: CreateResidentDto) {
-    return 'This action adds a new resident';
-  }
+  constructor(private prisma: PrismaService) { }
 
-  findAll() {
-    return `This action returns all residents`;
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} resident`;
-  }
-
-  update(id: number, updateResidentDto: UpdateResidentDto) {
-    return `This action updates a #${id} resident`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} resident`;
+  async getAllResidents()
+    : Promise<{ residents: ResidentDto[] }> {
+    const residents = await this.prisma.resident.findMany()
+    return { residents: residents }
   }
 }

@@ -2,9 +2,9 @@ import { Injectable, Inject, UnauthorizedException, OnModuleInit } from '@nestjs
 import { PassportStrategy } from '@nestjs/passport'
 import { ClientGrpc } from '@nestjs/microservices'
 import { Strategy } from 'passport-local'
-import { USERS_CLIENT } from '../../constraints'
+import { USERS_CLIENT } from '../constraints'
 import { lastValueFrom } from 'rxjs'
-import { UserInterface } from '../users.interface'
+import { UserInterface } from '../users/user/users.interface'
 
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy, 'my-local') implements OnModuleInit {
@@ -23,7 +23,6 @@ export class LocalStrategy extends PassportStrategy(Strategy, 'my-local') implem
 
     async validate(username: string, password: string): Promise<any> {
         try {
-            // Gọi gRPC service
             const user = await lastValueFrom(await this.usersService.validateUser({ username, password }))
 
             if (!user) {

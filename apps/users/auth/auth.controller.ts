@@ -20,23 +20,23 @@ export class AuthController {
 
     @GrpcMethod('UserService', 'Signup')
     async signup(data: createUserDto) {
-        return this.authService.signup(data)
+        return await this.authService.signup(data)
     }
 
     @GrpcMethod('UserService', 'GetUserInfo')
-    getUserInfo(data: { userId: string; username: string }) {
-        return this.authService.getUserInfo(data.userId)
+    async getUserInfo(data: { userId: string; username: string }) {
+        return await this.authService.getUserInfo(data.userId)
     }
 
     @GrpcMethod('UserService', 'GetAllUsers')
     async getAllUsers() {
         const users = await this.usersService.getAllUsers()
-        return { users }
+        return users
     }
 
     @GrpcMethod('UserService', 'Logout')
     async logout() {
-        return { message: 'Logged out successfully' }
+        return await this.authService.logout()
     }
 
     @GrpcMethod('UserService', 'ValidateUser')
@@ -48,6 +48,4 @@ export class AuthController {
     async test(data: { data: string }) {
         return { success: true }
     }
-
-
 }

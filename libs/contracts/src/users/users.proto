@@ -10,6 +10,8 @@ service UserService {
   rpc Logout (Empty) returns (LogoutResponse);
   rpc Test (TestRequest) returns (TestResponse);
   rpc ValidateUser (LoginRequest) returns (UserResponse);
+
+  rpc GetAllResidents (Empty) returns (ResidentsListResponse);
 }
 
 message LoginRequest {
@@ -18,9 +20,10 @@ message LoginRequest {
 }
 
 message CreateUserRequest {
-  string name = 1;
+  string username = 1;
   string email = 2;
   string password = 3;
+  string role = 4;
 }
 
 message UserRequest {
@@ -39,10 +42,24 @@ message UserResponse {
   string userId = 1;
   string username = 2;
   string email = 3;
+  string phone = 4;
+  string role = 5;
+  string dateOfBirth = 6;
+  string gender = 7;
 }
 
 message UsersListResponse {
   repeated UserResponse users = 1;
+}
+
+message ResidentResponse {
+  string userId = 1;
+  string apartmentNumber = 2;
+  string email = 3;
+}
+
+message ResidentsListResponse {
+  repeated ResidentResponse users = 1;
 }
 
 message LogoutResponse {
