@@ -6,15 +6,17 @@ import {
   Inject,
   InternalServerErrorException,
   BadRequestException,
-  Param, NotFoundException, Put, Delete, Patch,
+  Param, NotFoundException, Put, Delete, Patch, UseGuards, Req,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { catchError, firstValueFrom } from 'rxjs';
 import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto';
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
 import { CreateCrackDetailDto } from '../../../../libs/contracts/src/cracks/create-crack-detail.dto';
+import { PassportJwtAuthGuard } from '../users/guards/passport-jwt-guard';
 
 @Controller('cracks')
+@UseGuards(PassportJwtAuthGuard)
 export class CracksController {
   constructor(@Inject('CRACK_SERVICE') private readonly crackService: ClientProxy) {}
 
@@ -41,9 +43,11 @@ export class CracksController {
   }
 
   @Post('crack-reports')
-  async createCrackReport(@Body() dto: AddCrackReportDto) {
+  async createCrackReport(@Body() dto: AddCrackReportDto, @Req() req) {
+    const userId = req.user.userId; // ✅ Lấy UserID từ token
+
     return firstValueFrom(
-      this.crackService.send({ cmd: 'create-crack-report' }, dto).pipe(
+      this.crackService.send({ cmd: 'create-crack-report' }, { ...dto, reportedBy: userId }).pipe(
         catchError(err => {
           throw new BadRequestException(err.message);
         })

@@ -1,5 +1,7 @@
-import { IsEnum, IsInt, IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsString, IsUUID, ValidateNested, IsArray, IsOptional } from 'class-validator';
 import { $Enums } from '@prisma/client-cracks';
+import { Type } from 'class-transformer';
+import { CreateCrackDetailDto } from './create-crack-detail.dto';
 
 export class AddCrackReportDto {
   @IsUUID()
@@ -8,13 +10,18 @@ export class AddCrackReportDto {
 
   @IsString()
   @IsNotEmpty()
+  description: string;
+
+  @IsString()
+  @IsNotEmpty()
   photoUrl: string;
 
   @IsEnum($Enums.ReportStatus)
-  @IsNotEmpty()
-  status: $Enums.ReportStatus;
+  @IsOptional()
+  status?: $Enums.ReportStatus = $Enums.ReportStatus.Reported; // Mặc định Reported
 
-  @IsInt()
-  @IsNotEmpty()
-  reportedBy: number;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateCrackDetailDto)
+  crackDetails: CreateCrackDetailDto[];
 }

@@ -21,39 +21,6 @@ export class CrackDetailsService {
     return new ApiResponse(true, 'Crack Detail đã tìm thấy', [detail]);
   }
 
-  async addCrackDetail(dto: CreateCrackDetailDto) {
-    try {
-      const crackReportExists = await this.prisma.crackReport.findUnique({
-        where: { crackId: dto.crackId },
-      });
-      if (!crackReportExists) {
-        throw new RpcException(new ApiResponse(false, 'CrackID not found'));
-      }
-      const newCrackDetail  = await this.prisma.crackDetail.create({ data: {
-        crackId: dto.crackId,
-        photoUrl: dto.photoUrl,
-        description: dto.description,
-        status: dto.status,
-        severity: dto.severity,
-        reportedBy: dto.reportedBy,
-        verifiedBy: dto.verifiedBy, }
-      });
-      return new ApiResponse(true, 'Crack Detail đã được tạo thành công', [newCrackDetail]);
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new RpcException({
-            status: 400,
-            message: 'Dữ liệu bị trùng lặp',
-          });
-        }
-      }
-      throw new RpcException({
-        status: 500,
-        message: 'Lỗi hệ thống, vui lòng thử lại sau',
-      });
-    }
-  }
 
   async updateCrackDetail(id: string, dto: UpdateCrackDetailDto) {
     const exists = await this.prisma.crackDetail.findUnique({ where: { crackDetailsId: id } });

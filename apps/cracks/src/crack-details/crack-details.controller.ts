@@ -18,11 +18,6 @@ export class CrackDetailsController {
     return await this.crackDetailsService.findById(crackId);
   }
 
-  @MessagePattern({ cmd: 'create-crack-detail' })
-  async createCrackDetail(@Payload() dto: CreateCrackDetailDto) {
-    return await this.crackDetailsService.addCrackDetail(dto);
-  }
-
   @MessagePattern({ cmd: 'update-crack-detail' })
   async updateCrackDetail(@Payload() data: { crackId: string; dto: UpdateCrackDetailDto }) {
     return await this.crackDetailsService.updateCrackDetail(data.crackId, data.dto);

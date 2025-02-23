@@ -17,9 +17,11 @@ datasource db {
 model CrackReport {
   crackReportId          String        @id @default(uuid())
   buildingDetailId String
+  description      String
   photoUrl         String
-  status           ReportStatus
+  status           ReportStatus  @default(Reported)
   reportedBy       String
+  verifiedBy       String
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
   crackDetails     CrackDetail[]
@@ -29,56 +31,43 @@ model CrackDetail {
   crackDetailsId String      @id @default(uuid())
   crackReportId        String
   photoUrl       String
-  description    String
-  status         CrackStatus
-  severity       Severity
-  reportedBy     String
-  verifiedBy     String
+  status         CrackStatus @default(InProgress)
+  severity       Severity    @default(Unknown)
+  aiDetectionUrl    String
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   crackReport    CrackReport @relation(fields: [crackReportId], references: [crackReportId])
 
-  CrackRepairMaterial CrackRepairMaterial[]
+  crackSegment CrackSegment[]
 }
 
-model Material {
-  materialId   String                @id @default(uuid())
-  name         String                @unique
-  description  String?
-  unit         String // Đơn vị đo lường (kg, L, m³,...)
-  createdAt    DateTime              @default(now())
-  updatedAt    DateTime              @updatedAt
-  crackRepairs CrackRepairMaterial[]
-}
-
-model CrackRepairMaterial {
-  crackRepairMaterialId String   @id @default(uuid())
-  crackDetailsId        String
-  materialId            String
-  quantity              Float // Số lượng vật liệu sử dụng
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
+model CrackSegment {
+  crackSegmentId String @id @default(uuid())
+  crackDetailsId  String
+  confidence     Float
+  x             Float
+  y             Float
+  z             Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   crackDetail CrackDetail @relation(fields: [crackDetailsId], references: [crackDetailsId])
-  material    Material    @relation(fields: [materialId], references: [materialId])
-
-  @@unique([crackDetailsId, materialId]) // Đảm bảo mỗi vết nứt chỉ có một bản ghi cho từng loại vật liệu
 }
 
 enum ReportStatus {
   Reported
   Verified
   Completed
+  Rejected
 }
 
 enum CrackStatus {
-  Description
-  Verified
   InProgress
+  Verified
   Completed
 }
 
 enum Severity {
+  Unknown
   Low
   Medium
   High

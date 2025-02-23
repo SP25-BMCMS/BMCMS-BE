@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CrackReportDto } from 'libs/contracts/src/cracks/crack-report.dto';
-import { Prisma } from '@prisma/client';
+import { $Enums, Prisma } from '@prisma/client-cracks';
 import { RpcException } from '@nestjs/microservices';
 import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto';
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
@@ -15,52 +15,109 @@ export class CrackReportsService {
     return  await this.prismService.crackReport.findMany();
   }
 
-  async addCrackReport(dto: AddCrackReportDto) {
+  // async addCrackReport(dto: AddCrackReportDto) {
+  //   try {
+  //     const newReport = await this.prismService.crackReport.create({ data: { ...dto } });
+  //     return new ApiResponse(true, 'Crack Report đã được tạo thành công', [newReport]);
+  //   } catch (error) {
+  //     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+  //       throw new RpcException(new ApiResponse(false, 'Dữ liệu bị trùng lặp'));
+  //     }
+  //     throw new RpcException(new ApiResponse(false, 'Lỗi hệ thống, vui lòng thử lại sau'));
+  //   }
+  // }
+
+  async addCrackReport(dto: AddCrackReportDto, userId: string) {
     try {
-      const newReport = await this.prismService.crackReport.create({ data: { ...dto } });
-      return new ApiResponse(true, 'Crack Report đã được tạo thành công', [newReport]);
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new RpcException(new ApiResponse(false, 'Dữ liệu bị trùng lặp'));
-      }
-      throw new RpcException(new ApiResponse(false, 'Lỗi hệ thống, vui lòng thử lại sau'));
-    }
-  }
+      return await this.prismService.$transaction(async (prisma) => {
+        // 🔹 1. Tạo CrackReport trước
+        const newCrackReport = await prisma.crackReport.create({
+          data: {
+            buildingDetailId: dto.buildingDetailId,
+            description: dto.description,
+            photoUrl: dto.photoUrl,
+            status: dto.status ?? $Enums.ReportStatus.Reported, // Mặc định Reported
+            reportedBy: userId,
+            verifiedBy: null, // Nếu chưa xác minh thì để null
+          }
+        });
+        // 🔹 2. Nếu có CrackDetails, tạo từng cái bằng `create()`
+        let newCrackDetails = [];
+        if (dto.crackDetails?.length > 0) {
+          newCrackDetails = await Promise.all(
+            dto.crackDetails.map(async (detail) => {
+              return prisma.crackDetail.create({
+                data: {
+                  crackReportId: newCrackReport.crackReportId, // Liên kết CrackReport
+                  photoUrl: detail.photoUrl,
+                  status: detail.status ?? $Enums.CrackStatus.InProgress, // Mặc định InProgress
+                  severity: detail.severity ?? $Enums.Severity.Unknown, // Mặc định Unknown
+                  aiDetectionUrl: detail.aiDetectionUrl ?? detail.photoUrl,
+                },
+              });
+            })
+          );
+        }
 
-  async findById(crackId: string) {
-    const report = await this.prismService.crackReport.findUnique({ where: { crackId } });
-    if (!report) {
-      throw new RpcException(new ApiResponse(false, 'Crack Report không tồn tại'));
-    }
-    return new ApiResponse(true, 'Crack Report đã tìm thấy', [report]);
-  }
-
-  async updateCrackReport(crackId: string, dto: UpdateCrackReportDto) {
-    const existingReport = await this.prismService.crackReport.findUnique({ where: { crackId } });
-    if (!existingReport) {
-      throw new RpcException(new ApiResponse(false, 'Crack Report không tồn tại'));
-    }
-
-    try {
-      const updatedReport = await this.prismService.crackReport.update({
-        where: { crackId },
-        data: { ...dto },
+        return new ApiResponse(true, 'Crack Report và Crack Details đã được tạo thành công', [
+          { crackReport: newCrackReport, crackDetails: newCrackDetails },
+        ]);
       });
-      return new ApiResponse(true, 'Crack Report đã được cập nhật thành công', [updatedReport]);
     } catch (error) {
-      throw new RpcException(new ApiResponse(false, 'Dữ liệu không hợp lệ'));
+      console.error('🔥 Lỗi trong CrackReportService:', JSON.stringify(error));
+
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new RpcException({
+            status: 400,
+            message: 'Dữ liệu bị trùng lặp',
+          });
+        }
+      }
+
+      throw new RpcException({
+        status: 500,
+        message: 'Lỗi hệ thống, vui lòng thử lại sau',
+      });
     }
   }
 
-  async deleteCrackReport(crackId: string) {
-    const existingReport = await this.prismService.crackReport.findUnique({ where: { crackId } });
-    if (!existingReport) {
-      throw new RpcException(new ApiResponse(false, 'Crack Report không tồn tại'));
-    }
 
-    await this.prismService.crackReport.delete({ where: { crackId } });
-    return new ApiResponse(true, 'Crack Report đã được xóa thành công');
-  }
+
+  // async findById(crackId: string) {
+  //   const report = await this.prismService.crackReport.findUnique({ where: { crackId } });
+  //   if (!report) {
+  //     throw new RpcException(new ApiResponse(false, 'Crack Report không tồn tại'));
+  //   }
+  //   return new ApiResponse(true, 'Crack Report đã tìm thấy', [report]);
+  // }
+
+  // async updateCrackReport(crackId: string, dto: UpdateCrackReportDto) {
+  //   const existingReport = await this.prismService.crackReport.findUnique({ where: { crackId } });
+  //   if (!existingReport) {
+  //     throw new RpcException(new ApiResponse(false, 'Crack Report không tồn tại'));
+  //   }
+  //
+  //   try {
+  //     const updatedReport = await this.prismService.crackReport.update({
+  //       where: { crackId },
+  //       data: { ...dto },
+  //     });
+  //     return new ApiResponse(true, 'Crack Report đã được cập nhật thành công', [updatedReport]);
+  //   } catch (error) {
+  //     throw new RpcException(new ApiResponse(false, 'Dữ liệu không hợp lệ'));
+  //   }
+  // }
+  //
+  // async deleteCrackReport(crackId: string) {
+  //   const existingReport = await this.prismService.crackReport.findUnique({ where: { crackId } });
+  //   if (!existingReport) {
+  //     throw new RpcException(new ApiResponse(false, 'Crack Report không tồn tại'));
+  //   }
+  //
+  //   await this.prismService.crackReport.delete({ where: { crackId } });
+  //   return new ApiResponse(true, 'Crack Report đã được xóa thành công');
+  // }
 
   // async findById(crackId: string) {
   //   try {
