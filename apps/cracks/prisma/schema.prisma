@@ -18,7 +18,6 @@ model CrackReport {
   crackReportId          String        @id @default(uuid())
   buildingDetailId String
   description      String
-  photoUrl         String
   status           ReportStatus  @default(Reported)
   reportedBy       String
   verifiedBy       String

@@ -12,10 +12,6 @@ export class AddCrackReportDto {
   @IsNotEmpty()
   description: string;
 
-  @IsString()
-  @IsNotEmpty()
-  photoUrl: string;
-
   @IsEnum($Enums.ReportStatus)
   @IsOptional()
   status?: $Enums.ReportStatus = $Enums.ReportStatus.Reported; // Mặc định Reported

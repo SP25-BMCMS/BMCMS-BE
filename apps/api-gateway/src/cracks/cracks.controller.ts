@@ -48,13 +48,14 @@ export class CracksController {
     const userId = req.user.userId; // ✅ Lấy UserID từ token
 
     return firstValueFrom(
-      this.crackService.send({ cmd: 'create-crack-report' }, { ...dto, reportedBy: userId }).pipe(
+      this.crackService.send({ cmd: 'create-crack-report' }, { dto, userId }).pipe(
         catchError(err => {
           throw new BadRequestException(err.message);
         })
       )
     );
   }
+
 
   @Patch('crack-reports/:id')
   async updateCrackReport(@Param('id') id: string, @Body() dto: UpdateCrackReportDto) {
