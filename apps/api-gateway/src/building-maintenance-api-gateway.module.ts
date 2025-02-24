@@ -4,9 +4,11 @@ import { BuildingMaintenanceApiGatewayController } from './building-maintenance-
 import { BuildingMaintenanceApiGatewayService } from './building-maintenance-api-gateway.service'
 import { UsersModule } from './users/users.module'
 import { BuildingsModule } from './buildings/buildings.module'
+import {AreasModule } from './Area/Areas.module'
+
 
 @Module({
-  imports: [UsersModule, ConfigModule.forRoot(),BuildingsModule],
+  imports: [UsersModule, ConfigModule.forRoot(),BuildingsModule,AreasModule],
   controllers: [BuildingMaintenanceApiGatewayController],
   providers: [BuildingMaintenanceApiGatewayService],
 })

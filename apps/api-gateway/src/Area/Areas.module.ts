@@ -1,9 +1,10 @@
+
 import { Module } from '@nestjs/common';
 import { ClientProxyFactory, ClientOptions, Transport } from '@nestjs/microservices';
 import { ClientConfigService } from 'apps/configs/client-confit.service';
-import { BuildingsService } from './Buildings.service';
+import {  AreasService } from './Areas.service';
 import { BUILDING_CLIENT } from '../constraints';
-import { BuildingsController } from './buildings.controller';
+import { AreasController as AreasController } from './Areas.controller';
 import { ClientConfigModule } from 'apps/configs/client-config.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
@@ -29,19 +30,18 @@ import { PassportModule } from '@nestjs/passport';
 // })
 // export class BuildingsModule {}
 @Module({
-  controllers: [BuildingsController],
+  controllers: [AreasController],
   imports: [
     ConfigModule,
     ClientConfigModule
   ],
   providers: [
-    BuildingsService,
+    AreasService,
     {
       provide: BUILDING_CLIENT,
-useFactory: (configService: ConfigService) => {
+      useFactory: (configService: ConfigService) => {
 
         const user = configService.get('RABBITMQ_USER');
-        console.log("🚀 ~ ussdasdssdadsadussdasdssdadsadadasdadsdadsserussdasdssdadsadadasdadsdadsserussdasdssdadsadadasdadsdadsseradasdadsdadsser:", user)
         const password = configService.get('RABBITMQ_PASSWORD');
         const host = configService.get('RABBITMQ_HOST');
         const queueName = configService.get('RABBITMQ_QUEUE_NAME');
@@ -61,4 +61,4 @@ useFactory: (configService: ConfigService) => {
     },
   ],
 })
-export class BuildingsModule { }
+export class AreasModule { }
