@@ -27,7 +27,6 @@ export class UsersService {
 
     async createUser(data: createUserDto) {
         try {
-            // ✅ Kiểm tra dữ liệu đầu vào
             if (!data.username || !data.email || !data.password || !data.role) {
                 throw new RpcException({
                     code: status.INVALID_ARGUMENT,
@@ -35,7 +34,6 @@ export class UsersService {
                 });
             }
 
-            // ✅ Kiểm tra role có hợp lệ không
             if (!Object.values(Role).includes(data.role)) {
                 throw new RpcException({
                     code: status.INVALID_ARGUMENT,
@@ -43,7 +41,6 @@ export class UsersService {
                 });
             }
 
-            // ✅ Kiểm tra user đã tồn tại chưa
             const existingUser = await this.prisma.user.findFirst({
                 where: {
                     OR: [{ username: data.username }, { email: data.email }],
@@ -57,11 +54,9 @@ export class UsersService {
                 });
             }
 
-            // ✅ Hash mật khẩu
             const hashedPassword = await bcrypt.hash(data.password, 10);
 
             return await this.prisma.$transaction(async (prisma) => {
-                // ✅ 1. Tạo User
                 const newUser = await prisma.user.create({
                     data: {
                         username: data.username,
@@ -76,7 +71,6 @@ export class UsersService {
 
                 let userDetailsData = null;
 
-                // ✅ 2. Nếu là Resident hoặc Employee, thêm vào bảng UserDetails
                 if (data.role === Role.Resident || data.role === Role.Employee) {
                     userDetailsData = await prisma.userDetails.create({
                         data: {
