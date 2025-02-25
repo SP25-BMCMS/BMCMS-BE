@@ -1,9 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
+// Cấu hình Prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -23,30 +18,19 @@ model User {
   dateOfBirth DateTime?
   gender      Gender?
 
-  resident    Resident? @relation("UserResident") 
-  employee    Employee? @relation("UserEmployee") 
+  userDetails UserDetails?
 }
 
-model Resident {
-  userId          String    @id
-  apartmentNumber String?
-  buildingId      String
-  user            User      @relation("UserResident", fields: [userId], references: [userId], onDelete: Cascade)
-  @@unique([userId]) 
+model UserDetails {
+  userId          String    @id @default(uuid()) @map("user_id")
+  apartmentNumber String?   // Chỉ dùng khi role = Resident
+  buildingId      String?   // Chỉ dùng khi role = Resident
+  positionId      String?   // Chỉ dùng khi role = Employee
+  departmentId    String?   // Chỉ dùng khi role = Employee
+  status          EmploymentStatus? // Chỉ dùng khi role = Employee
+
+  user            User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
 }
-
-model Employee {
-  userId          String         @id
-  positionId      String
-  departmentId    String
-  status          EmploymentStatus
-  department      Department      @relation(fields: [departmentId], references: [departmentId], onDelete: Cascade)
-  workingPosition WorkingPosition @relation(fields: [positionId], references: [positionId], onDelete: Cascade)
-  user            User            @relation("UserEmployee", fields: [userId], references: [userId], onDelete: Cascade)
-
-  @@unique([userId]) 
-}
-
 
 model Department {
   departmentId   String     @id @default(uuid())
@@ -54,7 +38,6 @@ model Department {
   description    String?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
-  employees      Employee[]
 }
 
 model WorkingPosition {
@@ -62,7 +45,6 @@ model WorkingPosition {
   positionName PositionName
   description  String?
   status       PositionStatus
-  employees    Employee[]
 }
 
 enum Role {
