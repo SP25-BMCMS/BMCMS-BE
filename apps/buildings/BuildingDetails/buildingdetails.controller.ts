@@ -1,8 +1,8 @@
 import { Controller, Param } from '@nestjs/common';
 import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import {BuildingDetailsService} from './buildingdetails.service';
-import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns';
 import { UUID } from 'crypto';
+import { BUILDINGDETAIL_PATTERN } from 'libs/contracts/src/BuildingDetails/buildingdetails.patterns';
 @Controller('building-details')
 export class BuildingDetailsController {
 

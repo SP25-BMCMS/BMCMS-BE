@@ -1,9 +1,9 @@
-import { CreateLocationDetailDto } from '@app/contracts/LocationDetails/create-locationdetails.dto';
-import { UpdateLocationDetailDto } from '@app/contracts/LocationDetails/update.locationdetails';
 import { Injectable } from '@nestjs/common';
 import { Payload, RpcException } from '@nestjs/microservices';
 import { PrismaClient  } from '@prisma/client-building';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { CreateLocationDetailDto } from 'libs/contracts/src/LocationDetails/create-locationdetails.dto';
+import { UpdateLocationDetailDto } from 'libs/contracts/src/LocationDetails/update.locationdetails';
 @Injectable()
 export class LocationDetailService {
   private prisma = new PrismaClient();

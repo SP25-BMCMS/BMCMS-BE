@@ -2,7 +2,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { AreasService } from './areas.service';
-import { AREAS_PATTERN } from '@app/contracts/areas/areas.patterns';
+import { AREAS_PATTERN } from 'libs/contracts/src/Areas/Areas.patterns';
 
 @Controller('areas')
 export class AreasController {

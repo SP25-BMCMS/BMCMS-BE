@@ -1,10 +1,10 @@
 import { Controller, Param } from '@nestjs/common';
 import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { LocationDetailService} from './locationdetails.service';
-import { LOCATIONDETAIL_PATTERN } from '@app/contracts/LocationDetails/Locationdetails.patterns';
 import { UUID } from 'crypto';
-import { CreateLocationDetailDto } from '@app/contracts/LocationDetails/create-locationdetails.dto';
-import { UpdateLocationDetailDto } from '@app/contracts/LocationDetails/update.locationdetails';
+import { LOCATIONDETAIL_PATTERN } from 'libs/contracts/src/LocationDetails/Locationdetails.patterns';
+import { CreateLocationDetailDto } from 'libs/contracts/src/LocationDetails/create-locationdetails.dto';
+import { UpdateLocationDetailDto } from 'libs/contracts/src/LocationDetails/update.locationdetails';
 
 @Controller('locationdetails')
 export class LocationDetailsController {

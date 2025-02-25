@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client-building';
-import { CreateAreaDto } from '@app/contracts/areas/create-areas.dto';
-import { UpdateAreaDto } from '@app/contracts/areas/update.areas';
 import { RpcException } from '@nestjs/microservices';
+import { CreateAreaDto } from 'libs/contracts/src/Areas/create-areas.dto';
+import { UpdateAreaDto } from 'libs/contracts/src/Areas/update.areas';
 
 @Injectable()
 export class AreasService {

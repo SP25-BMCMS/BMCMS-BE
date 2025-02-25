@@ -1,9 +1,9 @@
-import { CreateBuildingDetailDto } from '@app/contracts/BuildingDetails/create-buildingdetails.dto';
-import { UpdateBuildingDetailDto } from '@app/contracts/BuildingDetails/update.buildingdetails';
 import { Injectable } from '@nestjs/common';
 import { Payload, RpcException } from '@nestjs/microservices';
 import { PrismaClient  } from '@prisma/client-building';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { CreateBuildingDetailDto } from 'libs/contracts/src/BuildingDetails/create-buildingdetails.dto';
+import { UpdateBuildingDetailDto } from 'libs/contracts/src/BuildingDetails/update.buildingdetails';
 @Injectable()
 export class BuildingDetailsService {
   private prisma = new PrismaClient();

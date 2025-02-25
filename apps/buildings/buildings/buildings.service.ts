@@ -1,11 +1,12 @@
-import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto';
-import { UpdateBuildingDto } from '@app/contracts/buildings/update-buildings.dto';
 import { Injectable } from '@nestjs/common';
 import { Payload, RpcException } from '@nestjs/microservices';
 import { PrismaClient  } from '@prisma/client-building';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { UUID } from 'crypto';
 import { date } from 'joi';
+import {  buildingsDto} from 'libs/contracts/src/buildings/buildings.dto';
+import {  CreateBuildingDto} from 'libs/contracts/src/buildings/create-buildings.dto';
+import {  UpdateBuildingDto} from 'libs/contracts/src/buildings/update-buildings.dto';
 
 @Injectable()
 export class BuildingsService {

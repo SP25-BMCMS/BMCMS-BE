@@ -1,7 +1,7 @@
-import { BUILDINGDETAIL_PATTERN  } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common'
 import { ClientProxy } from '@nestjs/microservices'
  import { BUILDING_CLIENT } from '../constraints'
+import { BUILDINGDETAIL_PATTERN } from 'libs/contracts/src/BuildingDetails/buildingdetails.patterns';
 // import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto'
 // import { buildingsDto } from '@app/contracts/buildings/buildings.dto'
 // import { catchError, firstValueFrom } from 'rxjs'
