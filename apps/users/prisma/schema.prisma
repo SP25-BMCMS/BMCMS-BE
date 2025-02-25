@@ -10,7 +10,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("DB_USER_SERVICE")
 }
 
 model User {
@@ -22,28 +22,31 @@ model User {
   role        Role
   dateOfBirth DateTime?
   gender      Gender?
-  resident    Resident?
-  employee    Employee?
+
+  resident    Resident? @relation("UserResident") 
+  employee    Employee? @relation("UserEmployee") 
 }
 
 model Resident {
-  residentId      String    @id @default(uuid())
-  userId          String    @unique
+  userId          String    @id
   apartmentNumber String?
   buildingId      String
-  user            User      @relation(fields: [userId], references: [userId])
+  user            User      @relation("UserResident", fields: [userId], references: [userId], onDelete: Cascade)
+  @@unique([userId]) 
 }
 
 model Employee {
-  employeeId      String         @id @default(uuid())
-  userId          String         @unique
+  userId          String         @id
   positionId      String
   departmentId    String
   status          EmploymentStatus
-  department      Department      @relation(fields: [departmentId], references: [departmentId])
-  workingPosition WorkingPosition @relation(fields: [positionId], references: [positionId])
-  user            User            @relation(fields: [userId], references: [userId])
+  department      Department      @relation(fields: [departmentId], references: [departmentId], onDelete: Cascade)
+  workingPosition WorkingPosition @relation(fields: [positionId], references: [positionId], onDelete: Cascade)
+  user            User            @relation("UserEmployee", fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([userId]) 
 }
+
 
 model Department {
   departmentId   String     @id @default(uuid())

@@ -26,9 +26,11 @@ export class ClientConfigService {
 
     get usersClientOptions(): ClientOptions {
         return {
-            transport: Transport.TCP,
+            transport: Transport.GRPC,
             options: {
-                port: this.getUsersClientPort()
+                package: 'users',
+                protoPath: "libs/contracts/src/users/users.proto",
+                url: `localhost:3001`
             }
         }
     }
@@ -41,6 +43,17 @@ export class ClientConfigService {
     //         }
     //     }
     // }
+    get cracksClientOptions(): ClientOptions {
+        return {
+            transport: Transport.RMQ,
+            options: {
+                urls: ['amqp://localhost:5672'],
+                queue: 'building-maintenance',
+            },
+        }
+    }
+
+
 
     get buildingsClientOptions(): ClientOptions {
       const { user, password, host, queueName } = this.getRabbitMQConfig(); // Get RabbitMQ config

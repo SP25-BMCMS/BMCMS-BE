@@ -1,40 +1,51 @@
-import { createUserDto } from '@app/contracts/users/create-user.dto'
-import { USERS_PATTERN } from '@app/contracts/users/users.patterns'
 import { Controller } from '@nestjs/common'
-import { MessagePattern, Payload } from '@nestjs/microservices'
+import { GrpcMethod } from '@nestjs/microservices'
 import { UsersService } from '../users/users.service'
 import { AuthService } from './auth.service'
+import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto';
+
 
 @Controller()
-
 export class AuthController {
     constructor(
         private readonly authService: AuthService,
-        private readonly usersService: UsersService
+        private readonly usersService: UsersService,
     ) { }
 
-    @MessagePattern(USERS_PATTERN.LOGIN)
+    @GrpcMethod('UserService', 'Login')
     async login(data: { username: string; password: string }) {
         return await this.authService.authenticate(data)
+
     }
 
-    @MessagePattern(USERS_PATTERN.ME)
-    getUserInfo(@Payload() data) {
-        return this.authService.getUserInfo(data)
-    }
-
-    @MessagePattern(USERS_PATTERN.SIGNUP)
+    @GrpcMethod('UserService', 'Signup')
     async signup(data: createUserDto) {
-        return this.authService.signup(data)
+        return await this.authService.signup(data)
     }
 
-    @MessagePattern(USERS_PATTERN.ALL_USERS)
+    @GrpcMethod('UserService', 'GetUserInfo')
+    async getUserInfo(data: { userId: string; username: string }) {
+        return await this.authService.getUserInfo(data.userId)
+    }
+
+    @GrpcMethod('UserService', 'GetAllUsers')
     async getAllUsers() {
-        return this.usersService.getAllUsers()
+        const users = await this.usersService.getAllUsers()
+        return users
     }
 
-    @MessagePattern(USERS_PATTERN.TEST)
-    async test(data: any) {
-        return true
+    @GrpcMethod('UserService', 'Logout')
+    async logout() {
+        return await this.authService.logout()
+    }
+
+    @GrpcMethod('UserService', 'ValidateUser')
+    async validateUser(data: { username: string; password: string }) {
+        return await this.authService.validateUser(data)
+    }
+
+    @GrpcMethod('UserService', 'Test')
+    async test(data: { data: string }) {
+        return { success: true }
     }
 }

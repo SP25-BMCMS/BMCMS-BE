@@ -1,10 +1,12 @@
-import { createUserDto } from '@app/contracts/users/create-user.dto'
-import { UserDto } from '@app/contracts/users/user.dto'
-import { Injectable, UnauthorizedException } from '@nestjs/common'
+
+import { status } from '@grpc/grpc-js'
+import { Injectable } from '@nestjs/common'
 import { RpcException } from '@nestjs/microservices'
+import { Gender, Role } from '@prisma/client'
 import * as bcrypt from 'bcrypt'
 import { PrismaService  } from '../prisma/prisma.service'
-import { Gender, Role } from '@prisma/client'
+import { UserDto } from '../../../libs/contracts/src/users/user.dto';
+import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -29,7 +31,7 @@ export class UsersService {
             // ✅ Kiểm tra dữ liệu đầu vào
             if (!data.username || !data.email || !data.password || !data.role) {
                 throw new RpcException({
-                    statusCode: 400,
+                    code: status.INVALID_ARGUMENT,
                     message: 'Missing required fields (username, email, password, role)',
                 })
             }
@@ -37,10 +39,10 @@ export class UsersService {
             // ✅ Kiểm tra role có hợp lệ không
             if (!Object.values(Role).includes(data.role)) {
                 throw new RpcException({
-                    statusCode: 400,
+                    code: status.INVALID_ARGUMENT,
                     message: `Invalid role. Allowed roles: ${Object.values(Role).join(', ')}`,
                 })
-            }  
+            }
 
             // ✅ Kiểm tra user có tồn tại chưa
             const existingUser = await this.prisma.user.findFirst({
@@ -51,7 +53,7 @@ export class UsersService {
 
             if (existingUser) {
                 throw new RpcException({
-                    statusCode: 409,
+                    code: status.ALREADY_EXISTS, 
                     message: 'Username or email already exists',
                 })
             }
@@ -66,7 +68,7 @@ export class UsersService {
                     email: data.email,
                     password: hashedPassword,
                     phone: data.phone || null,
-                    role: data.role as Role, // Chắc chắn role là kiểu dữ liệu Role
+                    role: data.role as Role,
                     dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
                     gender: data.gender as Gender,
                 },
@@ -82,16 +84,38 @@ export class UsersService {
                 gender: newUser.gender,
             }
         } catch (error) {
-            console.error('Error creating user:', error)
+            console.error('🔥 Error creating user:', error)
+
+            if (error instanceof RpcException) {
+                throw error
+            }
 
             throw new RpcException({
-                statusCode: 500,
+                code: 500,
                 message: error.message || 'Internal server error',
             })
         }
     }
 
-    async getAllUsers(): Promise<UserDto[]> {
-        return this.prisma.user.findMany()
+
+    async updateUser(userId: string, data: Partial<createUserDto>): Promise<UserDto> {
+        const user = await this.getUserById(userId)
+        if (!user) throw new RpcException({ statusCode: 404, message: 'User not found' })
+
+        return this.prisma.user.update({
+            where: { userId },
+            data,
+        })
+    }
+
+    async deleteUser(userId: string): Promise<{ message: string }> {
+        await this.prisma.user.delete({ where: { userId } })
+        return { message: 'User deleted successfully' }
+    }
+
+    async getAllUsers()
+        : Promise<{ users: UserDto[] }> {
+        const users = await this.prisma.user.findMany()
+        return { users: users }
     }
 }

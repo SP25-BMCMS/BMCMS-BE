@@ -1,4 +1,4 @@
-import { $Enums } from "@prisma/client"
+import { $Enums } from "@prisma/client-users"
 import { IsEmail, IsString, MinLength } from "class-validator"
 
 export class createUserDto {
@@ -14,7 +14,7 @@ export class createUserDto {
 
     @IsString()
     phone: string
-    
+
     @IsString()
     role: $Enums.Role
 

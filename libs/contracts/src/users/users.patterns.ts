@@ -4,4 +4,5 @@ export const USERS_PATTERN = {
     ME: 'me',
     ALL_USERS: 'all-users',
     TEST: 'test',
+    LOGOUT: 'logout',
 }

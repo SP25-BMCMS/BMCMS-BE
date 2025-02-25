@@ -2,22 +2,21 @@ POST http://localhost:3000/auth/login
 Content-Type: application/json
 
 {
-    "username": "kha1",
-    "password": "123"
+    "username": "john_doe",
+    "password": "securePass123"
 }
 
 ###
 GET http://localhost:3000/auth/me
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJqb2huIiwiaWF0IjoxNzM5MTE4ODkwLCJleHAiOjE3MzkyMDUyOTB9.D30dDdfdivzKDiYdexOzqU8E6WGEX3wm3kSWFH358bQ
-
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMyMTMxMiIsInVzZXJuYW1lIjoiam9obl9kb2UiLCJyb2xlIjoiUmVzaWRlbnQiLCJpYXQiOjE3Mzk4Nzg0MDYsImV4cCI6MTczOTg4MjAwNn0.Q69x0wm9LvrU7j0j2rbS7gOqfI_Y-66whk89dNnjQcw
 
 ###
 POST http://localhost:3000/auth/signup
 Content-Type: application/json
 
 {
-  "username": "john_doe",
-  "email": "john@example.com",
+  "username": "test",
+  "email": "test@gmail.com",
   "password": "securePass123",
   "phone": "123456789",
   "role": "Resident",
@@ -27,12 +26,23 @@ Content-Type: application/json
 
 ### 
 GET http://localhost:3000/auth/all-users
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMyMTMxMiIsInVzZXJuYW1lIjoiam9obl9kb2UiLCJyb2xlIjoiUmVzaWRlbnQiLCJpYXQiOjE3Mzk4Nzg0MDYsImV4cCI6MTczOTg4MjAwNn0.Q69x0wm9LvrU7j0j2rbS7gOqfI_Y-66whk89dNnjQcw
+
 ###
-GET http://localhost:3000/building
+POST http://localhost:3000/auth/logout
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMyMTMxMiIsInVzZXJuYW1lIjoiam9obl9kb2UiLCJyb2xlIjoiUmVzaWRlbnQiLCJpYXQiOjE3Mzk4Nzg0MDYsImV4cCI6MTczOTg4MjAwNn0.Q69x0wm9LvrU7j0j2rbS7gOqfI_Y-66whk89dNnjQcw
+
+###
+GET http://localhost:3000/auth
+Content-Type: application/json
+
+{
+    "username": "john_doe",
+    "password": "securePass123"
+}
 
 
-#BUG: API signup is not working properly. It is not saving the user in the database.
-#TODO: Implement the other Transport for API/ implement other table of user service
-#TODO: Show the error from microservice. Implement refresh token
+###
+GET http://localhost:3000/resident/all-residents
 #TODO: Based on role of user created, create the related table (eg: user role Resident then create data Resident)
-#FIXME: authorization, refresh token, logout, error message, user management, setup buildings microservice, docker, rabbitMQ, etc.
+#TODO: CRUD for Resident, WorkingPositions, Departments, Employees

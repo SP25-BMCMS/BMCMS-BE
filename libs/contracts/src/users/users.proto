@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package users;
+
+service UserService {
+  rpc Login (LoginRequest) returns (LoginResponse);
+  rpc Signup (CreateUserRequest) returns (UserResponse);
+  rpc GetUserInfo (UserRequest) returns (UserResponse);
+  rpc GetAllUsers (Empty) returns (UsersListResponse);
+  rpc Logout (Empty) returns (LogoutResponse);
+  rpc Test (TestRequest) returns (TestResponse);
+  rpc ValidateUser (LoginRequest) returns (UserResponse);
+
+  rpc GetAllResidents (Empty) returns (ResidentsListResponse);
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message CreateUserRequest {
+  string username = 1;
+  string email = 2;
+  string password = 3;
+  string role = 4;
+}
+
+message UserRequest {
+  string userId = 1;
+  string username = 2;
+}
+
+message LoginResponse {
+  string accessToken = 1;
+  string refreshToken = 2;
+  string userId = 3;
+  string username = 4;
+}
+
+message UserResponse {
+  string userId = 1;
+  string username = 2;
+  string email = 3;
+  string phone = 4;
+  string role = 5;
+  string dateOfBirth = 6;
+  string gender = 7;
+}
+
+message UsersListResponse {
+  repeated UserResponse users = 1;
+}
+
+message ResidentResponse {
+  string userId = 1;
+  string apartmentNumber = 2;
+  string email = 3;
+}
+
+message ResidentsListResponse {
+  repeated ResidentResponse users = 1;
+}
+
+message LogoutResponse {
+  string message = 1;
+}
+
+message Empty {}
+
+message TestRequest {
+  string data = 1;
+}
+
+message TestResponse {
+  bool success = 1;
+}
