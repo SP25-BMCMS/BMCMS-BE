@@ -1,9 +1,11 @@
-import { createUserDto } from '@app/contracts/users/create-user.dto'
-import { Injectable, UnauthorizedException } from '@nestjs/common'
+
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt'
 import * as bcrypt from 'bcrypt'
 import { UsersService } from '../users/users.service'
 import { RpcException } from '@nestjs/microservices'
+import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto';
+import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response';
 
 type AuthInput = { username: string; password: string }
 type SignInData = { userId: string; username: string, role: string }
@@ -58,8 +60,17 @@ export class AuthService {
         return { message: 'Logged out successfully' }
     }
 
-    async signup(data: createUserDto) {
-        return this.usersService.createUser(data)
+    async signup(data: createUserDto): Promise<ApiResponse<any>> {
+        try {
+            const result = await this.usersService.createUser(data);
+
+            console.log('🚀 Kết quả từ UsersService (Microservice):', result);
+
+            return result;
+        } catch (error) {
+            console.error('🔥 Lỗi trong AuthService:', error);
+            throw new BadRequestException(new ApiResponse(false, 'Failed to create user'));
+        }
     }
 
     async getUserInfo(userId: string) {

@@ -1,11 +1,13 @@
-import { createUserDto } from '@app/contracts/users/create-user.dto'
-import { UserDto } from '@app/contracts/users/user.dto'
+
 import { status } from '@grpc/grpc-js'
-import { Injectable } from '@nestjs/common'
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices'
 import { EmploymentStatus, Gender, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt'
 import { PrismaService } from '../prisma/prisma.service'
+import { UserDto } from '../../../libs/contracts/src/users/user.dto';
+import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto';
+import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response';
 
 @Injectable()
 export class UsersService {
@@ -25,22 +27,18 @@ export class UsersService {
         return user
     }
 
-    async createUser(data: createUserDto) {
+    async createUser(data: createUserDto): Promise<ApiResponse<any>> {
         try {
+            // 🔹 1. Kiểm tra dữ liệu đầu vào
             if (!data.username || !data.email || !data.password || !data.role) {
-                throw new RpcException({
-                    code: status.INVALID_ARGUMENT,
-                    message: 'Missing required fields (username, email, password, role)',
-                });
+                throw new BadRequestException(new ApiResponse(false, 'Missing required fields (username, email, password, role)'));
             }
 
             if (!Object.values(Role).includes(data.role)) {
-                throw new RpcException({
-                    code: status.INVALID_ARGUMENT,
-                    message: `Invalid role. Allowed roles: ${Object.values(Role).join(', ')}`,
-                });
+                throw new BadRequestException(new ApiResponse(false, `Invalid role. Allowed roles: ${Object.values(Role).join(', ')}`));
             }
 
+            // 🔹 2. Kiểm tra user đã tồn tại chưa
             const existingUser = await this.prisma.user.findFirst({
                 where: {
                     OR: [{ username: data.username }, { email: data.email }],
@@ -48,15 +46,15 @@ export class UsersService {
             });
 
             if (existingUser) {
-                throw new RpcException({
-                    code: status.ALREADY_EXISTS,
-                    message: 'Username or email already exists',
-                });
+                throw new BadRequestException(new ApiResponse(false, 'Username or email already exists'));
             }
 
+            // 🔹 3. Hash mật khẩu trước khi lưu vào DB
             const hashedPassword = await bcrypt.hash(data.password, 10);
 
-            return await this.prisma.$transaction(async (prisma) => {
+            // 🔹 4. Sử dụng transaction để đảm bảo dữ liệu đồng bộ
+            const result = await this.prisma.$transaction(async (prisma) => {
+                // 🔹 4.1 Tạo User trước
                 const newUser = await prisma.user.create({
                     data: {
                         username: data.username,
@@ -71,6 +69,7 @@ export class UsersService {
 
                 let userDetailsData = null;
 
+                // 🔹 4.2 Nếu là Resident hoặc Employee, tạo thêm UserDetails
                 if (data.role === Role.Resident || data.role === Role.Employee) {
                     userDetailsData = await prisma.userDetails.create({
                         data: {
@@ -84,96 +83,22 @@ export class UsersService {
                     });
                 }
 
-                return {
-                    user: newUser,
-                    userDetails: userDetailsData,
-                };
+                return { user: newUser, userDetails: userDetailsData };
             });
+
+            // 🔹 5. Trả về API Response chuẩn
+            return new ApiResponse(
+              true,
+              'User created successfully',
+              [result] // Dữ liệu bao gồm user và userDetails (nếu có)
+            );
         } catch (error) {
             console.error('🔥 Error creating user:', error);
-
-            if (error instanceof RpcException) {
-                throw error;
-            }
-
-            throw new RpcException({
-                code: 500,
-                message: error.message || 'Internal server error',
-            });
+            throw new BadRequestException(new ApiResponse(false, error.message || 'Internal server error'));
         }
     }
 
 
-    // async createUser(data: createUserDto) {
-    //     try {
-    //         // ✅ Kiểm tra dữ liệu đầu vào
-    //         if (!data.username || !data.email || !data.password || !data.role) {
-    //             throw new RpcException({
-    //                 code: status.INVALID_ARGUMENT,
-    //                 message: 'Missing required fields (username, email, password, role)',
-    //             })
-    //         }
-    //
-    //         // ✅ Kiểm tra role có hợp lệ không
-    //         if (!Object.values(Role).includes(data.role)) {
-    //             throw new RpcException({
-    //                 code: status.INVALID_ARGUMENT,
-    //                 message: `Invalid role. Allowed roles: ${Object.values(Role).join(', ')}`,
-    //             })
-    //         }
-    //
-    //         // ✅ Kiểm tra user có tồn tại chưa
-    //         const existingUser = await this.prisma.user.findFirst({
-    //             where: {
-    //                 OR: [{ username: data.username }, { email: data.email }],
-    //             },
-    //         })
-    //
-    //         if (existingUser) {
-    //             throw new RpcException({
-    //                 code: status.ALREADY_EXISTS,
-    //                 message: 'Username or email already exists',
-    //             })
-    //         }
-    //
-    //         // ✅ Hash mật khẩu
-    //         const hashedPassword = await bcrypt.hash(data.password, 10)
-    //
-    //         // ✅ Tạo user
-    //         const newUser = await this.prisma.user.create({
-    //             data: {
-    //                 username: data.username,
-    //                 email: data.email,
-    //                 password: hashedPassword,
-    //                 phone: data.phone || null,
-    //                 role: data.role as Role,
-    //                 dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
-    //                 gender: data.gender as Gender,
-    //             },
-    //         })
-    //
-    //         return {
-    //             userId: newUser.userId,
-    //             username: newUser.username,
-    //             email: newUser.email,
-    //             phone: newUser.phone,
-    //             role: newUser.role,
-    //             dateOfBirth: newUser.dateOfBirth,
-    //             gender: newUser.gender,
-    //         }
-    //     } catch (error) {
-    //         console.error('🔥 Error creating user:', error)
-    //
-    //         if (error instanceof RpcException) {
-    //             throw error
-    //         }
-    //
-    //         throw new RpcException({
-    //             code: 500,
-    //             message: error.message || 'Internal server error',
-    //         })
-    //     }
-    // }
 
 
     async updateUser(userId: string, data: Partial<createUserDto>): Promise<UserDto> {

@@ -1,10 +1,11 @@
-import { handleGrpcError } from '@app/contracts/helper/grpc-error-handler'
-import { createUserDto } from '@app/contracts/users/create-user.dto'
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common'
 import { ClientGrpc } from '@nestjs/microservices'
-import { lastValueFrom } from 'rxjs'
+import { firstValueFrom, lastValueFrom } from 'rxjs';
 import { USERS_CLIENT } from '../../constraints'
 import { UserInterface } from './users.interface'
+import { createUserDto } from '../../../../../libs/contracts/src/users/create-user.dto';
+import { handleGrpcError } from '../../../../../libs/contracts/src/helper/grpc-error-handler';
+import { ApiResponse } from '../../../../../libs/contracts/src/ApiReponse/api-response';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
@@ -20,12 +21,15 @@ export class UsersService implements OnModuleInit {
     return await lastValueFrom(this.userService.login(data))
   }
 
-  async signup(userData: createUserDto) {
+  async signup(userData: createUserDto): Promise<ApiResponse<any>> {
     try {
-      const result = await lastValueFrom(this.userService.signup(userData))
-      return result
+      const result = await lastValueFrom(this.userService.signup(userData));
+
+      console.log('🚀 Kết quả từ gRPC:', result);
+
+      return result;
     } catch (err) {
-      handleGrpcError(err)
+      handleGrpcError(err);
     }
   }
 

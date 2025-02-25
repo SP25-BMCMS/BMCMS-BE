@@ -25,6 +25,18 @@ export class ClientConfigService {
         }
     }
 
+    get cracksClientOptions(): ClientOptions {
+        return {
+            transport: Transport.RMQ,
+            options: {
+                urls: ['amqp://localhost:5672'],
+                queue: 'building-maintenance',
+            },
+        }
+    }
+
+
+
     get buildingsClientOptions(): ClientOptions {
         return {
             transport: Transport.TCP,

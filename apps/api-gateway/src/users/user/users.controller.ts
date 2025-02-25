@@ -1,11 +1,12 @@
-import { createUserDto } from '@app/contracts/users/create-user.dto'
 import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common'
 import { Role } from '@prisma/client'
 import { Roles } from '../../decorator/roles.decarator'
 import { PassportJwtAuthGuard } from '../../guards/passport-jwt-guard'
 import { PassportLocalGuard } from '../../guards/passport-local-guard'
 import { UsersService } from './users.service'
+import { createUserDto } from 'libs/contracts/src/users/create-user.dto'
 import { RolesGuard } from '../../guards/role.guard'
+import { ApiResponse } from '../../../../../libs/contracts/src/ApiReponse/api-response';
 
 @Controller('auth')
 export class UsersController {
@@ -26,8 +27,12 @@ export class UsersController {
     // @UseGuards(PassportJwtAuthGuard, RolesGuard)
     // @Roles(Role.Admin)
     @Post('signup')
-    signup(@Body() data: createUserDto) {
-        return this.UsersService.signup(data)
+    async signup(@Body() data: createUserDto): Promise<ApiResponse<any>> {
+        const result = await this.UsersService.signup(data);
+
+        console.log('🚀 Kết quả từ API Gateway:', result);
+
+        return result;
     }
 
     @UseGuards(PassportJwtAuthGuard)
