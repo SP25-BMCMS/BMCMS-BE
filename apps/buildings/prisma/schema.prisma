@@ -58,7 +58,7 @@ model LocationDetail {
   roomNumber       String?
   floorNumber      Int
   positionSide     PositionSide
-  areaType         AreaType
+  areaType         AreaDetailsType
   description      String?
   buildingDetail   BuildingDetail @relation(fields: [buildingDetailId], references: [buildingDetailId])
     createdAt       DateTime         @default(now())  
@@ -87,7 +87,13 @@ enum AreaType {
   Lobby
   Other
 }
-
+enum AreaDetailsType {
+  Floor
+  Wall
+  Ceiling
+  column
+  Other
+}
 
 enum PositionSide {
   Left

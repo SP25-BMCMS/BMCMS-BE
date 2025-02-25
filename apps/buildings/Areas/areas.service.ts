@@ -78,7 +78,11 @@ private prisma = new PrismaClient();
     try {
       const updatedArea = await this.prisma.area.update({
         where: { areaId },
-        data: updateAreaDto,
+        // data: updateAreaDto,
+        data :{
+          description : updateAreaDto.description,
+          name : updateAreaDto.name
+        }
       });
       return {
         statusCode: 200,

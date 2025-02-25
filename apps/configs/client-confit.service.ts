@@ -49,17 +49,16 @@ console.log("🚀 ~ ClientConfigService ~ getBuildingsClientPort ~ BUILDINGS_CLI
 
       return {
         transport: Transport.RMQ,
-          options: {
-            urls: [`amqp://${user}:${password}@${host}:${port}`], // Add port to RabbitMQ connection string
-            queue: queueName,
-            queueOptions: {
-              durable: true,
-            },
-          },
-        }
-      };
+                  options: {
+                    urls: [`amqp://${user}:${password}@${host}`],
+                    queue: queueName,
+                    queueOptions: {
+                      durable: true,
+                    },
+                  },
+                };
+              };
 
-      
   //   get buildingsClientOptions(): ClientOptions {
   //     return {
   //         transport: Transport.RMQ,

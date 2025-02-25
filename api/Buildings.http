@@ -14,7 +14,7 @@ Content-Type: application/json
   "areaId": "123"
 }
 ###
-PUT http://localhost:3000/building/1
+PUT http://localhost:3000/building/17fc9a7e-80b5-4027-a5b5-8552f340fc15
 Content-Type: application/json
 
 {

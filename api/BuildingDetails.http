@@ -1,0 +1,32 @@
+### Get all building details
+GET http://localhost:3000/buildingdetails
+
+### Get building detail by ID
+GET http://localhost:3000/buildingdetails/{buildingDetailId}
+
+### Create a new building detail
+POST http://localhost:3000/buildingdetails
+Content-Type: application/json
+
+{
+  "buildingId": "d67137a8-0fbc-441d-b1ba-236046880c28",
+  "name": "Building Detail11 Name",
+  "description": "Description of the 22building detail",
+  "areaType": "SwimmingPool",
+  "floorNumber": 4
+}
+
+
+### Update a building detail
+PUT http://localhost:3000/buildingdetails/1d384491-5cd3-42f1-804a-a4e49888db27
+Content-Type: application/json
+
+{
+  "name": "Updated Building Detail Name",
+  "description": "Updated description of the building detail",
+  "areaType": "Terrace",
+  "floorNumber": 2
+}
+
+### Delete a building detail
+DELETE http://localhost:3000/buildingdetails/{buildingDetailId}

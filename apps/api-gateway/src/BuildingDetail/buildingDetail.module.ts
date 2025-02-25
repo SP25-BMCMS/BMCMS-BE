@@ -1,9 +1,10 @@
+
 import { Module } from '@nestjs/common';
 import { ClientProxyFactory, ClientOptions, Transport } from '@nestjs/microservices';
 import { ClientConfigService } from 'apps/configs/client-confit.service';
-import { BuildingsService } from './Buildings.service';
+import {  BuildingDetailService } from './buildingDetail.service';
 import { BUILDING_CLIENT } from '../constraints';
-import { BuildingsController } from './buildings.controller';
+import { BuildingDetailController } from './buildingDetail.controller';
 import { ClientConfigModule } from 'apps/configs/client-config.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
@@ -13,7 +14,7 @@ import { PassportModule } from '@nestjs/passport';
     ConfigModule
   ],
   providers: [
-    BuildingsService,
+    BuildingDetailService,
         PassportModule,
     
     {
@@ -25,6 +26,6 @@ import { PassportModule } from '@nestjs/passport';
       inject: [ClientConfigService], // Inject ClientConfigService to get the correct options
     },
   ],
-  controllers: [BuildingsController],
+  controllers: [BuildingDetailController],
 })
-export class BuildingsModule { }
+export class BuildingDetailModule { }

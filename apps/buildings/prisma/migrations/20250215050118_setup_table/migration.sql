@@ -1,4 +1,4 @@
-AreasCsdssontroller-- CreateEnum
+-- CreateEnum
 CREATE TYPE "AreaType" AS ENUM ('SwimmingPool', 'Terrace', 'Garden', 'Parking', 'Gym', 'Lobby', 'Other');
 
 -- CreateEnum

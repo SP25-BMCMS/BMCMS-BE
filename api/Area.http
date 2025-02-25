@@ -12,7 +12,7 @@ Content-Type: application/json
 }
 
 ###
-PUT http://localhost:3000/areas/1
+PUT http://localhost:3000/areas/2f81e4bb-6daf-4011-8974-ebb3fa59c117
 Content-Type: application/json
 
 {
@@ -21,4 +21,4 @@ Content-Type: application/json
 }
 
 ###
-DELETE http://localhost:3000/areas/1
+DELETE http://localhost:3000/areas/2f81e4bb-6daf-4011-8974-ebb3fa59c117
