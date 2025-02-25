@@ -9,7 +9,7 @@ POST http://localhost:3000/buildingdetails
 Content-Type: application/json
 
 {
-  "buildingId": "d67137a8-0fbc-441d-b1ba-236046880c28",
+  "buildingId": "ad70e226-7810-48e0-aff1-315b764daef7",
   "name": "Building Detail11 Name",
   "description": "Description of the 22building detail",
   "areaType": "SwimmingPool",

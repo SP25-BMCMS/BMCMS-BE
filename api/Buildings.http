@@ -7,11 +7,11 @@ POST http://localhost:3000/building
 Content-Type: application/json
 
 {
-  "name": "New Building",
-  "description": "Description of New Building",
+  "name": "New Building A",
+  "description": "Descriptsion of New Building",
   "numberFloor": 7,
   "imageCover": "newbuilding.jpg",
-  "areaId": "123"
+  "areaId": "45dad5c8-036a-42c2-b5ae-2fe23267d83d"
 }
 ###
 PUT http://localhost:3000/building/17fc9a7e-80b5-4027-a5b5-8552f340fc15

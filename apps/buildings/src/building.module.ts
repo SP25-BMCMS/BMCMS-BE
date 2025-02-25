@@ -11,6 +11,9 @@ import { AreasService } from '../Areas/areas.service';
 import { BuildingDetailsModule } from 'apps/buildings/BuildingDetails/buildingdetails.module';
 import { BuildingDetailsController } from  'apps/buildings/BuildingDetails/buildingdetails.controller';
 import { BuildingDetailsService } from  'apps/buildings/BuildingDetails/buildingdetails.service';
+import { locationDetailsModulee } from '../LocationDetails/locationdetails.module';
+import { LocationDetailsController } from '../LocationDetails/locationdetails.controller';
+import { LocationDetailService } from '../LocationDetails/locationdetails.service';
 
 @Module({
   imports: [ 
@@ -19,9 +22,10 @@ import { BuildingDetailsService } from  'apps/buildings/BuildingDetails/building
     BuildingsModule,
     PrismaModule,
     AreasModule,
-    BuildingDetailsModule
+    BuildingDetailsModule,
+    locationDetailsModulee
   ],
-    controllers: [AreasController,BuildingsController,BuildingDetailsController],
-      providers: [AreasService,BuildingsService,BuildingDetailsService],
+    controllers: [AreasController,BuildingsController,BuildingDetailsController,LocationDetailsController],
+      providers: [AreasService,BuildingsService,BuildingDetailsService,LocationDetailService],
 })
 export class BuildingModule {}

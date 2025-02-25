@@ -1,0 +1,35 @@
+### Get All LocationDetails
+GET http://localhost:3000/locationdetails
+
+
+### Create LocationDetail
+POST http://localhost:3000/locationdetails
+Content-Type: application/json
+
+{
+  "buildingDetailId": "6adb46a1-832f-4d31-abd9-76ba7157ad17",
+  "roomNumber": "101",
+  "floorNumber": 1,
+  "positionSide": "Left",
+  "areaType": "Floor",
+  "description": "Gym located on the first floor"
+}
+
+### Get LocationDetail by ID
+GET http://localhost:3000/locationdetails/3e7d4449-5a7e-46d1-91c3-9e49e1f81cbf
+Accept: application/json
+
+### Update LocationDetail by ID
+PUT http://localhost:3000/locationdetails/3e7d4449-5a7e-46d1-91c3-9e49e1f81cbf
+Content-Type: application/json
+
+{
+  "roomNumber": "102",
+  "floorNumber": 2,
+  "positionSide": "Right",
+  "areaType": "SwimmingPool",
+  "description": "Updateeeee pool on the second floor"
+}
+
+### Delete LocationDetail by ID
+DELETE http://localhost:3000/locationdetails/69ce8db2-8214-4853-8ed0-f263321ef1ec

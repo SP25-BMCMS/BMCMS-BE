@@ -81,7 +81,7 @@ export class BuildingDetailsService {
           name: updateBuildingDetailDto.name,
           description: updateBuildingDetailDto.description,
           floorNumber: updateBuildingDetailDto.floorNumber,
-          buildingId: updateBuildingDetailDto.buildingId,
+//          buildingId: updateBuildingDetailDto.buildingId,
           areaType: updateBuildingDetailDto.areaType,
          // locationDetails: updateBuildingDetailDto.locationDetails, // Nếu có thay đổi locationDetails
         },
