@@ -13,3 +13,118 @@ datasource db {
   provider = "postgresql"
   url      = env("db_tasks_service")
 }
+
+model Task {
+  task_id      Int             @id @default(autoincrement())
+  description  String
+  status       Status
+  created_at   DateTime        @default(now())
+  updated_at   DateTime        @updatedAt
+
+  // Mối quan hệ 1:N với WorkLogs
+  workLogs     WorkLog[]
+
+  // Mối quan hệ 1:N với TaskAssignments
+  taskAssignments TaskAssignment[]
+
+  // Mối quan hệ 1:N với Inspections
+}
+
+model WorkLog {
+  worklog_id   Int             @id @default(autoincrement())
+  task_id      Int
+  title        String
+  description  String
+  created_at   DateTime        @default(now())
+  updated_at   DateTime        @updatedAt
+
+  // Mối quan hệ N:1 với Task
+  task         Task            @relation(fields: [task_id], references: [task_id])
+}
+
+model TaskAssignment {
+  assignment_id Int             @id @default(autoincrement())
+  task_id       Int
+  employee_id   Int
+  description   String
+  status        AssignmentStatus
+  created_at    DateTime        @default(now())
+  updated_at    DateTime        @updatedAt
+
+  // Mối quan hệ N:1 với Task
+  task          Task            @relation(fields: [task_id], references: [task_id])
+
+  // Mối quan hệ 1:N với Inspection
+  inspections   Inspection[]
+}
+
+model Inspection {
+  inspection_id Int             @id @default(autoincrement())
+  task_assignment_id Int
+  crack_id      Int
+  inspected_by  Int
+  inspection_date DateTime
+  image_url     String?
+  description   String
+  status        InspectionStatus
+  created_at    DateTime        @default(now())
+  updated_at    DateTime        @updatedAt
+
+  // Mối quan hệ N:1 với TaskAssignment
+  taskAssignment TaskAssignment @relation(fields: [task_assignment_id], references: [assignment_id])
+
+  // Mối quan hệ 1:N với RepairMaterial
+  repairMaterials RepairMaterial[]
+}
+
+model RepairMaterial {
+  repair_material_id Int           @id @default(autoincrement())
+  task_id            Int
+  material_id       Int
+  quantity          Int
+  unit_cost         Decimal        @db.Decimal(10, 2)
+  total_cost        Decimal        @db.Decimal(10, 2)
+  created_at        DateTime       @default(now())
+  updated_at        DateTime       @updatedAt
+
+  // Mối quan hệ N:1 với Inspection
+  inspection_id     Int
+  inspection        Inspection     @relation(fields: [inspection_id], references: [inspection_id])
+
+  // Mối quan hệ N:1 với Material
+  material          Material       @relation(fields: [material_id], references: [material_id])
+
+}
+
+model Material {
+  material_id     Int             @id @default(autoincrement())
+  name            String
+  description     String?
+  unit_price      Decimal         @db.Decimal(10, 2)
+  stock_quantity  Int
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+
+  // Mối quan hệ 1:N với RepairMaterial
+  repairMaterials RepairMaterial[]
+}
+
+enum Status {
+  Assigned
+  InProgress
+  Completed
+}
+
+enum AssignmentStatus {
+  pending
+  inprogress
+  reassigned
+  completed
+  notcompleted
+}
+
+enum InspectionStatus {
+  InProgress
+  Completed
+  Alert
+}
