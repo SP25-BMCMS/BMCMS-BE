@@ -1,5 +1,5 @@
 
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt'
 import * as bcrypt from 'bcrypt'
 import { UsersService } from '../users/users.service'
@@ -61,16 +61,7 @@ export class AuthService {
     }
 
     async signup(data: createUserDto): Promise<ApiResponse<any>> {
-        try {
-            const result = await this.usersService.createUser(data);
-
-            console.log('🚀 Kết quả từ UsersService (Microservice):', result);
-
-            return result;
-        } catch (error) {
-            console.error('🔥 Lỗi trong AuthService:', error);
-            throw new BadRequestException(new ApiResponse(false, 'Failed to create user'));
-        }
+        return await this.usersService.signup(data);
     }
 
     async getUserInfo(userId: string) {

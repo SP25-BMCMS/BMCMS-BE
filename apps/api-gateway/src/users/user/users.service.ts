@@ -1,10 +1,9 @@
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common'
-import { ClientGrpc } from '@nestjs/microservices'
-import { firstValueFrom, lastValueFrom } from 'rxjs';
+import { HttpException, HttpStatus, Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { ClientGrpc } from '@nestjs/microservices';
+import { catchError, firstValueFrom, lastValueFrom, throwError } from 'rxjs';
 import { USERS_CLIENT } from '../../constraints'
 import { UserInterface } from './users.interface'
-import { createUserDto } from '../../../../../libs/contracts/src/users/create-user.dto';
-import { handleGrpcError } from '../../../../../libs/contracts/src/helper/grpc-error-handler';
+import { createUserDto } from 'libs/contracts/src/users/create-user.dto';
 import { ApiResponse } from '../../../../../libs/contracts/src/ApiReponse/api-response';
 
 @Injectable()
@@ -23,15 +22,20 @@ export class UsersService implements OnModuleInit {
 
   async signup(userData: createUserDto): Promise<ApiResponse<any>> {
     try {
-      const result = await lastValueFrom(this.userService.signup(userData));
+      const response = await firstValueFrom(
+        this.userService.signup(userData).pipe(
+          catchError((error) => {
+            return throwError(() => new HttpException(error.details || 'Lỗi gRPC không xác định', HttpStatus.BAD_REQUEST));
+          })
+        )
+      );
 
-      console.log('🚀 Kết quả từ gRPC:', result);
-
-      return result;
-    } catch (err) {
-      handleGrpcError(err);
+      return new ApiResponse(response.isSuccess, response.message, response.data);
+    } catch (error) {
+      return new ApiResponse(false, error.message || 'Lỗi khi tạo user', null);
     }
   }
+
 
   async logout() {
     return await lastValueFrom(this.userService.logout({}))
@@ -42,7 +46,7 @@ export class UsersService implements OnModuleInit {
   }
 
   async getAllUsers() {
-    return await lastValueFrom(this.userService.getAllUsers({}))
+    return await firstValueFrom(this.userService.getAllUsers({}))
   }
 
 

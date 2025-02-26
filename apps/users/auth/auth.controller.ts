@@ -1,4 +1,4 @@
-import { Controller } from '@nestjs/common'
+import { Controller,  } from '@nestjs/common';
 import { GrpcMethod } from '@nestjs/microservices'
 import { UsersService } from '../users/users.service'
 import { AuthService } from './auth.service'
@@ -21,12 +21,10 @@ export class AuthController {
 
     @GrpcMethod('UserService', 'Signup')
     async signup(data: createUserDto): Promise<ApiResponse<any>> {
-        const result = await this.usersService.createUser(data);
-
-        console.log('🚀 Kết quả từ UsersService (Microservice):', result);
-
-        return result;
+        const response = await this.authService.signup(data);
+        return response;
     }
+
 
     @GrpcMethod('UserService', 'GetUserInfo')
     async getUserInfo(data: { userId: string; username: string }) {

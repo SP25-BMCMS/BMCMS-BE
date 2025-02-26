@@ -20,17 +20,25 @@ model User {
   gender      Gender?
 
   userDetails UserDetails?
+  apartments  Apartment[] // ✅ Resident có thể có nhiều Apartments
 }
 
 model UserDetails {
-  userId          String    @id @default(uuid()) @map("user_id")
-  apartmentNumber String?   // Chỉ dùng khi role = Resident
-  buildingId      String?   // Chỉ dùng khi role = Resident
-  positionId      String?   // Chỉ dùng khi role = Employee
-  departmentId    String?   // Chỉ dùng khi role = Employee
-  status          EmploymentStatus? // Chỉ dùng khi role = Employee
+  userId       String    @id @default(uuid()) @map("user_id")
+  positionId   String?   // Chỉ Employee
+  departmentId String?   // Chỉ Employee
+  status       EmploymentStatus? // Chỉ Employee
 
-  user            User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+}
+
+model Apartment {
+  apartmentId   String   @id @default(uuid())
+  apartmentName String
+  buildingId    String
+  ownerId       String   @map("owner_id")
+
+  owner         User     @relation(fields: [ownerId], references: [userId], onDelete: Cascade)
 }
 
 model Department {

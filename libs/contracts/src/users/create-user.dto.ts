@@ -1,12 +1,12 @@
 import { $Enums, Gender } from '@prisma/client-users';
-import { IsDateString, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsDateString, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class createUserDto {
     @IsString()
     @IsNotEmpty()
     username: string;
 
-    @IsString()
+    @IsEmail()
     @IsNotEmpty()
     email: string;
 
@@ -29,5 +29,20 @@ export class createUserDto {
     @IsEnum(Gender)
     @IsOptional()
     gender?: Gender;
-}
 
+    // 🔥 Nếu là Resident, có thể tạo nhiều Apartment
+    @IsOptional()
+    apartments?: { apartmentName: string; buildingId: string }[];
+
+    @IsString()
+    @IsOptional()
+    positionId?: string;
+
+    @IsString()
+    @IsOptional()
+    departmentId?: string;
+
+    @IsEnum($Enums.EmploymentStatus)
+    @IsOptional()
+    status?: $Enums.EmploymentStatus;
+}
