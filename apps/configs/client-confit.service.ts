@@ -15,7 +15,9 @@ export class ClientConfigService {
     }
    
     getUsersClientPort(): number {
-        return this.config.get<number>('USERS_CLIENT_PORT')
+      console.log("🚀 ~ Usser ~ UsserUsser ~ Usser:", this.config.get<number>('BUILDINGS_CLIENT_PORT'))
+
+      return this.config.get<number>('USERS_CLIENT_PORT')
     }
 
     getBuildingsClientPort(): number {

@@ -42,9 +42,10 @@ model BuildingDetail {
   buildingDetailId String           @id @default(uuid())
   buildingId       String
   name             String
-  description      String?
-  areaType         AreaType
-  floorNumber      Int
+   total_apartments Int // fix 26/2 
+ // description      String?
+//  areaType         AreaType
+  //floorNumber      Int
   locationDetails  LocationDetail[]
   // crackReports     CrackReport[]
   building         Building         @relation(fields: [buildingId], references: [buildingId])

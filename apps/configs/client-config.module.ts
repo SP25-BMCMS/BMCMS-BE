@@ -10,6 +10,8 @@ import { ClientConfigService } from "./client-confit.service"
             validationSchema: joi.object({
                 USERS_CLIENT_PORT: joi.number().default(3001),
                 BUILDINGS_CLIENT_PORT: joi.number().default(3002),
+                TASKS_CLIENT_PORT: joi.number().default(3003),
+
             })
         }
         )

@@ -79,10 +79,10 @@ export class BuildingDetailsService {
         where: { buildingDetailId },
         data: {
           name: updateBuildingDetailDto.name,
-          description: updateBuildingDetailDto.description,
-          floorNumber: updateBuildingDetailDto.floorNumber,
+         // description: updateBuildingDetailDto.description,
+        //  floorNumber: updateBuildingDetailDto.floorNumber,
 //          buildingId: updateBuildingDetailDto.buildingId,
-          areaType: updateBuildingDetailDto.areaType,
+        //  areaType: updateBuildingDetailDto.areaType,
          // locationDetails: updateBuildingDetailDto.locationDetails, // Nếu có thay đổi locationDetails
         },
       });

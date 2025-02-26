@@ -6,26 +6,9 @@ export class UpdateBuildingDetailDto {
    @IsNotEmpty()
     @IsString()
     name: string;
-  
-  @IsOptional()
-  @IsString()
-  roomNumber?: string;
-
-  @IsOptional()
-  @IsInt()
-  floorNumber?: number;
-
-  @IsOptional()
-  @IsString()
-  positionSide?: $Enums.PositionSide;
-
-  @IsOptional()
-  @IsString()
-  areaType?: $Enums.AreaType;
-  @IsOptional()
-  @IsString()
-  description?: string;
-
+    @IsNotEmpty()
+    @IsInt()
+    numberFloor : number;
   @IsOptional()
   @IsUUID()
   buildingDetailId?: string;
