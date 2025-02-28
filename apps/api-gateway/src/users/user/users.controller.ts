@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpException, HttpStatus, Post, Req, Res, UseGuards } from '@nestjs/common';
-import { Role } from '@prisma/client'
+import { Role } from '@prisma/client-users'
 import { Roles } from '../../decorator/roles.decarator'
 import { PassportJwtAuthGuard } from '../../guards/passport-jwt-guard'
 import { PassportLocalGuard } from '../../guards/passport-local-guard'

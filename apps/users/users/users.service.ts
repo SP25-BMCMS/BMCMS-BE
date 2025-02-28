@@ -140,12 +140,13 @@ export class UsersService {
                         role: userData.role,
                         dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth) : null,
                         gender: userData.gender ?? null,
-                        userDetails: userData.role === Role.Employee
+                        userDetails: userData.role === Role.Staff
                           ? {
                               create: {
                                   positionId: userData.positionId ?? null,
                                   departmentId: userData.departmentId ?? null,
-                                  status: userData.status ?? null,
+                                  staffStatus: userData.staffStatus ?? null,
+                                  staffRole: userData.staffRole ?? null,
                               }
                           }
                           : undefined,
@@ -181,7 +182,8 @@ export class UsersService {
                 userDetails: fullUser?.userDetails ? {
                     positionId: fullUser?.userDetails.positionId,
                     departmentId: fullUser?.userDetails.departmentId,
-                    status: fullUser?.userDetails.status,
+                    staffStatus: fullUser?.userDetails.staffStatus,
+                    staffRole: fullUser?.userDetails.staffRole,
                 } : null,
                 apartments: fullUser?.apartments.map(apartment => ({
                     apartmentName: apartment.apartmentName,
@@ -202,8 +204,19 @@ export class UsersService {
 
         return this.prisma.user.update({
             where: { userId },
-            data,
-        })
+            data: {
+                ...data, // ✅ Giữ lại các trường khác
+                apartments: data.apartments
+                  ? {
+                      set: [], // 🛠 Xóa danh sách cũ (nếu cần)
+                      create: data.apartments.map((apt) => ({
+                          apartmentName: apt.apartmentName,
+                          buildingId: apt.buildingId,
+                      })),
+                  }
+                  : undefined, // ✅ Chỉ cập nhật nếu có apartments
+            },
+        });
     }
 
     async deleteUser(userId: string): Promise<{ message: string }> {

@@ -24,7 +24,8 @@ message CreateUserRequest {
   repeated ApartmentRequest apartments = 8;
   string positionId = 9;
   string departmentId = 10;
-  string status = 11;
+  string staffStatus = 11;
+  string staffRole = 12;
 }
 
 message ApartmentRequest {
@@ -58,7 +59,8 @@ message UserResponse {
 message UserDetailsResponse {
   string positionId = 1;
   string departmentId = 2;
-  string status = 3;
+  string staffStatus = 3;
+  string staffRole = 4;
 }
 
 message ApartmentResponse {

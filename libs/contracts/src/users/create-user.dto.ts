@@ -34,6 +34,7 @@ export class createUserDto {
     @IsOptional()
     apartments?: { apartmentName: string; buildingId: string }[];
 
+    // ✅ Nếu là Staff, thêm các thông tin này
     @IsString()
     @IsOptional()
     positionId?: string;
@@ -42,7 +43,11 @@ export class createUserDto {
     @IsOptional()
     departmentId?: string;
 
-    @IsEnum($Enums.EmploymentStatus)
+    @IsEnum($Enums.StaffStatus)
     @IsOptional()
-    status?: $Enums.EmploymentStatus;
+    staffStatus?: $Enums.StaffStatus;
+
+    @IsEnum($Enums.StaffRole)
+    @IsOptional()
+    staffRole?: $Enums.StaffRole; // ✅ Thêm Staff Role
 }
