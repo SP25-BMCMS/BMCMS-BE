@@ -2,7 +2,7 @@
 import { status } from '@grpc/grpc-js'
 import { Injectable } from '@nestjs/common'
 import { RpcException } from '@nestjs/microservices'
-import { Gender, Role } from '@prisma/client'
+import { Gender, Role } from '@prisma/client-users'
 import * as bcrypt from 'bcrypt'
 import { PrismaService  } from '../prisma/prisma.service'
 import { UserDto } from '../../../libs/contracts/src/users/user.dto';

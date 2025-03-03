@@ -5,7 +5,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import {  InspectionsModule } from '../Inspections/Inspections.module';
 import {   TasksModule} from '../Task/Task.module';
 import { TasksController } from '../Task/Task.controller';
-import { TasksService } from '../Task/Task.service';
+import { TaskService } from '../Task/Task.service';
 import { RepairMaterialsModule } from '../RepairMaterials/RepairMaterials.module';
 import { RepairMaterialsController } from '../RepairMaterials/RepairMaterials.controller';
 import { RepairMaterialsService } from '../RepairMaterials/RepairMaterials.service';
@@ -20,6 +20,6 @@ import { RepairMaterialsService } from '../RepairMaterials/RepairMaterials.servi
     RepairMaterialsModule
   ],
     controllers: [TasksController,RepairMaterialsController],
-      providers: [TasksService,RepairMaterialsService],
+      providers: [TaskService,RepairMaterialsService],
 })
 export class TaskModule {}

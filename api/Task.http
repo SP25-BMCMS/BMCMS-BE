@@ -1,0 +1,45 @@
+### Get All 
+GET http://localhost:3000/tasks
+Accept: application/json
+### Get by taskId
+GET http://localhost:3000/tasks/5ec2f597-45d0-40f9-b281-ad602e5296b6
+Accept: application/json
+
+
+### Create Task
+POST http://localhost:3000/tasks
+Content-Type: application/json
+
+{
+ "description": "sssssss of the task",
+  "status": "Assigned",
+  "crack_id": "b5a4ac9b-5cae-4639-8349-e527167c4ee0",
+  "schedule_job_id": "0fc02c08-7714-4bba-8f12-5bedb7d5417c"
+}
+### Update Task
+PUT http://localhost:3000/tasks/5ec2f597-45d0-40f9-b281-ad602e5296b6
+Content-Type: application/json
+
+{
+  "description": "Up2312323dated description of the task",
+  "status": "Assigned",
+  "crack_id": "b5a4ac9b-5cae-4639-8349-e527167c4ee0",
+  "schedule_job_id": "0fc02c08-7714-4bba-8f12-5bedb7d5417c"
+}
+
+
+### Update Status of Task by ID
+PUT http://localhost:3000/tasks/5ec2f597-45d0-40f9-b281-ad602e5296b6/status
+Content-Type: application/json
+
+{
+  "status": "InProgress"
+}
+
+### Delete Task by ID change satus thanh completed
+DELETE http://localhost:3000/tasks/5ec2f597-45d0-40f9-b281-ad602e5296b6
+### Get all task by status
+
+GET http://localhost:3000/tasks/status/{status}
+
+Accept: application/json

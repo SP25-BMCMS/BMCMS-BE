@@ -13,10 +13,10 @@ export class BuildingDetailsService {
       const newBuildingDetail = await this.prisma.buildingDetail.create({
         data: {
           name: createBuildingDetailDto.name,
-          description: createBuildingDetailDto.description,
-          floorNumber: createBuildingDetailDto.floorNumber,
+        //  description: createBuildingDetailDto.description,
+        total_apartments: createBuildingDetailDto.floorNumber,
           buildingId: createBuildingDetailDto.buildingId,
-          areaType: createBuildingDetailDto.areaType,
+         // areaType: createBuildingDetailDto.areaType,
          // locationDetails: BuildingDetailDto.locationDetails,  // Nếu có dữ liệu locationDetails
         },
       });

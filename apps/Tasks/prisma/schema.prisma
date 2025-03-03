@@ -15,12 +15,13 @@ datasource db {
 }
 
 model Task {
-  task_id      Int             @id @default(autoincrement())
+  task_id      String          @id @default(uuid()) // Changed to UUID
   description  String
   status       Status
   created_at   DateTime        @default(now())
   updated_at   DateTime        @updatedAt
-
+  crack_id     String 
+  schedule_job_id  String
   // Mối quan hệ 1:N với WorkLogs
   workLogs     WorkLog[]
 
@@ -31,8 +32,8 @@ model Task {
 }
 
 model WorkLog {
-  worklog_id   Int             @id @default(autoincrement())
-  task_id      Int
+  worklog_id   String          @id @default(uuid()) // Changed to UUID
+  task_id      String
   title        String
   description  String
   created_at   DateTime        @default(now())
@@ -43,9 +44,9 @@ model WorkLog {
 }
 
 model TaskAssignment {
-  assignment_id Int             @id @default(autoincrement())
-  task_id       Int
-  employee_id   Int
+  assignment_id String        @id @default(uuid()) // Changed to UUID
+  task_id       String
+  employee_id   String
   description   String
   status        AssignmentStatus
   created_at    DateTime        @default(now())
@@ -60,7 +61,7 @@ model TaskAssignment {
 
 model Inspection {
   inspection_id Int             @id @default(autoincrement())
-  task_assignment_id Int
+  task_assignment_id String
   crack_id      Int
   inspected_by  Int
   inspection_date DateTime

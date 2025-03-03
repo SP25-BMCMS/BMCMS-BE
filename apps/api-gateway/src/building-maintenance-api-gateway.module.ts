@@ -6,11 +6,12 @@ import {AreasModule } from './Area/Areas.module'
 import { BuildingDetailModule } from './BuildingDetail/buildingDetail.module'
 import { LocationDetailModule } from './LocationDetail/locationDetail.module'
 import { CracksModule } from './cracks/cracks.module';
+import { TasksModule } from './Task/Tasks.module'
 
 
 
 @Module({
-  imports: [UsersModule, ConfigModule.forRoot(),BuildingsModule,AreasModule,BuildingDetailModule,LocationDetailModule,CracksModule],
+  imports: [UsersModule, ConfigModule.forRoot(),BuildingsModule,AreasModule,BuildingDetailModule,LocationDetailModule,CracksModule,TasksModule],
  // controllers: [BuildingMaintenanceApiGatewayController],
  // providers: [BuildingMaintenanceApiGatewayService],
 })

@@ -74,6 +74,23 @@ console.log("🚀 ~ ClientConfigService ~ getBuildingsClientPort ~ BUILDINGS_CLI
                 };
               };
 
+              
+    get TasksClientOptions(): ClientOptions {
+      const { user, password, host, queueName } = this.getRabbitMQConfig(); // Get RabbitMQ config
+    //  const port = 3003;
+
+      return {
+        transport: Transport.RMQ,
+                  options: {
+                    urls: [`amqp://${user}:${password}@${host}`],
+                    queue: queueName,
+                    queueOptions: {
+                      durable: true,
+                    },
+                  },
+                };
+              };
+
   //   get buildingsClientOptions(): ClientOptions {
   //     return {
   //         transport: Transport.RMQ,

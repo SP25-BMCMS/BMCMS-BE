@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Payload, RpcException } from '@nestjs/microservices';
-import { PrismaClient  } from '@prisma/client-building';
+import { PrismaClient } from '@prisma/client-building';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { UUID } from 'crypto';
 import { date } from 'joi';

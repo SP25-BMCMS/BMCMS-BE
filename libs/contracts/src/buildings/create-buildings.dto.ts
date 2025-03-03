@@ -1,4 +1,4 @@
-import { $Enums } from "@prisma/client"
+import { $Enums } from "@prisma/client-building"
 import { IsEmail, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, MinLength } from "class-validator"
 
 
