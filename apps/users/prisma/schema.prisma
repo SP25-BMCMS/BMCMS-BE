@@ -58,8 +58,6 @@ model WorkingPosition {
 }
 
 enum StaffRole {
-  Inspector
-  Reviewer
   Technician
   Leader
 }
