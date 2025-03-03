@@ -1,27 +1,53 @@
-import { $Enums } from "@prisma/client-users"
-import { IsEmail, IsString, MinLength } from "class-validator"
+import { $Enums, Gender } from '@prisma/client-users';
+import { IsDateString, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class createUserDto {
     @IsString()
-    username: string
-
-    @IsString()
-    @MinLength(6)
-    password: string
+    @IsNotEmpty()
+    username: string;
 
     @IsEmail()
-    email: string
+    @IsNotEmpty()
+    email: string;
 
     @IsString()
-    phone: string
+    @IsNotEmpty()
+    password: string;
 
     @IsString()
-    role: $Enums.Role
+    @IsOptional()
+    phone?: string;
+
+    @IsEnum($Enums.Role)
+    @IsNotEmpty()
+    role: $Enums.Role;
+
+    @IsDateString()
+    @IsOptional()
+    dateOfBirth?: string;
+
+    @IsEnum(Gender)
+    @IsOptional()
+    gender?: Gender;
+
+    // 🔥 Nếu là Resident, có thể tạo nhiều Apartment
+    @IsOptional()
+    apartments?: { apartmentName: string; buildingId: string }[];
+
+    // ✅ Nếu là Staff, thêm các thông tin này
+    @IsString()
+    @IsOptional()
+    positionId?: string;
 
     @IsString()
-    dateOfBirth: Date
+    @IsOptional()
+    departmentId?: string;
 
-    @IsString()
-    gender: $Enums.Gender
+    @IsEnum($Enums.StaffStatus)
+    @IsOptional()
+    staffStatus?: $Enums.StaffStatus;
+
+    @IsEnum($Enums.StaffRole)
+    @IsOptional()
+    staffRole?: $Enums.StaffRole; // ✅ Thêm Staff Role
 }
-

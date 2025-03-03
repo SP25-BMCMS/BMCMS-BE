@@ -4,38 +4,44 @@ package users;
 
 service UserService {
   rpc Login (LoginRequest) returns (LoginResponse);
-  rpc Signup (CreateUserRequest) returns (UserResponse);
+  rpc Signup (CreateUserRequest) returns (ApiResponseUser);
   rpc GetUserInfo (UserRequest) returns (UserResponse);
   rpc GetAllUsers (Empty) returns (UsersListResponse);
   rpc Logout (Empty) returns (LogoutResponse);
   rpc Test (TestRequest) returns (TestResponse);
   rpc ValidateUser (LoginRequest) returns (UserResponse);
-
   rpc GetAllResidents (Empty) returns (ResidentsListResponse);
-}
-
-message LoginRequest {
-  string username = 1;
-  string password = 2;
 }
 
 message CreateUserRequest {
   string username = 1;
   string email = 2;
   string password = 3;
-  string role = 4;
+  string phone = 4;
+  string role = 5;
+  string dateOfBirth = 6;
+  string gender = 7;
+  repeated ApartmentRequest apartments = 8;
+  string positionId = 9;
+  string departmentId = 10;
+  string staffStatus = 11;
+  string staffRole = 12;
+}
+
+message ApartmentRequest {
+  string apartmentName = 1;
+  string buildingId = 2;
+}
+
+message ApiResponseUser {
+  bool isSuccess = 1;
+  string message = 2;
+  UserResponse data = 3;
 }
 
 message UserRequest {
   string userId = 1;
   string username = 2;
-}
-
-message LoginResponse {
-  string accessToken = 1;
-  string refreshToken = 2;
-  string userId = 3;
-  string username = 4;
 }
 
 message UserResponse {
@@ -46,6 +52,20 @@ message UserResponse {
   string role = 5;
   string dateOfBirth = 6;
   string gender = 7;
+  UserDetailsResponse userDetails = 8;
+  repeated ApartmentResponse apartments = 9;
+}
+
+message UserDetailsResponse {
+  string positionId = 1;
+  string departmentId = 2;
+  string staffStatus = 3;
+  string staffRole = 4;
+}
+
+message ApartmentResponse {
+  string apartmentName = 1;
+  string buildingId = 2;
 }
 
 message UsersListResponse {
@@ -62,6 +82,18 @@ message ResidentsListResponse {
   repeated ResidentResponse users = 1;
 }
 
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string accessToken = 1;
+  string refreshToken = 2;
+  string userId = 3;
+  string username = 4;
+}
+
 message LogoutResponse {
   string message = 1;
 }
@@ -75,3 +107,107 @@ message TestRequest {
 message TestResponse {
   bool success = 1;
 }
+
+
+
+//syntax = "proto3";
+//
+//package users;
+//
+//service UserService {
+//  rpc Login (LoginRequest) returns (LoginResponse);
+//  rpc Signup (CreateUserRequest) returns (ApiResponseUser); // ✅ Cập nhật kiểu trả về
+//  rpc GetUserInfo (UserRequest) returns (UserResponse);
+//  rpc GetAllUsers (Empty) returns (UsersListResponse);
+//  rpc Logout (Empty) returns (LogoutResponse);
+//  rpc Test (TestRequest) returns (TestResponse);
+//  rpc ValidateUser (LoginRequest) returns (UserResponse);
+//  rpc GetAllResidents (Empty) returns (ResidentsListResponse);
+//}
+//
+//// 🛠️ Định nghĩa lại CreateUserRequest (Đầy đủ thông tin)
+//message CreateUserRequest {
+//  string username = 1;
+//  string email = 2;
+//  string password = 3;
+//  string phone = 4;
+//  string role = 5;
+//  string dateOfBirth = 6;
+//  string gender = 7;
+//  string apartmentNumber = 8;
+//  string buildingId = 9;
+//  string positionId = 10;
+//  string departmentId = 11;
+//  string status = 12;
+//}
+//
+//// 🛠️ Định nghĩa ApiResponse để phản hồi dữ liệu chuẩn
+//message ApiResponseUser {
+//  bool isSuccess = 1;
+//  string message = 2;
+//  UserResponse data = 3;
+//}
+//
+//message UserRequest {
+//  string userId = 1;
+//  string username = 2;
+//}
+//
+//message UserResponse {
+//  string userId = 1;
+//  string username = 2;
+//  string email = 3;
+//  string phone = 4;
+//  string role = 5;
+//  string dateOfBirth = 6;
+//  string gender = 7;
+//  UserDetailsResponse userDetails = 8;
+//}
+//
+//message UserDetailsResponse {
+//  string apartmentNumber = 1;
+//  string buildingId = 2;
+//  string positionId = 3;
+//  string departmentId = 4;
+//  string status = 5;
+//}
+//
+//message UsersListResponse {
+//  repeated UserResponse users = 1;
+//}
+//
+//message ResidentResponse {
+//  string userId = 1;
+//  string apartmentNumber = 2;
+//  string email = 3;
+//}
+//
+//message ResidentsListResponse {
+//  repeated ResidentResponse users = 1;
+//}
+//
+//message LoginRequest {
+//  string username = 1;
+//  string password = 2;
+//}
+//
+//message LoginResponse {
+//  string accessToken = 1;
+//  string refreshToken = 2;
+//  string userId = 3;
+//  string username = 4;
+//}
+//
+//message LogoutResponse {
+//  string message = 1;
+//}
+//
+//message Empty {}
+//
+//message TestRequest {
+//  string data = 1;
+//}
+//
+//message TestResponse {
+//  bool success = 1;
+//}

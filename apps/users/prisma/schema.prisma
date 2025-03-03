@@ -1,14 +1,7 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
+// Cấu hình Prisma
 generator client {
   provider = "prisma-client-js"
-    output   = "../../../node_modules/@prisma/client-users"
-
-
+  output   = "../../../node_modules/@prisma/client-users"
 }
 
 datasource db {
@@ -17,62 +10,63 @@ datasource db {
 }
 
 model User {
-  userId      String   @id @default(uuid())
-  username    String   @unique
+  userId      String    @id @default(uuid())
+  username    String    @unique
   password    String
-  email       String   @unique
+  email       String    @unique
   phone       String?
   role        Role
   dateOfBirth DateTime?
   gender      Gender?
 
-  resident    Resident? @relation("UserResident") 
-  employee    Employee? @relation("UserEmployee") 
+  userDetails UserDetails?
+  apartments  Apartment[] // ✅ Resident có thể có nhiều Apartments
 }
 
-model Resident {
-  userId          String    @id
-  apartmentNumber String?
-  buildingId      String
-  user            User      @relation("UserResident", fields: [userId], references: [userId], onDelete: Cascade)
-  @@unique([userId]) 
+model UserDetails {
+  userId       String       @id @default(uuid()) @map("user_id")
+  positionId   String? // Chỉ Staff
+  departmentId String? // Chỉ Staff
+  staffStatus  StaffStatus? // Chỉ Staff
+  staffRole    StaffRole?
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
 }
 
-model Employee {
-  userId          String         @id
-  positionId      String
-  departmentId    String
-  status          EmploymentStatus
-  department      Department      @relation(fields: [departmentId], references: [departmentId], onDelete: Cascade)
-  workingPosition WorkingPosition @relation(fields: [positionId], references: [positionId], onDelete: Cascade)
-  user            User            @relation("UserEmployee", fields: [userId], references: [userId], onDelete: Cascade)
+model Apartment {
+  apartmentId   String @id @default(uuid())
+  apartmentName String
+  buildingId    String
+  ownerId       String @map("owner_id")
 
-  @@unique([userId]) 
+  owner User @relation(fields: [ownerId], references: [userId], onDelete: Cascade)
 }
-
 
 model Department {
-  departmentId   String     @id @default(uuid())
-  departmentName String     @unique
+  departmentId   String   @id @default(uuid())
+  departmentName String   @unique
   description    String?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  employees      Employee[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model WorkingPosition {
-  positionId   String        @id @default(uuid())
+  positionId   String         @id @default(uuid())
   positionName PositionName
   description  String?
   status       PositionStatus
-  employees    Employee[]
+}
+
+enum StaffRole {
+  Technician
+  Leader
 }
 
 enum Role {
   Admin
   Manager
   Resident
-  Employee
+  Staff
 }
 
 enum Gender {
@@ -81,7 +75,7 @@ enum Gender {
   Other
 }
 
-enum EmploymentStatus {
+enum StaffStatus {
   Active
   Inactive
   Probation
