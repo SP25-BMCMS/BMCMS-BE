@@ -1,0 +1,48 @@
+### Create Task Assignment
+POST http://localhost:3000/task-assignments
+Content-Type: application/json
+
+{
+  "task_id": "5ec2f597-45d0-40f9-b281-ad602e5296b6",
+  "employee_id": "b5a4ac9b-5cae-4639-8349-e527167c4ee0",
+  "description": "Assigned task description",
+  "status": "Assigned"
+}
+
+### Update Task Assignment
+PUT http://localhost:3000/task-assignments/:taskAssignmentId
+Content-Type: application/json
+
+{
+  "task_id": "5ec2f597-45d0-40f9-b281-ad602e5296b6",
+  "employee_id": "b5a4ac9b-5cae-4639-8349-e527167c4ee0",
+  "description": "Updated task assignment description",
+  "status": "InProgress"
+}
+
+### Delete Task Assignment (Change status to 'notcompleted')
+DELETE http://localhost:3000/task-assignments/:taskAssignmentId
+
+### Get Task Assignments by User ID
+GET http://localhost:3000/task-assignments/user/:userId
+Accept: application/json
+
+### Get Task Assignment by ID
+GET http://localhost:3000/task-assignments/:taskAssignmentId
+Accept: application/json
+
+### Get All Task Assignments
+GET http://localhost:3000/task-assignments
+Accept: application/json
+
+### Reassign Task Assignment
+PUT http://localhost:3000/task-assignments/:taskAssignmentId/reassign
+Content-Type: application/json
+
+{
+  "newEmployeeId": "b5a4ac9b-5cae-4639-8349-e527167c4ee0"
+}
+
+### Get Task Assignments by Status
+GET http://localhost:3000/task-assignments/status/:status
+Accept: application/json
