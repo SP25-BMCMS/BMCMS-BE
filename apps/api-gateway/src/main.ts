@@ -30,17 +30,17 @@ async function bootstrap() {
 //  app.useGlobalFilters(new RpcToHttpExceptionFilter())
  // console.log("🚀 ~ bootstrap ~ process.env.port:", process.env.port)
 //  await app.listen(process.env.port ?? 3000)
-//   const config = new DocumentBuilder()
-//     .setTitle('API Example')
-//     .setDescription('The API description')
-//     .setVersion('1.0')
-//     .addTag('users')
-//     .build();
+  const config = new DocumentBuilder()
+    .setTitle('API Example')
+    .setDescription('The API description')
+    .setVersion('1.0')
+    .addTag('users')
+    .build();
 
-//   const document = SwaggerModule.createDocument(app, config);
-//   SwaggerModule.setup('api', app, document);  // Đường dẫn /api sẽ hiển thị Swagger UI
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document);  // Đường dẫn /api sẽ hiển thị Swagger UI
 
-//   await app.listen(3000);
-//   console.log(`Application is running on: http://localhost:3000/api`);
+  await app.listen(3000);
+  console.log(`Application is running on: http://localhost:3000/api`);
 }
 bootstrap()
