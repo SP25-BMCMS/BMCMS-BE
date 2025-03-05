@@ -1,10 +1,9 @@
 // task.service.ts
 import { Injectable } from '@nestjs/common';
-import { PrismaClient, Status } from '@prisma/client-Task'
+import { PrismaClient, Status } from '@prisma/client-Task';
 import { RpcException } from '@nestjs/microservices';
 import { CreateTaskDto } from 'libs/contracts/src/tasks/create-Task.dto';
 import { UpdateTaskDto } from 'libs/contracts/src/tasks/update.Task';
-import { ChangeTaskStatusDto } from 'libs/contracts/src/tasks/ChangeTaskStatus.Dto ';
 
 @Injectable()
 export class TaskService {
@@ -85,7 +84,7 @@ export class TaskService {
     try {
       const deletedTask = await this.prisma.task.update({
         where: { task_id },
-        data: { status: 'Completed' },  // Mark the task as completed when deleted
+        data: { status: 'Completed' }, // Mark the task as completed when deleted
       });
       return {
         statusCode: 200,
@@ -122,16 +121,19 @@ export class TaskService {
   //   }
   // }
   async changeTaskStatus(task_id: string, changeTaskStatusDto: string) {
-    console.log("🚀 ~ TaskService ~ changeTaskStatus ~ task_id:", task_id)
+    console.log('🚀 ~ TaskService ~ changeTaskStatus ~ task_id:', task_id);
     try {
-      console.log("🚀 ~ TaskService ~ changeTaskStatus ~ task_id:", task_id)
-      console.log("🚀 ~ TaskService ~ changeTaskStatus ~ changeTaskStatusDto:", changeTaskStatusDto)
+      console.log('🚀 ~ TaskService ~ changeTaskStatus ~ task_id:', task_id);
+      console.log(
+        '🚀 ~ TaskService ~ changeTaskStatus ~ changeTaskStatusDto:',
+        changeTaskStatusDto,
+      );
 
       // Check if the task exists before trying to update
       const task = await this.prisma.task.findUnique({
         where: { task_id },
       });
-  
+
       // If task does not exist, throw an exception
       if (!task) {
         throw new RpcException({
@@ -139,32 +141,33 @@ export class TaskService {
           message: 'Task not found',
         });
       }
-      const status: Status = changeTaskStatusDto as Status;  // This assumes changeTaskStatusDto is a valid status string
+      const status: Status = changeTaskStatusDto as Status; // This assumes changeTaskStatusDto is a valid status string
 
       // Proceed to update the status
       const updatedTask = await this.prisma.task.update({
         where: { task_id },
         data: {
-          status : status,
+          status: status,
         },
       });
-  
+
       return {
         statusCode: 200,
         message: 'Task status updated successfully',
         data: updatedTask,
       };
     } catch (error) {
-      console.error("Error updating task status:", error);  // Log error details for debugging
-  
+      console.error('Error updating task status:', error); // Log error details for debugging
+
       // Return a meaningful response for the error
       throw new RpcException({
         statusCode: 400,
         message: 'Error updating task status',
-        error: error.message,  // Include the error message for debugging
+        error: error.message, // Include the error message for debugging
       });
     }
   }
+
   async getAllTasks() {
     try {
       const tasks = await this.prisma.task.findMany();

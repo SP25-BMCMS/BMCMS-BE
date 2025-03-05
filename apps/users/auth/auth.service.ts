@@ -1,10 +1,11 @@
 
-import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt'
 import * as bcrypt from 'bcrypt'
 import { UsersService } from '../users/users.service'
 import { RpcException } from '@nestjs/microservices'
 import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto';
+import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response';
 
 type AuthInput = { username: string; password: string }
 type SignInData = { userId: string; username: string, role: string }
@@ -59,8 +60,8 @@ export class AuthService {
         return { message: 'Logged out successfully' }
     }
 
-    async signup(data: createUserDto) {
-        return this.usersService.createUser(data)
+    async signup(data: createUserDto): Promise<ApiResponse<any>> {
+        return await this.usersService.signup(data);
     }
 
     async getUserInfo(userId: string) {

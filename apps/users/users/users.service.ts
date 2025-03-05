@@ -1,12 +1,11 @@
-
-import { status } from '@grpc/grpc-js'
-import { Injectable } from '@nestjs/common'
+import { BadRequestException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices'
-import { Gender, Role } from '@prisma/client-users'
 import * as bcrypt from 'bcrypt'
-import { PrismaService  } from '../prisma/prisma.service'
+import { PrismaService } from '../prisma/prisma.service'
 import { UserDto } from '../../../libs/contracts/src/users/user.dto';
 import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto';
+import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response';
+import { Role } from '@prisma/client-users';
 
 @Injectable()
 export class UsersService {
@@ -26,74 +25,175 @@ export class UsersService {
         return user
     }
 
-    async createUser(data: createUserDto) {
+    // async signup(userData: createUserDto): Promise<ApiResponse<any>> {
+    //     try {
+    //         const existingUser = await this.prisma.user.findFirst({
+    //             where: {
+    //                 OR: [{ username: userData.username }, { email: userData.email }],
+    //             },
+    //         });
+    //
+    //         if (existingUser) {
+    //             return new ApiResponse(false, 'Username hoặc Email đã tồn tại', null);
+    //         }
+    //
+    //         const hashedPassword = await bcrypt.hash(userData.password, 10);
+    //
+    //         let newUser;
+    //         if (userData.role === Role.Admin || userData.role === Role.Manager) {
+    //             newUser = await this.prisma.user.create({
+    //                 data: {
+    //                     username: userData.username,
+    //                     email: userData.email,
+    //                     password: hashedPassword,
+    //                     phone: userData.phone,
+    //                     role: userData.role,
+    //                     dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth) : null,
+    //                     gender: userData.gender ?? null,
+    //                 }
+    //             });
+    //         } else {
+    //             newUser = await this.prisma.user.create({
+    //                 data: {
+    //                     username: userData.username,
+    //                     email: userData.email,
+    //                     password: hashedPassword,
+    //                     phone: userData.phone,
+    //                     role: userData.role,
+    //                     dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth) : null,
+    //                     gender: userData.gender ?? null,
+    //                     userDetails: {
+    //                         create: {
+    //                             apartmentNumber: userData.role === Role.Resident ? userData.apartmentNumber : null,
+    //                             buildingId: userData.role === Role.Resident ? userData.buildingId : null,
+    //                             positionId: userData.role === Role.Employee ? userData.positionId : null,
+    //                             departmentId: userData.role === Role.Employee ? userData.departmentId : null,
+    //                             status: userData.role === Role.Employee ? userData.status : null,
+    //                         }
+    //                     }
+    //                 }
+    //             });
+    //         }
+    //
+    //         // ✅ Truy vấn lại user để đảm bảo lấy đủ thông tin
+    //         const fullUser = await this.prisma.user.findUnique({
+    //             where: { userId: newUser.userId },
+    //             include: { userDetails: true } // ✅ Lấy cả UserDetails
+    //         });
+    //
+    //         return new ApiResponse(true, 'User đã được tạo thành công', {
+    //             userId: fullUser.userId,
+    //             username: fullUser.username,
+    //             email: fullUser.email,
+    //             phone: fullUser.phone,
+    //             role: fullUser.role,
+    //             dateOfBirth: fullUser.dateOfBirth ? fullUser.dateOfBirth.toISOString() : null,
+    //             gender: fullUser.gender ?? null,
+    //             userDetails: fullUser.userDetails ? {
+    //                 apartmentNumber: fullUser.userDetails.apartmentNumber,
+    //                 buildingId: fullUser.userDetails.buildingId,
+    //                 positionId: fullUser.userDetails.positionId,
+    //                 departmentId: fullUser.userDetails.departmentId,
+    //                 status: fullUser.userDetails.status,
+    //             } : null
+    //         });
+    //
+    //     } catch (error) {
+    //         console.error('🔥 Lỗi trong UsersService:', error);
+    //         return new ApiResponse(false, 'Lỗi không xác định khi tạo user', null);
+    //     }
+    // }
+    async signup(userData: createUserDto): Promise<ApiResponse<any>> {
         try {
-            // ✅ Kiểm tra dữ liệu đầu vào
-            if (!data.username || !data.email || !data.password || !data.role) {
-                throw new RpcException({
-                    code: status.INVALID_ARGUMENT,
-                    message: 'Missing required fields (username, email, password, role)',
-                })
-            }
-
-            // ✅ Kiểm tra role có hợp lệ không
-            if (!Object.values(Role).includes(data.role)) {
-                throw new RpcException({
-                    code: status.INVALID_ARGUMENT,
-                    message: `Invalid role. Allowed roles: ${Object.values(Role).join(', ')}`,
-                })
-            }
-
-            // ✅ Kiểm tra user có tồn tại chưa
             const existingUser = await this.prisma.user.findFirst({
                 where: {
-                    OR: [{ username: data.username }, { email: data.email }],
+                    OR: [{ username: userData.username }, { email: userData.email }],
                 },
-            })
+            });
 
             if (existingUser) {
-                throw new RpcException({
-                    code: status.ALREADY_EXISTS, 
-                    message: 'Username or email already exists',
-                })
+                return new ApiResponse(false, 'Username hoặc Email đã tồn tại', null);
             }
 
-            // ✅ Hash mật khẩu
-            const hashedPassword = await bcrypt.hash(data.password, 10)
+            const hashedPassword = await bcrypt.hash(userData.password, 10);
 
-            // ✅ Tạo user
-            const newUser = await this.prisma.user.create({
-                data: {
-                    username: data.username,
-                    email: data.email,
-                    password: hashedPassword,
-                    phone: data.phone || null,
-                    role: data.role as Role,
-                    dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
-                    gender: data.gender as Gender,
-                },
-            })
-
-            return {
-                userId: newUser.userId,
-                username: newUser.username,
-                email: newUser.email,
-                phone: newUser.phone,
-                role: newUser.role,
-                dateOfBirth: newUser.dateOfBirth,
-                gender: newUser.gender,
+            let newUser;
+            if (userData.role === Role.Admin || userData.role === Role.Manager) {
+                newUser = await this.prisma.user.create({
+                    data: {
+                        username: userData.username,
+                        email: userData.email,
+                        password: hashedPassword,
+                        phone: userData.phone,
+                        role: userData.role,
+                        dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth) : null,
+                        gender: userData.gender ?? null,
+                    }
+                });
+            } else {
+                newUser = await this.prisma.user.create({
+                    data: {
+                        username: userData.username,
+                        email: userData.email,
+                        password: hashedPassword,
+                        phone: userData.phone,
+                        role: userData.role,
+                        dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth) : null,
+                        gender: userData.gender ?? null,
+                        userDetails: userData.role === Role.Staff
+                          ? {
+                              create: {
+                                  positionId: userData.positionId ?? null,
+                                  departmentId: userData.departmentId ?? null,
+                                  staffStatus: userData.staffStatus ?? null,
+                                  staffRole: userData.staffRole ?? null,
+                              }
+                          }
+                          : undefined,
+                        apartments: userData.role === Role.Resident && userData.apartments
+                          ? {
+                              create: userData.apartments.map(apartment => ({
+                                  apartmentName: apartment.apartmentName,
+                                  buildingId: apartment.buildingId,
+                              }))
+                          }
+                          : undefined,
+                    }
+                });
             }
+
+            // ✅ Truy vấn lại để lấy đầy đủ thông tin
+            const fullUser = await this.prisma.user.findUnique({
+                where: { userId: newUser.userId },
+                include: {
+                    apartments: true,
+                    userDetails: true
+                }
+            });
+
+            return new ApiResponse(true, 'User đã được tạo thành công', {
+                userId: fullUser?.userId,
+                username: fullUser?.username,
+                email: fullUser?.email,
+                phone: fullUser?.phone,
+                role: fullUser?.role,
+                dateOfBirth: fullUser?.dateOfBirth ? fullUser.dateOfBirth.toISOString() : null,
+                gender: fullUser?.gender ?? null,
+                userDetails: fullUser?.userDetails ? {
+                    positionId: fullUser?.userDetails.positionId,
+                    departmentId: fullUser?.userDetails.departmentId,
+                    staffStatus: fullUser?.userDetails.staffStatus,
+                    staffRole: fullUser?.userDetails.staffRole,
+                } : null,
+                apartments: fullUser?.apartments.map(apartment => ({
+                    apartmentName: apartment.apartmentName,
+                    buildingId: apartment.buildingId
+                })) ?? []
+            });
+
         } catch (error) {
-            console.error('🔥 Error creating user:', error)
-
-            if (error instanceof RpcException) {
-                throw error
-            }
-
-            throw new RpcException({
-                code: 500,
-                message: error.message || 'Internal server error',
-            })
+            console.error('🔥 Lỗi trong UsersService:', error);
+            return new ApiResponse(false, 'Lỗi không xác định khi tạo user', null);
         }
     }
 
@@ -104,8 +204,19 @@ export class UsersService {
 
         return this.prisma.user.update({
             where: { userId },
-            data,
-        })
+            data: {
+                ...data, // ✅ Giữ lại các trường khác
+                apartments: data.apartments
+                  ? {
+                      set: [], // 🛠 Xóa danh sách cũ (nếu cần)
+                      create: data.apartments.map((apt) => ({
+                          apartmentName: apt.apartmentName,
+                          buildingId: apt.buildingId,
+                      })),
+                  }
+                  : undefined, // ✅ Chỉ cập nhật nếu có apartments
+            },
+        });
     }
 
     async deleteUser(userId: string): Promise<{ message: string }> {

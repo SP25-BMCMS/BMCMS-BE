@@ -1,39 +1,40 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@prisma/client-Task';
-import { log } from 'console'
+import { log } from 'console';
 
 @Injectable()
 export class PrismaService
-    extends PrismaClient
-    implements OnModuleInit, OnModuleDestroy {
-    constructor(config: ConfigService) {
-      //  console.log('AreasService Initialized');  // Add a debug log to ensure service is being initialized
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
+  constructor(config: ConfigService) {
+    console.log('AreasService Initialized'); // Add a debug log to ensure service is being initialized
 
-        const url = config.get<string>('db_buildings_service')
-     // console.log("database: ", process.env.DATABASE_URL);
+    const url = config.get<string>('DB_TASKS_SERVICE');
+    // console.log("database: ", process.env.DATABASE_URL);
 
-        super({
-            datasources: {
-                db: {
-                    url,
-                },
-            },
-        })
-    }
+    super({
+      datasources: {
+        db: {
+          url,
+        },
+      },
+    });
+  }
 
-    async onModuleInit() {
-        await this.$connect()
-    }
+  async onModuleInit() {
+    await this.$connect();
+  }
 
-    async onModuleDestroy() {
-        await this.$disconnect()
-    }
+  async onModuleDestroy() {
+    await this.$disconnect();
+  }
 
-    async cleanDatabase() {
-        if (process.env.NODE_ENV === 'production') return
+  async cleanDatabase() {
+    if (process.env.NODE_ENV === 'production') return;
 
-        // teardown logic
-     //   return Promise.all([this.user.deleteMany()])
-    }
+    // teardown logic
+    //   return Promise.all([this.user.deleteMany()])
+  }
 }

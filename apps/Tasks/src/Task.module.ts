@@ -2,24 +2,30 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ClientConfigModule } from 'apps/configs/client-config.module';
 import { PrismaModule } from '../prisma/prisma.module';
-import {  InspectionsModule } from '../Inspections/Inspections.module';
-import {   TasksModule} from '../Task/Task.module';
+import { InspectionsModule } from '../Inspections/Inspections.module';
+import { TasksModule } from '../Task/Task.module';
 import { TasksController } from '../Task/Task.controller';
 import { TaskService } from '../Task/Task.service';
 import { RepairMaterialsModule } from '../RepairMaterials/RepairMaterials.module';
 import { RepairMaterialsController } from '../RepairMaterials/RepairMaterials.controller';
 import { RepairMaterialsService } from '../RepairMaterials/RepairMaterials.service';
+import { InspectionsService } from '../Inspections/Inspections.service';
+import { InspectionsController } from '../Inspections/Inspections.controller';
 
 @Module({
-  imports: [ 
+  imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ClientConfigModule,
     InspectionsModule,
     PrismaModule,
     TasksModule,
-    RepairMaterialsModule
+    RepairMaterialsModule,
   ],
-    controllers: [TasksController,RepairMaterialsController],
-      providers: [TaskService,RepairMaterialsService],
+  controllers: [
+    TasksController,
+    RepairMaterialsController,
+    InspectionsController,
+  ],
+  providers: [TaskService, RepairMaterialsService, InspectionsService],
 })
 export class TaskModule {}

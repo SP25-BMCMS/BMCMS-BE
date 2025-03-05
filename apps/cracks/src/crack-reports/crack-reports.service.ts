@@ -14,60 +14,6 @@ export class CrackReportsService {
     return  await this.prismService.crackReport.findMany();
   }
 
-  // async addCrackReport(dto: AddCrackReportDto, userId: string) {
-  //   try {
-  //     return await this.prismService.$transaction(async (prisma) => {
-  //       // 🔹 1. Tạo CrackReport trước
-  //       const newCrackReport = await prisma.crackReport.create({
-  //         data: {
-  //           buildingDetailId: dto.buildingDetailId,
-  //           description: dto.description,
-  //           status: dto.status ?? $Enums.ReportStatus.Reported, // Mặc định Reported
-  //           reportedBy: userId,
-  //           verifiedBy: null, // Nếu chưa xác minh thì để null
-  //         }
-  //       });
-  //       // 🔹 2. Nếu có CrackDetails, tạo từng cái bằng `create()`
-  //       let newCrackDetails = [];
-  //       if (dto.crackDetails?.length > 0) {
-  //         newCrackDetails = await Promise.all(
-  //           dto.crackDetails.map(async (detail) => {
-  //             return prisma.crackDetail.create({
-  //               data: {
-  //                 crackReportId: newCrackReport.crackReportId, // Liên kết CrackReport
-  //                 photoUrl: detail.photoUrl,
-  //                 status: detail.status ?? $Enums.CrackStatus.InProgress, // Mặc định InProgress
-  //                 severity: detail.severity ?? $Enums.Severity.Unknown, // Mặc định Unknown
-  //                 aiDetectionUrl: detail.aiDetectionUrl ?? detail.photoUrl,
-  //               },
-  //             });
-  //           })
-  //         );
-  //       }
-  //
-  //       return new ApiResponse(true, 'Crack Report và Crack Details đã được tạo thành công', [
-  //         { crackReport: newCrackReport, crackDetails: newCrackDetails },
-  //       ]);
-  //     });
-  //   } catch (error) {
-  //     console.error('🔥 Lỗi trong CrackReportService:', JSON.stringify(error));
-  //
-  //     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-  //       if (error.code === 'P2002') {
-  //         throw new RpcException({
-  //           status: 400,
-  //           message: 'Dữ liệu bị trùng lặp',
-  //         });
-  //       }
-  //     }
-  //
-  //     throw new RpcException({
-  //       status: 500,
-  //       message: 'Lỗi hệ thống, vui lòng thử lại sau',
-  //     });
-  //   }
-  // }
-
   async addCrackReport(dto: AddCrackReportDto, userId: string) {
     try {
       return await this.prismService.$transaction(async (prisma) => {

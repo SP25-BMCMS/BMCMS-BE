@@ -6,9 +6,4 @@ import { ResidentDto } from '../../../libs/contracts/src/residents/resident.dto'
 export class ResidentsService {
   constructor(private prisma: PrismaService) { }
 
-  async getAllResidents()
-    : Promise<{ residents: ResidentDto[] }> {
-    const residents = await this.prisma.resident.findMany()
-    return { residents: residents }
-  }
 }
