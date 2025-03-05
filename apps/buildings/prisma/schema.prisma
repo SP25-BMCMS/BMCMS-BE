@@ -6,12 +6,12 @@
 
 generator client {
   provider = "prisma-client-js"
-  output = "../../../node_modules/@prisma/client-building"
+  output   = "../../../node_modules/@prisma/client-building"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("db_buildings_service")
+  url      = env("DB_BUILDING_SERVICE")
 }
 
 model Building {
@@ -25,8 +25,8 @@ model Building {
   buildingDetails BuildingDetail[]
   // scheduleJobs    ScheduleJob[]
   areaId          String?
-    createdAt       DateTime         @default(now())  
-  updatedAt       DateTime         @updatedAt       
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 model Area {
@@ -34,39 +34,37 @@ model Area {
   name        String
   description String?
   buildings   Building[]
-      createdAt       DateTime         @default(now())  
-  updatedAt       DateTime         @updatedAt      
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model BuildingDetail {
   buildingDetailId String           @id @default(uuid())
   buildingId       String
   name             String
-   total_apartments Int // fix 26/2 
- // description      String?
-//  areaType         AreaType
+  total_apartments Int // fix 26/2 
+  // description      String?
+  //  areaType         AreaType
   //floorNumber      Int
   locationDetails  LocationDetail[]
   // crackReports     CrackReport[]
   building         Building         @relation(fields: [buildingId], references: [buildingId])
-    createdAt       DateTime         @default(now())  
-  updatedAt       DateTime         @updatedAt      
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 }
 
 model LocationDetail {
-  locationDetailId String         @id @default(uuid())
+  locationDetailId String          @id @default(uuid())
   buildingDetailId String
   roomNumber       String?
   floorNumber      Int
   positionSide     PositionSide
   areaType         AreaDetailsType
   description      String?
-  buildingDetail   BuildingDetail @relation(fields: [buildingDetailId], references: [buildingDetailId])
-    createdAt       DateTime         @default(now())  
-  updatedAt       DateTime         @updatedAt      
+  buildingDetail   BuildingDetail  @relation(fields: [buildingDetailId], references: [buildingDetailId])
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 }
-
-
 
 // model ScheduleJob {
 //   scheduleJobId String    @id @default(uuid())
@@ -88,6 +86,7 @@ enum AreaType {
   Lobby
   Other
 }
+
 enum AreaDetailsType {
   Floor
   Wall
