@@ -1,0 +1,46 @@
+### Get All WorkLogs
+GET http://localhost:3000/worklogs
+Accept: application/json
+
+### Get WorkLog by ID
+GET http://localhost:3000/worklogs/05cdb4c6-a380-4216-bb36-f2182ade3e47
+Accept: application/json
+
+### Create WorkLog
+POST http://localhost:3000/worklogs
+Content-Type: application/json
+
+{
+  "task_id": "caf9858e-bb67-4734-9fe0-52b9acd98268",
+  "title": "WorkLog for Task",
+  "description": "Worklog description here."
+}
+
+### Update WorkLog
+PUT http://localhost:3000/worklogs/05cdb4c6-a380-4216-bb36-f2182ade3e47
+Content-Type: application/json
+
+{
+  "title": "Updated WorkLog title",
+  "description": "Updated description of the WorkLog",
+  "status": "EXECUTE_CRACKS"
+}
+
+### Update WorkLog Status
+PUT http://localhost:3000/worklogs/{worklog_id}/status
+Content-Type: application/json
+
+{
+  "status": "FINAL_REVIEW"
+}
+
+### Delete WorkLog by ID
+DELETE http://localhost:3000/worklogs/{worklog_id}
+
+### Get WorkLogs by TaskId
+GET http://localhost:3000/worklogs/task/{task_id}
+Accept: application/json
+
+### Get WorkLogs by UserId
+GET http://localhost:3000/worklogs/user/{user_id}
+Accept: application/json

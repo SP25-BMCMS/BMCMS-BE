@@ -28,4 +28,4 @@ import { PassportModule } from '@nestjs/passport';
   ],
   controllers: [WorkLogController],
 })
-export class TasksModule { }
+export class worklogModule { }

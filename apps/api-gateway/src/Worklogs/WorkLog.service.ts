@@ -26,6 +26,8 @@ export class WorklogService {
     const response = await firstValueFrom(this.taskClient.send(WORKLOG_PATTERN.GET_BY_ID, { worklog_id }));
     return response as WorkLogResponseDto;   }
 
+    
+
   async updateWorkLogStatus(updateWorkLogStatusDto: any): Promise<WorkLogResponseDto> {
     const response = await firstValueFrom(this.taskClient.send(WORKLOG_PATTERN.UPDATE_STATUS, updateWorkLogStatusDto));
     return response as WorkLogResponseDto; 

@@ -8,11 +8,12 @@ import { LocationDetailModule } from './LocationDetail/locationDetail.module'
 import { CracksModule } from './cracks/cracks.module';
 import { TasksModule } from './Task/Tasks.module'
 import { TaskAssigmentModule } from './TaskAssigment/TaskAssigment.module'
+import { worklogModule } from './Worklogs/WorkLog.module'
 
 
 
 @Module({
-  imports: [UsersModule, ConfigModule.forRoot(),BuildingsModule,AreasModule,BuildingDetailModule,LocationDetailModule,CracksModule,TasksModule,TaskAssigmentModule],
+  imports: [UsersModule, ConfigModule.forRoot(),BuildingsModule,AreasModule,BuildingDetailModule,LocationDetailModule,CracksModule,TasksModule,TaskAssigmentModule,worklogModule],
  // controllers: [BuildingMaintenanceApiGatewayController],
  // providers: [BuildingMaintenanceApiGatewayService],
 })

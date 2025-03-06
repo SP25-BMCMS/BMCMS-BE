@@ -11,6 +11,11 @@ export class WorkLogController {
     return this.workLogService.createWorkLog(createWorkLogDto);
   }
 
+  // @Get()
+  // async getWorkLogs() {
+  //   return this.workLogService.;
+  // }
+
   @Get('task/:task_id')
   async getWorkLogsByTaskId(@Param('task_id') task_id: string) {
     return this.workLogService.getWorkLogsByTaskId(task_id);
@@ -21,7 +26,7 @@ export class WorkLogController {
     return this.workLogService.getWorkLogById(id);
   }
 
-  @Post('update-status')
+  @Post()
   async updateWorkLogStatus(@Body() updateWorkLogStatusDto: any) {
     return this.workLogService.updateWorkLogStatus(updateWorkLogStatusDto);
   }

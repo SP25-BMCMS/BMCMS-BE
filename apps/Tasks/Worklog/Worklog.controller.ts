@@ -3,12 +3,14 @@ import { WorkLogService } from './Worklog.service';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { WORKLOG_PATTERN } from '@app/contracts/Worklog/Worklog.patterns';
 import { WorkLogResponseDto } from '@app/contracts/Worklog/Worklog.dto';
+import { CreateWorkLogDto } from '@app/contracts/Worklog/create-Worklog.dto';
+import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 @Controller('worklogs')
 export class WorkLogController {
   constructor(private readonly workLogService: WorkLogService) {}
 
   @MessagePattern(WORKLOG_PATTERN.CREATE)
-  async createWorkLog(@Payload() createWorkLogDto: any): Promise<WorkLogResponseDto> {
+  async createWorkLog(@Payload() createWorkLogDto: CreateWorkLogDto): Promise<ApiResponse<WorkLogResponseDto>> {
     return this.workLogService.createWorkLogForTask(createWorkLogDto);
   }
 

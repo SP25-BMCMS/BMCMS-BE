@@ -1,35 +1,32 @@
+import { ApiResponse } from "@app/contracts/ApiReponse/api-response";
 import { CreateWorkLogDto } from "@app/contracts/Worklog/create-Worklog.dto";
 import { UpdateWorkLogDto } from "@app/contracts/Worklog/update.Worklog";
 import { WorkLogResponseDto } from "@app/contracts/Worklog/Worklog.dto";
 import { Injectable } from "@nestjs/common";
 import { RpcException } from "@nestjs/microservices";
 import { PrismaClient } from "@prisma/client-Task";
+import { $Enums } from "@prisma/client-Task";
 @Injectable()
 export class WorkLogService {
   private prisma = new PrismaClient();
 
   // Create WorkLog for Task
-  async createWorkLogForTask(createWorkLogForTaskDto: CreateWorkLogDto): Promise<WorkLogResponseDto> {
+  async createWorkLogForTask(createWorkLogForTaskDto: CreateWorkLogDto): Promise<ApiResponse< WorkLogResponseDto>> {
     try {
       const newWorkLog = await this.prisma.workLog.create({
         data: {
           task_id: createWorkLogForTaskDto.task_id,
           title: createWorkLogForTaskDto.title,
           description: createWorkLogForTaskDto.description,
-          status: createWorkLogForTaskDto.status,
+          status: $Enums.WorkLogStatus.INIT_INSPECTION,
         },
       });
-      return {
-        worklog_id: newWorkLog.worklog_id,
-        task_id: newWorkLog.task_id,
-        title: newWorkLog.title,
-        description: newWorkLog.description,
-        status: newWorkLog.status,
-      };
+      return new ApiResponse<WorkLogResponseDto>(true, 'WorkLog created successfully', newWorkLog);
+
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'WorkLog creation failed',
+        message: error.message,
       });
     }
   }
