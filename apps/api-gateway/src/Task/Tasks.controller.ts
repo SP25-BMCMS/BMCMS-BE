@@ -16,7 +16,7 @@ import { TaskService } from './Tasks.service';
 import { catchError, firstValueFrom, NotFoundError } from 'rxjs';
 
 @Controller('tasks')
-export class AreasController {
+export class TaskController {
   constructor(private readonly taskService: TaskService) {}
 
   @Post()

@@ -1,18 +1,17 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, Post, Put, Req, UseGuards } from '@nestjs/common'
 import { TaskAssignmentService } from './TaskAssigment.service'
-import { catchError, NotFoundError } from 'rxjs';
-import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create-taskAssigment.dto';
 import { UpdateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/update.taskAssigment';
 import { AssignmentStatus  } from '@prisma/client-Task' 
+import { ApiBody } from '@nestjs/swagger';
 
 @Controller('task-assignments')
 
 export class TaskAssignmentController {
   constructor(private readonly taskAssignmentService: TaskAssignmentService) {}
 
-  // Create a new Task Assignment
   @Post()
+  @ApiBody({ type: CreateTaskAssignmentDto })
   async createTaskAssignment(@Body() createTaskAssignmentDto: CreateTaskAssignmentDto) {
     return this.taskAssignmentService.createTaskAssignment(createTaskAssignmentDto);
   }

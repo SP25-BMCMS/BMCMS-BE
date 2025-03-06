@@ -11,6 +11,7 @@ import { RepairMaterialsController } from '../RepairMaterials/RepairMaterials.co
 import { RepairMaterialsService } from '../RepairMaterials/RepairMaterials.service';
 import { InspectionsService } from '../Inspections/Inspections.service';
 import { InspectionsController } from '../Inspections/Inspections.controller';
+import { TaskAssignmentsModule } from '../TaskAssignments/TaskAssignments.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { InspectionsController } from '../Inspections/Inspections.controller';
     PrismaModule,
     TasksModule,
     RepairMaterialsModule,
+    TaskAssignmentsModule
   ],
   controllers: [
     TasksController,
