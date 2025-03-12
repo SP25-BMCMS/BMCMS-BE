@@ -19,6 +19,7 @@ import { ScheduleResponseDto } from '@app/contracts/schedules/Schedule.dto';
 import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules';
 import { $Enums } from '@prisma/client-Schedule';
+import { ChangeScheduleTypeDto } from '@app/contracts/schedules/changeScheduleStatusDto ';
 @Controller('schedules')
 export class SchedulesController {
   constructor(private readonly schedulesService: SchedulesService) {}
@@ -41,9 +42,9 @@ export class SchedulesController {
  @Put('change-type/:schedule_id')
  async changeScheduleType(
    @Param('schedule_id') schedule_id: string,
-   @Body() schedule_type: $Enums.ScheduleType,
- ): Promise<ApiResponse<ScheduleResponseDto>> {
-   return this.schedulesService.changeScheduleType(schedule_id, schedule_type);
+   @Body() changeScheduleTypeDto: ChangeScheduleTypeDto,
+  ): Promise<ApiResponse<ScheduleResponseDto>> {
+   return this.schedulesService.changeScheduleType(schedule_id, changeScheduleTypeDto.schedule_type);
  }
 
  // Get all schedules (API Gateway)
