@@ -1,11 +1,14 @@
 -- CreateEnum
-CREATE TYPE "Role" AS ENUM ('Admin', 'Manager', 'Resident', 'Employee');
+CREATE TYPE "StaffRole" AS ENUM ('Technician', 'Leader');
+
+-- CreateEnum
+CREATE TYPE "Role" AS ENUM ('Admin', 'Manager', 'Resident', 'Staff');
 
 -- CreateEnum
 CREATE TYPE "Gender" AS ENUM ('Male', 'Female', 'Other');
 
 -- CreateEnum
-CREATE TYPE "EmploymentStatus" AS ENUM ('Active', 'Inactive', 'Probation');
+CREATE TYPE "StaffStatus" AS ENUM ('Active', 'Inactive', 'Probation');
 
 -- CreateEnum
 CREATE TYPE "PositionName" AS ENUM ('Staff', 'Leader', 'Manager', 'Admin');
@@ -28,22 +31,24 @@ CREATE TABLE "User" (
 );
 
 -- CreateTable
-CREATE TABLE "Resident" (
-    "userId" TEXT NOT NULL,
-    "apartmentNumber" TEXT,
-    "buildingId" TEXT NOT NULL,
+CREATE TABLE "UserDetails" (
+    "user_id" TEXT NOT NULL,
+    "positionId" TEXT,
+    "departmentId" TEXT,
+    "staffStatus" "StaffStatus",
+    "staffRole" "StaffRole",
 
-    CONSTRAINT "Resident_pkey" PRIMARY KEY ("userId")
+    CONSTRAINT "UserDetails_pkey" PRIMARY KEY ("user_id")
 );
 
 -- CreateTable
-CREATE TABLE "Employee" (
-    "userId" TEXT NOT NULL,
-    "positionId" TEXT NOT NULL,
-    "departmentId" TEXT NOT NULL,
-    "status" "EmploymentStatus" NOT NULL,
+CREATE TABLE "Apartment" (
+    "apartmentId" TEXT NOT NULL,
+    "apartmentName" TEXT NOT NULL,
+    "buildingId" TEXT NOT NULL,
+    "owner_id" TEXT NOT NULL,
 
-    CONSTRAINT "Employee_pkey" PRIMARY KEY ("userId")
+    CONSTRAINT "Apartment_pkey" PRIMARY KEY ("apartmentId")
 );
 
 -- CreateTable
@@ -74,22 +79,16 @@ CREATE UNIQUE INDEX "User_username_key" ON "User"("username");
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Resident_userId_key" ON "Resident"("userId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Employee_userId_key" ON "Employee"("userId");
-
--- CreateIndex
 CREATE UNIQUE INDEX "Department_departmentName_key" ON "Department"("departmentName");
 
 -- AddForeignKey
-ALTER TABLE "Resident" ADD CONSTRAINT "Resident_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("userId") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "UserDetails" ADD CONSTRAINT "UserDetails_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "User"("userId") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Employee" ADD CONSTRAINT "Employee_departmentId_fkey" FOREIGN KEY ("departmentId") REFERENCES "Department"("departmentId") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "UserDetails" ADD CONSTRAINT "UserDetails_positionId_fkey" FOREIGN KEY ("positionId") REFERENCES "WorkingPosition"("positionId") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Employee" ADD CONSTRAINT "Employee_positionId_fkey" FOREIGN KEY ("positionId") REFERENCES "WorkingPosition"("positionId") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "UserDetails" ADD CONSTRAINT "UserDetails_departmentId_fkey" FOREIGN KEY ("departmentId") REFERENCES "Department"("departmentId") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Employee" ADD CONSTRAINT "Employee_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("userId") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Apartment" ADD CONSTRAINT "Apartment_owner_id_fkey" FOREIGN KEY ("owner_id") REFERENCES "User"("userId") ON DELETE CASCADE ON UPDATE CASCADE;

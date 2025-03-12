@@ -18,7 +18,9 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./apps/building-maintenace-ai-backend/test/jest-e2e.json",
-    "prisma:generate": "npx prisma generate --schema=apps/users/prisma/schema.prisma && npx prisma generate --schema=apps/tasks/prisma/schema.prisma && npx prisma generate --schema=apps/cracks/prisma/schema.prisma && npx prisma generate --schema=apps/buildings/prisma/schema.prisma"
+    "prisma:generate": "npx prisma generate --schema=apps/users/prisma/schema.prisma && npx prisma generate --schema=apps/tasks/prisma/schema.prisma && npx prisma generate --schema=apps/cracks/prisma/schema.prisma && npx prisma generate --schema=apps/buildings/prisma/schema.prisma",
+"prisma:deploy": "npx prisma migrate deploy --schema=apps/users/prisma/schema.prisma && npx prisma migrate deploy --schema=apps/tasks/prisma/schema.prisma && npx prisma migrate deploy --schema=apps/cracks/prisma/schema.prisma && npx prisma migrate deploy --schema=apps/buildings/prisma/schema.prisma"
+
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.12.6",
