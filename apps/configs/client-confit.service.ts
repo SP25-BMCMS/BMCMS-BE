@@ -15,13 +15,11 @@ export class ClientConfigService {
     }
    
     getUsersClientPort(): number {
-      console.log("🚀 ~ Usser ~ UsserUsser ~ Usser:", this.config.get<number>('BUILDINGS_CLIENT_PORT'))
 
       return this.config.get<number>('USERS_CLIENT_PORT')
     }
 
     getBuildingsClientPort(): number {
-      console.log("🚀 ~ ClientConfigService ~ getBuildingsClientPort ~ BUILDINGS_CLIENT_PORT:", this.config.get<number>('BUILDINGS_CLIENT_PORT'))
 
       return this.config.get<number>('BUILDINGS_CLIENT_PORT')
     }
@@ -90,6 +88,22 @@ console.log("🚀 ~ ClientConfigService ~ getBuildingsClientPort ~ BUILDINGS_CLI
                   },
                 };
               };
+
+        get SchedulesClientOptions(): ClientOptions {
+      const { user, password, host, queueName } = this.getRabbitMQConfig(); // Get RabbitMQ config
+    //  const port = 3003;
+
+      return {
+        transport: Transport.RMQ,
+                  options: {
+                    urls: [`amqp://${user}:${password}@${host}`],
+                    queue: queueName,
+                    queueOptions: {
+                      durable: true,
+                    },
+                  },
+                };
+              };        
 
   //   get buildingsClientOptions(): ClientOptions {
   //     return {
