@@ -28,9 +28,17 @@ export class WorklogService {
 
     
 
-  async updateWorkLogStatus(updateWorkLogStatusDto: any): Promise<WorkLogResponseDto> {
-    const response = await firstValueFrom(this.taskClient.send(WORKLOG_PATTERN.UPDATE_STATUS, updateWorkLogStatusDto));
-    return response as WorkLogResponseDto; 
+    async updateWorkLogStatus(worklog_id: string, status: string): Promise<WorkLogResponseDto> {
+      console.log("🚀 ~ WorklogService ~ updateWorkLogStatus ~ worklog_id:", worklog_id)
+      const updateWorkLogStatusDto = { worklog_id, status };  // Tạo đối tượng DTO với worklog_id và status
+      const response = await firstValueFrom(this.taskClient.send(WORKLOG_PATTERN.UPDATE_STATUS, updateWorkLogStatusDto));
+      return response as WorkLogResponseDto; 
+    }
+
+    
+    async getAllWorkLogs(): Promise<WorkLogResponseDto[]> {
+      const response = await firstValueFrom(this.taskClient.send(WORKLOG_PATTERN.GET, {})); 
+      return response as WorkLogResponseDto[];
     }
 
   // async getWorkLogsByUserId(user_id: string): Promise<WorkLogResponseDto[]> {

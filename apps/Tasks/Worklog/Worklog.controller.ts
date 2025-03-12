@@ -5,9 +5,15 @@ import { WORKLOG_PATTERN } from '@app/contracts/Worklog/Worklog.patterns';
 import { WorkLogResponseDto } from '@app/contracts/Worklog/Worklog.dto';
 import { CreateWorkLogDto } from '@app/contracts/Worklog/create-Worklog.dto';
 import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
+import { UpdateWorkLogStatusDto } from '@app/contracts/Worklog/update.Worklog-status';
 @Controller('worklogs')
 export class WorkLogController {
   constructor(private readonly workLogService: WorkLogService) {}
+
+  @MessagePattern(WORKLOG_PATTERN.GET)
+  async getAllWorkLogs(): Promise<ApiResponse<WorkLogResponseDto[]>> {
+    return this.workLogService.getAllWorkLogs();
+  }
 
   @MessagePattern(WORKLOG_PATTERN.CREATE)
   async createWorkLog(@Payload() createWorkLogDto: CreateWorkLogDto): Promise<ApiResponse<WorkLogResponseDto>> {
@@ -15,18 +21,20 @@ export class WorkLogController {
   }
 
   @MessagePattern(WORKLOG_PATTERN.GET_BY_TASK_ID)
-  async getWorkLogsByTaskId(@Payload() payload: { task_id: string }): Promise<WorkLogResponseDto[]> {
+  async getWorkLogsByTaskId(@Payload() payload: { task_id: string }): Promise<ApiResponse<WorkLogResponseDto[]>> {
     return this.workLogService.getWorkLogsByTaskId(payload.task_id);
   }
 
   @MessagePattern(WORKLOG_PATTERN.GET_BY_ID)
-  async getWorkLogById(@Payload() payload: { worklog_id: string }): Promise<WorkLogResponseDto> {
+  async getWorkLogById(@Payload() payload: { worklog_id: string }): Promise<ApiResponse<WorkLogResponseDto>> {
     return this.workLogService.getWorkLogById(payload.worklog_id);
   }
 
-  @MessagePattern(WORKLOG_PATTERN.UPDATE_STATUS)
-  async updateWorkLogStatus(@Payload() payload: any): Promise<WorkLogResponseDto> {
-    return this.workLogService.updateWorkLogStatus(payload);
+  @MessagePattern(WORKLOG_PATTERN.UPDATE_STATUS) // Sử dụng pattern để xử lý
+  async updateWorkLogStatus(updateWorkLogStatusDto: UpdateWorkLogStatusDto) {
+    console.log("🚀 ~ updateWorkLogStatus ~ UpdateWorkLogStatusDto:", updateWorkLogStatusDto)
+    // Truyền dữ liệu vào service để cập nhật trạng thái
+    return this.workLogService.updateWorkLogStatus(updateWorkLogStatusDto);
   }
 
 //   @MessagePattern(WORKLOG_PATTERN.GET_BY_USER_ID)

@@ -26,13 +26,21 @@ Content-Type: application/json
   "status": "EXECUTE_CRACKS"
 }
 
+# ### Update WorkLog Status
+# PUT http://localhost:3000/worklogs/05cdb4c6-a380-4216-bb36-f2182ade3e47/status
+# Content-Type: application/json
+
+# {
+#   "status": "EXECUTE_CRACKS"
+# }
+
 ### Update WorkLog Status
-PUT http://localhost:3000/worklogs/{worklog_id}/status
+
+PUT http://localhost:3000/update-status/EXECUTE_CRACKS
+
+PUT http://localhost:3000/update-status/EXECUTE_CRACKS
 Content-Type: application/json
 
-{
-  "status": "FINAL_REVIEW"
-}
 
 ### Delete WorkLog by ID
 DELETE http://localhost:3000/worklogs/{worklog_id}

@@ -1,4 +1,5 @@
 export const WORKLOG_PATTERN = {
+  GET: 'get_all_worklog',
   CREATE: 'create_worklog',
   GET_BY_TASK_ID: 'get_worklogs_by_task_id',
   UPDATE_STATUS: 'update_worklog_status',

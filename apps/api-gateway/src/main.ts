@@ -8,7 +8,7 @@ async function bootstrap() {
   const app = await NestFactory.create(BuildingMaintenanceApiGatewayModule)
   app.enableCors({
     origin: (origin, callback) => {
-      const allowedOrigins = ['http://localhost:5173']
+      const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000']
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true)
       } else {
