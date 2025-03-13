@@ -31,6 +31,8 @@ model UserDetails {
   staffRole    StaffRole?
 
   user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  position     WorkingPosition? @relation(fields: [positionId], references: [positionId])
+  department   Department?      @relation(fields: [departmentId], references: [departmentId])
 }
 
 model Apartment {
@@ -48,6 +50,9 @@ model Department {
   description    String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+
+  UserDetails UserDetails[]
 }
 
 model WorkingPosition {
@@ -55,6 +60,8 @@ model WorkingPosition {
   positionName PositionName
   description  String?
   status       PositionStatus
+
+  UserDetails UserDetails[]
 }
 
 enum StaffRole {

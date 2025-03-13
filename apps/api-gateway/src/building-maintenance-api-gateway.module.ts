@@ -7,11 +7,14 @@ import { BuildingDetailModule } from './BuildingDetail/buildingDetail.module'
 import { LocationDetailModule } from './LocationDetail/locationDetail.module'
 import { CracksModule } from './cracks/cracks.module';
 import { TasksModule } from './Task/Tasks.module'
+import { TaskAssigmentModule } from './TaskAssigment/TaskAssigment.module'
+import { worklogModule } from './Worklogs/WorkLog.module'
+import { SchedulesModule } from './schedules/Schedules.module'
 
 
 
 @Module({
-  imports: [UsersModule, ConfigModule.forRoot(),BuildingsModule,AreasModule,BuildingDetailModule,LocationDetailModule,CracksModule,TasksModule],
+  imports: [UsersModule, ConfigModule.forRoot(),BuildingsModule,AreasModule,BuildingDetailModule,LocationDetailModule,CracksModule,TasksModule,TaskAssigmentModule,worklogModule,SchedulesModule],
  // controllers: [BuildingMaintenanceApiGatewayController],
  // providers: [BuildingMaintenanceApiGatewayService],
 })

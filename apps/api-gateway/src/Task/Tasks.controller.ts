@@ -3,27 +3,18 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
-  HttpStatus, Inject,
-  NotFoundException,
   Param, Patch,
   Post,
   Put,
-  Req,
-  UseGuards,
 } from '@nestjs/common';
 import { TaskService } from './Tasks.service';
-import { catchError, firstValueFrom, NotFoundError } from 'rxjs';
-import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
-import { ClientProxy } from '@nestjs/microservices';
-import { TASK_CLIENT } from '../constraints';
 import { UpdateInspectionDto } from '../../../../libs/contracts/src/inspections/update-inspection.dto';
 import { CreateRepairMaterialDto } from 'libs/contracts/src/tasks/create-repair-material.dto';
 @Controller('tasks')
-export class AreasController {
-  constructor(private readonly taskService: TaskService,
-  ) { }
 
+export class TaskController {
+  constructor(private readonly taskService: TaskService) {}
+  
   @Post()
   async createTask(@Body() createTaskDto: any) {
     return this.taskService.createTask(createTaskDto);

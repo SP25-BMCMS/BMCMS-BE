@@ -40,6 +40,6 @@ Content-Type: application/json
 DELETE http://localhost:3000/tasks/5ec2f597-45d0-40f9-b281-ad602e5296b6
 ### Get all task by status
 
-GET http://localhost:3000/tasks/status/{status}
+GET http://localhost:3000/tasks/status/Assigned
 
 Accept: application/json

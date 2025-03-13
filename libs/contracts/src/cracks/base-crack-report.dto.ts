@@ -1,7 +1,7 @@
-import { IsUUID, IsString, IsOptional, IsEnum, ValidateNested, IsArray } from 'class-validator';
 import { $Enums } from '@prisma/client-cracks';
 import { Type } from 'class-transformer';
 import { CreateCrackDetailDto } from './create-crack-detail.dto';
+import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class BaseCrackReportDto {
   @IsUUID()

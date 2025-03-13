@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/@prisma/client-Schedule"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DB_SCHEDULE_SERVICE")
+}
+
+  model Schedule {
+    schedule_id   String    @id @default(uuid())
+    schedule_name String    @db.VarChar(100)
+    schedule_type ScheduleType
+    description   String?
+    start_date    DateTime? @db.Date
+    end_date      DateTime? @db.Date
+    created_at    DateTime  @default(now()) @db.Timestamp
+    updated_at    DateTime  @default(now()) @updatedAt @db.Timestamp
+
+    scheduleJobs  ScheduleJob[]
+  }
+
+model ScheduleJob {
+  schedule_job_id String    @id @default(uuid())
+  schedule_id     String
+  run_date        DateTime  @db.Date
+  status          ScheduleJobStatus
+  created_at      DateTime  @default(now()) @db.Timestamp
+  updated_at      DateTime  @default(now()) @updatedAt @db.Timestamp
+  building_id     Int
+
+  schedule        Schedule  @relation(fields: [schedule_id], references: [schedule_id])
+}
+
+enum ScheduleType {
+  Daily
+  Weekly
+  Monthly
+  Yearly
+  Specific
+}
+
+enum ScheduleJobStatus {
+  Pending
+  InProgress
+  Completed
+  Cancel
+}
