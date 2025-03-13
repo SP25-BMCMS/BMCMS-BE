@@ -5,6 +5,8 @@ import { USERS_CLIENT } from '../../constraints'
 import { UserInterface } from './users.interface'
 import { createUserDto } from 'libs/contracts/src/users/create-user.dto';
 import { ApiResponse } from '../../../../../libs/contracts/src/ApiReponse/api-response';
+import { CreateWorkingPositionDto } from 'libs/contracts/src/users/create-working-position.dto';
+import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
@@ -54,4 +56,40 @@ export class UsersService implements OnModuleInit {
     return await lastValueFrom(this.userService.test(data))
   }
 
+  // Working Position Methods
+  async createWorkingPosition(data: CreateWorkingPositionDto) {
+    return await lastValueFrom(
+      this.userService.createWorkingPosition(data).pipe(
+        catchError((error) => {
+          return throwError(() => new HttpException(error.details || 'Lỗi gRPC không xác định', HttpStatus.BAD_REQUEST));
+        })
+      )
+    );
+  }
+
+  async getAllWorkingPositions() {
+    return await firstValueFrom(this.userService.getAllWorkingPositions({}));
+  }
+
+  async getWorkingPositionById(positionId: string) {
+    return await lastValueFrom(this.userService.getWorkingPositionById({ positionId }));
+  }
+
+
+  async deleteWorkingPosition(positionId: string) {
+    return await lastValueFrom(this.userService.deleteWorkingPosition({ positionId }));
+  }
+
+  async createDepartment(data: CreateDepartmentDto) {
+    return await lastValueFrom(
+      this.userService.createDepartment(data).pipe(
+        catchError((error) => {
+          return throwError(() => new HttpException(
+            error.details || 'Lỗi gRPC không xác định',
+            HttpStatus.BAD_REQUEST
+          ));
+        })
+      )
+    );
+  }
 }

@@ -1,6 +1,8 @@
 import { Observable } from 'rxjs';
 import { createUserDto } from '../../../../../libs/contracts/src/users/create-user.dto';
 import { ApiResponse } from '../../../../../libs/contracts/src/ApiReponse/api-response';
+import { CreateWorkingPositionDto } from '../../../../../libs/contracts/src/users/create-working-position.dto';
+import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
 
 export interface UserInterface {
   login(data: { username: string, password: string }): Observable<any>;
@@ -20,4 +22,13 @@ export interface UserInterface {
   getResidentByUsername(data: { username: string }): Observable<any>;
   getResidentByEmail(data: { email: string }): Observable<any>;
   getResidentByPhone(data: { phone: string }): Observable<any>;
+
+  // Working Position Methods
+  createWorkingPosition(data: CreateWorkingPositionDto): Observable<any>;
+  getAllWorkingPositions({ }): Observable<any>;
+  getWorkingPositionById(data: { positionId: string }): Observable<any>;
+  deleteWorkingPosition(data: { positionId: string }): Observable<any>;
+
+  // Department Methods
+  createDepartment(data: CreateDepartmentDto): Observable<any>;
 }

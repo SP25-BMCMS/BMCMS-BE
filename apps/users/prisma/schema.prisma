@@ -30,9 +30,9 @@ model UserDetails {
   staffStatus  StaffStatus? // Chỉ Staff
   staffRole    StaffRole?
 
-  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  position     WorkingPosition? @relation(fields: [positionId], references: [positionId])
-  department   Department?      @relation(fields: [departmentId], references: [departmentId])
+  user       User             @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  position   WorkingPosition? @relation(fields: [positionId], references: [positionId])
+  department Department?      @relation(fields: [departmentId], references: [departmentId])
 }
 
 model Apartment {
@@ -50,7 +50,6 @@ model Department {
   description    String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-
 
   UserDetails UserDetails[]
 }
