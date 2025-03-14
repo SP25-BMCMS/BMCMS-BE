@@ -1,21 +1,24 @@
-// libs/contracts/src/WorkLogs/worklog.response.dto.ts
-import { $Enums } from '@prisma/client-Task';
-import { IsString, IsUUID, IsDate, IsOptional } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
-export class WorkLogResponseDto {
-  @IsUUID()
-  worklog_id: string;
+export class ScheduleJobResponseDto {
+  @ApiProperty()
+  schedule_job_id: string;
 
-  @IsUUID()
-  task_id: string;
+  @ApiProperty()
+  schedule_id: string;
 
-  @IsString()
-  title: string;
+  @ApiProperty()
+  run_date: Date;
 
-  @IsString()
-  description: string;
+  @ApiProperty()
+  status: string;
 
-  @IsOptional()
-  @IsString()
-  @IsOptional()
-  status?: $Enums.WorkLogStatus;}
+  @ApiProperty()
+  created_at: Date;
+
+  @ApiProperty()
+  updated_at: Date;
+
+  @ApiProperty()
+  building_id: string;
+}

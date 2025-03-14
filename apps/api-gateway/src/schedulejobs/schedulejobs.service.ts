@@ -16,6 +16,7 @@ import { CreateScheduleJobDto } from '@app/contracts/schedulesjob/create-schedul
 import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 import { SCHEDULEJOB_PATTERN } from '@app/contracts/schedulesjob/ScheduleJob.patterns';
 import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status';
+import { UpdateScheduleJobDto } from '@app/contracts/schedulesjob/UpdateScheduleJobDto';
 
 // import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto'
 // import { buildingsDto } from '@app/contracts/buildings/buildings.dto'
@@ -72,6 +73,19 @@ export class schedulejobsService {
         'Error occurred while updating schedule job status',
         HttpStatus.BAD_REQUEST,
       );
+    }
+  }async updateScheduleJob(
+    schedule_job_id: string,
+    updateScheduleJobDto: UpdateScheduleJobDto
+  ): Promise<any> {
+    try {
+      // Sending the request to the microservice
+      return await this.scheduleJobClient.send(SCHEDULEJOB_PATTERN.UPDATE, {
+        schedule_job_id,
+        updateData: updateScheduleJobDto,
+      });
+    } catch (error) {
+      throw new Error('Failed to update schedule job in microservice');
     }
   }
 }

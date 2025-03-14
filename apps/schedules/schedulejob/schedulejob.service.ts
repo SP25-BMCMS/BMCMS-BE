@@ -6,6 +6,7 @@ import { ScheduleJobResponseDto } from '@app/contracts/schedulesjob/schedule-job
 import { $Enums, PrismaClient } from '@prisma/client-Schedule';
 import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status';
+import { UpdateScheduleJobDto } from '@app/contracts/schedulesjob/UpdateScheduleJobDto';
 
 @Injectable()
 export class InspectionsService {
@@ -83,6 +84,29 @@ export class InspectionsService {
       throw new RpcException({
         statusCode: 400,
         message: "Schedule job status update failed",
+      });
+    }
+  }
+  async updateScheduleJob(
+    schedule_job_id: string,
+    updateData: Partial<UpdateScheduleJobDto>  // Partial allows updating only the fields provided
+  ): Promise<ApiResponse<ScheduleJobResponseDto>> {
+    try {
+      // Try to update the schedule job with the given data
+      const updatedScheduleJob = await this.prisma.scheduleJob.update({
+        where: { schedule_job_id },
+        data: {
+          schedule_id: updateData.schedule_id,  // Nếu có, cập nhật schedule_id
+          run_date: updateData.run_date,  // Nếu có, cập nhật run_date
+          status: updateData.status,  // Nếu có, cập nhật status
+          building_id: updateData.building_id,  // Nếu có, cập nhật building_id        },
+      }});
+
+      return new ApiResponse<ScheduleJobResponseDto>(true, "Schedule job updated successfully", updatedScheduleJob);
+    } catch (error) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "Schedule job update failed",
       });
     }
   }

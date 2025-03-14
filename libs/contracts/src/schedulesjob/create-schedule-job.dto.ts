@@ -36,11 +36,11 @@ export class CreateScheduleJobDto {
 
   @ApiProperty({
     description: 'The ID of the building associated with the job (optional)',
-    type: Number,
+    type: String,
     example: 1,
     required: false,
   })
   @IsOptional()
-  @IsInt()
-  building_id?: number;
+  @IsString()
+  building_id?: string;
 }
