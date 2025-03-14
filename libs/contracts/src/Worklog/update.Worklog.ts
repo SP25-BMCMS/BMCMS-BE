@@ -1,6 +1,6 @@
 import { IsUUID, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { $Enums } from '@prisma/client-Task'; // Assuming $Enums contains WorkLogStatus enum
+import { $Enums, WorkLogStatus } from '@prisma/client-Task'; // Assuming $Enums contains WorkLogStatus enum
 
 export class UpdateWorkLogDto {
   @ApiProperty({
@@ -29,12 +29,12 @@ export class UpdateWorkLogDto {
   description?: string;
 
   @ApiProperty({
-    description: 'Status of the work log',
-    enum: $Enums.WorkLogStatus,
-    enumName: 'WorkLogStatus',
+    description: 'The status of the work log (optional)',
+    enum: WorkLogStatus,  // Liên kết enum với status
+    example: WorkLogStatus.CANCELLED +"INIT_INSPECTION,WAIT_FOR_DEPOSIT,EXECUTE_CRACKS,CONFIRM_NO_PENDING_ISSUES,FINAL_REVIEW,CANCELLED",
     required: false,
-    example: $Enums.WorkLogStatus.INIT_INSPECTION,
   })
+  @IsOptional()
   @IsOptional()
   status?: $Enums.WorkLogStatus;
 }

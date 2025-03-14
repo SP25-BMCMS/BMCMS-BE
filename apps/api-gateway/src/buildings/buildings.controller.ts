@@ -1,6 +1,9 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, Post, Put, Req, UseGuards } from '@nestjs/common'
 import { BuildingsService } from './Buildings.service'
 import { catchError, NotFoundError } from 'rxjs';
+import { CreateBuildingDetailDto } from '@app/contracts/BuildingDetails/create-buildingdetails.dto';
+import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto';
+import { UpdateBuildingDto } from '@app/contracts/buildings/update-buildings.dto';
 
 @Controller('building')
 export class BuildingsController {
@@ -24,13 +27,13 @@ export class BuildingsController {
   }
 
   @Post()
-  async createBuilding(@Body() createBuildingDto: any) {
+  async createBuilding(@Body() createBuildingDto: CreateBuildingDto) {
     return (await this.BuildingsService.createBuilding(createBuildingDto))
 
   }
 
   @Put(':id')
-  async updateBuilding(@Param('id') id: string, @Body() updateBuildingDto: any) {
+  async updateBuilding(@Param('id') id: string, @Body() updateBuildingDto: UpdateBuildingDto) {
     return this.BuildingsService.updateBuilding({ ...updateBuildingDto, buildingId: id });
   }
 

@@ -7,6 +7,7 @@ import { UsersService } from './users.service'
 import { createUserDto } from 'libs/contracts/src/users/create-user.dto'
 import { RolesGuard } from '../../guards/role.guard'
 import { ApiResponse } from '../../../../../libs/contracts/src/ApiReponse/api-response';
+import { LoginDto } from '@app/contracts/users/login.dto';
 
 @Controller('auth')
 export class UsersController {
@@ -14,9 +15,12 @@ export class UsersController {
 
     @UseGuards(PassportLocalGuard)
     @Post('login')
-    login(@Body() data: { username: string, password: string }) {
-        return this.usersService.login(data)
-    }
+    // login(@Body() data: { username: string, password: string }) {
+    //     return this.usersService.login(data)
+    // }
+  login(@Body() data: LoginDto) {
+    return this.usersService.login(data);
+  }
 
     @UseGuards(PassportJwtAuthGuard)
     @Get("me")

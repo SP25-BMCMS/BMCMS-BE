@@ -14,6 +14,9 @@ import {
 } from '@nestjs/common';
 import { TaskService } from './Tasks.service';
 import { catchError, firstValueFrom, NotFoundError } from 'rxjs';
+import { UpdateTaskDto } from '@app/contracts/tasks/update.Task';
+import { ApiOperation, ApiParam } from '@nestjs/swagger';
+import { ChangeTaskStatusDto } from '@app/contracts/tasks/ChangeTaskStatus.Dto ';
 
 @Controller('tasks')
 export class TaskController {
@@ -27,7 +30,7 @@ export class TaskController {
   @Put(':task_id')
   async updateTask(
     @Param('task_id') task_id: string,
-    @Body() updateTaskDto: any,
+    @Body() updateTaskDto: UpdateTaskDto,
   ) {
     return this.taskService.updateTask(task_id, updateTaskDto);
   }
@@ -43,9 +46,16 @@ export class TaskController {
   }
 
   @Put(':task_id/status')
+  @ApiOperation({ summary: 'Change the status of a task' })
+  @ApiParam({
+    name: 'task_id',
+    description: 'The ID of the task to update',
+    type: String,
+    example: 'abc123',  // Ví dụ về task_id
+  })
   async changeTaskStatus(
     @Param('task_id') task_id: string,
-    @Body() body: { status: string },
+    @Body() body: ChangeTaskStatusDto ,
   ) {
     console.log(
       '🚀 ~ AreasController ~ changeTaskStatus ~ status:',

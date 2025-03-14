@@ -3,7 +3,7 @@ import { TaskAssignmentService } from './TaskAssigment.service'
 import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create-taskAssigment.dto';
 import { UpdateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/update.taskAssigment';
 import { AssignmentStatus  } from '@prisma/client-Task' 
-import { ApiBody } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiParam } from '@nestjs/swagger';
 
 @Controller('task-assignments')
 
@@ -60,6 +60,13 @@ export class TaskAssignmentController {
 
   // Get Task Assignments by Status
   @Get('status/:status')
+  @ApiOperation({ summary: 'Get task assignments by status' })
+  @ApiParam({
+    name: 'status',
+    description: 'The status of the task assignment (e.g., "completed", "pending","inprogress","reassigned")',
+    type: String,
+    example: 'completed',  // Ví dụ về giá trị status
+  })
   async getTaskAssignmentsByStatus(@Param('status') status: AssignmentStatus) {
     return this.taskAssignmentService.getTaskAssignmentsByStatus(status);
   }
