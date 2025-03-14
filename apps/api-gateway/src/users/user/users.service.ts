@@ -81,15 +81,18 @@ export class UsersService implements OnModuleInit {
   }
 
   async createDepartment(data: CreateDepartmentDto) {
-    return await lastValueFrom(
-      this.userService.createDepartment(data).pipe(
-        catchError((error) => {
-          return throwError(() => new HttpException(
-            error.details || 'Lỗi gRPC không xác định',
-            HttpStatus.BAD_REQUEST
-          ));
-        })
-      )
-    );
+    try {
+      const response = await firstValueFrom(
+        this.userService.createDepartment(data).pipe(
+          catchError((error) => {
+            return throwError(() => new HttpException(error.details || 'Lỗi gRPC không xác định', HttpStatus.NOT_FOUND));
+          })
+        )
+      );
+
+      return new ApiResponse(response.isSuccess, response.message, response.data);
+    } catch (error) {
+      return new ApiResponse(false, error.message || 'Lỗi khi tạo Department', null);
+    }
   }
 }

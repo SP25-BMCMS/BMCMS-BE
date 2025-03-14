@@ -51,32 +51,32 @@ export class InspectionsService {
     }
   }
 
-  async GetInspectionByCrackId(crack_id: string) {
-    try {
-      const inspections = await this.prisma.inspection.findMany({
-        where: { crack_id },
-      });
+  // async GetInspectionByCrackId(crack_id: string) {
+  //   try {
+  //     const inspections = await this.prisma.inspection.findMany({
+  //       where: { crack_id },
+  //     });
 
-      if (inspections.length === 0) {
-        return {
-          statusCode: 404,
-          message: 'No inspections found for this crack id = ' + crack_id,
-        };
-      }
+  //     if (inspections.length === 0) {
+  //       return {
+  //         statusCode: 404,
+  //         message: 'No inspections found for this crack id = ' + crack_id,
+  //       };
+  //     }
 
-      return {
-        statusCode: 200,
-        message: 'Inspections retrieved successfully',
-        data: inspections
-      };
-    } catch (error) {
-      throw new RpcException({
-        statusCode: 500,
-        message: 'Error retrieving inspections for crack',
-        error: error.message
-      });
-    }
-  }
+  //     return {
+  //       statusCode: 200,
+  //       message: 'Inspections retrieved successfully',
+  //       data: inspections
+  //     };
+  //   } catch (error) {
+  //     throw new RpcException({
+  //       statusCode: 500,
+  //       message: 'Error retrieving inspections for crack',
+  //       error: error.message
+  //     });
+  //   }
+  // }
 
   async GetAllInspections() {
     try {

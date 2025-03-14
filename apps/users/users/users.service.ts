@@ -1,5 +1,5 @@
-import { BadRequestException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices'
+import { BadRequestException, HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { ClientProxy, RpcException } from '@nestjs/microservices'
 import * as bcrypt from 'bcrypt'
 import { PrismaService } from '../prisma/prisma.service'
 import { UserDto } from '../../../libs/contracts/src/users/user.dto';
@@ -7,12 +7,15 @@ import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto
 import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response';
 import { Role } from '@prisma/client-users';
 import { CreateWorkingPositionDto } from '../../../libs/contracts/src/users/create-working-position.dto';
-import { PositionName, PositionStatus } from '@prisma/client-users';
+import { PositionName } from '@prisma/client-users';
 import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
+import { catchError, firstValueFrom, throwError, timeout } from 'rxjs';
 
 @Injectable()
 export class UsersService {
-    constructor(private prisma: PrismaService) { }
+    constructor(private prisma: PrismaService,
+        @Inject('BUILDING_CLIENT') private readonly buildingClient: ClientProxy
+    ) { }
 
     async getUserByUsername(username: string): Promise<UserDto | null> {
 
@@ -71,7 +74,6 @@ export class UsersService {
                                     positionId: userData.positionId ?? null,
                                     departmentId: userData.departmentId ?? null,
                                     staffStatus: userData.staffStatus ?? null,
-                                    staffRole: userData.staffRole ?? null,
                                 }
                             }
                             : undefined,
@@ -108,7 +110,6 @@ export class UsersService {
                     positionId: fullUser?.userDetails.positionId,
                     departmentId: fullUser?.userDetails.departmentId,
                     staffStatus: fullUser?.userDetails.staffStatus,
-                    staffRole: fullUser?.userDetails.staffRole,
                 } : null,
                 apartments: fullUser?.apartments.map(apartment => ({
                     apartmentName: apartment.apartmentName,
@@ -164,15 +165,12 @@ export class UsersService {
                 throw new Error(`Invalid positionName: ${data.positionName}`);
             }
 
-            if (!Object.values(PositionStatus).includes(data.status as PositionStatus)) {
-                throw new Error(`Invalid status: ${data.status}`);
-            }
+
 
             const newPosition = await this.prisma.workingPosition.create({
                 data: {
                     positionName: data.positionName as PositionName,  // ✅ Chuyển string thành enum
                     description: data.description,
-                    status: data.status as PositionStatus  // ✅ Chuyển string thành enum
                 }
             });
 
@@ -183,7 +181,6 @@ export class UsersService {
                     positionId: newPosition.positionId,
                     positionName: newPosition.positionName.toString(),  // ✅ Chuyển Enum thành chuỗi
                     description: newPosition.description,
-                    status: newPosition.status.toString()  // ✅ Chuyển Enum thành chuỗi
                 }
             };
         } catch (error) {
@@ -200,7 +197,6 @@ export class UsersService {
             positionId: string;
             positionName: PositionName;
             description?: string;
-            status: PositionStatus;
         }[]
     }> {
         try {
@@ -210,7 +206,6 @@ export class UsersService {
                     positionId: position.positionId,
                     positionName: position.positionName,
                     description: position.description,
-                    status: position.status
                 }))
             };
         } catch (error) {
@@ -229,7 +224,6 @@ export class UsersService {
             positionId: string;
             positionName: PositionName;
             description?: string;
-            status: PositionStatus;
         } | null;
     }> {
         try {
@@ -251,7 +245,6 @@ export class UsersService {
                     positionId: position.positionId,
                     positionName: position.positionName,
                     description: position.description,
-                    status: position.status
                 }
             };
         } catch (error) {
@@ -270,7 +263,6 @@ export class UsersService {
             positionId: string;
             positionName: PositionName;
             description?: string;
-            status: PositionStatus;
         } | null;
     }> {
         try {
@@ -285,7 +277,6 @@ export class UsersService {
                     positionId: deletedPosition.positionId,
                     positionName: deletedPosition.positionName,
                     description: deletedPosition.description,
-                    status: deletedPosition.status
                 }
             };
         } catch (error) {
@@ -299,25 +290,36 @@ export class UsersService {
 
     async createDepartment(data: CreateDepartmentDto) {
         try {
-            console.log('Received CreateDepartment request:', data);
+            console.log('📥 Checking if area exists in Building Microservice:', data.area);
 
-            // Kiểm tra xem Department đã tồn tại chưa
-            const existingDepartment = await this.prisma.department.findUnique({
-                where: { departmentName: data.departmentName },
-            });
+            const areaExistsResponse = await firstValueFrom(
+                this.buildingClient.send('check_area_exists', { areaName: data.area }).pipe(
+                    timeout(5000),
+                    catchError((err) => {
+                        console.error('❌ Error contacting Building Microservice:', err);
+                        throw new RpcException({
+                            statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+                            message: 'Building Microservice is not responding'
+                        });
+                    })
+                )
+            );
 
-            if (existingDepartment) {
+            if (!areaExistsResponse.exists) {
+                console.error(`❌ Area '${data.area}' does not exist in Building Microservice`);
                 throw new RpcException({
-                    statusCode: HttpStatus.CONFLICT,
-                    message: 'Department already exists'
+                    statusCode: HttpStatus.NOT_FOUND,
+                    message: `Area '${data.area}' does not exist in Building Microservice`
                 });
             }
 
-            // Tạo mới Department
+            console.log('✅ Area exists, creating Department...');
+
             const newDepartment = await this.prisma.department.create({
                 data: {
                     departmentName: data.departmentName,
                     description: data.description,
+                    area: data.area
                 }
             });
 
@@ -327,14 +329,20 @@ export class UsersService {
                 data: {
                     departmentId: newDepartment.departmentId,
                     departmentName: newDepartment.departmentName,
-                    description: newDepartment.description
+                    description: newDepartment.description,
+                    area: newDepartment.area
                 }
             };
         } catch (error) {
             console.error('🔥 Error creating department:', error);
+
+            if (error instanceof RpcException) {
+                throw error;
+            }
+
             throw new RpcException({
-                statusCode: HttpStatus.BAD_REQUEST,
-                message: 'Failed to create department'
+                statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                message: error.message || 'Unexpected error creating department'
             });
         }
     }

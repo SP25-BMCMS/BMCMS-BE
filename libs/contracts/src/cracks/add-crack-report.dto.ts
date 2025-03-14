@@ -14,7 +14,7 @@ export class AddCrackReportDto {
 
   @IsEnum($Enums.ReportStatus)
   @IsOptional()
-  status?: $Enums.ReportStatus = $Enums.ReportStatus.Reported; // Mặc định Reported
+  status?: $Enums.ReportStatus = $Enums.ReportStatus.Pending; // Mặc định Reported
 
   @IsArray()
   @ValidateNested({ each: true })

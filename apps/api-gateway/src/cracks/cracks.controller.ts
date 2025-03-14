@@ -19,7 +19,7 @@ import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard';
 @Controller('cracks')
 @UseGuards(PassportJwtAuthGuard)
 export class CracksController {
-  constructor(@Inject('CRACK_SERVICE') private readonly crackService: ClientProxy) {}
+  constructor(@Inject('CRACK_SERVICE') private readonly crackService: ClientProxy) { }
 
   @Get('crack-reports')
   async getAllCrackReports() {
@@ -74,6 +74,28 @@ export class CracksController {
       this.crackService.send({ cmd: 'delete-crack-report' }, id).pipe(
         catchError(err => {
           throw new NotFoundException(err.message);
+        })
+      )
+    );
+  }
+
+  @Patch('crack-reports/:id/status')
+  async updateCrackReportStatus(
+    @Param('id') id: string,
+    @Req() req
+  ) {
+    const managerId = req.user.userId; // Get manager ID from token
+
+    return firstValueFrom(
+      this.crackService.send(
+        { cmd: 'update-crack-report-status' },
+        {
+          crackReportId: id,
+          managerId
+        }
+      ).pipe(
+        catchError(err => {
+          throw new BadRequestException(err.message);
         })
       )
     );

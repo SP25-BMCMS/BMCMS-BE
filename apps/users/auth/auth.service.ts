@@ -6,7 +6,7 @@ import { RpcException } from '@nestjs/microservices'
 import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto';
 import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response';
 import { CreateWorkingPositionDto } from '../../../libs/contracts/src/users/create-working-position.dto';
-import { PositionName, PositionStatus } from '@prisma/client-users';
+import { PositionName } from '@prisma/client-users';
 import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
 
 type AuthInput = { username: string; password: string }

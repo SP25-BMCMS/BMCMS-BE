@@ -1,5 +1,5 @@
 import { IsNotEmpty, IsOptional, IsString, IsEnum } from 'class-validator';
-import { PositionName, PositionStatus } from '@prisma/client-users';
+import { PositionName } from '@prisma/client-users';
 
 export class CreateWorkingPositionDto {
     @IsNotEmpty()
@@ -10,7 +10,5 @@ export class CreateWorkingPositionDto {
     @IsString()
     description?: string;
 
-    @IsNotEmpty()
-    @IsEnum(PositionStatus, { message: `status must be one of: ${Object.values(PositionStatus).join(', ')}` })  // ✅ Kiểm tra Enum
-    status: PositionStatus;
+
 }

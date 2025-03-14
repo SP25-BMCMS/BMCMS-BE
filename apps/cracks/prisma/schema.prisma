@@ -15,10 +15,10 @@ datasource db {
 }
 
 model CrackReport {
-  crackReportId          String        @id @default(uuid())
+  crackReportId    String        @id @default(uuid())
   buildingDetailId String
   description      String
-  status           ReportStatus  @default(Reported)
+  status           ReportStatus  @default(Pending)
   reportedBy       String
   verifiedBy       String
   createdAt        DateTime      @default(now())
@@ -28,11 +28,10 @@ model CrackReport {
 
 model CrackDetail {
   crackDetailsId String      @id @default(uuid())
-  crackReportId        String
+  crackReportId  String
   photoUrl       String
-  status         CrackStatus @default(InProgress)
   severity       Severity    @default(Unknown)
-  aiDetectionUrl    String
+  aiDetectionUrl String
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   crackReport    CrackReport @relation(fields: [crackReportId], references: [crackReportId])
@@ -41,27 +40,23 @@ model CrackDetail {
 }
 
 model CrackSegment {
-  crackSegmentId String @id @default(uuid())
-  crackDetailsId  String
+  crackSegmentId String      @id @default(uuid())
+  crackDetailsId String
   confidence     Float
-  x             Float
-  y             Float
-  z             Float
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  crackDetail CrackDetail @relation(fields: [crackDetailsId], references: [crackDetailsId])
+  x              Float
+  y              Float
+  z              Float
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  crackDetail    CrackDetail @relation(fields: [crackDetailsId], references: [crackDetailsId])
 }
 
 enum ReportStatus {
-  Reported
-  Verified
-  Completed
-  Rejected
-}
-
-enum CrackStatus {
+  Pending
   InProgress
-  Verified
+  InFixing
+  Reviewing
+  Rejected
   Completed
 }
 

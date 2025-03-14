@@ -6,6 +6,7 @@ export const TASKS_PATTERN = {
     GET_BY_ID: 'get_task_by_id',
     CHANGE_STATUS: 'change_task_status',
     GET_BY_STATUS: 'get_tasks_by_status',
-    CREATE_REPAIR_MATERIAL: 'create_repair_material'
+    CREATE_REPAIR_MATERIAL: 'create_repair_material',
+    CREATE_TASK_ASSIGNMENT: 'create_task_assignment'
 }
 

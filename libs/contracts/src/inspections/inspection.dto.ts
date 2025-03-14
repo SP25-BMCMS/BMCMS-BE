@@ -1,4 +1,3 @@
-import { InspectionStatus } from '@prisma/client-Task';
 import { IsUUID, IsString, IsOptional, IsEnum, IsDate } from 'class-validator';
 
 export class InspectionDto {
@@ -20,9 +19,6 @@ export class InspectionDto {
 
   @IsString()
   description: string;
-
-  @IsEnum(InspectionStatus)
-  status: InspectionStatus;
 
   @IsDate()
   created_at: Date;

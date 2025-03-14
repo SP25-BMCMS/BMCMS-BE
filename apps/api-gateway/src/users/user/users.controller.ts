@@ -87,7 +87,13 @@ export class UsersController {
     }
 
     @Post('department')
-    async createDepartment(@Body() data: CreateDepartmentDto) {
-        return this.usersService.createDepartment(data);
+    async createDepartment(@Body() data: CreateDepartmentDto, @Res() res: any) {
+        const response = await this.usersService.createDepartment(data);
+
+        if (!response.isSuccess) {
+            return res.status(HttpStatus.NOT_FOUND).json(response);
+        }
+
+        return res.status(HttpStatus.CREATED).json(response);
     }
 }

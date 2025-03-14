@@ -32,26 +32,28 @@ model Task {
 }
 
 model WorkLog {
-  worklog_id  String   @id @default(uuid()) // Changed to UUID
+  worklog_id  String        @id @default(uuid()) // Changed to UUID
   task_id     String
   title       String
   description String
   status      WorkLogStatus // Trạng thái của WorkLog
 
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   // Mối quan hệ N:1 với Task
   task Task @relation(fields: [task_id], references: [task_id])
 }
+
 enum WorkLogStatus {
-  INIT_INSPECTION           // Bước 1: Create Init Inspection
-  WAIT_FOR_DEPOSIT          // Bước 2: Wait for Deposited from Resident
-  EXECUTE_CRACKS            // Bước 3: Staff Execute Cracks
+  INIT_INSPECTION // Bước 1: Create Init Inspection
+  WAIT_FOR_DEPOSIT // Bước 2: Wait for Deposited from Resident
+  EXECUTE_CRACKS // Bước 3: Staff Execute Cracks
   CONFIRM_NO_PENDING_ISSUES // Bước 4: Confirm No Pending Issues
-  FINAL_REVIEW              // Bước 5: Kiểm tra lần cuối (tuỳ chọn)
+  FINAL_REVIEW // Bước 5: Kiểm tra lần cuối (tuỳ chọn)
   CANCELLED
 }
+
 model TaskAssignment {
   assignment_id String           @id @default(uuid()) // Changed to UUID
   task_id       String
@@ -69,16 +71,13 @@ model TaskAssignment {
 }
 
 model Inspection {
-  inspection_id      String           @id @default(uuid())
+  inspection_id      String   @id @default(uuid())
   task_assignment_id String
-  crack_id           String
   inspected_by       String
-  inspection_date    DateTime
   image_url          String?
   description        String
-  status             InspectionStatus
-  created_at         DateTime         @default(now())
-  updated_at         DateTime         @updatedAt
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
 
   // Mối quan hệ N:1 với TaskAssignment
   taskAssignment TaskAssignment @relation(fields: [task_assignment_id], references: [assignment_id])
@@ -120,20 +119,15 @@ model Material {
 
 enum Status {
   Assigned
-  InProgress
   Completed
 }
 
 enum AssignmentStatus {
-  pending
-  inprogress
-  reassigned
-  completed
-  notcompleted
-}
-
-enum InspectionStatus {
-  InProgress
-  Completed
-  Alert
+  Pending
+  Verified
+  Unverified
+  InFixing
+  Fixed
+  Confirmed
+  Reassigned
 }

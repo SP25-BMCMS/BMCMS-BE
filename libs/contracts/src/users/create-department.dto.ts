@@ -8,4 +8,8 @@ export class CreateDepartmentDto {
     @IsOptional()
     @IsString()
     description?: string;
+
+    @IsNotEmpty()
+    @IsString()
+    area: string;
 }

@@ -163,6 +163,7 @@ enum PositionStatus {
 message CreateDepartmentRequest {
   string departmentName = 1;
   string description = 2;
+  string area = 3;
 }
 
 message DepartmentApiResponse {
@@ -175,5 +176,6 @@ message DepartmentResponse {
   string departmentId = 1;
   string departmentName = 2;
   string description = 3;
+  string area =4;
 }
 

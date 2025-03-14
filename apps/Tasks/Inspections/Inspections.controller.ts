@@ -25,14 +25,14 @@ export class InspectionsController {
     return await this.inspectionService.updateInspection(data.inspection_id, data.dto);
   }
 
-  @MessagePattern(INSPECTIONS_PATTERN.GET_BY_CRACK_ID)
-  async GetInspectionByCrackId(
-    @Payload() payload: { crack_id: string },
-  ) {
-    return this.inspectionService.GetInspectionByCrackId(
-      payload.crack_id,
-    );
-  }
+  // @MessagePattern(INSPECTIONS_PATTERN.GET_BY_CRACK_ID)
+  // async GetInspectionByCrackId(
+  //   @Payload() payload: { crack_id: string },
+  // ) {
+  //   return this.inspectionService.GetInspectionByCrackId(
+  //     payload.crack_id,
+  //   );
+  // }
 
   @MessagePattern(INSPECTIONS_PATTERN.GET)
   async GetAllInspections() {

@@ -23,7 +23,7 @@ import { CreateRepairMaterialDto } from 'libs/contracts/src/tasks/create-repair-
 export class TaskController {
   constructor(private readonly taskService: TaskService) { }
 
-  @Post()
+  @Post('task')
   async createTask(@Body() createTaskDto: any) {
     return this.taskService.createTask(createTaskDto);
   }

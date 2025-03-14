@@ -28,7 +28,6 @@ model UserDetails {
   positionId   String? // Chỉ Staff
   departmentId String? // Chỉ Staff
   staffStatus  StaffStatus? // Chỉ Staff
-  staffRole    StaffRole?
 
   user       User             @relation(fields: [userId], references: [userId], onDelete: Cascade)
   position   WorkingPosition? @relation(fields: [positionId], references: [positionId])
@@ -46,7 +45,8 @@ model Apartment {
 
 model Department {
   departmentId   String   @id @default(uuid())
-  departmentName String   @unique
+  departmentName String
+  area           String
   description    String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -55,17 +55,11 @@ model Department {
 }
 
 model WorkingPosition {
-  positionId   String         @id @default(uuid())
+  positionId   String       @id @default(uuid())
   positionName PositionName
   description  String?
-  status       PositionStatus
 
   UserDetails UserDetails[]
-}
-
-enum StaffRole {
-  Technician
-  Leader
 }
 
 enum Role {
@@ -84,17 +78,10 @@ enum Gender {
 enum StaffStatus {
   Active
   Inactive
-  Probation
 }
 
 enum PositionName {
-  Staff
   Leader
-  Manager
-  Admin
-}
-
-enum PositionStatus {
-  Active
-  Inactive
+  Technician
+  Janitor
 }

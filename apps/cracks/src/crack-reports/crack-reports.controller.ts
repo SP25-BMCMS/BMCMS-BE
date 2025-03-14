@@ -4,10 +4,15 @@ import { CrackReportsService } from './crack-reports.service';
 import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto';
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
 import { ApiResponse } from 'libs/contracts/src/ApiReponse/api-response';
+import { ClientProxy } from '@nestjs/microservices';
+import { Inject } from '@nestjs/common';
 
 @Controller()
 export class CrackReportsController {
-  constructor(private readonly crackReportsService: CrackReportsService) {}
+  constructor(
+    private readonly crackReportsService: CrackReportsService,
+    @Inject('TASK_SERVICE') private readonly taskClient: ClientProxy
+  ) { }
 
   @MessagePattern({ cmd: 'get-all-crack-report' })
   async getAllCrackReports() {
@@ -45,4 +50,14 @@ export class CrackReportsController {
     return await this.crackReportsService.deleteCrackReport(crackId);
   }
 
+  @MessagePattern({ cmd: 'update-crack-report-status' })
+  async updateCrackReportStatus(
+    @Payload() payload: { crackReportId: string; managerId: string }
+  ) {
+    return await this.crackReportsService.updateCrackReportStatus(
+      payload.crackReportId,
+      payload.managerId,
+      this.taskClient
+    );
+  }
 }

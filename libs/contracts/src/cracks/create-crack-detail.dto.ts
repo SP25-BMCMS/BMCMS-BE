@@ -8,10 +8,6 @@ export class CreateCrackDetailDto {
   @IsString()
   photoUrl: string;
 
-  @IsEnum($Enums.CrackStatus)
-  @IsOptional()
-  status?: $Enums.CrackStatus = $Enums.CrackStatus.InProgress; // ✅ Mặc định InProgress
-
   @IsEnum($Enums.Severity)
   @IsOptional()
   severity?: $Enums.Severity = $Enums.Severity.Unknown; // ✅ Mặc định Unknown
