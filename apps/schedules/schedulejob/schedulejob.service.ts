@@ -1,13 +1,15 @@
-import { ApiResponse } from "@app/contracts/ApiReponse/api-response";
-import { CreateScheduleJobDto } from "@app/contracts/schedulesjob/create-schedule-job.dto";
-import { ScheduleJobResponseDto } from "@app/contracts/schedulesjob/schedule-job.dto";
-import { Injectable } from "@nestjs/common";
-import { RpcException } from "@nestjs/microservices";
-import { PrismaClient } from "@prisma/client-Schedule";
-@Injectable()
-export class WorkLogService {
-  private prisma = new PrismaClient();
+import { Injectable } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateScheduleJobDto } from '@app/contracts/schedulesjob/create-schedule-job.dto';
+import { ScheduleJobResponseDto } from '@app/contracts/schedulesjob/schedule-job.dto';
+import { $Enums, PrismaClient } from '@prisma/client-Schedule';
+import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
+import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status';
 
+@Injectable()
+export class InspectionsService {
+  constructor(private readonly prisma: PrismaService) {}
 
   // Create a new Schedule Job
   async createScheduleJob(createScheduleJobDto: CreateScheduleJobDto): Promise<ApiResponse<ScheduleJobResponseDto>> {
@@ -16,7 +18,7 @@ export class WorkLogService {
         data: {
           schedule_id: createScheduleJobDto.schedule_id,
           run_date: createScheduleJobDto.run_date,
-          status: createScheduleJobDto.status,
+          status:  $Enums.ScheduleJobStatus.InProgress,
           building_id: createScheduleJobDto.building_id,
         },
       });
