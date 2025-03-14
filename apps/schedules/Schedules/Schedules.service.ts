@@ -120,9 +120,12 @@ export class ScheduleService {
 
   // Get schedule by ID
   async getScheduleById(schedule_id: string): Promise<ApiResponse<ScheduleResponseDto>> {
+
     try {
+      
       const schedule = await this.prisma.schedule.findUnique({
-        where: { schedule_id },
+        where: {     schedule_id,  // Truyền trực tiếp UUID
+        },
       });
       if (!schedule) {
         throw new RpcException({
@@ -130,6 +133,7 @@ export class ScheduleService {
           message: 'Schedule not found',
         });
       }
+      console.log("🚀 ~ ScheduleService ~ getScheduleById ~ schedule:", schedule)
 
       const scheduleResponse: ScheduleResponseDto = {
         ...schedule,
@@ -143,7 +147,7 @@ export class ScheduleService {
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving schedule',
+        message: 'Error retrieving schedule' ,
       });
     }
   }
