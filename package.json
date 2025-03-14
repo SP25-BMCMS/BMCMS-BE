@@ -17,9 +17,9 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-   "prisma:generate": "npx prisma generate --schema=apps/users/prisma/schema.prisma && npx prisma generate --schema=apps/tasks/prisma/schema.prisma && npx prisma generate --schema=apps/cracks/prisma/schema.prisma && npx prisma generate --schema=apps/buildings/prisma/schema.prisma && npx prisma generate --schema=apps/schedules/prisma/schema.prisma",
-  "prisma:deploy": "npx prisma migrate deploy --schema=apps/users/prisma/schema.prisma && npx prisma migrate deploy --schema=apps/tasks/prisma/schema.prisma && npx prisma migrate deploy --schema=apps/cracks/prisma/schema.prisma && npx prisma migrate deploy --schema=apps/buildings/prisma/schema.prisma && npx prisma migrate deploy --schema=apps/schedules/prisma/schema.prisma"
-
+    "prisma:generate": "npx prisma generate --schema=apps/users/prisma/schema.prisma && npx prisma generate --schema=apps/tasks/prisma/schema.prisma && npx prisma generate --schema=apps/cracks/prisma/schema.prisma && npx prisma generate --schema=apps/buildings/prisma/schema.prisma && npx prisma generate --schema=apps/schedules/prisma/schema.prisma",
+    "prisma:deploy": "npx prisma migrate deploy --schema=apps/users/prisma/schema.prisma && npx prisma migrate deploy --schema=apps/tasks/prisma/schema.prisma && npx prisma migrate deploy --schema=apps/cracks/prisma/schema.prisma && npx prisma migrate deploy --schema=apps/buildings/prisma/schema.prisma && npx prisma migrate deploy --schema=apps/schedules/prisma/schema.prisma",
+    "nest:start": "concurrently \"nest start buildings --watch\" \"nest start tasks --watch\" \"nest start schedules --watch\" \"nest start users --watch\" \"nest start cracks --watch\""
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.12.6",
@@ -59,6 +59,7 @@
     "@types/supertest": "^6.0.0",
     "@typescript-eslint/eslint-plugin": "^8.24.0",
     "@typescript-eslint/parser": "^8.24.0",
+    "concurrently": "^9.1.2",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",

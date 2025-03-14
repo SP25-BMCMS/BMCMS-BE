@@ -7,6 +7,7 @@ async function bootstrap() {
   const app = await NestFactory.create(BuildingModule);
   const configService = app.get(ConfigService);
   const microservicePort  = configService.get<number>('BUILDINGS_SERVICE_PORT') || 3002;  // Đổi cổng Microservice Buildings
+  console.log("🚀 ~ bootstrap ~ microservicePort:", microservicePort)
   console.log("🚀 ~ bootstrap ~ BUILDINGS_SERVICE_PORT:", microservicePort)
 
   const user = configService.get('RABBITMQ_USER');

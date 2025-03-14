@@ -7,6 +7,7 @@ export class PrismaService
     extends PrismaClient
     implements OnModuleInit, OnModuleDestroy {
     constructor(config: ConfigService) {
+        console.log('crack Initialized'); // Add a debug log to ensure service is being initialized
 
         const url = config.get<string>('DB_CRACK_SERVICE')
 

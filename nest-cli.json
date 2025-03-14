@@ -65,7 +65,7 @@
         "tsConfigPath": "apps/tasks/tsconfig.app.json"
       }
     },
-    "schedule": {
+    "schedules": {
       "type": "application",
       "root": "apps/schedules",
       "entryFile": "main",

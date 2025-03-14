@@ -36,8 +36,8 @@ async function bootstrap() {
 
     const app = await NestFactory.create(TaskModule);
     const configService = app.get(ConfigService);
-    const microservicePort  = configService.get<number>('BUILDINGS_SERVICE_PORT') || 3002;  // Đổi cổng Microservice Buildings
-    console.log("🚀 ~ bootstrap ~ BUILDINGS_SERVICE_PORT:", microservicePort)
+//    const microservicePort  = configService.get<number>('BUILDINGS_SERVICE_PORT') || 3002;  // Đổi cổng Microservice Buildings
+   // console.log("🚀 ~ bootstrap ~ BUILDINGS_SERVICE_PORT:", microservicePort)
   
     const user = configService.get('RABBITMQ_USER');
     const password = configService.get('RABBITMQ_PASSWORD');
@@ -54,7 +54,7 @@ async function bootstrap() {
         }
       }
     });
-    await app.listen(microservicePort); // Đảm bảo ứng dụng NestJS lắng nghe đúng cổng HTTP
+   // await app.listen(microservicePort); // Đảm bảo ứng dụng NestJS lắng nghe đúng cổng HTTP
   
     await app.startAllMicroservices();
 }

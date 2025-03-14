@@ -46,8 +46,6 @@ updateWorkLogStatus(
     @Param('worklog_idd') worklog_id: string,  // Validating the worklog_id as a UUID
   @Body() updateWorkLogDto: UpdateWorkLogStatusDto
 ) {
-  console.log("🚀 ~ WorkLogController ~ updateWorkLogDto:", updateWorkLogDto)
-  console.log("🚀 ~ WorkLogController ~ worklog_id:", worklog_id)
   return this.workLogService.updateWorkLogStatus(worklog_id, updateWorkLogDto.status);
 }
 
