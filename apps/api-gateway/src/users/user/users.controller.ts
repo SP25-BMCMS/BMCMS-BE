@@ -96,4 +96,16 @@ export class UsersController {
 
         return res.status(HttpStatus.CREATED).json(response);
     }
+
+    @Get('apartments/:residentId')
+    async getApartmentsByResidentId(@Param('residentId') residentId: string, @Res() res: any) {
+        const response = await this.usersService.getApartmentsByResidentId(residentId);
+
+        if (!response.isSuccess) {
+            return res.status(HttpStatus.NOT_FOUND).json(response);
+        }
+
+        return res.status(HttpStatus.OK).json(response);
+    }
+
 }

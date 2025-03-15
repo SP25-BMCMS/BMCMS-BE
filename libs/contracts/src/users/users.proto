@@ -17,6 +17,7 @@ service UserService {
   rpc UpdateWorkingPosition (UpdateWorkingPositionRequest) returns (WorkingPositionApiResponse);
   rpc DeleteWorkingPosition (WorkingPositionByIdRequest) returns (WorkingPositionApiResponse);
   rpc CreateDepartment (CreateDepartmentRequest) returns (DepartmentApiResponse);
+  rpc GetApartmentsByResidentId (GetApartmentsRequest) returns (GetApartmentsResponse);
 }
 
 message CreateUserRequest {
@@ -179,3 +180,25 @@ message DepartmentResponse {
   string area =4;
 }
 
+message ResidentIdRequest {
+  string residentId = 1;
+}
+
+message ApartmentsListResponse {
+  repeated ApartmentResponse apartments = 1;
+}
+
+message GetApartmentsRequest {
+  string residentId = 1;
+}
+
+message Apartment {
+  string apartmentName = 1;
+  string buildingId = 2;
+}
+
+message GetApartmentsResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  repeated Apartment data = 3;
+}

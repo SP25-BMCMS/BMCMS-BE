@@ -95,4 +95,19 @@ export class UsersService implements OnModuleInit {
       return new ApiResponse(false, error.message || 'Lỗi khi tạo Department', null);
     }
   }
+
+  async getApartmentsByResidentId(residentId: string): Promise<{ isSuccess: boolean; message: string; data: { apartmentName: string; buildingId: string }[] }> {
+    try {
+      const response = await lastValueFrom(this.userService.getApartmentsByResidentId({ residentId }));
+
+      if (!response || typeof response !== 'object' || !('isSuccess' in response)) {
+        return { isSuccess: false, message: 'Invalid response from user service', data: [] };
+      }
+
+      return response;
+    } catch (error) {
+      return { isSuccess: false, message: 'Service unavailable', data: [] };
+    }
+  }
+
 }

@@ -347,4 +347,31 @@ export class UsersService {
         }
     }
 
+    async getApartmentsByResidentId(residentId: string): Promise<{ isSuccess: boolean; message: string; data: { apartmentName: string; buildingId: string }[] }> {
+        try {
+            const user = await this.prisma.user.findUnique({
+                where: {
+                    userId: residentId,
+                    role: Role.Resident
+                },
+                include: { apartments: true }
+            });
+
+            if (!user) {
+                return { isSuccess: false, message: 'Resident not found', data: [] };
+            }
+
+            return {
+                isSuccess: true,
+                message: 'Success',
+                data: user.apartments.map(apartment => ({
+                    apartmentName: apartment.apartmentName,
+                    buildingId: apartment.buildingId
+                }))
+            };
+
+        } catch (error) {
+            return { isSuccess: false, message: 'Failed to retrieve apartments', data: [] };
+        }
+    }
 }

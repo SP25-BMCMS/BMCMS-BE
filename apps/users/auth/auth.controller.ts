@@ -78,4 +78,9 @@ export class AuthController {
     async createDepartment(data: CreateDepartmentDto) {
         return await this.usersService.createDepartment(data);
     }
+
+    @GrpcMethod('UserService', 'GetApartmentsByResidentId')
+    async getApartmentsByResidentId(data: { residentId: string }) {
+        return await this.usersService.getApartmentsByResidentId(data.residentId);
+    }
 }
