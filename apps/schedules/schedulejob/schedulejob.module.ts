@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { InspectionsService as schedulejobsService } from './schedulejob.service';
+import { ScheduleJobsService as schedulejobsService } from './schedulejob.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { ScheduleJobController } from './schedulejob.controller';
 

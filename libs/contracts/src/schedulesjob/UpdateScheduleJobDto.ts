@@ -20,7 +20,6 @@ export class UpdateScheduleJobDto {
      required: false,
    })
    @IsOptional()
-   @IsDate()
    run_date?: Date;
  
    @ApiProperty({

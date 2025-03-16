@@ -2,7 +2,7 @@ import { Controller, Param } from '@nestjs/common';
 import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { TASKS_PATTERN } from '../../../libs/contracts/src/tasks/task.patterns';
 import { INSPECTIONS_PATTERN } from '../../../libs/contracts/src/inspections/inspection.patterns';
-import { InspectionsService } from './schedulejob.service';
+import { ScheduleJobsService } from './schedulejob.service';
 import { CreateScheduleJobDto } from '@app/contracts/schedulesjob/create-schedule-job.dto';
 import { ScheduleJobResponseDto } from '@app/contracts/schedulesjob/schedule-job.dto';
 import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
@@ -12,7 +12,7 @@ import { UpdateScheduleJobDto } from '@app/contracts/schedulesjob/UpdateSchedule
 
 @Controller('schedule-jobs')
 export class ScheduleJobController {
-  constructor(private readonly ScheduleJobsService: InspectionsService) {}
+  constructor(private readonly ScheduleJobsService: ScheduleJobsService) {}
 
   @MessagePattern(SCHEDULEJOB_PATTERN.CREATE) 
   async createScheduleJob(

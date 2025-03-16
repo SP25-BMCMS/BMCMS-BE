@@ -36,6 +36,11 @@ export class ScheduleJobsController {
 
   @Post()
   async createScheduleJob(@Body() createScheduleJobDto: CreateScheduleJobDto): Promise<ApiResponse<any>> {
+    if (createScheduleJobDto.run_date) {
+      createScheduleJobDto.run_date = new Date(createScheduleJobDto.run_date);
+    }
+    console.log("🚀 ~ ScheduleJobsController ~ createScheduleJob ~ run_date:", createScheduleJobDto.run_date)
+
     return this.scheduleJobsService.createScheduleJob(createScheduleJobDto);
   }
   @Put(':schedule_job_id')
