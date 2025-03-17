@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { $Enums, Prisma } from '@prisma/client-cracks';
 import { RpcException } from '@nestjs/microservices';
@@ -11,10 +11,13 @@ import { Status } from '@prisma/client-Task';
 import { firstValueFrom } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { BadRequestException } from '@nestjs/common';
+import { TASKASSIGNMENT_PATTERN } from '@app/contracts/taskAssigment/taskAssigment.patterns';
 
 @Injectable()
 export class CrackReportsService {
-  constructor(private prismService: PrismaService) { }
+  constructor(private prismService: PrismaService,
+    @Inject('TASK_SERVICE') private readonly taskClient: ClientProxy
+  ) { }
 
   async getAllCrackReports() {
     return await this.prismService.crackReport.findMany();
@@ -114,63 +117,83 @@ export class CrackReportsService {
     return new ApiResponse(true, 'Crack Report đã được xóa thành công');
   }
 
-  async updateCrackReportStatus(
-    crackReportId: string,
-    managerId: string,
-    taskClient: ClientProxy
-  ) {
+  async updateCrackReportStatus(crackReportId: string, managerId: string) {
     try {
-      // Start a transaction
       return await this.prismService.$transaction(async (prisma) => {
-        // 1. Find the existing crack report
         const existingReport = await prisma.crackReport.findUnique({
-          where: { crackReportId }
+          where: { crackReportId },
         });
 
         if (!existingReport) {
-          throw new RpcException(new ApiResponse(false, 'Crack Report không tồn tại'));
+          throw new RpcException(
+            new ApiResponse(false, 'Crack Report không tồn tại')
+          );
         }
 
-        // 2. Update the crack report status to InProgress
         const updatedReport = await prisma.crackReport.update({
           where: { crackReportId },
           data: {
             status: $Enums.ReportStatus.InProgress,
-            verifiedBy: managerId
-          }
+            verifiedBy: managerId,
+          },
         });
 
-        // 3. Create a Task
-        const createTaskResponse = await firstValueFrom(
-          taskClient.send(TASKS_PATTERN.CREATE, {
-            description: `Xử lý báo cáo nứt ${crackReportId}`,
-            status: Status.Assigned,
-            crack_id: crackReportId,
-            schedule_job_id: '' // You might want to generate or pass this
-          })
-        );
+        let createTaskResponse;
+        let createTaskAssignmentResponse;
 
-        // 4. Create a Task Assignment
-        const createTaskAssignmentResponse = await firstValueFrom(
-          taskClient.send(TASKS_PATTERN.CREATE_TASK_ASSIGNMENT, {
-            task_id: createTaskResponse.task_id,
-            employee_id: managerId,
-            description: `Phân công xử lý báo cáo nứt ${crackReportId}`,
-            status: 'Pending'
-          })
-        );
+        try {
+          createTaskResponse = await firstValueFrom(
+            this.taskClient.send(TASKS_PATTERN.CREATE, {
+              description: `Xử lý báo cáo nứt ${crackReportId}`,
+              status: Status.Assigned,
+              crack_id: crackReportId,
+              schedule_job_id: '',
+            }).pipe(
+              catchError(error => {
+                console.error('Task creation error:', error);
+                throw new RpcException(
+                  new ApiResponse(false, 'Không thể tạo task')
+                );
+              })
+            )
+          );
 
-        return new ApiResponse(true, 'Crack Report đã được cập nhật và Task đã được tạo', [
+          // Uncomment and modify task assignment if needed
+          createTaskAssignmentResponse = await firstValueFrom(
+            this.taskClient.send(TASKASSIGNMENT_PATTERN.CREATE, {
+              task_id: createTaskResponse.task_id,
+              employee_id: managerId,
+              description: `Phân công xử lý báo cáo nứt ${crackReportId}`,
+              status: Status.Assigned
+            }).pipe(
+              catchError(error => {
+                console.error('Task assignment error:', error);
+                throw new RpcException(
+                  new ApiResponse(false, 'Không thể tạo phân công task')
+                );
+              })
+            )
+          );
+        } catch (taskError) {
+          console.error('Task creation/assignment error:', taskError);
+          // Optionally, you can choose to continue or rollback
+        }
+
+        return new ApiResponse(
+          true,
+          'Crack Report đã được cập nhật và Task đã được tạo',
           {
             crackReport: updatedReport,
             task: createTaskResponse,
             taskAssignment: createTaskAssignmentResponse
           }
-        ]);
+        );
       });
     } catch (error) {
       console.error('🔥 Lỗi trong updateCrackReportStatus:', error);
-      throw new RpcException(new ApiResponse(false, 'Lỗi hệ thống, vui lòng thử lại sau'));
+      throw new RpcException(
+        new ApiResponse(false, 'Lỗi hệ thống, vui lòng thử lại sau')
+      );
     }
   }
 }

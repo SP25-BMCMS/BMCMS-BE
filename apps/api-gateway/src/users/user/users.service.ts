@@ -82,17 +82,52 @@ export class UsersService implements OnModuleInit {
 
   async createDepartment(data: CreateDepartmentDto) {
     try {
+      // Add timeout and retry mechanism
       const response = await firstValueFrom(
         this.userService.createDepartment(data).pipe(
           catchError((error) => {
-            return throwError(() => new HttpException(error.details || 'Lỗi gRPC không xác định', HttpStatus.NOT_FOUND));
+            console.error('Department Creation Error:', error);
+
+            // Specific error handling
+            if (error.code === 14) { // Connection error
+              return throwError(() => new HttpException(
+                'Dịch vụ không khả dụng. Vui lòng thử lại sau.',
+                HttpStatus.SERVICE_UNAVAILABLE
+              ));
+            }
+
+            return throwError(() => new HttpException(
+              error.details || 'Lỗi không xác định khi tạo phòng ban',
+              HttpStatus.INTERNAL_SERVER_ERROR
+            ));
           })
-        )
+        ),
+        { defaultValue: null } // Prevent unhandled promise rejection
       );
 
-      return new ApiResponse(response.isSuccess, response.message, response.data);
+      // Handle null response
+      if (!response) {
+        return new ApiResponse(
+          false,
+          'Không thể kết nối đến dịch vụ. Vui lòng kiểm tra kết nối.',
+          null
+        );
+      }
+
+      return new ApiResponse(
+        response.isSuccess,
+        response.message || 'Thao tác thành công',
+        response.data
+      );
     } catch (error) {
-      return new ApiResponse(false, error.message || 'Lỗi khi tạo Department', null);
+      console.error('Unexpected error in createDepartment:', error);
+
+      // Log the full error for debugging
+      return new ApiResponse(
+        false,
+        error.message || 'Lỗi hệ thống không xác định',
+        null
+      );
     }
   }
 

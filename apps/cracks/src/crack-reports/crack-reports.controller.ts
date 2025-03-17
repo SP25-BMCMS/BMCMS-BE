@@ -57,7 +57,6 @@ export class CrackReportsController {
     return await this.crackReportsService.updateCrackReportStatus(
       payload.crackReportId,
       payload.managerId,
-      this.taskClient
     );
   }
 }
