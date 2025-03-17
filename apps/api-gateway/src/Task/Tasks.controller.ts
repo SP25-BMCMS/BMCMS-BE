@@ -4,9 +4,9 @@ import {
   Delete,
   Get,
   HttpCode,
-  HttpStatus,
+  HttpStatus, Inject,
   NotFoundException,
-  Param,
+  Param, Patch,
   Post,
   Put,
   Req,
@@ -18,16 +18,21 @@ import { UpdateTaskDto } from '@app/contracts/tasks/update.Task';
 import { ApiOperation, ApiParam } from '@nestjs/swagger';
 import { ChangeTaskStatusDto } from '@app/contracts/tasks/ChangeTaskStatus.Dto ';
 
+import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
+import { ClientProxy } from '@nestjs/microservices';
+import { TASK_CLIENT } from '../constraints';
+import { UpdateInspectionDto } from '../../../../libs/contracts/src/inspections/update-inspection.dto';
+import { CreateRepairMaterialDto } from 'libs/contracts/src/tasks/create-repair-material.dto';
 @Controller('tasks')
 export class TaskController {
-  constructor(private readonly taskService: TaskService) {}
+  constructor(private readonly taskService: TaskService) { }
 
-  @Post()
+  @Post('task')
   async createTask(@Body() createTaskDto: any) {
     return this.taskService.createTask(createTaskDto);
   }
 
-  @Put(':task_id')
+  @Put('task/:task_id')
   async updateTask(
     @Param('task_id') task_id: string,
     @Body() updateTaskDto: UpdateTaskDto,
@@ -35,24 +40,17 @@ export class TaskController {
     return this.taskService.updateTask(task_id, updateTaskDto);
   }
 
-  @Get(':task_id')
+  @Get('task/:task_id')
   async getTaskById(@Param('task_id') task_id: string) {
     return this.taskService.getTaskById(task_id);
   }
 
-  @Delete(':task_id')
+  @Delete('task/:task_id')
   async deleteTask(@Param('task_id') task_id: string) {
     return this.taskService.deleteTask(task_id);
   }
 
-  @Put(':task_id/status')
-  @ApiOperation({ summary: 'Change the status of a task' })
-  @ApiParam({
-    name: 'task_id',
-    description: 'The ID of the task to update',
-    type: String,
-    example: 'abc123',  // Ví dụ về task_id
-  })
+  // @Put('task/:task_id/status')
   async changeTaskStatus(
     @Param('task_id') task_id: string,
     @Body() body: ChangeTaskStatusDto ,
@@ -65,7 +63,7 @@ export class TaskController {
     return this.taskService.changeTaskStatus(task_id, body.status);
   }
 
-  @Get()
+  @Get('tasks')
   async getAllTasks() {
     return this.taskService.getAllTasks();
   }
@@ -75,10 +73,32 @@ export class TaskController {
     return this.taskService.getTasksByStatus(status);
   }
 
-  @Get('inspection/:task_assignment_id')
+  @Get('inspection/task_assignment/:task_assignment_id')
   async GetInspectionByTaskAssignmentId(
     @Param('task_assignment_id') task_assignment_id: string,
   ) {
     return this.taskService.GetInspectionByTaskAssignmentId(task_assignment_id);
+  }
+
+  @Patch('inspection/:id')
+  async updateCrackReport(@Param('id') inspection_id: string, @Body() dto: UpdateInspectionDto) {
+    return this.taskService.updateInspection(inspection_id, dto);
+  }
+
+  @Get('inspection/crack/:crack_id')
+  async GetInspectionByCrackId(
+    @Param('crack_id') crack_id: string,
+  ) {
+    return this.taskService.GetInspectionByCrackId(crack_id);
+  }
+
+  @Get('inspections')
+  async GetAllInspections() {
+    return this.taskService.GetAllInspections();
+  }
+
+  @Post('repair-materials')
+  async createRepairMaterial(@Body() createRepairMaterialDto: CreateRepairMaterialDto) {
+    return this.taskService.createRepairMaterial(createRepairMaterialDto);
   }
 }

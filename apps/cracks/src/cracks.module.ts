@@ -9,7 +9,7 @@ import { CrackDetailsModule } from './crack-details/crack-details.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ClientConfigModule,
-    CrackReportsModule,
+    CrackReportsModule, // Đảm bảo module này được import
     CrackDetailsModule,
     PrismaModule,
   ],

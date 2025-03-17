@@ -3,5 +3,6 @@ export const INSPECTIONS_PATTERN = {
   CREATE: 'create_inspection',
   UPDATE: 'update_inspection',
   DELELTE: 'delete_inspection',
-  GET_BY_ID_Task_Assignment: 'get_by_id_task_assignment',
+  GET_BY_ID_Task_Assignment: 'get_by_task_assignment_id',
+  GET_BY_CRACK_ID: 'get_by_crack_id'
 };

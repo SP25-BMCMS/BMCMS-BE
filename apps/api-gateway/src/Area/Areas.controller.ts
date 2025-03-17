@@ -6,7 +6,7 @@ import { UpdateAreaDto } from '@app/contracts/Areas/update.areas';
 
 @Controller('areas')
 export class AreasController {
-  constructor(private readonly areasService: AreasService) {}
+  constructor(private readonly areasService: AreasService) { }
 
   @Post()
   async createArea(@Body() createAreaDto: CreateAreaDto) {
@@ -16,7 +16,7 @@ export class AreasController {
   @Get() // This is the route for 'GET /areas'
   async getAllAreas() {
     console.log("🚀 ~ AreasCsdssontroller ~ getAllAreas ~ getAllAreas:")
-    
+
     return await this.areasService.getAreas();
   }
 

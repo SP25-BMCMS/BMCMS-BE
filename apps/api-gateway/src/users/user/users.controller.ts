@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpException, HttpStatus, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpException, HttpStatus, Post, Req, Res, UseGuards, Param, Put, Delete } from '@nestjs/common';
 import { Role } from '@prisma/client-users'
 import { Roles } from '../../decorator/roles.decarator'
 import { PassportJwtAuthGuard } from '../../guards/passport-jwt-guard'
@@ -8,6 +8,8 @@ import { createUserDto } from 'libs/contracts/src/users/create-user.dto'
 import { RolesGuard } from '../../guards/role.guard'
 import { ApiResponse } from '../../../../../libs/contracts/src/ApiReponse/api-response';
 import { LoginDto } from '@app/contracts/users/login.dto';
+import { CreateWorkingPositionDto } from 'libs/contracts/src/users/create-working-position.dto';
+import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
 
 @Controller('auth')
 export class UsersController {
@@ -57,6 +59,57 @@ export class UsersController {
     @Get()
     test(@Body() data: { username: string, password: string }) {
         return this.usersService.test(data)
+    }
+
+    // Working Position Methods
+    // @UseGuards(PassportJwtAuthGuard, RolesGuard)
+    // @Roles(Role.Admin)
+    @Post('working-position')
+    async createWorkingPosition(@Body() data: CreateWorkingPositionDto) {
+        return this.usersService.createWorkingPosition(data);
+    }
+
+    // @UseGuards(PassportJwtAuthGuard, RolesGuard)
+    // @Roles(Role.Admin)
+    @Get('working-positions')
+    async getAllWorkingPositions() {
+        return this.usersService.getAllWorkingPositions();
+    }
+
+    // @UseGuards(PassportJwtAuthGuard, RolesGuard)
+    // @Roles(Role.Admin)
+    @Get('working-position/:positionId')
+    async getWorkingPositionById(@Param('positionId') positionId: string) {
+        return this.usersService.getWorkingPositionById(positionId);
+    }
+
+    // @UseGuards(PassportJwtAuthGuard, RolesGuard)
+    // @Roles(Role.Admin)
+    @Delete('working-position/:positionId')
+    async deleteWorkingPosition(@Param('positionId') positionId: string) {
+        return this.usersService.deleteWorkingPosition(positionId);
+    }
+
+    @Post('department')
+    async createDepartment(@Body() data: CreateDepartmentDto, @Res() res: any) {
+        const response = await this.usersService.createDepartment(data);
+
+        if (!response.isSuccess) {
+            return res.status(HttpStatus.NOT_FOUND).json(response);
+        }
+
+        return res.status(HttpStatus.CREATED).json(response);
+    }
+
+    @Get('apartments/:residentId')
+    async getApartmentsByResidentId(@Param('residentId') residentId: string, @Res() res: any) {
+        const response = await this.usersService.getApartmentsByResidentId(residentId);
+
+        if (!response.isSuccess) {
+            return res.status(HttpStatus.NOT_FOUND).json(response);
+        }
+
+        return res.status(HttpStatus.OK).json(response);
     }
 
 }

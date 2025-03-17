@@ -1,4 +1,3 @@
-
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt'
 import * as bcrypt from 'bcrypt'
@@ -6,6 +5,9 @@ import { UsersService } from '../users/users.service'
 import { RpcException } from '@nestjs/microservices'
 import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto';
 import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response';
+import { CreateWorkingPositionDto } from '../../../libs/contracts/src/users/create-working-position.dto';
+import { PositionName } from '@prisma/client-users';
+import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
 
 type AuthInput = { username: string; password: string }
 type SignInData = { userId: string; username: string, role: string }
@@ -66,5 +68,27 @@ export class AuthService {
 
     async getUserInfo(userId: string) {
         return this.usersService.getUserById(userId)
+    }
+
+    // Working Position Methods
+    async createWorkingPosition(data: CreateWorkingPositionDto) {
+        return this.usersService.createWorkingPosition(data);
+    }
+
+    async getAllWorkingPositions() {
+        return this.usersService.getAllWorkingPositions();
+    }
+
+    async getWorkingPositionById(data: { positionId: string }) {
+        return this.usersService.getWorkingPositionById(data);
+    }
+
+    async deleteWorkingPosition(data: { positionId: string }) {
+        return this.usersService.deleteWorkingPosition(data);
+    }
+
+    // Department Methods
+    async createDepartment(data: CreateDepartmentDto) {
+        return this.usersService.createDepartment(data);
     }
 }

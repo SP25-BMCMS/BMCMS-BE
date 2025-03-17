@@ -24,12 +24,12 @@ async function bootstrap() {
     forbidNonWhitelisted: true,
     transform: true,
   }))
-  
+
 
   app.useGlobalFilters(new HttpExceptionFilter())
-//  app.useGlobalFilters(new RpcToHttpExceptionFilter())
- // console.log("🚀 ~ bootstrap ~ process.env.port:", process.env.port)
-//  await app.listen(process.env.port ?? 3000)
+  //  app.useGlobalFilters(new RpcToHttpExceptionFilter())
+  // console.log("🚀 ~ bootstrap ~ process.env.port:", process.env.port)
+  //  await app.listen(process.env.port ?? 3000)
   const config = new DocumentBuilder()
     .setTitle('API Example')
     .setDescription('The API description')
