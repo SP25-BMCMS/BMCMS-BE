@@ -1,1 +1,1 @@
-{"date":"2025-03-09T14:37:00+07:00","message":"[BMCMS-BE] chore: upgrade report generation in validation to resolve state management"}
+{"date":"2025-03-18T14:18:00+07:00","message":"[BMCMS-BE] style: restructure api database migration and fix transaction rollback"}
