@@ -19,7 +19,7 @@ async function bootstrap() {
     transport: Transport.RMQ,
     options: {
       urls: [`amqp://${user}:${password}@${host}`],
-      queue: queueName,
+      queue: "Building",
       queueOptions: {
         durable: true,
       }

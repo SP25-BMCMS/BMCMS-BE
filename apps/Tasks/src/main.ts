@@ -48,7 +48,7 @@ async function bootstrap() {
       transport: Transport.RMQ,
       options: {
         urls: [`amqp://${user}:${password}@${host}`],
-        queue: queueName,
+        queue: "Tasks_queue",
         queueOptions: {
           durable: true,
         }
