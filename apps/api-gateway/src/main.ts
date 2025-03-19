@@ -31,17 +31,17 @@ async function bootstrap() {
   // console.log("🚀 ~ bootstrap ~ process.env.port:", process.env.port)
   //  await app.listen(process.env.port ?? 3000)
   const config = new DocumentBuilder()
-    .setTitle('API Example')
-    .setDescription('The API description')
+    .setTitle('BMCMS - Building Management & Crack Monitoring System')
+    .setDescription('API for managing buildings, monitoring cracks, and handling maintenance tasks')
     .setVersion('1.0')
-    .addTag('users')
     .addBearerAuth()
-    .build();
+    .build()
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);  // Đường dẫn /api sẽ hiển thị Swagger UI
 
-  await app.listen(3000);
-  console.log(`Application is running on: http://localhost:3000/api`);
+  const document = SwaggerModule.createDocument(app, config)
+  SwaggerModule.setup('api', app, document)  // Đường dẫn /api sẽ hiển thị Swagger UI
+
+  await app.listen(3000)
+  console.log(`Application is running on: http://localhost:3000/api`)
 }
 bootstrap()
