@@ -24,6 +24,9 @@ export class BuildingsService {
           numberFloor: CreateBuildingDto.numberFloor,
           imageCover: CreateBuildingDto.imageCover,
           areaId: CreateBuildingDto.areaId,
+          Status: CreateBuildingDto.status,
+          construction_date : CreateBuildingDto.construction_date,
+          completion_date : CreateBuildingDto.completion_date
         },
       });
 
@@ -130,6 +133,9 @@ export class BuildingsService {
           numberFloor: UpdateBuildingDto.numberFloor,
           imageCover: UpdateBuildingDto.imageCover,
           areaId: UpdateBuildingDto.areaId,
+          Status: UpdateBuildingDto.status,
+          construction_date : UpdateBuildingDto.construction_date,
+          completion_date : UpdateBuildingDto.completion_date
         },
       });
 

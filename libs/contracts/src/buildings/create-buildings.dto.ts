@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { $Enums } from "@prisma/client-building"
-import { IsEmail, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, MinLength } from "class-validator"
+import { IsEmail, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, MinLength } from "class-validator"
 
 
 export class CreateBuildingDto {
@@ -80,4 +80,21 @@ export class CreateBuildingDto {
   @IsOptional()
   @IsUUID()
   areaId?: string;
+
+
+
+  @ApiProperty()
+  @IsOptional()
+  @IsString()
+  construction_date?: string;
+  @ApiProperty()
+  @IsOptional()
+  @IsString()
+  completion_date?: string;
+
+
+    @IsNotEmpty()
+    @IsEnum($Enums.BuildingStatus)
+    @ApiProperty({ description: 'The status of the building', enum: $Enums.BuildingStatus, example :"" +$Enums.BuildingStatus.operational+"|" + $Enums.BuildingStatus.under_construction })  // Enum for status
+    status: $Enums.BuildingStatus;
 }

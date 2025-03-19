@@ -27,7 +27,18 @@ model Building {
   areaId          String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  Status   BuildingStatus? 
+  construction_date String  
+  completion_date String
+
 }
+enum BuildingStatus {
+  under_construction
+  operational
+  completion_date
+
+}
+
 
 model Area {
   areaId      String     @id @default(uuid())
