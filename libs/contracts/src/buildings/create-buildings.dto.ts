@@ -30,8 +30,7 @@ export class CreateBuildingDto {
     type: String,
     example: 'd1b0cd4c-1e76-4d7f-a0d4-81b32e5101cd', // Example UUID
   })
-  @IsUUID()
-  buildingId: string;
+
 
   @ApiProperty({
     description: 'Name of the building',

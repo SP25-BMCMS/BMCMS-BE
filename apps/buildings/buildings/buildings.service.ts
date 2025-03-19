@@ -57,9 +57,6 @@ export class BuildingsService {
   async readBuilding() {
     try {
       const getBuilding = await this.prisma.building.findMany({
-        include: {
-          area: true
-        },
       });
       if (getBuilding == null) {
         return {
@@ -183,5 +180,39 @@ export class BuildingsService {
 
     console.log(`Area check result: ${area ? 'Found' : 'Not Found'}`);
     return area;
+  }
+
+  async checkBuildingExists(buildingId: string) {
+    try {
+      console.log(`Checking building existence for ID: ${buildingId}`);
+
+      const building = await this.prisma.building.findUnique({
+        where: { buildingId },
+      });
+
+      if (!building) {
+        console.log(`Building with ID ${buildingId} not found`);
+        return {
+          statusCode: 404,
+          message: `Building with ID ${buildingId} not found`,
+          exists: false
+        };
+      }
+
+      console.log(`Building with ID ${buildingId} exists`);
+      return {
+        statusCode: 200,
+        message: 'Building exists',
+        exists: true,
+        data: building
+      };
+    } catch (error) {
+      console.error('Error checking building existence:', error);
+      return {
+        statusCode: 500,
+        message: 'Error checking building existence',
+        exists: false
+      };
+    }
   }
 }

@@ -42,4 +42,9 @@ export class BuildingsController {
     return { exists: !!area, message: area ? 'Area exists' : 'Area does not exist' };
   }
 
+  @MessagePattern(BUILDINGS_PATTERN.CHECK_EXISTS)
+  async checkBuildingExists(@Payload() data: { buildingId: string }) {
+    console.log('Received request to check building existence:', data);
+    return this.BuildingsService.checkBuildingExists(data.buildingId);
+  }
 }

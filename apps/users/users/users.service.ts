@@ -10,6 +10,9 @@ import { CreateWorkingPositionDto } from '../../../libs/contracts/src/users/crea
 import { PositionName } from '@prisma/client-users';
 import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
 import { catchError, firstValueFrom, throwError, timeout } from 'rxjs';
+import { BUILDINGS_PATTERN } from '../../../libs/contracts/src/buildings/buildings.patterns';
+
+const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
 
 @Injectable()
 export class UsersService {
@@ -33,6 +36,47 @@ export class UsersService {
 
     async signup(userData: createUserDto): Promise<ApiResponse<any>> {
         try {
+            // Check if building exists for each apartment if user is a resident
+            if (userData.role === Role.Resident && userData.apartments && userData.apartments.length > 0) {
+                console.log('Validating building IDs for resident apartments...');
+
+                for (const apartment of userData.apartments) {
+                    try {
+                        console.log(`Checking building ID: ${apartment.buildingId}`);
+
+                        const buildingResponse = await firstValueFrom(
+                            this.buildingClient.send(
+                                BUILDINGS_PATTERN.CHECK_EXISTS,
+                                { buildingId: apartment.buildingId }
+                            ).pipe(
+                                timeout(5000),
+                                catchError(err => {
+                                    console.error('Error communicating with building service:', err);
+                                    throw new Error('Building service unavailable');
+                                })
+                            )
+                        );
+
+                        console.log('Building service response:', buildingResponse);
+
+                        if (buildingResponse.statusCode === 404 || !buildingResponse.exists) {
+                            return new ApiResponse(
+                                false,
+                                `Building with ID ${apartment.buildingId} not found`,
+                                null
+                            );
+                        }
+                    } catch (error) {
+                        console.error('Error validating building:', error);
+                        return new ApiResponse(
+                            false,
+                            error.message || 'Error validating building',
+                            null
+                        );
+                    }
+                }
+            }
+
             const existingUser = await this.prisma.user.findFirst({
                 where: {
                     OR: [{ username: userData.username }, { email: userData.email }],
@@ -127,6 +171,48 @@ export class UsersService {
     async updateUser(userId: string, data: Partial<createUserDto>): Promise<UserDto> {
         const user = await this.getUserById(userId)
         if (!user) throw new RpcException({ statusCode: 404, message: 'User not found' })
+
+        // Validate building IDs if apartments are being updated
+        if (data.apartments && data.apartments.length > 0) {
+            console.log('Validating building IDs for apartment updates...');
+
+            for (const apartment of data.apartments) {
+                try {
+                    console.log(`Checking building ID: ${apartment.buildingId}`);
+
+                    const buildingResponse = await firstValueFrom(
+                        this.buildingClient.send(
+                            BUILDINGS_PATTERN.CHECK_EXISTS,
+                            { buildingId: apartment.buildingId }
+                        ).pipe(
+                            timeout(5000),
+                            catchError(err => {
+                                console.error('Error communicating with building service:', err);
+                                throw new RpcException({
+                                    statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+                                    message: 'Building service unavailable'
+                                });
+                            })
+                        )
+                    );
+
+                    if (buildingResponse.statusCode === 404 || !buildingResponse.exists) {
+                        throw new RpcException({
+                            statusCode: HttpStatus.NOT_FOUND,
+                            message: `Building with ID ${apartment.buildingId} not found`
+                        });
+                    }
+                } catch (error) {
+                    if (error instanceof RpcException) {
+                        throw error;
+                    }
+                    throw new RpcException({
+                        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                        message: error.message || 'Error validating building'
+                    });
+                }
+            }
+        }
 
         return this.prisma.user.update({
             where: { userId },

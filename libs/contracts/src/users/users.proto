@@ -73,6 +73,19 @@ message UserDetailsResponse {
 message ApartmentResponse {
   string apartmentName = 1;
   string buildingId = 2;
+  BuildingInfo building = 3;
+}
+
+message BuildingInfo {
+  string buildingId = 1;
+  string name = 2;
+  string description = 3;
+  int32 numberFloor = 4;
+  string imageCover = 5;
+  string areaId = 6;
+  string Status = 7;
+  string construction_date = 8;
+  string completion_date = 9;
 }
 
 message UsersListResponse {

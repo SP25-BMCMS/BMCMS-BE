@@ -3,15 +3,26 @@ import { UsersService } from './users.service'
 import { PrismaModule } from '../prisma/prisma.module'
 import { ClientsModule, Transport } from '@nestjs/microservices'
 
+const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
+
 @Module({
   imports: [PrismaModule,
     ClientsModule.register([
       {
-        name: 'BUILDING_CLIENT', // ✅ Đăng ký RabbitMQ Client
+        name: 'BUILDING_CLIENT',
         transport: Transport.RMQ,
         options: {
-          urls: ['amqp://admin:admin@localhost:5672'], // ✅ Đảm bảo user/password đúng
-          queue: 'building-maintenance', // 🔹 Đảm bảo trùng với queue trong Building
+          urls: ['amqp://admin:admin@localhost:5672'],
+          queue: 'Building',
+          queueOptions: { durable: true }
+        }
+      },
+      {
+        name: BUILDINGS_CLIENT,
+        transport: Transport.RMQ,
+        options: {
+          urls: ['amqp://admin:admin@localhost:5672'],
+          queue: 'Building',
           queueOptions: { durable: true }
         }
       }
