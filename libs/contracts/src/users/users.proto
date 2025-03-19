@@ -86,7 +86,9 @@ message ResidentResponse {
 }
 
 message ResidentsListResponse {
-  repeated ResidentResponse users = 1;
+  bool success = 1;
+  string message = 2;
+  repeated UserResponse data = 3;
 }
 
 message LoginRequest {
@@ -198,7 +200,7 @@ message Apartment {
 }
 
 message GetApartmentsResponse {
-  bool isSuccess = 1;
+  bool success = 1;
   string message = 2;
   repeated Apartment data = 3;
 }

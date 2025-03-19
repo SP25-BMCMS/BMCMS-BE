@@ -46,4 +46,7 @@ export class ResidentService {
     return await lastValueFrom(this.userService.getResidentByPhone({ phone }))
   }
 
+  async getApartmentsByResidentId(residentId: string) {
+    return await lastValueFrom(this.userService.getApartmentsByResidentId({ residentId }))
+  }
 }

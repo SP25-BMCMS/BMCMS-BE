@@ -6,8 +6,7 @@ import { log } from 'console';
 @Injectable()
 export class PrismaService
   extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
-{
+  implements OnModuleInit, OnModuleDestroy {
   constructor(config: ConfigService) {
     console.log('schedules Initialized'); // Add a debug log to ensure service is being initialized
 
