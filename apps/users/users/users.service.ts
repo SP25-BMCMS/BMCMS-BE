@@ -472,7 +472,11 @@ export class UsersService {
     async getAllStaff(): Promise<{ isSuccess: boolean; message: string; data: UserDto[] }> {
         try {
             const staffMembers = await this.prisma.user.findMany({
-                where: { role: Role.Staff },
+                where: {
+                    role: {
+                        in: [Role.Staff, Role.Admin, Role.Manager]
+                    }
+                },
                 include: {
                     userDetails: {
                         include: {
