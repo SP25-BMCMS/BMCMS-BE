@@ -25,8 +25,8 @@ export class BuildingsService {
           imageCover: CreateBuildingDto.imageCover,
           areaId: CreateBuildingDto.areaId,
           Status: CreateBuildingDto.status,
-          construction_date : CreateBuildingDto.construction_date,
-          completion_date : CreateBuildingDto.completion_date
+          construction_date: CreateBuildingDto.construction_date,
+          completion_date: CreateBuildingDto.completion_date
         },
       });
 
@@ -57,6 +57,9 @@ export class BuildingsService {
   async readBuilding() {
     try {
       const getBuilding = await this.prisma.building.findMany({
+        include: {
+          area: true
+        },
       });
       if (getBuilding == null) {
         return {
@@ -134,8 +137,8 @@ export class BuildingsService {
           imageCover: UpdateBuildingDto.imageCover,
           areaId: UpdateBuildingDto.areaId,
           Status: UpdateBuildingDto.status,
-          construction_date : UpdateBuildingDto.construction_date,
-          completion_date : UpdateBuildingDto.completion_date
+          construction_date: UpdateBuildingDto.construction_date,
+          completion_date: UpdateBuildingDto.completion_date
         },
       });
 
