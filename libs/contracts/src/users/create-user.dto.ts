@@ -111,5 +111,8 @@ export class createUserDto {
     @ApiProperty({ description: 'Status of the staff (e.g., Active, Inactive)', required: false, enum: $Enums.StaffStatus, example: "Active|Inactive| Probation" })
     staffStatus?: $Enums.StaffStatus;
 
-
+    @IsString()
+    @IsOptional()
+    @ApiProperty({ description: 'Image of the user', required: false, type: String })
+    image?: string;
 }

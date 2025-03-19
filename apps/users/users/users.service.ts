@@ -28,7 +28,13 @@ export class UsersService {
     }
 
     async getUserById(userId: string): Promise<UserDto | null> {
-        const user = await this.prisma.user.findUnique({ where: { userId } })
+        const user = await this.prisma.user.findUnique({
+            where: { userId },
+            include: {
+                userDetails: true,
+                apartments: true
+            }
+        })
         if (!user)
             throw new RpcException({ statusCode: 401, message: 'invalid credentials!' })
         return user
@@ -118,6 +124,7 @@ export class UsersService {
                                     positionId: userData.positionId ?? null,
                                     departmentId: userData.departmentId ?? null,
                                     staffStatus: userData.staffStatus ?? null,
+                                    image: userData.image ?? null,
                                 }
                             }
                             : undefined,
@@ -154,6 +161,7 @@ export class UsersService {
                     positionId: fullUser?.userDetails.positionId,
                     departmentId: fullUser?.userDetails.departmentId,
                     staffStatus: fullUser?.userDetails.staffStatus,
+                    image: fullUser?.userDetails.image
                 } : null,
                 apartments: fullUser?.apartments.map(apartment => ({
                     apartmentName: apartment.apartmentName,
@@ -458,6 +466,61 @@ export class UsersService {
 
         } catch (error) {
             return { isSuccess: false, message: 'Failed to retrieve apartments', data: [] };
+        }
+    }
+
+    async getAllStaff(): Promise<{ isSuccess: boolean; message: string; data: UserDto[] }> {
+        try {
+            const staffMembers = await this.prisma.user.findMany({
+                where: { role: Role.Staff },
+                include: {
+                    userDetails: {
+                        include: {
+                            position: true,
+                            department: true
+                        }
+                    }
+                }
+            });
+
+            if (!staffMembers || staffMembers.length === 0) {
+                return { isSuccess: true, message: 'No staff members found', data: [] };
+            }
+
+            // Convert to user response format without exposing sensitive fields
+            const staffData = staffMembers.map(staff => {
+                const { password, ...userWithoutPassword } = staff;
+                return {
+                    ...userWithoutPassword,
+                    dateOfBirth: staff.dateOfBirth ? staff.dateOfBirth.toISOString() : null,
+                    userDetails: staff.userDetails ? {
+                        ...staff.userDetails,
+                        position: staff.userDetails.position ? {
+                            positionId: staff.userDetails.position.positionId,
+                            positionName: staff.userDetails.position.positionName.toString(),
+                            description: staff.userDetails.position.description || ''
+                        } : null,
+                        department: staff.userDetails.department ? {
+                            departmentId: staff.userDetails.department.departmentId,
+                            departmentName: staff.userDetails.department.departmentName,
+                            description: staff.userDetails.department.description || '',
+                            area: staff.userDetails.department.area || ''
+                        } : null
+                    } : null
+                };
+            });
+
+            return {
+                isSuccess: true,
+                message: 'Successfully retrieved all staff members',
+                data: staffData as unknown as UserDto[]
+            };
+        } catch (error) {
+            console.error('Error fetching staff members:', error);
+            throw new RpcException({
+                statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                message: 'Failed to fetch staff members'
+            });
         }
     }
 }

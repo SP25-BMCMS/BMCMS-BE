@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common'
 import { UsersService } from './users.service'
 import { PrismaModule } from '../prisma/prisma.module'
 import { ClientsModule, Transport } from '@nestjs/microservices'
+import { UsersController } from './users.controller'
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 
@@ -28,6 +29,7 @@ const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
       }
     ])
   ],
+  controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService],
 })

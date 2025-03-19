@@ -23,6 +23,9 @@ export interface UserInterface {
   getResidentByEmail(data: { email: string }): Observable<any>;
   getResidentByPhone(data: { phone: string }): Observable<any>;
 
+  // Staff/Employee Methods
+  getAllStaff({ }): Observable<any>;
+
   // Working Position Methods
   createWorkingPosition(data: CreateWorkingPositionDto): Observable<any>;
   getAllWorkingPositions({ }): Observable<any>;
