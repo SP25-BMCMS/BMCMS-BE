@@ -1,10 +1,8 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { RpcException } from '@nestjs/microservices';
-import { CreateCrackDetailDto } from 'libs/contracts/src/cracks/create-crack-detail.dto';
-import { UpdateCrackDetailDto } from 'libs/contracts/src/cracks/update-crack-detail.dto';
-import { ApiResponse } from '../../../../libs/contracts/src/ApiReponse/api-response';
-import { Prisma } from '@prisma/client';
+import { Injectable } from '@nestjs/common'
+import { RpcException } from '@nestjs/microservices'
+import { UpdateCrackDetailDto } from 'libs/contracts/src/cracks/update-crack-detail.dto'
+import { ApiResponse } from '../../../../libs/contracts/src/ApiReponse/api-response'
+import { PrismaService } from '../../prisma/prisma.service'
 
 @Injectable()
 export class CrackDetailsService {
