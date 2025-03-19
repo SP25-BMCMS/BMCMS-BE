@@ -20,6 +20,7 @@ import { catchError, firstValueFrom } from 'rxjs'
 import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto'
 import { CreateCrackDetailDto } from '../../../../libs/contracts/src/cracks/create-crack-detail.dto'
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto'
+import { ApiBody, ApiConsumes } from '@nestjs/swagger'
 
 
 @Controller('cracks')
@@ -168,6 +169,24 @@ export class CracksController {
   }
 
   @Post('crack-details/upload-images')
+  @ApiConsumes('multipart/form-data') // Định dạng gửi file
+  @ApiBody({
+    description: 'Upload up to 10 images',
+    type: 'multipart/form-data',
+    required: true,
+    schema: {
+      type: 'object',
+      properties: {
+        image: {
+          type: 'array',
+          items: {
+            type: 'string',
+            format: 'binary' // Hiển thị chọn file trong Swagger
+          }
+        }
+      }
+    }
+  })
   @UseInterceptors(FilesInterceptor('image', 10))
   async uploadImage(@UploadedFiles() files: Express.Multer.File[]) {
     if (!files || files.length === 0) {
