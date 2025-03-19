@@ -61,6 +61,7 @@ export class ScheduleJobsService {
         where: { schedule_job_id },
       });
       if (!scheduleJob) {
+
         throw new RpcException({
           statusCode: 404,
           mescsage: "Shedule job not found",

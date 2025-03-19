@@ -64,8 +64,9 @@ export class SchedulesService {
 
   // Get schedule by ID (Microservice)
   async getScheduleById(schedule_id: string): Promise<any> {
+    console.log("🚀 ~ SchedulesService ~ getScheduleById ~ schedule_id:", schedule_id)
     try {
-      return await this.scheduleClient.send(SCHEDULES_PATTERN.GET_BY_ID, { schedule_id });
+      return await this.scheduleClient.send(SCHEDULES_PATTERN.GET_BY_ID, schedule_id );
     } catch (error) {
       throw new HttpException(
         'Error occurred while fetching schedule by ID',

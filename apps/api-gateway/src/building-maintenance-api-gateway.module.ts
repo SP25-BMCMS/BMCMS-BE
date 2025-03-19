@@ -10,11 +10,13 @@ import { TasksModule } from './Task/Tasks.module'
 import { TaskAssigmentModule } from './TaskAssigment/TaskAssigment.module'
 import { worklogModule } from './Worklogs/WorkLog.module'
 import { SchedulesModule } from './schedules/Schedules.module'
+import { ScheduleJobsController } from './schedulejobs/schedulejobs.controller'
+import { schedulejobsModule } from './schedulejobs/schedulejobs.module'
 
 
 
 @Module({
-  imports: [UsersModule, ConfigModule.forRoot(),BuildingsModule,AreasModule,BuildingDetailModule,LocationDetailModule,CracksModule,TasksModule,TaskAssigmentModule,worklogModule,SchedulesModule],
+  imports: [UsersModule, ConfigModule.forRoot(),BuildingsModule,AreasModule,BuildingDetailModule,LocationDetailModule,CracksModule,TasksModule,TaskAssigmentModule,worklogModule,SchedulesModule,schedulejobsModule],
  // controllers: [BuildingMaintenanceApiGatewayController],
  // providers: [BuildingMaintenanceApiGatewayService],
 })

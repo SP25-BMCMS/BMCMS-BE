@@ -33,7 +33,8 @@ export class ScheduleController {
   }
 
   @MessagePattern(SCHEDULES_PATTERN.GET_BY_ID)
-  async getScheduleById(@Payload() schedule_id: string): Promise<ApiResponse<ScheduleResponseDto>> {
+  async getScheduleById(schedule_id: string): Promise<ApiResponse<ScheduleResponseDto>> {
+    console.log("🚀 ~ ScheduleController ~ getScheduleById ~ schedule_id:", typeof schedule_id)
     return this.scheduleService.getScheduleById(schedule_id);
   }
 }
