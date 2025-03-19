@@ -93,8 +93,8 @@ export class CreateBuildingDto {
   completion_date?: string;
 
 
-    @IsNotEmpty()
-    @IsEnum($Enums.BuildingStatus)
-    @ApiProperty({ description: 'The status of the building', enum: $Enums.BuildingStatus, example :"" +$Enums.BuildingStatus.operational+"|" + $Enums.BuildingStatus.under_construction })  // Enum for status
-    status: $Enums.BuildingStatus;
+  @IsNotEmpty()
+  @IsEnum($Enums.BuildingStatus)
+  @ApiProperty({ description: 'The status of the building', enum: $Enums.BuildingStatus, example: "" + $Enums.BuildingStatus.operational + "|" + $Enums.BuildingStatus.under_construction })  // Enum for status
+  status: $Enums.BuildingStatus;
 }

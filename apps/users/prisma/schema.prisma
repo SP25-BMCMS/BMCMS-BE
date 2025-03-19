@@ -25,6 +25,7 @@ model User {
 
 model UserDetails {
   userId       String       @id @default(uuid()) @map("user_id")
+  image        String?
   positionId   String? // Chỉ Staff
   departmentId String? // Chỉ Staff
   staffStatus  StaffStatus? // Chỉ Staff

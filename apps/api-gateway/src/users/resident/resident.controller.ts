@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from "@nestjs/common"
+import { Controller, Get, Param, UseGuards } from "@nestjs/common"
 import { ResidentService } from "./resident.service"
 
 @Controller('resident')
@@ -12,5 +12,8 @@ export class ResidentController {
         return this.residentService.getAllResidents()
     }
 
-    
+    @Get(':residentId/apartments')
+    getApartmentsByResidentId(@Param('residentId') residentId: string) {
+        return this.residentService.getApartmentsByResidentId(residentId)
+    }
 }
