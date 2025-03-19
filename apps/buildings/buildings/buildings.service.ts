@@ -153,7 +153,7 @@ export class BuildingsService {
   }
 
   // Delete a building by buildingId
-  async deleteBuilding(buildingId: UUID) {
+  async deleteBuilding(buildingId: string) {
     try {
       const deletedBuilding = await this.prisma.building.delete({
         where: { buildingId },
@@ -167,7 +167,7 @@ export class BuildingsService {
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Building deletion failed',
+        message: 'Building deletion failed' + error.message,
       });
     }
   }

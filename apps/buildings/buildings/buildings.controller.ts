@@ -26,8 +26,8 @@ export class BuildingsController {
   }
 
   @MessagePattern(BUILDINGS_PATTERN.DELELTE)
-  deleteBuilding(@Payload() data: any) {
-    return this.BuildingsService.deleteBuilding(data);
+  deleteBuilding(@Payload() payload: { buildingId: string }) {
+    return this.BuildingsService.deleteBuilding(payload.buildingId);
   }
   @MessagePattern(BUILDINGS_PATTERN.GET_BY_ID)
   async getBuildingById(@Payload() payload: { buildingId: string }) {
