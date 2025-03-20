@@ -27,7 +27,9 @@ export class ResidentsService {
           dateOfBirth: true,
           gender: true,
           userDetails: true,
-          apartments: true
+          apartments: true,
+          accountStatus: true,
+          role: true
         }
       });
 
@@ -53,13 +55,15 @@ export class ResidentsService {
 
                 // Return apartment with building details
                 return {
-                  ...apartment,
+                  apartmentName: apartment.apartmentName,
+                  buildingId: apartment.buildingId,
                   building: buildingResponse.statusCode === 200 ? buildingResponse.data : null
                 };
               } catch (error) {
                 console.error(`Failed to get building for apartment ${apartment.apartmentName}:`, error);
                 return {
-                  ...apartment,
+                  apartmentName: apartment.apartmentName,
+                  buildingId: apartment.buildingId,
                   building: null
                 };
               }
@@ -68,16 +72,32 @@ export class ResidentsService {
 
           // Return resident with enhanced apartment data
           return {
-            ...resident,
+            userId: resident.userId,
+            username: resident.username,
+            email: resident.email,
+            phone: resident.phone,
+            role: resident.role,
+            dateOfBirth: resident.dateOfBirth ? resident.dateOfBirth.toISOString() : null,
+            gender: resident.gender,
+            accountStatus: resident.accountStatus,
+            userDetails: resident.userDetails,
             apartments: apartmentsWithBuildings
           };
         })
       );
 
-      return { success: true, data: residentsWithBuildingDetails };
+      return {
+        isSuccess: true,
+        message: 'Danh sách cư dân',
+        data: residentsWithBuildingDetails
+      };
     } catch (error) {
       console.error('Error in getAllResidents:', error);
-      return { success: false, message: error.message };
+      return {
+        isSuccess: false,
+        message: error.message,
+        data: []
+      };
     }
   }
 
