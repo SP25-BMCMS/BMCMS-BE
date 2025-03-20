@@ -88,4 +88,14 @@ export class AuthController {
     async residentLogin(data: { phone: string; password: string }) {
         return await this.authService.residentLogin(data);
     }
+
+    @GrpcMethod('UserService', 'UpdateResidentApartments')
+    async updateResidentApartments(data: { residentId: string; apartments: { apartmentName: string; buildingId: string }[] }) {
+        return await this.usersService.updateResidentApartments(data.residentId, data.apartments);
+    }
+
+    @GrpcMethod('UserService', 'UpdateAccountStatus')
+    async updateAccountStatus(data: { userId: string; accountStatus: string }) {
+        return await this.usersService.updateAccountStatus(data.userId, data.accountStatus);
+    }
 }

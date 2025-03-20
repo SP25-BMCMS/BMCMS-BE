@@ -10,8 +10,11 @@ import { ApiResponse } from '../../../../../libs/contracts/src/ApiReponse/api-re
 import { LoginDto } from '@app/contracts/users/login.dto';
 import { CreateWorkingPositionDto } from 'libs/contracts/src/users/create-working-position.dto';
 import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
+import { UpdateAccountStatusDto } from '../../../../../libs/contracts/src/users/update-account-status.dto';
+import { ApiOperation, ApiResponse as SwaggerResponse, ApiTags } from '@nestjs/swagger';
 
 @Controller('auth')
+@ApiTags('Authentication & User Management')
 export class UsersController {
     constructor(private usersService: UsersService) { }
 
@@ -161,4 +164,55 @@ export class UsersController {
         }
     }
 
+    @UseGuards(PassportJwtAuthGuard, RolesGuard)
+    @Roles(Role.Admin)
+    @Patch('update-account-status')
+    @ApiOperation({ summary: 'Update user account status (Admin only)' })
+    @SwaggerResponse({
+        status: 200,
+        description: 'Account status updated successfully'
+    })
+    @SwaggerResponse({
+        status: 404,
+        description: 'User not found'
+    })
+    @SwaggerResponse({
+        status: 401,
+        description: 'Unauthorized'
+    })
+    async updateAccountStatus(@Body() data: UpdateAccountStatusDto, @Res() res: any) {
+        try {
+            const { userId, accountStatus } = data;
+            const response = await this.usersService.updateAccountStatus(userId, accountStatus);
+
+            // Kiểm tra kết quả trả về từ service để quyết định status code
+            if (!response.isSuccess) {
+                // Nếu message chứa "không tìm thấy" hoặc "not found", trả về 404
+                if (response.message && (
+                    response.message.toLowerCase().includes('không tìm thấy') ||
+                    response.message.toLowerCase().includes('not found')
+                )) {
+                    return res.status(HttpStatus.NOT_FOUND).json(response);
+                }
+
+                // Các trường hợp lỗi khác
+                return res.status(HttpStatus.BAD_REQUEST).json(response);
+            }
+
+            return res.status(HttpStatus.OK).json(response);
+        } catch (error) {
+            const status = error instanceof HttpException
+                ? error.getStatus()
+                : HttpStatus.INTERNAL_SERVER_ERROR;
+
+            const message = error instanceof HttpException
+                ? error.message
+                : 'Lỗi khi cập nhật trạng thái tài khoản';
+
+            return res.status(status).json({
+                statusCode: status,
+                message: message
+            });
+        }
+    }
 }

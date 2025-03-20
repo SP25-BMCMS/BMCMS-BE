@@ -248,4 +248,41 @@ export class UsersService implements OnModuleInit {
     }
   }
 
+  async updateAccountStatus(userId: string, accountStatus: string) {
+    try {
+      const response = await lastValueFrom(
+        this.userService.updateAccountStatus({ userId, accountStatus }).pipe(
+          catchError((error) => {
+            console.error('Update account status error:', error);
+
+            if (error.details) {
+              if (error.details.includes('không tìm thấy')) {
+                return throwError(() => new HttpException(
+                  error.details,
+                  HttpStatus.NOT_FOUND
+                ));
+              }
+            }
+
+            return throwError(() => new HttpException(
+              error.details || 'Lỗi khi cập nhật trạng thái tài khoản',
+              HttpStatus.INTERNAL_SERVER_ERROR
+            ));
+          })
+        )
+      );
+
+      return response;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        'Lỗi hệ thống khi cập nhật trạng thái tài khoản',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
 }

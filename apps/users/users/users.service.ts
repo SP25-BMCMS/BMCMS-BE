@@ -662,4 +662,104 @@ export class UsersService {
             });
         }
     }
+
+    async updateAccountStatus(userId: string, accountStatus: string): Promise<{ isSuccess: boolean; message: string; data: any }> {
+        try {
+            // Kiểm tra xem user có tồn tại không
+            const user = await this.prisma.user.findUnique({
+                where: { userId }
+            });
+
+            if (!user) {
+                return {
+                    isSuccess: false,
+                    message: `Không tìm thấy người dùng với ID: ${userId}`,
+                    data: null
+                };
+            }
+
+            // Chuyển đổi accountStatus string thành enum
+            const status = accountStatus === 'Active' ? AccountStatus.Active : AccountStatus.Inactive;
+
+            // Cập nhật trạng thái tài khoản
+            const updatedUser = await this.prisma.user.update({
+                where: { userId },
+                data: { accountStatus: status }
+            });
+
+            // Lấy thông tin đầy đủ của user sau khi cập nhật
+            const fullUser = await this.prisma.user.findUnique({
+                where: { userId },
+                include: {
+                    userDetails: {
+                        include: {
+                            position: true,
+                            department: true
+                        }
+                    },
+                    apartments: true
+                }
+            });
+
+            // Format dữ liệu trả về theo dạng JSON phù hợp
+            const formattedResponse = {
+                userId: fullUser.userId,
+                username: fullUser.username,
+                email: fullUser.email,
+                phone: fullUser.phone,
+                role: fullUser.role,
+                dateOfBirth: fullUser.dateOfBirth ? fullUser.dateOfBirth.toISOString() : null,
+                gender: fullUser.gender,
+                accountStatus: fullUser.accountStatus
+            };
+
+            // Thêm userDetails nếu có
+            if (fullUser.userDetails) {
+                Object.assign(formattedResponse, {
+                    userDetails: {
+                        positionId: fullUser.userDetails.positionId,
+                        departmentId: fullUser.userDetails.departmentId,
+                        staffStatus: fullUser.userDetails.staffStatus,
+                        image: fullUser.userDetails.image,
+                        position: fullUser.userDetails.position ? {
+                            positionId: fullUser.userDetails.position.positionId,
+                            positionName: fullUser.userDetails.position.positionName,
+                            description: fullUser.userDetails.position.description
+                        } : null,
+                        department: fullUser.userDetails.department ? {
+                            departmentId: fullUser.userDetails.department.departmentId,
+                            departmentName: fullUser.userDetails.department.departmentName,
+                            description: fullUser.userDetails.department.description,
+                            area: fullUser.userDetails.department.area
+                        } : null
+                    }
+                });
+            }
+
+            // Thêm thông tin căn hộ nếu có
+            if (fullUser.apartments && fullUser.apartments.length > 0) {
+                Object.assign(formattedResponse, {
+                    apartments: fullUser.apartments.map(apt => ({
+                        apartmentName: apt.apartmentName,
+                        buildingId: apt.buildingId
+                    }))
+                });
+            } else {
+                Object.assign(formattedResponse, { apartments: [] });
+            }
+
+            return {
+                isSuccess: true,
+                message: `Cập nhật trạng thái tài khoản thành ${accountStatus}`,
+                data: formattedResponse
+            };
+        } catch (error) {
+            console.error('Error updating account status:', error);
+            return {
+                isSuccess: false,
+                message: `Lỗi khi cập nhật trạng thái tài khoản: ${error.message}`,
+                data: null
+            };
+        }
+    }
 }

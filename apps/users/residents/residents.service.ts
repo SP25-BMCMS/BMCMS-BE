@@ -5,6 +5,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { BUILDINGS_PATTERN } from '../../../libs/contracts/src/buildings/buildings.patterns';
 import { firstValueFrom, catchError, timeout } from 'rxjs';
 
+
 @Injectable()
 export class ResidentsService {
   constructor(
@@ -148,4 +149,5 @@ export class ResidentsService {
       return { success: false, message: error.message };
     }
   }
+
 }

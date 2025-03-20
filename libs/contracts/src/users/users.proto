@@ -21,6 +21,7 @@ service UserService {
   rpc GetApartmentsByResidentId (GetApartmentsRequest) returns (GetApartmentsResponse);
   rpc ResidentLogin (ResidentLoginRequest) returns (LoginResponse);
   rpc UpdateResidentApartments (UpdateResidentApartmentsRequest) returns (UpdateResidentApartmentsResponse);
+  rpc UpdateAccountStatus (UpdateAccountStatusRequest) returns (UpdateAccountStatusResponse);
 }
 
 message CreateUserRequest {
@@ -255,6 +256,17 @@ message UpdateResidentApartmentsRequest {
 }
 
 message UpdateResidentApartmentsResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  UserResponse data = 3;
+}
+
+message UpdateAccountStatusRequest {
+  string userId = 1;
+  string accountStatus = 2;
+}
+
+message UpdateAccountStatusResponse {
   bool isSuccess = 1;
   string message = 2;
   UserResponse data = 3;

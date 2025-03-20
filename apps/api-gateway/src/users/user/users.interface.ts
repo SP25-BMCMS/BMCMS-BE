@@ -3,6 +3,7 @@ import { createUserDto } from '../../../../../libs/contracts/src/users/create-us
 import { ApiResponse } from '../../../../../libs/contracts/src/ApiReponse/api-response';
 import { CreateWorkingPositionDto } from '../../../../../libs/contracts/src/users/create-working-position.dto';
 import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
+import { UpdateAccountStatusDto } from '../../../../../libs/contracts/src/users/update-account-status.dto';
 
 export interface UserInterface {
   login(data: { username: string, password: string }): Observable<any>;
@@ -42,4 +43,7 @@ export interface UserInterface {
   residentLogin(data: { phone: string, password: string }): Observable<any>;
 
   updateResidentApartments(data: { residentId: string; apartments: { apartmentName: string; buildingId: string }[] }): Observable<any>;
+
+  // Account Status
+  updateAccountStatus(data: { userId: string, accountStatus: string }): Observable<any>;
 }
