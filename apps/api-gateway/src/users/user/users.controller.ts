@@ -166,7 +166,7 @@ export class UsersController {
 
     @UseGuards(PassportJwtAuthGuard, RolesGuard)
     @Roles(Role.Admin)
-    @Patch('update-account-status')
+    @Patch('update-account-status/:userId')
     @ApiOperation({ summary: 'Update user account status (Admin only)' })
     @SwaggerResponse({
         status: 200,
@@ -180,9 +180,13 @@ export class UsersController {
         status: 401,
         description: 'Unauthorized'
     })
-    async updateAccountStatus(@Body() data: UpdateAccountStatusDto, @Res() res: any) {
+    async updateAccountStatus(
+        @Param('userId') userId: string,
+        @Body() data: { accountStatus: string },
+        @Res() res: any
+    ) {
         try {
-            const { userId, accountStatus } = data;
+            const { accountStatus } = data;
             const response = await this.usersService.updateAccountStatus(userId, accountStatus);
 
             // Kiểm tra kết quả trả về từ service để quyết định status code

@@ -703,50 +703,9 @@ export class UsersService {
 
             // Format dữ liệu trả về theo dạng JSON phù hợp
             const formattedResponse = {
-                userId: fullUser.userId,
-                username: fullUser.username,
-                email: fullUser.email,
-                phone: fullUser.phone,
-                role: fullUser.role,
-                dateOfBirth: fullUser.dateOfBirth ? fullUser.dateOfBirth.toISOString() : null,
-                gender: fullUser.gender,
                 accountStatus: fullUser.accountStatus
             };
 
-            // Thêm userDetails nếu có
-            if (fullUser.userDetails) {
-                Object.assign(formattedResponse, {
-                    userDetails: {
-                        positionId: fullUser.userDetails.positionId,
-                        departmentId: fullUser.userDetails.departmentId,
-                        staffStatus: fullUser.userDetails.staffStatus,
-                        image: fullUser.userDetails.image,
-                        position: fullUser.userDetails.position ? {
-                            positionId: fullUser.userDetails.position.positionId,
-                            positionName: fullUser.userDetails.position.positionName,
-                            description: fullUser.userDetails.position.description
-                        } : null,
-                        department: fullUser.userDetails.department ? {
-                            departmentId: fullUser.userDetails.department.departmentId,
-                            departmentName: fullUser.userDetails.department.departmentName,
-                            description: fullUser.userDetails.department.description,
-                            area: fullUser.userDetails.department.area
-                        } : null
-                    }
-                });
-            }
-
-            // Thêm thông tin căn hộ nếu có
-            if (fullUser.apartments && fullUser.apartments.length > 0) {
-                Object.assign(formattedResponse, {
-                    apartments: fullUser.apartments.map(apt => ({
-                        apartmentName: apt.apartmentName,
-                        buildingId: apt.buildingId
-                    }))
-                });
-            } else {
-                Object.assign(formattedResponse, { apartments: [] });
-            }
 
             return {
                 isSuccess: true,
