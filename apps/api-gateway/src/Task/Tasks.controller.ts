@@ -15,7 +15,7 @@ import {
 import { TaskService } from './Tasks.service';
 import { catchError, firstValueFrom, NotFoundError } from 'rxjs';
 import { UpdateTaskDto } from '@app/contracts/tasks/update.Task';
-import { ApiOperation, ApiParam } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiTags, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { ChangeTaskStatusDto } from '@app/contracts/tasks/ChangeTaskStatus.Dto ';
 
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
@@ -23,16 +23,28 @@ import { ClientProxy } from '@nestjs/microservices';
 import { TASK_CLIENT } from '../constraints';
 import { UpdateInspectionDto } from '../../../../libs/contracts/src/inspections/update-inspection.dto';
 import { CreateRepairMaterialDto } from 'libs/contracts/src/tasks/create-repair-material.dto';
+
 @Controller('tasks')
+@ApiTags('tasks')
 export class TaskController {
   constructor(private readonly taskService: TaskService) { }
 
   @Post('task')
+  @ApiOperation({ summary: 'Create a new task' })
+  @ApiBody({ schema: { type: 'object' } })
+  @ApiResponse({ status: 201, description: 'Task created successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
   async createTask(@Body() createTaskDto: any) {
     return this.taskService.createTask(createTaskDto);
   }
 
   @Put('task/:task_id')
+  @ApiOperation({ summary: 'Update a task' })
+  @ApiParam({ name: 'task_id', description: 'Task ID' })
+  @ApiBody({ type: UpdateTaskDto })
+  @ApiResponse({ status: 200, description: 'Task updated successfully' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
   async updateTask(
     @Param('task_id') task_id: string,
     @Body() updateTaskDto: UpdateTaskDto,
@@ -41,19 +53,32 @@ export class TaskController {
   }
 
   @Get('task/:task_id')
+  @ApiOperation({ summary: 'Get task by ID' })
+  @ApiParam({ name: 'task_id', description: 'Task ID' })
+  @ApiResponse({ status: 200, description: 'Task found' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
   async getTaskById(@Param('task_id') task_id: string) {
     return this.taskService.getTaskById(task_id);
   }
 
   @Delete('task/:task_id')
+  @ApiOperation({ summary: 'Delete a task' })
+  @ApiParam({ name: 'task_id', description: 'Task ID' })
+  @ApiResponse({ status: 200, description: 'Task deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
   async deleteTask(@Param('task_id') task_id: string) {
     return this.taskService.deleteTask(task_id);
   }
 
   // @Put('task/:task_id/status')
+  @ApiOperation({ summary: 'Change task status' })
+  @ApiParam({ name: 'task_id', description: 'Task ID' })
+  @ApiBody({ type: ChangeTaskStatusDto })
+  @ApiResponse({ status: 200, description: 'Task status updated successfully' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
   async changeTaskStatus(
     @Param('task_id') task_id: string,
-    @Body() body: ChangeTaskStatusDto ,
+    @Body() body: ChangeTaskStatusDto,
   ) {
     console.log(
       '🚀 ~ AreasController ~ changeTaskStatus ~ status:',
@@ -64,16 +89,25 @@ export class TaskController {
   }
 
   @Get('tasks')
+  @ApiOperation({ summary: 'Get all tasks' })
+  @ApiResponse({ status: 200, description: 'Returns all tasks' })
   async getAllTasks() {
     return this.taskService.getAllTasks();
   }
 
   @Get('status/:status')
+  @ApiOperation({ summary: 'Get tasks by status' })
+  @ApiParam({ name: 'status', description: 'Task status' })
+  @ApiResponse({ status: 200, description: 'Returns tasks by status' })
   async getTasksByStatus(@Param('status') status: string) {
     return this.taskService.getTasksByStatus(status);
   }
 
   @Get('inspection/task_assignment/:task_assignment_id')
+  @ApiOperation({ summary: 'Get inspection by task assignment ID' })
+  @ApiParam({ name: 'task_assignment_id', description: 'Task assignment ID' })
+  @ApiResponse({ status: 200, description: 'Inspection found' })
+  @ApiResponse({ status: 404, description: 'Inspection not found' })
   async GetInspectionByTaskAssignmentId(
     @Param('task_assignment_id') task_assignment_id: string,
   ) {
@@ -81,11 +115,20 @@ export class TaskController {
   }
 
   @Patch('inspection/:id')
+  @ApiOperation({ summary: 'Update inspection' })
+  @ApiParam({ name: 'id', description: 'Inspection ID' })
+  @ApiBody({ type: UpdateInspectionDto })
+  @ApiResponse({ status: 200, description: 'Inspection updated successfully' })
+  @ApiResponse({ status: 404, description: 'Inspection not found' })
   async updateCrackReport(@Param('id') inspection_id: string, @Body() dto: UpdateInspectionDto) {
     return this.taskService.updateInspection(inspection_id, dto);
   }
 
   @Get('inspection/crack/:crack_id')
+  @ApiOperation({ summary: 'Get inspection by crack ID' })
+  @ApiParam({ name: 'crack_id', description: 'Crack ID' })
+  @ApiResponse({ status: 200, description: 'Inspection found' })
+  @ApiResponse({ status: 404, description: 'Inspection not found' })
   async GetInspectionByCrackId(
     @Param('crack_id') crack_id: string,
   ) {
@@ -93,11 +136,17 @@ export class TaskController {
   }
 
   @Get('inspections')
+  @ApiOperation({ summary: 'Get all inspections' })
+  @ApiResponse({ status: 200, description: 'Returns all inspections' })
   async GetAllInspections() {
     return this.taskService.GetAllInspections();
   }
 
   @Post('repair-materials')
+  @ApiOperation({ summary: 'Create repair material' })
+  @ApiBody({ type: CreateRepairMaterialDto })
+  @ApiResponse({ status: 201, description: 'Repair material created successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
   async createRepairMaterial(@Body() createRepairMaterialDto: CreateRepairMaterialDto) {
     return this.taskService.createRepairMaterial(createRepairMaterialDto);
   }

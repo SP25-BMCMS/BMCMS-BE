@@ -25,7 +25,6 @@ async function bootstrap() {
     transform: true,
   }))
 
-
   app.useGlobalFilters(new HttpExceptionFilter())
   //  app.useGlobalFilters(new RpcToHttpExceptionFilter())
   // console.log("🚀 ~ bootstrap ~ process.env.port:", process.env.port)
@@ -34,14 +33,42 @@ async function bootstrap() {
     .setTitle('BMCMS - Building Management & Crack Monitoring System')
     .setDescription('API for managing buildings, monitoring cracks, and handling maintenance tasks')
     .setVersion('1.0')
-    .addBearerAuth()
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'Authorization',
+        description: 'Enter JWT token',
+        in: 'header',
+      },
+      'access-token',
+    )
+    .addTag('users', 'User management endpoints')
+    .addTag('buildings', 'Building management endpoints')
+    .addTag('areas', 'Area management endpoints')
+    .addTag('cracks', 'Crack monitoring endpoints')
+    .addTag('tasks', 'Task management endpoints')
+    .addTag('schedules', 'Schedule management endpoints')
     .build()
 
-
   const document = SwaggerModule.createDocument(app, config)
-  SwaggerModule.setup('api', app, document)  // Đường dẫn /api sẽ hiển thị Swagger UI
+
+  // Custom Swagger UI options
+  const customOptions = {
+    swaggerOptions: {
+      persistAuthorization: true,
+      docExpansion: 'none',
+      filter: true,
+      showExtensions: true,
+    },
+    customSiteTitle: 'BMCMS API Documentation',
+  };
+
+  SwaggerModule.setup('api', app, document, customOptions)
 
   await app.listen(3000)
-  console.log(`Application is running on: http://localhost:3000/api`)
+  console.log(`Application is running on: ${await app.getUrl()}`)
+  console.log(`Swagger documentation available at: ${await app.getUrl()}/api`)
 }
 bootstrap()

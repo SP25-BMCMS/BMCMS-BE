@@ -11,7 +11,7 @@ import { LoginDto } from '@app/contracts/users/login.dto';
 import { CreateWorkingPositionDto } from 'libs/contracts/src/users/create-working-position.dto';
 import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
 import { UpdateAccountStatusDto } from '../../../../../libs/contracts/src/users/update-account-status.dto';
-import { ApiOperation, ApiResponse as SwaggerResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse as SwaggerResponse, ApiTags, ApiBearerAuth, ApiBody, ApiParam } from '@nestjs/swagger';
 
 @Controller('auth')
 @ApiTags('Authentication & User Management')
@@ -20,14 +20,28 @@ export class UsersController {
 
     @UseGuards(PassportLocalGuard)
     @Post('login')
-    // login(@Body() data: { username: string, password: string }) {
-    //     return this.usersService.login(data)
-    // }
+    @ApiOperation({ summary: 'Login with username and password' })
+    @ApiBody({ type: LoginDto })
+    @SwaggerResponse({ status: 200, description: 'Login successful' })
+    @SwaggerResponse({ status: 401, description: 'Unauthorized' })
     login(@Body() data: LoginDto) {
         return this.usersService.login(data);
     }
 
     @Post('resident/login')
+    @ApiOperation({ summary: 'Login for residents using phone and password' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                phone: { type: 'string', example: '0123456789' },
+                password: { type: 'string', example: 'password123' }
+            },
+            required: ['phone', 'password']
+        }
+    })
+    @SwaggerResponse({ status: 200, description: 'Login successful' })
+    @SwaggerResponse({ status: 401, description: 'Unauthorized' })
     async residentLogin(@Body() data: { phone: string, password: string }, @Res() res: any) {
         try {
             const response = await this.usersService.residentLogin(data);
@@ -51,13 +65,19 @@ export class UsersController {
 
     @UseGuards(PassportJwtAuthGuard)
     @Get("me")
+    @ApiBearerAuth('access-token')
+    @ApiOperation({ summary: 'Get current user information' })
+    @SwaggerResponse({ status: 200, description: 'User information retrieved successfully' })
+    @SwaggerResponse({ status: 401, description: 'Unauthorized' })
     getUserInfo(@Req() req) {
         return this.usersService.getUserInfo(req.user)
     }
 
-    // @UseGuards(PassportJwtAuthGuard, RolesGuard)
-    // @Roles(Role.Admin)
     @Post('signup')
+    @ApiOperation({ summary: 'Register a new user' })
+    @ApiBody({ type: createUserDto })
+    @SwaggerResponse({ status: 201, description: 'User created successfully' })
+    @SwaggerResponse({ status: 400, description: 'Bad request' })
     async signup(@Body() userData: createUserDto, @Res() res: any): Promise<Response> {
         const response = await this.usersService.signup(userData);
 
@@ -70,6 +90,10 @@ export class UsersController {
 
     @UseGuards(PassportJwtAuthGuard)
     @Post('logout')
+    @ApiBearerAuth('access-token')
+    @ApiOperation({ summary: 'Logout current user' })
+    @SwaggerResponse({ status: 200, description: 'Logout successful' })
+    @SwaggerResponse({ status: 401, description: 'Unauthorized' })
     logout() {
         return this.usersService.logout()
     }
@@ -77,45 +101,61 @@ export class UsersController {
     @UseGuards(PassportJwtAuthGuard, RolesGuard)
     @Get('all-users')
     @Roles(Role.Admin)
+    @ApiBearerAuth('access-token')
+    @ApiOperation({ summary: 'Get all users (Admin only)' })
+    @SwaggerResponse({ status: 200, description: 'Users retrieved successfully' })
+    @SwaggerResponse({ status: 401, description: 'Unauthorized' })
+    @SwaggerResponse({ status: 403, description: 'Forbidden - Admin role required' })
     getAllUsers() {
         return this.usersService.getAllUsers()
     }
 
     @Get()
+    @ApiOperation({ summary: 'Test endpoint' })
     test(@Body() data: { username: string, password: string }) {
         return this.usersService.test(data)
     }
 
     // Working Position Methods
-    // @UseGuards(PassportJwtAuthGuard, RolesGuard)
-    // @Roles(Role.Admin)
     @Post('working-position')
+    @ApiOperation({ summary: 'Create a new working position' })
+    @ApiBody({ type: CreateWorkingPositionDto })
+    @SwaggerResponse({ status: 201, description: 'Working position created successfully' })
+    @SwaggerResponse({ status: 400, description: 'Bad request' })
     async createWorkingPosition(@Body() data: CreateWorkingPositionDto) {
         return this.usersService.createWorkingPosition(data);
     }
 
-    // @UseGuards(PassportJwtAuthGuard, RolesGuard)
-    // @Roles(Role.Admin)
     @Get('working-positions')
+    @ApiOperation({ summary: 'Get all working positions' })
+    @SwaggerResponse({ status: 200, description: 'Working positions retrieved successfully' })
     async getAllWorkingPositions() {
         return this.usersService.getAllWorkingPositions();
     }
 
-    // @UseGuards(PassportJwtAuthGuard, RolesGuard)
-    // @Roles(Role.Admin)
     @Get('working-position/:positionId')
+    @ApiOperation({ summary: 'Get working position by ID' })
+    @ApiParam({ name: 'positionId', description: 'Working position ID' })
+    @SwaggerResponse({ status: 200, description: 'Working position retrieved successfully' })
+    @SwaggerResponse({ status: 404, description: 'Working position not found' })
     async getWorkingPositionById(@Param('positionId') positionId: string) {
         return this.usersService.getWorkingPositionById(positionId);
     }
 
-    // @UseGuards(PassportJwtAuthGuard, RolesGuard)
-    // @Roles(Role.Admin)
     @Delete('working-position/:positionId')
+    @ApiOperation({ summary: 'Delete working position by ID' })
+    @ApiParam({ name: 'positionId', description: 'Working position ID' })
+    @SwaggerResponse({ status: 200, description: 'Working position deleted successfully' })
+    @SwaggerResponse({ status: 404, description: 'Working position not found' })
     async deleteWorkingPosition(@Param('positionId') positionId: string) {
         return this.usersService.deleteWorkingPosition(positionId);
     }
 
     @Post('department')
+    @ApiOperation({ summary: 'Create a new department' })
+    @ApiBody({ type: CreateDepartmentDto })
+    @SwaggerResponse({ status: 201, description: 'Department created successfully' })
+    @SwaggerResponse({ status: 404, description: 'Not found' })
     async createDepartment(@Body() data: CreateDepartmentDto, @Res() res: any) {
         const response = await this.usersService.createDepartment(data);
 
@@ -127,6 +167,10 @@ export class UsersController {
     }
 
     @Get('apartments/:residentId')
+    @ApiOperation({ summary: 'Get apartments by resident ID' })
+    @ApiParam({ name: 'residentId', description: 'Resident ID' })
+    @SwaggerResponse({ status: 200, description: 'Apartments retrieved successfully' })
+    @SwaggerResponse({ status: 404, description: 'Resident not found' })
     async getApartmentsByResidentId(@Param('residentId') residentId: string, @Res() res: any) {
         const response = await this.usersService.getApartmentsByResidentId(residentId);
 
@@ -140,6 +184,32 @@ export class UsersController {
     @UseGuards(PassportJwtAuthGuard, RolesGuard)
     @Roles(Role.Admin)
     @Patch('resident/:residentId/apartments')
+    @ApiBearerAuth('access-token')
+    @ApiOperation({ summary: 'Update resident apartments (Admin only)' })
+    @ApiParam({ name: 'residentId', description: 'Resident ID' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                apartments: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            apartmentName: { type: 'string', example: 'A101' },
+                            buildingId: { type: 'string', example: '12345' }
+                        },
+                        required: ['apartmentName', 'buildingId']
+                    }
+                }
+            },
+            required: ['apartments']
+        }
+    })
+    @SwaggerResponse({ status: 200, description: 'Apartments updated successfully' })
+    @SwaggerResponse({ status: 401, description: 'Unauthorized' })
+    @SwaggerResponse({ status: 403, description: 'Forbidden - Admin role required' })
+    @SwaggerResponse({ status: 404, description: 'Resident not found' })
     async updateResidentApartments(
         @Param('residentId') residentId: string,
         @Body() data: { apartments: { apartmentName: string; buildingId: string }[] },
@@ -167,7 +237,18 @@ export class UsersController {
     @UseGuards(PassportJwtAuthGuard, RolesGuard)
     @Roles(Role.Admin)
     @Patch('update-account-status/:userId')
+    @ApiBearerAuth('access-token')
     @ApiOperation({ summary: 'Update user account status (Admin only)' })
+    @ApiParam({ name: 'userId', description: 'User ID' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                accountStatus: { type: 'string', example: 'Active' }
+            },
+            required: ['accountStatus']
+        }
+    })
     @SwaggerResponse({
         status: 200,
         description: 'Account status updated successfully'
@@ -179,6 +260,10 @@ export class UsersController {
     @SwaggerResponse({
         status: 401,
         description: 'Unauthorized'
+    })
+    @SwaggerResponse({
+        status: 403,
+        description: 'Forbidden - Admin role required'
     })
     async updateAccountStatus(
         @Param('userId') userId: string,

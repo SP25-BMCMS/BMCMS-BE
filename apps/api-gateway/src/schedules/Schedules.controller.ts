@@ -20,42 +20,66 @@ import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules';
 import { $Enums } from '@prisma/client-Schedule';
 import { ChangeScheduleTypeDto } from '@app/contracts/schedules/changeScheduleStatusDto ';
+import { ApiTags, ApiOperation, ApiResponse as SwaggerResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+
 @Controller('schedules')
+@ApiTags('schedules')
 export class SchedulesController {
-  constructor(private readonly schedulesService: SchedulesService) {}
- // Create schedule (API Gateway)
- @Post()
- async createSchedule(@Body() createScheduleDto: CreateScheduleDto): Promise<ApiResponse<ScheduleResponseDto>> {
-   return this.schedulesService.createSchedule(createScheduleDto);
- }
+  constructor(private readonly schedulesService: SchedulesService) { }
 
- // Update schedule (API Gateway)
- @Put(':schedule_id')
- async updateSchedule(
-   @Param('schedule_id') schedule_id: string,
-   @Body() updateScheduleDto: UpdateScheduleDto,
- ): Promise<ApiResponse<ScheduleResponseDto>> {
-   return this.schedulesService.updateSchedule(schedule_id, updateScheduleDto);
- }
+  // Create schedule
+  @Post()
+  @ApiOperation({ summary: 'Create a new schedule' })
+  @ApiBody({ type: CreateScheduleDto })
+  @SwaggerResponse({ status: 201, description: 'Schedule created successfully' })
+  @SwaggerResponse({ status: 400, description: 'Bad request' })
+  async createSchedule(@Body() createScheduleDto: CreateScheduleDto): Promise<ApiResponse<ScheduleResponseDto>> {
+    return this.schedulesService.createSchedule(createScheduleDto);
+  }
 
- // Change schedule type (API Gateway)
- @Put('change-type/:schedule_id')
- async changeScheduleType(
-   @Param('schedule_id') schedule_id: string,
-   @Body() changeScheduleTypeDto: ChangeScheduleTypeDto,
+  // Update schedule
+  @Put(':schedule_id')
+  @ApiOperation({ summary: 'Update a schedule' })
+  @ApiParam({ name: 'schedule_id', description: 'Schedule ID' })
+  @ApiBody({ type: UpdateScheduleDto })
+  @SwaggerResponse({ status: 200, description: 'Schedule updated successfully' })
+  @SwaggerResponse({ status: 404, description: 'Schedule not found' })
+  async updateSchedule(
+    @Param('schedule_id') schedule_id: string,
+    @Body() updateScheduleDto: UpdateScheduleDto,
   ): Promise<ApiResponse<ScheduleResponseDto>> {
-   return this.schedulesService.changeScheduleType(schedule_id, changeScheduleTypeDto.schedule_type);
- }
+    return this.schedulesService.updateSchedule(schedule_id, updateScheduleDto);
+  }
 
- // Get all schedules (API Gateway)
- @Get()
- async getAllSchedules(): Promise<ApiResponse<ScheduleResponseDto[]>> {
-   return this.schedulesService.getAllSchedules();
- }
+  // Change schedule type
+  @Put('change-type/:schedule_id')
+  @ApiOperation({ summary: 'Change schedule type' })
+  @ApiParam({ name: 'schedule_id', description: 'Schedule ID' })
+  @ApiBody({ type: ChangeScheduleTypeDto })
+  @SwaggerResponse({ status: 200, description: 'Schedule type changed successfully' })
+  @SwaggerResponse({ status: 404, description: 'Schedule not found' })
+  async changeScheduleType(
+    @Param('schedule_id') schedule_id: string,
+    @Body() changeScheduleTypeDto: ChangeScheduleTypeDto,
+  ): Promise<ApiResponse<ScheduleResponseDto>> {
+    return this.schedulesService.changeScheduleType(schedule_id, changeScheduleTypeDto.schedule_type);
+  }
 
- // Get schedule by ID (API Gateway)
- @Get(':schedule_id')
- async getScheduleById(@Param('schedule_id') schedule_id: string): Promise<ApiResponse<ScheduleResponseDto>> {
-   return this.schedulesService.getScheduleById(schedule_id);
- }
+  // Get all schedules
+  @Get()
+  @ApiOperation({ summary: 'Get all schedules' })
+  @SwaggerResponse({ status: 200, description: 'Returns all schedules' })
+  async getAllSchedules(): Promise<ApiResponse<ScheduleResponseDto[]>> {
+    return this.schedulesService.getAllSchedules();
+  }
+
+  // Get schedule by ID
+  @Get(':schedule_id')
+  @ApiOperation({ summary: 'Get schedule by ID' })
+  @ApiParam({ name: 'schedule_id', description: 'Schedule ID' })
+  @SwaggerResponse({ status: 200, description: 'Schedule found' })
+  @SwaggerResponse({ status: 404, description: 'Schedule not found' })
+  async getScheduleById(@Param('schedule_id') schedule_id: string): Promise<ApiResponse<ScheduleResponseDto>> {
+    return this.schedulesService.getScheduleById(schedule_id);
+  }
 }

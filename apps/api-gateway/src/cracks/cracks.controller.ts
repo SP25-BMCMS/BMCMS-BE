@@ -20,15 +20,19 @@ import { catchError, firstValueFrom } from 'rxjs'
 import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto'
 import { CreateCrackDetailDto } from '../../../../libs/contracts/src/cracks/create-crack-detail.dto'
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto'
-import { ApiBody, ApiConsumes } from '@nestjs/swagger'
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiConsumes } from '@nestjs/swagger'
 
 
 @Controller('cracks')
+@ApiTags('cracks')
 // @UseGuards(PassportJwtAuthGuard)
 export class CracksController {
   constructor(@Inject('CRACK_SERVICE') private readonly crackService: ClientProxy) { }
 
   @Get('crack-reports')
+  @ApiOperation({ summary: 'Get all crack reports' })
+  @ApiResponse({ status: 200, description: 'Returns all crack reports' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
   async getAllCrackReports() {
     return firstValueFrom(
       this.crackService.send({ cmd: 'get-all-crack-report' }, {}).pipe(
@@ -40,6 +44,10 @@ export class CracksController {
   }
 
   @Get('crack-reports/:id')
+  @ApiOperation({ summary: 'Get crack report by ID' })
+  @ApiParam({ name: 'id', description: 'Crack report ID' })
+  @ApiResponse({ status: 200, description: 'Returns the crack report' })
+  @ApiResponse({ status: 404, description: 'Crack report not found' })
   async getCrackReportById(@Param('id') id: string) {
     return firstValueFrom(
       this.crackService.send({ cmd: 'get-crack-report-by-id' }, id).pipe(
@@ -51,6 +59,10 @@ export class CracksController {
   }
 
   @Post('crack-reports')
+  @ApiOperation({ summary: 'Create a new crack report' })
+  @ApiBody({ type: AddCrackReportDto })
+  @ApiResponse({ status: 201, description: 'Crack report created successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
   async createCrackReport(@Body() dto: AddCrackReportDto, @Req() req) {
     const userId = req.user.userId // ✅ Lấy UserID từ token
 
@@ -65,6 +77,11 @@ export class CracksController {
 
 
   @Patch('crack-reports/:id')
+  @ApiOperation({ summary: 'Update a crack report' })
+  @ApiParam({ name: 'id', description: 'Crack report ID' })
+  @ApiBody({ type: UpdateCrackReportDto })
+  @ApiResponse({ status: 200, description: 'Crack report updated successfully' })
+  @ApiResponse({ status: 404, description: 'Crack report not found' })
   async updateCrackReport(@Param('id') id: string, @Body() dto: UpdateCrackReportDto) {
     return firstValueFrom(
       this.crackService.send({ cmd: 'update-crack-report' }, { crackId: id, dto }).pipe(
@@ -76,6 +93,10 @@ export class CracksController {
   }
 
   @Delete('crack-reports/:id')
+  @ApiOperation({ summary: 'Delete a crack report' })
+  @ApiParam({ name: 'id', description: 'Crack report ID' })
+  @ApiResponse({ status: 200, description: 'Crack report deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Crack report not found' })
   async deleteCrackReport(@Param('id') id: string) {
     return firstValueFrom(
       this.crackService.send({ cmd: 'delete-crack-report' }, id).pipe(
@@ -87,6 +108,10 @@ export class CracksController {
   }
 
   @Patch('crack-reports/:id/status')
+  @ApiOperation({ summary: 'Update crack report status' })
+  @ApiParam({ name: 'id', description: 'Crack report ID' })
+  @ApiResponse({ status: 200, description: 'Status updated successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
   async updateCrackReportStatus(
     @Param('id') id: string,
     @Req() req
@@ -110,6 +135,9 @@ export class CracksController {
 
   //Crack-Details
   @Get('crack-details')
+  @ApiOperation({ summary: 'Get all crack details' })
+  @ApiResponse({ status: 200, description: 'Returns all crack details' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
   async getAllCrackDetails() {
     return firstValueFrom(
       this.crackService.send({ cmd: 'get-all-crack-details' }, {}).pipe(
@@ -121,6 +149,10 @@ export class CracksController {
   }
 
   @Get('crack-details/:id')
+  @ApiOperation({ summary: 'Get crack detail by ID' })
+  @ApiParam({ name: 'id', description: 'Crack detail ID' })
+  @ApiResponse({ status: 200, description: 'Returns the crack detail' })
+  @ApiResponse({ status: 404, description: 'Crack detail not found' })
   async getCrackDetailsById(@Param('id') id: string) {
     return firstValueFrom(
       this.crackService.send({ cmd: 'get-crack-detail-by-id' }, id).pipe(
@@ -132,6 +164,11 @@ export class CracksController {
   }
 
   @Post('crack-details')
+  @ApiOperation({ summary: 'Create a new crack detail' })
+  @ApiBody({ type: CreateCrackDetailDto })
+  @ApiResponse({ status: 201, description: 'Crack detail created successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 404, description: 'Referenced entity not found' })
   async createCrackDetails(@Body() dto: CreateCrackDetailDto) {
     return firstValueFrom(
       this.crackService.send({ cmd: 'create-crack-detail' }, dto).pipe(
@@ -147,6 +184,11 @@ export class CracksController {
 
 
   @Patch('crack-details/:id')
+  @ApiOperation({ summary: 'Update a crack detail' })
+  @ApiParam({ name: 'id', description: 'Crack detail ID' })
+  @ApiBody({ type: UpdateCrackReportDto })
+  @ApiResponse({ status: 200, description: 'Crack detail updated successfully' })
+  @ApiResponse({ status: 404, description: 'Crack detail not found' })
   async updateCrackDetails(@Param('id') id: string, @Body() dto: UpdateCrackReportDto) {
     return firstValueFrom(
       this.crackService.send({ cmd: 'update-crack-detail' }, { crackId: id, dto }).pipe(
@@ -158,6 +200,10 @@ export class CracksController {
   }
 
   @Delete('crack-details/:id')
+  @ApiOperation({ summary: 'Delete a crack detail' })
+  @ApiParam({ name: 'id', description: 'Crack detail ID' })
+  @ApiResponse({ status: 200, description: 'Crack detail deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Crack detail not found' })
   async deleteCrackDetails(@Param('id') id: string) {
     return firstValueFrom(
       this.crackService.send({ cmd: 'delete-crack-detail' }, id).pipe(
@@ -169,7 +215,8 @@ export class CracksController {
   }
 
   @Post('crack-details/upload-images')
-  @ApiConsumes('multipart/form-data') // Định dạng gửi file
+  @ApiOperation({ summary: 'Upload crack images' })
+  @ApiConsumes('multipart/form-data')
   @ApiBody({
     description: 'Upload up to 10 images',
     type: 'multipart/form-data',
@@ -187,6 +234,9 @@ export class CracksController {
       }
     }
   })
+  @ApiResponse({ status: 201, description: 'Images uploaded successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request - No files uploaded' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
   @UseInterceptors(FilesInterceptor('image', 10))
   async uploadImage(@UploadedFiles() files: Express.Multer.File[]) {
     if (!files || files.length === 0) {
