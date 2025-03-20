@@ -209,13 +209,26 @@ export class UsersService implements OnModuleInit {
 
             // Kiểm tra nếu error có details
             if (error.details) {
-              return throwError(() => new HttpException(
-                error.details,
-                HttpStatus.NOT_FOUND
-              ));
+              // Kiểm tra message để xác định loại lỗi
+              if (error.details.includes('Cư dân đã sở hữu')) {
+                return throwError(() => new HttpException(
+                  error.details,
+                  HttpStatus.BAD_REQUEST
+                ));
+              } else if (error.details.includes('Không tìm thấy tòa nhà')) {
+                return throwError(() => new HttpException(
+                  error.details,
+                  HttpStatus.NOT_FOUND
+                ));
+              } else if (error.details.includes('Dịch vụ tòa nhà không khả dụng')) {
+                return throwError(() => new HttpException(
+                  error.details,
+                  HttpStatus.SERVICE_UNAVAILABLE
+                ));
+              }
             }
 
-            // Nếu không có details, trả về 500
+            // Nếu không có details hoặc không match với các trường hợp trên, trả về 500
             return throwError(() => new HttpException(
               'Lỗi khi thêm căn hộ',
               HttpStatus.INTERNAL_SERVER_ERROR

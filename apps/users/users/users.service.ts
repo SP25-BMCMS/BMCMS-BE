@@ -560,6 +560,9 @@ export class UsersService {
                 where: {
                     userId: residentId,
                     role: Role.Resident
+                },
+                include: {
+                    apartments: true
                 }
             });
 
@@ -567,6 +570,23 @@ export class UsersService {
                 throw new RpcException({
                     statusCode: HttpStatus.NOT_FOUND,
                     message: 'Không tìm thấy cư dân'
+                });
+            }
+
+            // Check for duplicate apartments
+            const existingApartments = user.apartments;
+            const duplicateApartments = apartments.filter(newApt =>
+                existingApartments.some(existingApt =>
+                    existingApt.apartmentName === newApt.apartmentName &&
+                    existingApt.buildingId === newApt.buildingId
+                )
+            );
+
+            if (duplicateApartments.length > 0) {
+                const duplicateNames = duplicateApartments.map(apt => apt.apartmentName).join(', ');
+                throw new RpcException({
+                    statusCode: HttpStatus.BAD_REQUEST,
+                    message: `Cư dân đã sở hữu các căn hộ sau: ${duplicateNames}`
                 });
             }
 
