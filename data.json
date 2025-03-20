@@ -1,1 +1,1 @@
-{"date":"2025-03-01T15:07:00+07:00","message":"[BMCMS-BE] fix: improve file upload and data synchronization in security"}
+{"date":"2025-03-20T10:29:00+07:00","message":"[BMCMS-BE] perf: modify file-upload to handle authentication errors"}
