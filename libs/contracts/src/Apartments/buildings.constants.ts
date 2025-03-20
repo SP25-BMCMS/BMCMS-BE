@@ -1,0 +1,1 @@
+export const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'; 

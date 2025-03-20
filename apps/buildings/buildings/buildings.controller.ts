@@ -31,7 +31,6 @@ export class BuildingsController {
   }
   @MessagePattern(BUILDINGS_PATTERN.GET_BY_ID)
   async getBuildingById(@Payload() payload: { buildingId: string }) {
-    console.log("🚀 ~ BuildingsCoádasdsdassdntroller ~ getBuildingById ~ buildingId:", payload.buildingId)
 
     return this.BuildingsService.getBuildingById(payload.buildingId);
   }

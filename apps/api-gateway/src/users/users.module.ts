@@ -11,6 +11,8 @@ import { UsersController } from './user/users.controller'
 import { UsersService } from './user/users.service'
 import { ResidentService } from './resident/resident.service'
 import { ResidentController } from './resident/resident.controller'
+import { ApartmentService } from './apartment/apartment.service'
+import { ApartmentController } from './apartment/apartment.controller'
 
 
 @Module({
@@ -20,7 +22,7 @@ import { ResidentController } from './resident/resident.controller'
     PassportModule,
 
   ],
-  providers: [UsersService, ResidentService, JwtStrategy, LocalStrategy, {
+  providers: [UsersService, ResidentService,ApartmentService, JwtStrategy, LocalStrategy, {
     provide: USERS_CLIENT,
     useFactory: (configService: ClientConfigService) => {
       const clientOptions = configService.usersClientOptions
@@ -29,6 +31,6 @@ import { ResidentController } from './resident/resident.controller'
     inject: [ClientConfigService]
   },],
 
-  controllers: [UsersController, ResidentController],
+  controllers: [UsersController, ResidentController,ApartmentController],
 })
 export class UsersModule { }

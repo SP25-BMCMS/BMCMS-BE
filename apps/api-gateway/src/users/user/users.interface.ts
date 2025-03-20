@@ -34,4 +34,6 @@ export interface UserInterface {
 
   // Apartments Methods
   getApartmentsByResidentId(data: { residentId: string }): Observable<any>;
+  getApartmentById(data: { apartmentId: string }): Observable<any>;
+
 }

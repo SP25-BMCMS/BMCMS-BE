@@ -110,6 +110,10 @@ export class UsersController {
         }
 
         return res.status(HttpStatus.OK).json(response);
-    }
-
+    } 
+    
+    // @Get('apartment/:apartmentId')
+    // async getApartmentById(@Param('apartmentId') apartmentId: string) {
+    //   return this.usersService.({ apartmentId });
+    // }
 }
