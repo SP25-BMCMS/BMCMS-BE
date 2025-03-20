@@ -37,4 +37,9 @@ export interface UserInterface {
 
   // Apartments Methods
   getApartmentsByResidentId(data: { residentId: string }): Observable<any>;
+
+  // Resident Authentication
+  residentLogin(data: { phone: string, password: string }): Observable<any>;
+
+  updateResidentApartments(data: { residentId: string; apartments: { apartmentName: string; buildingId: string }[] }): Observable<any>;
 }

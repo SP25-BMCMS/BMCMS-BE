@@ -83,4 +83,9 @@ export class AuthController {
     async getApartmentsByResidentId(data: { residentId: string }) {
         return await this.usersService.getApartmentsByResidentId(data.residentId);
     }
+
+    @GrpcMethod('UserService', 'ResidentLogin')
+    async residentLogin(data: { phone: string; password: string }) {
+        return await this.authService.residentLogin(data);
+    }
 }

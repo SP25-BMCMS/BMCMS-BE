@@ -7,6 +7,7 @@ import { createUserDto } from 'libs/contracts/src/users/create-user.dto';
 import { ApiResponse } from '../../../../../libs/contracts/src/ApiReponse/api-response';
 import { CreateWorkingPositionDto } from 'libs/contracts/src/users/create-working-position.dto';
 import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
+import { LoginDto } from 'libs/contracts/src/users/login.dto';
 
 @Injectable()
 export class UsersService implements OnModuleInit {
@@ -18,8 +19,16 @@ export class UsersService implements OnModuleInit {
     this.userService = this.client.getService<UserInterface>('UserService')
   }
 
-  async login(data: { username: string, password: string }) {
-    return await lastValueFrom(this.userService.login(data))
+  async login(data: LoginDto) {
+    try {
+      const response = await lastValueFrom(this.userService.login(data));
+      return response;
+    } catch (error) {
+      throw new HttpException(
+        error?.message || 'Login failed',
+        error?.statusCode || HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   async signup(userData: createUserDto): Promise<ApiResponse<any>> {
@@ -142,6 +151,87 @@ export class UsersService implements OnModuleInit {
       return response;
     } catch (error) {
       return { isSuccess: false, message: 'Service unavailable', data: [] };
+    }
+  }
+
+  async residentLogin(data: { phone: string, password: string }) {
+    try {
+      const response = await lastValueFrom(
+        this.userService.residentLogin(data).pipe(
+          catchError((error) => {
+            console.error('Resident login error:', error);
+
+            // Extract details from gRPC error
+            let errorMessage = 'Sai số điện thoại hoặc mật khẩu';
+            let statusCode = HttpStatus.UNAUTHORIZED;
+
+            if (error && error.details) {
+              // Parse the error details
+              if (error.details.includes('Tài khoản chưa được kích hoạt')) {
+                errorMessage = 'Tài khoản chưa được kích hoạt, vui lòng liên hệ ban quản lý để được kích hoạt';
+                statusCode = HttpStatus.UNAUTHORIZED;
+              } else if (error.details.includes('Sai số điện thoại hoặc mật khẩu')) {
+                errorMessage = 'Sai số điện thoại hoặc mật khẩu';
+                statusCode = HttpStatus.UNAUTHORIZED;
+              } else {
+                // For any other error messages, use the details from the error
+                errorMessage = error.details;
+              }
+            }
+
+            // Create and throw HttpException directly with the status code and message
+            throw new HttpException(errorMessage, statusCode);
+          })
+        )
+      );
+
+      return response;
+    } catch (error) {
+      // If it's already an HttpException, just rethrow it
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // Otherwise, wrap in a generic HttpException
+      throw new HttpException(
+        'Đăng nhập không thành công',
+        HttpStatus.UNAUTHORIZED
+      );
+    }
+  }
+
+  async updateResidentApartments(residentId: string, apartments: { apartmentName: string; buildingId: string }[]) {
+    try {
+      const response = await lastValueFrom(
+        this.userService.updateResidentApartments({ residentId, apartments }).pipe(
+          catchError((error) => {
+            console.error('Update resident apartments error:', error);
+
+            // Kiểm tra nếu error có details
+            if (error.details) {
+              return throwError(() => new HttpException(
+                error.details,
+                HttpStatus.NOT_FOUND
+              ));
+            }
+
+            // Nếu không có details, trả về 500
+            return throwError(() => new HttpException(
+              'Lỗi khi thêm căn hộ',
+              HttpStatus.INTERNAL_SERVER_ERROR
+            ));
+          })
+        )
+      );
+      return response;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Lỗi khi thêm căn hộ',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpException, HttpStatus, Post, Req, Res, UseGuards, Param, Put, Delete } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpException, HttpStatus, Post, Req, Res, UseGuards, Param, Put, Delete, Patch } from '@nestjs/common';
 import { Role } from '@prisma/client-users'
 import { Roles } from '../../decorator/roles.decarator'
 import { PassportJwtAuthGuard } from '../../guards/passport-jwt-guard'
@@ -20,9 +20,31 @@ export class UsersController {
     // login(@Body() data: { username: string, password: string }) {
     //     return this.usersService.login(data)
     // }
-  login(@Body() data: LoginDto) {
-    return this.usersService.login(data);
-  }
+    login(@Body() data: LoginDto) {
+        return this.usersService.login(data);
+    }
+
+    @Post('resident/login')
+    async residentLogin(@Body() data: { phone: string, password: string }, @Res() res: any) {
+        try {
+            const response = await this.usersService.residentLogin(data);
+            return res.status(HttpStatus.OK).json(response);
+        } catch (error) {
+            // Get status code and message from error
+            const status = error instanceof HttpException
+                ? error.getStatus()
+                : HttpStatus.UNAUTHORIZED;
+
+            const message = error instanceof HttpException
+                ? error.message
+                : 'Đăng nhập không thành công';
+
+            return res.status(status).json({
+                statusCode: status,
+                message: message
+            });
+        }
+    }
 
     @UseGuards(PassportJwtAuthGuard)
     @Get("me")
@@ -110,6 +132,33 @@ export class UsersController {
         }
 
         return res.status(HttpStatus.OK).json(response);
+    }
+
+    @UseGuards(PassportJwtAuthGuard, RolesGuard)
+    @Roles(Role.Admin)
+    @Patch('resident/:residentId/apartments')
+    async updateResidentApartments(
+        @Param('residentId') residentId: string,
+        @Body() data: { apartments: { apartmentName: string; buildingId: string }[] },
+        @Res() res: any
+    ) {
+        try {
+            const response = await this.usersService.updateResidentApartments(residentId, data.apartments);
+            return res.status(HttpStatus.OK).json(response);
+        } catch (error) {
+            const status = error instanceof HttpException
+                ? error.getStatus()
+                : HttpStatus.INTERNAL_SERVER_ERROR;
+
+            const message = error instanceof HttpException
+                ? error.message
+                : 'Lỗi khi cập nhật căn hộ';
+
+            return res.status(status).json({
+                statusCode: status,
+                message: message
+            });
+        }
     }
 
 }

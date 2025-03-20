@@ -115,4 +115,14 @@ export class createUserDto {
     @IsOptional()
     @ApiProperty({ description: 'Image of the user', required: false, type: String })
     image?: string;
+
+    @IsString()
+    @IsOptional()
+    @ApiProperty({
+        description: 'Account status (Active/Inactive). Defaults to Active for staff/admin, Inactive for residents',
+        required: false,
+        type: String,
+        example: "Active|Inactive"
+    })
+    accountStatus?: string;
 }

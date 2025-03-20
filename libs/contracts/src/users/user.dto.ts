@@ -9,4 +9,5 @@ export type UserDto = {
     role: $Enums.Role
     dateOfBirth: Date
     gender: $Enums.Gender
+    accountStatus?: string
 }

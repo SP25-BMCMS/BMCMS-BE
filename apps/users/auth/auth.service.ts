@@ -28,9 +28,59 @@ export class AuthService {
     async validateUser(input: AuthInput) {
         const user = await this.usersService.getUserByUsername(input.username)
         const isPasswordValid = await bcrypt.compare(input.password, user.password)
+
         if (!isPasswordValid)
             throw new RpcException({ statusCode: 401, message: 'invalid credentials!' })
+
+        // Check if account is inactive
+        if (user.accountStatus === 'Inactive')
+            throw new RpcException({ statusCode: 403, message: 'Account is inactive. Please contact admin for activation.' })
+
         return { userId: user.userId, username: user.username, role: user.role }
+    }
+
+    async validateResidentByPhone(phone: string, password: string) {
+        try {
+            const user = await this.usersService.getUserByPhone(phone);
+
+            // Check if user is a Resident
+            if (user.role !== 'Resident') {
+                throw new RpcException({
+                    statusCode: 401,
+                    message: 'Sai số điện thoại hoặc mật khẩu'
+                });
+            }
+
+            const isPasswordValid = await bcrypt.compare(password, user.password);
+            if (!isPasswordValid) {
+                throw new RpcException({
+                    statusCode: 401,
+                    message: 'Sai số điện thoại hoặc mật khẩu'
+                });
+            }
+
+            // Check if account is inactive
+            if (user.accountStatus === 'Inactive') {
+                throw new RpcException({
+                    statusCode: 401,
+                    message: 'Tài khoản chưa được kích hoạt, vui lòng liên hệ ban quản lý để được kích hoạt'
+                });
+            }
+
+            return {
+                userId: user.userId,
+                username: user.username,
+                role: user.role
+            };
+        } catch (error) {
+            // Re-throw RpcExceptions, but wrap other errors
+            if (error instanceof RpcException) throw error;
+
+            throw new RpcException({
+                statusCode: 401,
+                message: 'Sai số điện thoại hoặc mật khẩu'
+            });
+        }
     }
 
     async signIn(user: SignInData): Promise<AuthResult> {
@@ -90,5 +140,10 @@ export class AuthService {
     // Department Methods
     async createDepartment(data: CreateDepartmentDto) {
         return this.usersService.createDepartment(data);
+    }
+
+    async residentLogin(data: { phone: string; password: string }): Promise<AuthResult> {
+        const user = await this.validateResidentByPhone(data.phone, data.password);
+        return this.signIn(user);
     }
 }

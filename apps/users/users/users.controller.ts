@@ -10,4 +10,9 @@ export class UsersController {
     async getAllStaff() {
         return this.usersService.getAllStaff();
     }
+
+    @GrpcMethod('UserService', 'UpdateResidentApartments')
+    async updateResidentApartments(data: { residentId: string; apartments: { apartmentName: string; buildingId: string }[] }) {
+        return this.usersService.updateResidentApartments(data.residentId, data.apartments);
+    }
 } 

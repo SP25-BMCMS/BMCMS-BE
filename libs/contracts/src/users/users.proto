@@ -19,6 +19,8 @@ service UserService {
   rpc CreateDepartment (CreateDepartmentRequest) returns (DepartmentApiResponse);
   rpc GetAllStaff (Empty) returns (StaffListResponse);
   rpc GetApartmentsByResidentId (GetApartmentsRequest) returns (GetApartmentsResponse);
+  rpc ResidentLogin (ResidentLoginRequest) returns (LoginResponse);
+  rpc UpdateResidentApartments (UpdateResidentApartmentsRequest) returns (UpdateResidentApartmentsResponse);
 }
 
 message CreateUserRequest {
@@ -34,6 +36,7 @@ message CreateUserRequest {
   string departmentId = 10;
   string staffStatus = 11;
   string image = 12;
+  string accountStatus = 13;
 }
 
 message ApartmentRequest {
@@ -62,6 +65,7 @@ message UserResponse {
   string gender = 7;
   UserDetailsResponse userDetails = 8;
   repeated ApartmentResponse apartments = 9;
+  string accountStatus = 10;
 }
 
 message UserDetailsResponse {
@@ -238,4 +242,20 @@ message StaffListResponse {
   bool isSuccess = 1;
   string message = 2;
   repeated UserResponse data = 3;
+}
+
+message ResidentLoginRequest {
+  string phone = 1;
+  string password = 2;
+}
+
+message UpdateResidentApartmentsRequest {
+  string residentId = 1;
+  repeated ApartmentRequest apartments = 2;
+}
+
+message UpdateResidentApartmentsResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  UserResponse data = 3;
 }

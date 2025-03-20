@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { UserDto } from '../../../libs/contracts/src/users/user.dto';
 import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto';
 import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response';
-import { Role } from '@prisma/client-users';
+import { Role, AccountStatus } from '@prisma/client-users';
 import { CreateWorkingPositionDto } from '../../../libs/contracts/src/users/create-working-position.dto';
 import { PositionName } from '@prisma/client-users';
 import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
@@ -21,10 +21,15 @@ export class UsersService {
     ) { }
 
     async getUserByUsername(username: string): Promise<UserDto | null> {
-
         const user = await this.prisma.user.findUnique({ where: { username } })
-        if (!user) throw new RpcException({ statusCode: 401, message: 'invalid credentials!' })
+        if (!user) throw new RpcException({ statusCode: 401, message: 'Sai số điện thoại hoặc mật khẩu' })
         return user
+    }
+
+    async getUserByPhone(phone: string): Promise<UserDto | null> {
+        const user = await this.prisma.user.findUnique({ where: { phone } });
+        if (!user) throw new RpcException({ statusCode: 401, message: 'Sai số điện thoại hoặc mật khẩu' });
+        return user;
     }
 
     async getUserById(userId: string): Promise<UserDto | null> {
@@ -106,6 +111,8 @@ export class UsersService {
                         role: userData.role,
                         dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth) : null,
                         gender: userData.gender ?? null,
+                        accountStatus: userData.accountStatus === 'Inactive' ?
+                            AccountStatus.Inactive : AccountStatus.Active, // Default to Active for Admin/Manager
                     }
                 });
             } else {
@@ -118,6 +125,9 @@ export class UsersService {
                         role: userData.role,
                         dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth) : null,
                         gender: userData.gender ?? null,
+                        accountStatus: userData.role === Role.Resident ?
+                            AccountStatus.Inactive :
+                            (userData.accountStatus === 'Inactive' ? AccountStatus.Inactive : AccountStatus.Active),
                         userDetails: userData.role === Role.Staff
                             ? {
                                 create: {
@@ -157,6 +167,7 @@ export class UsersService {
                 role: fullUser?.role,
                 dateOfBirth: fullUser?.dateOfBirth ? fullUser.dateOfBirth.toISOString() : null,
                 gender: fullUser?.gender ?? null,
+                accountStatus: fullUser?.accountStatus ?? null,
                 userDetails: fullUser?.userDetails ? {
                     positionId: fullUser?.userDetails.positionId,
                     departmentId: fullUser?.userDetails.departmentId,
@@ -222,10 +233,24 @@ export class UsersService {
             }
         }
 
+        // Prepare data for update, handling accountStatus conversion
+        const updateData = {
+            ...data,
+            accountStatus: data.accountStatus ?
+                (data.accountStatus === 'Active' ? AccountStatus.Active : AccountStatus.Inactive)
+                : undefined
+        };
+
+        // Remove accountStatus from original data object to avoid type issues
+        if (data.accountStatus) {
+            delete data.accountStatus;
+        }
+
         return this.prisma.user.update({
             where: { userId },
             data: {
-                ...data, // ✅ Giữ lại các trường khác
+                ...data, // Other fields
+                accountStatus: updateData.accountStatus, // Use converted enum value
                 apartments: data.apartments
                     ? {
                         set: [], // 🛠 Xóa danh sách cũ (nếu cần)
@@ -524,6 +549,96 @@ export class UsersService {
             throw new RpcException({
                 statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
                 message: 'Failed to fetch staff members'
+            });
+        }
+    }
+
+    async updateResidentApartments(residentId: string, apartments: { apartmentName: string; buildingId: string }[]): Promise<{ isSuccess: boolean; message: string; data: any }> {
+        try {
+            // Check if user exists and is a Resident
+            const user = await this.prisma.user.findUnique({
+                where: {
+                    userId: residentId,
+                    role: Role.Resident
+                }
+            });
+
+            if (!user) {
+                throw new RpcException({
+                    statusCode: HttpStatus.NOT_FOUND,
+                    message: 'Không tìm thấy cư dân'
+                });
+            }
+
+            // Validate building IDs
+            for (const apartment of apartments) {
+                try {
+                    const buildingResponse = await firstValueFrom(
+                        this.buildingClient.send(
+                            BUILDINGS_PATTERN.CHECK_EXISTS,
+                            { buildingId: apartment.buildingId }
+                        ).pipe(
+                            timeout(5000),
+                            catchError(err => {
+                                console.error('Error communicating with building service:', err);
+                                throw new RpcException({
+                                    statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+                                    message: 'Dịch vụ tòa nhà không khả dụng'
+                                });
+                            })
+                        )
+                    );
+
+                    if (buildingResponse.statusCode === 404 || !buildingResponse.exists) {
+                        throw new RpcException({
+                            statusCode: HttpStatus.NOT_FOUND,
+                            message: `Không tìm thấy tòa nhà với ID ${apartment.buildingId}`
+                        });
+                    }
+                } catch (error) {
+                    if (error instanceof RpcException) {
+                        throw error;
+                    }
+                    throw new RpcException({
+                        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                        message: error.message || 'Lỗi khi kiểm tra tòa nhà'
+                    });
+                }
+            }
+
+            // Update apartments by adding new ones without deleting existing ones
+            const updatedUser = await this.prisma.user.update({
+                where: { userId: residentId },
+                data: {
+                    apartments: {
+                        create: apartments // Chỉ tạo thêm căn hộ mới
+                    }
+                },
+                include: {
+                    apartments: true
+                }
+            });
+
+            return {
+                isSuccess: true,
+                message: 'Thêm căn hộ thành công',
+                data: {
+                    userId: updatedUser.userId,
+                    username: updatedUser.username,
+                    apartments: updatedUser.apartments.map(apt => ({
+                        apartmentName: apt.apartmentName,
+                        buildingId: apt.buildingId
+                    }))
+                }
+            };
+        } catch (error) {
+            console.error('Error updating resident apartments:', error);
+            if (error instanceof RpcException) {
+                throw error;
+            }
+            throw new RpcException({
+                statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                message: 'Lỗi khi thêm căn hộ'
             });
         }
     }

@@ -10,14 +10,15 @@ datasource db {
 }
 
 model User {
-  userId      String    @id @default(uuid())
-  username    String    @unique
-  password    String
-  email       String    @unique
-  phone       String?
-  role        Role
-  dateOfBirth DateTime?
-  gender      Gender?
+  userId        String        @id @default(uuid())
+  username      String        @unique
+  password      String
+  email         String        @unique
+  phone         String        @unique
+  role          Role
+  dateOfBirth   DateTime?
+  gender        Gender?
+  accountStatus AccountStatus @default(Inactive)
 
   userDetails UserDetails?
   apartments  Apartment[] // ✅ Resident có thể có nhiều Apartments
@@ -85,4 +86,9 @@ enum PositionName {
   Leader
   Technician
   Janitor
+}
+
+enum AccountStatus {
+  Active
+  Inactive
 }
