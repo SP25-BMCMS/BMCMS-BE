@@ -31,10 +31,15 @@ export class BuildingsController {
   }
   @MessagePattern(BUILDINGS_PATTERN.GET_BY_ID)
   async getBuildingById(@Payload() payload: { buildingId: string }) {
-    console.log("🚀 ~ BuildingsCoádasdsdassdntroller ~ getBuildingById ~ buildingId:", payload.buildingId)
+    console.log("🚀 ~ BuildingsController ~ getBuildingById ~ payload:", payload.buildingId)
 
     return this.BuildingsService.getBuildingById(payload.buildingId);
   }
+
+  // @MessagePattern('get_apartment_by_id')
+  // async getApartmentById(@Payload() payload: { apartmentId: string }) {
+  //   return this.BuildingsService.getApartmentById(payload.apartmentId);
+  // }
 
   @MessagePattern('check_area_exists') // 🟢 Đảm bảo có handler này
   async checkAreaExists(@Payload() data: { areaName: string }) {

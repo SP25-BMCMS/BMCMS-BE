@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { Payload, RpcException } from '@nestjs/microservices';
+import { Injectable, Inject } from '@nestjs/common';
+import { Payload, RpcException, ClientProxy } from '@nestjs/microservices';
 import { PrismaClient } from '@prisma/client-building';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { UUID } from 'crypto';
@@ -7,11 +7,42 @@ import { date } from 'joi';
 import { buildingsDto } from 'libs/contracts/src/buildings/buildings.dto';
 import { CreateBuildingDto } from 'libs/contracts/src/buildings/create-buildings.dto';
 import { UpdateBuildingDto } from 'libs/contracts/src/buildings/update-buildings.dto';
+import { Observable } from 'rxjs';
+import { firstValueFrom, lastValueFrom } from 'rxjs';
+
+// Interface for UserService
+interface UserService {
+  getApartmentById(data: { apartmentId: string }): Observable<any>;
+}
 
 @Injectable()
 export class BuildingsService {
 
   private prisma = new PrismaClient();
+
+  constructor(
+    @Inject('USERS_CLIENT') private readonly usersClient: ClientProxy
+  ) {}
+
+  // Add this method to forward apartment requests to the users service
+  async getApartmentById(apartmentId: string) {
+    try {
+      console.log("🚀 ~ BuildingsService ~ getApartmentById ~ apartmentId:", apartmentId);
+      
+      // Forward the request to the Users service
+      const apartmentResponse = await firstValueFrom(
+        this.usersClient.send('get_apartment_by_id', { apartmentId })
+      );
+      
+      return apartmentResponse;
+    } catch (error) {
+      console.error("Error getting apartment from users service:", error);
+      throw new RpcException({
+        statusCode: 500,
+        message: `Error fetching apartment data: ${error.message}`
+      });
+    }
+  }
 
   // Create a new building
   async createBuilding(CreateBuildingDto: CreateBuildingDto) {

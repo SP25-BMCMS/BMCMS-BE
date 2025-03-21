@@ -46,4 +46,6 @@ export interface UserInterface {
 
   // Account Status
   updateAccountStatus(data: { userId: string, accountStatus: string }): Observable<any>;
+  getApartmentById(data: { apartmentId: string }): Observable<any>;
+
 }
