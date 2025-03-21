@@ -14,4 +14,11 @@ export class ApartmentsController {
     return this.apartments.getApartmentById(apartmentId);
   }
 
+  @MessagePattern('get_apartment_by_id')
+  async getApartmentByIdRmq(data: { apartmentId: string }) {
+    const { apartmentId } = data;
+    console.log("🚀 ~ ApartmentsController ~ getApartmentByIdRmq ~ apartmentId:", apartmentId);
+    
+    return this.apartments.getApartmentById(apartmentId);
+  }
 }

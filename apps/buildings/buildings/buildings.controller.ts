@@ -36,10 +36,10 @@ export class BuildingsController {
     return this.BuildingsService.getBuildingById(payload.buildingId);
   }
 
-  @MessagePattern('get_apartment_by_id')
-  async getApartmentById(@Payload() payload: { apartmentId: string }) {
-    return this.BuildingsService.getApartmentById(payload.apartmentId);
-  }
+  // @MessagePattern('get_apartment_by_id')
+  // async getApartmentById(@Payload() payload: { apartmentId: string }) {
+  //   return this.BuildingsService.getApartmentById(payload.apartmentId);
+  // }
 
   @MessagePattern('check_area_exists') // 🟢 Đảm bảo có handler này
   async checkAreaExists(@Payload() data: { areaName: string }) {
