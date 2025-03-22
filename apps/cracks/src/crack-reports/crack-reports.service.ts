@@ -96,7 +96,7 @@ export class CrackReportsService {
 
   async addCrackReport(dto: AddCrackReportDto, userId: string) {
     try {
-      return await this.prismService.$transaction(async (prisma) => {
+      return await this.prismaService.$transaction(async (prisma) => {
         // 🔹 Validate position format if isPrivatesAsset is false
         if (!dto.isPrivatesAsset) {
           const positionParts = dto.position?.split('/');

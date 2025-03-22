@@ -22,7 +22,7 @@ import { catchError, firstValueFrom } from 'rxjs'
 import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto'
 import { CreateCrackDetailDto } from '../../../../libs/contracts/src/cracks/create-crack-detail.dto'
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto'
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiConsumes } from '@nestjs/swagger'
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiConsumes, ApiQuery } from '@nestjs/swagger'
 import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard'
 
 
