@@ -18,6 +18,8 @@ model CrackReport {
   crackReportId    String        @id @default(uuid())
   buildingDetailId String
   description      String
+  isPrivatesAsset  Boolean
+  position         String?
   status           ReportStatus  @default(Pending)
   reportedBy       String
   verifiedBy       String

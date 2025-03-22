@@ -26,29 +26,46 @@ export class CrackReportsService {
   async addCrackReport(dto: AddCrackReportDto, userId: string) {
     try {
       return await this.prismService.$transaction(async (prisma) => {
-        // 🔹 1. Tạo CrackReport trước
+        // 🔹 Validate position format if isPrivatesAsset is false
+        if (!dto.isPrivatesAsset) {
+          const positionParts = dto.position?.split('/');
+          if (!positionParts || positionParts.length !== 4) {
+            throw new RpcException(
+              new ApiResponse(
+                false,
+                `Invalid position format. Expected format: "area/building/floor/direction". Provided: ${dto.position}`
+              )
+            );
+          }
+          const [area, building, floor, direction] = positionParts;
+          console.log(`Position details - Area: ${area}, Building: ${building}, Floor: ${floor}, Direction: ${direction}`);
+        }
+
+        // 🔹 1. Create CrackReport
         const newCrackReport = await prisma.crackReport.create({
           data: {
             buildingDetailId: dto.buildingDetailId,
             description: dto.description,
-            status: dto.status ?? $Enums.ReportStatus.Pending, // Mặc định Reported
-            reportedBy: userId, // ✅ Luôn có giá trị
-            verifiedBy: '123123', // ✅ Nếu null thì Prisma nhận null
-          }
+            isPrivatesAsset: dto.isPrivatesAsset,
+            position: dto.isPrivatesAsset ? null : dto.position,
+            status: dto.status ?? $Enums.ReportStatus.Pending,
+            reportedBy: userId,
+            verifiedBy: "123123123",
+          },
         });
 
-        console.log('🚀 CrackReport đã tạo:', newCrackReport);
+        console.log('🚀 CrackReport created:', newCrackReport);
 
-        // 🔹 2. Nếu có CrackDetails, tạo từng cái bằng `create()`
+        // 🔹 2. Create CrackDetails if isPrivatesAsset is true
         let newCrackDetails = [];
         if (dto.crackDetails?.length > 0) {
           newCrackDetails = await Promise.all(
             dto.crackDetails.map(async (detail) => {
               return prisma.crackDetail.create({
                 data: {
-                  crackReportId: newCrackReport.crackReportId, // Liên kết CrackReport
+                  crackReportId: newCrackReport.crackReportId,
                   photoUrl: detail.photoUrl,
-                  severity: detail.severity ?? $Enums.Severity.Unknown, // Mặc định Unknown
+                  severity: detail.severity ?? $Enums.Severity.Unknown,
                   aiDetectionUrl: detail.aiDetectionUrl ?? detail.photoUrl,
                 },
               });
@@ -56,31 +73,30 @@ export class CrackReportsService {
           );
         }
 
-        console.log('🚀 CrackDetails đã tạo:', newCrackDetails);
+        console.log('🚀 CrackDetails created:', newCrackDetails);
 
-        return new ApiResponse(true, 'Crack Report và Crack Details đã được tạo thành công', [
+        return new ApiResponse(true, 'Crack Report and Crack Details created successfully', [
           { crackReport: newCrackReport, crackDetails: newCrackDetails },
         ]);
       });
     } catch (error) {
-      console.error('🔥 Lỗi trong CrackReportService:', error);
+      console.error('🔥 Error in CrackReportService:', error);
 
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
           throw new RpcException({
             status: 400,
-            message: 'Dữ liệu bị trùng lặp',
+            message: 'Duplicate data error',
           });
         }
       }
 
       throw new RpcException({
         status: 500,
-        message: 'Lỗi hệ thống, vui lòng thử lại sau',
+        message: 'System error, please try again later',
       });
     }
   }
-
 
   async findById(crackReportId: string) {
     const report = await this.prismService.crackReport.findUnique({ where: { crackReportId } });

@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsString, IsUUID, ValidateNested, IsArray, IsOptional } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsString, IsUUID, ValidateNested, IsArray, IsOptional, IsBoolean } from 'class-validator';
 import { $Enums } from '@prisma/client-cracks';
 import { Type } from 'class-transformer';
 import { CreateCrackDetailDto } from './create-crack-detail.dto';
@@ -11,6 +11,14 @@ export class AddCrackReportDto {
   @IsString()
   @IsNotEmpty()
   description: string;
+
+  @IsBoolean()
+  @IsNotEmpty()
+  isPrivatesAsset: boolean;
+
+  @IsString()
+  @IsOptional()
+  position?: string;
 
   @IsEnum($Enums.ReportStatus)
   @IsOptional()
