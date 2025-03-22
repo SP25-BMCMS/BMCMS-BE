@@ -5,7 +5,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { ClientProxy, RpcException } from '@nestjs/microservices'
 import { Status } from '@prisma/client-Task'
-import { $Enums, Prisma } from '@prisma/client-cracks'
+import { $Enums, Prisma, CrackReport } from '@prisma/client-cracks'
 import { ApiResponse } from 'libs/contracts/src/ApiReponse/api-response'
 import { TASKS_PATTERN } from 'libs/contracts/src/tasks/task.patterns'
 import { firstValueFrom } from 'rxjs'
@@ -41,57 +41,83 @@ export class CrackReportsService {
     return getSignedUrl(this.s3, command, { expiresIn: 3600 }) // URL có hạn trong 1 giờ
   }
 
+
   async getAllCrackReports(
     page: number = 1,
     limit: number = 10,
     search: string = '',
-    severityFilter?: string
-  ) {
+    severityFilter?: $Enums.Severity
+  ): Promise<{
+    data: CrackReport[]
+    pagination: {
+      total: number
+      page: number
+      limit: number
+      totalPages: number
+    }
+  }> {
+    // Validate pagination parameters
+    if (page < 1 || limit < 1) {
+      throw new RpcException(
+        new ApiResponse(false, 'Invalid page or limit parameters!')
+      )
+    }
+    if (severityFilter && !Object.values($Enums.Severity).includes(severityFilter)) {
+      throw new RpcException(
+        new ApiResponse(false, 'Invalid severity filter parameter!')
+      )
+    }
+
     const skip = (page - 1) * limit
 
-    // Điều kiện tìm kiếm và lọc
-    const where: any = {}
+    // Xây dựng điều kiện truy vấn
+    const where: Prisma.CrackReportWhereInput = {}
 
+    // Nếu có tham số tìm kiếm, xử lý tìm kiếm
     if (search) {
+      where.OR = [
+        { description: { contains: search, mode: 'insensitive' } },
+      ]
+    }
+
+    // Filter theo mức độ nghiêm trọng (severity) của CrackDetails
+    if (severityFilter) {
       where.crackDetails = {
         some: {
-          description: { contains: search, mode: 'insensitive' }
-        }
+          severity: severityFilter,
+        },
       }
     }
 
-    if (severityFilter) {
-      where.severity = severityFilter
-    }
+    try {
+      const crackReports = await this.prismaService.crackReport.findMany({
+        where,
+        include: { crackDetails: true }, // Bao gồm thông tin chi tiết vết nứt
+        skip,
+        take: limit,
+      })
 
-    // Lấy danh sách báo cáo vết nứt
-    const crackReports = await this.prismaService.crackReport.findMany({
-      where,
-      include: { crackDetails: true },
-      skip,
-      take: limit
-    })
+      const totalCount = await this.prismaService.crackReport.count({ where })
 
-    // Chuyển đổi photoUrl thành Pre-Signed URL
-    for (const report of crackReports) {
-      for (const detail of report.crackDetails) {
-        if (detail.photoUrl) {
-          detail.photoUrl = await this.getPreSignedUrl(detail.photoUrl)
-        }
+      return {
+        data: crackReports,
+        pagination: {
+          total: totalCount,
+          page,
+          limit,
+          totalPages: Math.max(1, Math.ceil(totalCount / limit)),
+        },
       }
-    }
-
-    // Đếm tổng số bản ghi (cho frontend hiển thị số trang)
-    const totalCount = await this.prismaService.crackReport.count({ where })
-
-    return {
-      data: crackReports,
-      total: totalCount,
-      page,
-      limit,
-      totalPages: Math.ceil(totalCount / limit)
+    } catch (error) {
+      new ApiResponse(false, 'Error when getting crack report!', error)
     }
   }
+
+  private generateUniqueId(): string {
+    return Math.random().toString(36).substring(2, 15) // Tạo ID duy nhất cho correlationId
+  }
+
+
 
 
   async addCrackReport(dto: AddCrackReportDto, userId: string) {
