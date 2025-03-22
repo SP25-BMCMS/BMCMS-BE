@@ -10,6 +10,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UploadedFiles,
   UseGuards,
@@ -33,18 +34,36 @@ export class CracksController {
   constructor(@Inject('CRACK_SERVICE') private readonly crackService: ClientProxy) { }
 
   @Get('crack-reports')
-  @ApiOperation({ summary: 'Get all crack reports' })
-  @ApiResponse({ status: 200, description: 'Returns all crack reports' })
+  @ApiOperation({ summary: 'Get all crack reports with pagination, search, and filter' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @ApiQuery({ name: 'search', required: false, example: 'nứt ngang' })
+  @ApiQuery({ name: 'severityFilter', required: false, example: 'high' })
+  @ApiResponse({ status: 200, description: 'Returns paginated crack reports' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  async getAllCrackReports() {
+  async getAllCrackReports(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('search') search?: string,
+    @Query('severityFilter') severityFilter?: string
+  ) {
     return firstValueFrom(
-      this.crackService.send({ cmd: 'get-all-crack-report' }, {}).pipe(
+      this.crackService.send(
+        { cmd: 'get-all-crack-report' },
+        {
+          page: Number(page) || 1,
+          limit: Number(limit) || 10,
+          search: search || '',
+          severityFilter
+        }
+      ).pipe(
         catchError(err => {
           throw new InternalServerErrorException(err.message)
         })
       )
     )
   }
+
 
   @Get('crack-reports/:id')
   @ApiOperation({ summary: 'Get crack report by ID' })
