@@ -35,7 +35,6 @@ model CrackDetail {
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   crackReport    CrackReport @relation(fields: [crackReportId], references: [crackReportId])
-
   crackSegment CrackSegment[]
 }
 

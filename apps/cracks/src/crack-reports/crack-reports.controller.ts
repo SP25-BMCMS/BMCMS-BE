@@ -1,11 +1,10 @@
-import { Controller } from '@nestjs/common';
-import { Ctx, EventPattern, MessagePattern, Payload, RmqContext, RpcException } from '@nestjs/microservices';
-import { CrackReportsService } from './crack-reports.service';
-import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto';
-import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
-import { ApiResponse } from 'libs/contracts/src/ApiReponse/api-response';
-import { ClientProxy } from '@nestjs/microservices';
-import { Inject } from '@nestjs/common';
+import { Controller, Inject } from '@nestjs/common'
+import { ClientProxy, Ctx, MessagePattern, Payload, RmqContext, RpcException } from '@nestjs/microservices'
+import { $Enums } from '@prisma/client-cracks'
+import { ApiResponse } from 'libs/contracts/src/ApiReponse/api-response'
+import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto'
+import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto'
+import { CrackReportsService } from './crack-reports.service'
 
 @Controller()
 export class CrackReportsController {
@@ -19,7 +18,7 @@ export class CrackReportsController {
     page?: number, 
     limit?: number, 
     search?: string, 
-    severityFilter?: string 
+    severityFilter?: $Enums.Severity 
   }) {
     const { page = 1, limit = 10, search = '', severityFilter } = data;
     return await this.crackReportsService.getAllCrackReports(page, limit, search, severityFilter);
