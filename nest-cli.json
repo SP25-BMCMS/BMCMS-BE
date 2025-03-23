@@ -24,21 +24,55 @@
       "root": "apps/users",
       "entryFile": "main",
       "sourceRoot": "apps/users/src",
-      "compilerOptions": { "tsConfigPath": "apps/users/tsconfig.app.json" }
+      "compilerOptions": {
+        "tsConfigPath": "apps/users/tsconfig.app.json"
+      }
     },
     "buildings": {
       "type": "application",
       "root": "apps/buildings",
       "entryFile": "main",
       "sourceRoot": "apps/buildings/src",
-      "compilerOptions": { "tsConfigPath": "apps/buildings/tsconfig.app.json" }
+      "compilerOptions": {
+        "tsConfigPath": "apps/buildings/tsconfig.app.json"
+      }
     },
     "contracts": {
       "type": "library",
       "root": "libs/contracts",
       "entryFile": "index",
       "sourceRoot": "libs/contracts/src",
-      "compilerOptions": { "tsConfigPath": "libs/contracts/tsconfig.lib.json" }
+      "compilerOptions": {
+        "tsConfigPath": "libs/contracts/tsconfig.lib.json"
+      }
+    },
+    "cracks": {
+      "type": "application",
+      "root": "apps/cracks",
+      "entryFile": "main",
+      "sourceRoot": "apps/cracks/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/cracks/tsconfig.app.json"
+      }
+    },
+
+    "tasks": {
+      "type": "application",
+      "root": "apps/Tasks",
+      "entryFile": "main",
+      "sourceRoot": "apps/Tasks/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/Tasks/tsconfig.app.json"
+      }
+    },
+    "schedules": {
+      "type": "application",
+      "root": "apps/schedules",
+      "entryFile": "main",
+      "sourceRoot": "apps/schedules/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/schedules/tsconfig.app.json"
+      }
     }
   }
 }

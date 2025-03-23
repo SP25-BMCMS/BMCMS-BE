@@ -1,0 +1,24 @@
+###
+GET http://localhost:3000/areas
+###
+GET http://localhost:3000/areas/17fc9a7e-80b5-4027-a5b5-8552f340fc15
+###
+POST http://localhost:3000/areas
+Content-Type: application/json
+
+{
+  "name": "New Area",
+  "description": "Description of the new area"
+}
+
+###
+PUT http://localhost:3000/areas/2f81e4bb-6daf-4011-8974-ebb3fa59c117
+Content-Type: application/json
+
+{
+  "name": "Updated Area",
+  "description": "Updated description of the area"
+}
+
+###
+DELETE http://localhost:3000/areas/2f81e4bb-6daf-4011-8974-ebb3fa59c117

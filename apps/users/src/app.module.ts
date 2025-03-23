@@ -5,13 +5,11 @@ import { AuthService } from '../auth/auth.service'
 import { PrismaModule } from '../prisma/prisma.module'
 import { UsersModule } from '../users/users.module'
 import { ResidentsModule } from '../residents/residents.module'
-import { ResidentsController } from '../residents/residents.controller'
-import { ResidentsService } from '../residents/residents.service'
 
 @Module({
     imports: [UsersModule, ResidentsModule, AuthModule, PrismaModule],
-    controllers: [AuthController, ResidentsController],
-    providers: [AuthService, ResidentsService],
+    controllers: [AuthController],
+    providers: [AuthService],
 })
 export class AppModule {
 

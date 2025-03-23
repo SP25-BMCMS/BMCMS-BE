@@ -6,9 +6,13 @@ import { GrpcMethod } from '@nestjs/microservices'
 export class ResidentsController {
   constructor(private readonly residentsService: ResidentsService) { }
 
-  @GrpcMethod('UserService', 'GetAllResidents')
-  async getAllUsers() {
-    const residents = await this.residentsService.getAllResidents()
-    return residents
+  @GrpcMethod('UserService', 'getAllResidents')
+  async getAllResidents() {
+    return this.residentsService.getAllResidents();
+  }
+
+  @GrpcMethod('UserService', 'getApartmentsByResidentId')
+  async getApartmentsByResidentId(data: { residentId: string }) {
+    return this.residentsService.getApartmentsByResidentId(data.residentId);
   }
 }

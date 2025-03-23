@@ -4,38 +4,56 @@ package users;
 
 service UserService {
   rpc Login (LoginRequest) returns (LoginResponse);
-  rpc Signup (CreateUserRequest) returns (UserResponse);
+  rpc Signup (CreateUserRequest) returns (ApiResponseUser);
   rpc GetUserInfo (UserRequest) returns (UserResponse);
   rpc GetAllUsers (Empty) returns (UsersListResponse);
   rpc Logout (Empty) returns (LogoutResponse);
   rpc Test (TestRequest) returns (TestResponse);
   rpc ValidateUser (LoginRequest) returns (UserResponse);
-
   rpc GetAllResidents (Empty) returns (ResidentsListResponse);
-}
-
-message LoginRequest {
-  string username = 1;
-  string password = 2;
+  rpc CreateWorkingPosition (CreateWorkingPositionRequest) returns (WorkingPositionApiResponse);
+  rpc GetAllWorkingPositions (Empty) returns (WorkingPositionsListResponse);
+  rpc GetWorkingPositionById (WorkingPositionByIdRequest) returns (WorkingPositionApiResponse);
+  rpc UpdateWorkingPosition (UpdateWorkingPositionRequest) returns (WorkingPositionApiResponse);
+  rpc DeleteWorkingPosition (WorkingPositionByIdRequest) returns (WorkingPositionApiResponse);
+  rpc CreateDepartment (CreateDepartmentRequest) returns (DepartmentApiResponse);
+  rpc GetAllStaff (Empty) returns (StaffListResponse);
+  rpc GetApartmentsByResidentId (GetApartmentsRequest) returns (GetApartmentsResponse);
+  rpc ResidentLogin (ResidentLoginRequest) returns (LoginResponse);
+  rpc UpdateResidentApartments (UpdateResidentApartmentsRequest) returns (UpdateResidentApartmentsResponse);
+  rpc UpdateAccountStatus (UpdateAccountStatusRequest) returns (UpdateAccountStatusResponse);
 }
 
 message CreateUserRequest {
   string username = 1;
   string email = 2;
   string password = 3;
-  string role = 4;
+  string phone = 4;
+  string role = 5;
+  string dateOfBirth = 6;
+  string gender = 7;
+  repeated ApartmentRequest apartments = 8;
+  string positionId = 9;
+  string departmentId = 10;
+  string staffStatus = 11;
+  string image = 12;
+  string accountStatus = 13;
+}
+
+message ApartmentRequest {
+  string apartmentName = 1;
+  string buildingId = 2;
+}
+
+message ApiResponseUser {
+  bool isSuccess = 1;
+  string message = 2;
+  UserResponse data = 3;
 }
 
 message UserRequest {
   string userId = 1;
   string username = 2;
-}
-
-message LoginResponse {
-  string accessToken = 1;
-  string refreshToken = 2;
-  string userId = 3;
-  string username = 4;
 }
 
 message UserResponse {
@@ -46,6 +64,49 @@ message UserResponse {
   string role = 5;
   string dateOfBirth = 6;
   string gender = 7;
+  UserDetailsResponse userDetails = 8;
+  repeated ApartmentResponse apartments = 9;
+  string accountStatus = 10;
+}
+
+message UserDetailsResponse {
+  string positionId = 1;
+  string departmentId = 2;
+  string staffStatus = 3;
+  string image = 4;
+  PositionDetails position = 5;
+  DepartmentDetails department = 6;
+}
+
+message PositionDetails {
+  string positionId = 1;
+  string positionName = 2;
+  string description = 3;
+}
+
+message DepartmentDetails {
+  string departmentId = 1;
+  string departmentName = 2;
+  string description = 3;
+  string area = 4;
+}
+
+message ApartmentResponse {
+  string apartmentName = 1;
+  string buildingId = 2;
+  BuildingInfo building = 3;
+}
+
+message BuildingInfo {
+  string buildingId = 1;
+  string name = 2;
+  string description = 3;
+  int32 numberFloor = 4;
+  string imageCover = 5;
+  string areaId = 6;
+  string Status = 7;
+  string construction_date = 8;
+  string completion_date = 9;
 }
 
 message UsersListResponse {
@@ -59,7 +120,21 @@ message ResidentResponse {
 }
 
 message ResidentsListResponse {
-  repeated ResidentResponse users = 1;
+  bool success = 1;
+  string message = 2;
+  repeated UserResponse data = 3;
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string accessToken = 1;
+  string refreshToken = 2;
+  string userId = 3;
+  string username = 4;
 }
 
 message LogoutResponse {
@@ -74,4 +149,125 @@ message TestRequest {
 
 message TestResponse {
   bool success = 1;
+}
+
+message CreateWorkingPositionRequest {
+  string positionName = 1;  // ✅ Chuyển từ enum sang string
+  string description = 2;
+  string status = 3;        // ✅ Chuyển từ enum sang string
+}
+
+message WorkingPositionByIdRequest {
+  string positionId = 1;
+}
+
+message UpdateWorkingPositionRequest {
+  string positionId = 1;
+  PositionName positionName = 2;
+  string description = 3;
+  PositionStatus status = 4;
+}
+
+message WorkingPositionApiResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  WorkingPositionResponse data = 3;
+}
+
+message WorkingPositionResponse {
+  string positionId = 1;
+  PositionName positionName = 2;
+  string description = 3;
+  PositionStatus status = 4;
+}
+
+message WorkingPositionsListResponse {
+  repeated WorkingPositionResponse workingPositions = 1;
+}
+
+enum PositionName {
+  Staff = 0;
+  Leader = 1;
+  Manager = 2;
+  Admin = 3;
+}
+
+enum PositionStatus {
+  Active = 0;
+  Inactive = 1;
+}
+
+message CreateDepartmentRequest {
+  string departmentName = 1;
+  string description = 2;
+  string area = 3;
+}
+
+message DepartmentApiResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  DepartmentResponse data = 3;
+}
+
+message DepartmentResponse {
+  string departmentId = 1;
+  string departmentName = 2;
+  string description = 3;
+  string area =4;
+}
+
+message ResidentIdRequest {
+  string residentId = 1;
+}
+
+message ApartmentsListResponse {
+  repeated ApartmentResponse apartments = 1;
+}
+
+message GetApartmentsRequest {
+  string residentId = 1;
+}
+
+message Apartment {
+  string apartmentName = 1;
+  string buildingId = 2;
+}
+
+message GetApartmentsResponse {
+  bool success = 1;
+  string message = 2;
+  repeated Apartment data = 3;
+}
+
+message StaffListResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  repeated UserResponse data = 3;
+}
+
+message ResidentLoginRequest {
+  string phone = 1;
+  string password = 2;
+}
+
+message UpdateResidentApartmentsRequest {
+  string residentId = 1;
+  repeated ApartmentRequest apartments = 2;
+}
+
+message UpdateResidentApartmentsResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  UserResponse data = 3;
+}
+
+message UpdateAccountStatusRequest {
+  string userId = 1;
+  string accountStatus = 2;
+}
+
+message UpdateAccountStatusResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  UserResponse data = 3;
 }

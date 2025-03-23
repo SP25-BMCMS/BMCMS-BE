@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common'
 import { JwtModule } from '@nestjs/jwt'
-import { JWT_SECRET } from 'apps/configs/jwt-secret'
+import { JWT_SECRET } from '../configs/jwt-secret'
 
 @Global()
 @Module({

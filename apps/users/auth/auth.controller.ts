@@ -1,8 +1,12 @@
-import { Controller } from '@nestjs/common'
+import { Controller, } from '@nestjs/common';
 import { GrpcMethod } from '@nestjs/microservices'
 import { UsersService } from '../users/users.service'
 import { AuthService } from './auth.service'
-import { createUserDto } from '@app/contracts/users/create-user.dto'
+import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto';
+import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response';
+import { CreateWorkingPositionDto } from '../../../libs/contracts/src/users/create-working-position.dto';
+import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
+
 
 @Controller()
 export class AuthController {
@@ -18,9 +22,11 @@ export class AuthController {
     }
 
     @GrpcMethod('UserService', 'Signup')
-    async signup(data: createUserDto) {
-        return await this.authService.signup(data)
+    async signup(data: createUserDto): Promise<ApiResponse<any>> {
+        const response = await this.authService.signup(data);
+        return response;
     }
+
 
     @GrpcMethod('UserService', 'GetUserInfo')
     async getUserInfo(data: { userId: string; username: string }) {
@@ -46,5 +52,50 @@ export class AuthController {
     @GrpcMethod('UserService', 'Test')
     async test(data: { data: string }) {
         return { success: true }
+    }
+
+    @GrpcMethod('UserService', 'CreateWorkingPosition')
+    async createWorkingPosition(data: CreateWorkingPositionDto) {
+        return await this.usersService.createWorkingPosition(data);
+    }
+
+    @GrpcMethod('UserService', 'GetAllWorkingPositions')
+    async getAllWorkingPositions() {
+        return await this.usersService.getAllWorkingPositions();
+    }
+
+    @GrpcMethod('UserService', 'GetWorkingPositionById')
+    async getWorkingPositionById(data: { positionId: string }) {
+        return await this.usersService.getWorkingPositionById(data);
+    }
+
+    @GrpcMethod('UserService', 'DeleteWorkingPosition')
+    async deleteWorkingPosition(data: { positionId: string }) {
+        return await this.usersService.deleteWorkingPosition(data);
+    }
+
+    @GrpcMethod('UserService', 'CreateDepartment')
+    async createDepartment(data: CreateDepartmentDto) {
+        return await this.usersService.createDepartment(data);
+    }
+
+    @GrpcMethod('UserService', 'GetApartmentsByResidentId')
+    async getApartmentsByResidentId(data: { residentId: string }) {
+        return await this.usersService.getApartmentsByResidentId(data.residentId);
+    }
+
+    @GrpcMethod('UserService', 'ResidentLogin')
+    async residentLogin(data: { phone: string; password: string }) {
+        return await this.authService.residentLogin(data);
+    }
+
+    @GrpcMethod('UserService', 'UpdateResidentApartments')
+    async updateResidentApartments(data: { residentId: string; apartments: { apartmentName: string; buildingId: string }[] }) {
+        return await this.usersService.updateResidentApartments(data.residentId, data.apartments);
+    }
+
+    @GrpcMethod('UserService', 'UpdateAccountStatus')
+    async updateAccountStatus(data: { userId: string; accountStatus: string }) {
+        return await this.usersService.updateAccountStatus(data.userId, data.accountStatus);
     }
 }

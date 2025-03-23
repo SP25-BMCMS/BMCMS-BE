@@ -1,0 +1,120 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/@prisma/client-building"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DB_BUILDING_SERVICE")
+}
+
+model Building {
+  buildingId      String           @id @default(uuid())
+  name            String
+  description     String?
+  numberFloor     Int
+  imageCover      String?
+  area            Area?            @relation(fields: [areaId], references: [areaId])
+  //Trong trường hợp của Building và Area, mối quan hệ này là 1:N, tức là mỗi Building có thể thuộc về một Area, nhưng một Area có thể có nhiều Building.
+  buildingDetails BuildingDetail[]
+  // scheduleJobs    ScheduleJob[]
+  areaId          String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  Status   BuildingStatus? 
+  construction_date String  
+  completion_date String
+
+}
+enum BuildingStatus {
+  under_construction
+  operational
+  completion_date
+
+}
+
+
+model Area {
+  areaId      String     @id @default(uuid())
+  name        String
+  description String?
+  buildings   Building[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model BuildingDetail {
+  buildingDetailId String           @id @default(uuid())
+  buildingId       String
+  name             String
+  total_apartments Int // fix 26/2 
+  // description      String?
+  //  areaType         AreaType
+  //floorNumber      Int
+  locationDetails  LocationDetail[]
+  // crackReports     CrackReport[]
+  building         Building         @relation(fields: [buildingId], references: [buildingId])
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model LocationDetail {
+  locationDetailId String          @id @default(uuid())
+  buildingDetailId String
+  roomNumber       String?
+  floorNumber      Int
+  positionSide     PositionSide
+  areaType         AreaDetailsType
+  description      String?
+  buildingDetail   BuildingDetail  @relation(fields: [buildingDetailId], references: [buildingDetailId])
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+// model ScheduleJob {
+//   scheduleJobId String    @id @default(uuid())
+//   scheduleId    String
+//   runDate       DateTime
+//   status        JobStatus
+//   buildingId    String
+//   createdAt     DateTime  @default(now())
+//   updatedAt     DateTime  @updatedAt
+//   building      Building  @relation(fields: [buildingId], references: [buildingId])
+// }
+
+enum AreaType {
+  SwimmingPool
+  Terrace
+  Garden
+  Parking
+  Gym
+  Lobby
+  Other
+}
+
+enum AreaDetailsType {
+  Floor
+  Wall
+  Ceiling
+  column
+  Other
+}
+
+enum PositionSide {
+  Left
+  Right
+  Center
+}
+
+// enum JobStatus {
+//   Pending
+//   InProgress
+//   Completed
+//   Missed
+// }

@@ -22,9 +22,11 @@
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
+# Building Management & Crack Monitoring System (BMCMS)
+
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+The Building Management & Crack Monitoring System (BMCMS) is a comprehensive solution for building maintenance and crack monitoring built using the [Nest](https://github.com/nestjs/nest) framework with TypeScript.
 
 ## Project setup
 
@@ -44,6 +46,23 @@ $ npm run start:dev
 # production mode
 $ npm run start:prod
 ```
+
+## API Documentation
+
+The project uses Swagger for API documentation. Once the application is running, you can access the Swagger UI at:
+
+```
+http://localhost:3000/api
+```
+
+The Swagger documentation provides:
+
+1. **Interactive API Exploration**: Test API endpoints directly from the browser
+2. **Authentication Support**: Use JWT authentication with the "Authorize" button
+3. **Structured Documentation**: APIs are grouped by logical categories
+4. **Complete Reference**: All endpoints, models, and response types are documented
+
+For more details on using the Swagger documentation, see [swagger-readme.md](./swagger-readme.md).
 
 ## Run tests
 

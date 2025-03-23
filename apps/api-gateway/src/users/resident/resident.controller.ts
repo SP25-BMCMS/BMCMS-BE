@@ -1,9 +1,5 @@
-import { Controller, Get, UseGuards } from "@nestjs/common"
+import { Controller, Get, Param, UseGuards } from "@nestjs/common"
 import { ResidentService } from "./resident.service"
-import { PassportJwtAuthGuard } from "../../guards/passport-jwt-guard"
-import { RolesGuard } from "../../guards/role.guard"
-import { Role } from "@prisma/client"
-import { Roles } from "../../decorator/roles.decarator"
 
 @Controller('resident')
 export class ResidentController {
@@ -16,5 +12,8 @@ export class ResidentController {
         return this.residentService.getAllResidents()
     }
 
-    
+    @Get(':residentId/apartments')
+    getApartmentsByResidentId(@Param('residentId') residentId: string) {
+        return this.residentService.getApartmentsByResidentId(residentId)
+    }
 }
