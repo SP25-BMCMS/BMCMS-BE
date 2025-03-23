@@ -40,12 +40,39 @@ export class CrackReportsService {
 
     return getSignedUrl(this.s3, command, { expiresIn: 3600 }) // URL có hạn trong 1 giờ
   }
-  async getAllCrackReports() {
+  
+  async getAllCrackReports(
+    page: number = 1, 
+    limit: number = 10, 
+    search: string = '', 
+    severityFilter?: string
+  ) {
+    const skip = (page - 1) * limit
+  
+    // Điều kiện tìm kiếm và lọc
+    const where: any = {}
+  
+    if (search) {
+      where.crackDetails = {
+        some: {
+          description: { contains: search, mode: 'insensitive' }
+        }
+      }
+    }
+  
+    if (severityFilter) {
+      where.severity = severityFilter
+    }
+  
+    // Lấy danh sách báo cáo vết nứt
     const crackReports = await this.prismaService.crackReport.findMany({
+      where,
       include: { crackDetails: true },
+      skip,
+      take: limit
     })
-
-    // Convert photoUrl thành Pre-Signed URL
+  
+    // Chuyển đổi photoUrl thành Pre-Signed URL
     for (const report of crackReports) {
       for (const detail of report.crackDetails) {
         if (detail.photoUrl) {
@@ -53,9 +80,19 @@ export class CrackReportsService {
         }
       }
     }
-
-    return crackReports
+  
+    // Đếm tổng số bản ghi (cho frontend hiển thị số trang)
+    const totalCount = await this.prismaService.crackReport.count({ where })
+  
+    return {
+      data: crackReports,
+      total: totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit)
+    }
   }
+  
 
   async addCrackReport(dto: AddCrackReportDto, userId: string) {
     try {

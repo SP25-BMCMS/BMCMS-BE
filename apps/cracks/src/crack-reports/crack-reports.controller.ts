@@ -15,8 +15,14 @@ export class CrackReportsController {
   ) { }
 
   @MessagePattern({ cmd: 'get-all-crack-report' })
-  async getAllCrackReports() {
-    return await this.crackReportsService.getAllCrackReports();
+  async getAllCrackReports(@Payload() data: { 
+    page?: number, 
+    limit?: number, 
+    search?: string, 
+    severityFilter?: string 
+  }) {
+    const { page = 1, limit = 10, search = '', severityFilter } = data;
+    return await this.crackReportsService.getAllCrackReports(page, limit, search, severityFilter);
   }
 
   @MessagePattern({ cmd: 'get-crack-report-by-id' })
