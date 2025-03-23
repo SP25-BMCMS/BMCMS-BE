@@ -15,6 +15,7 @@ services:
       - rabbitmq.env
     restart: always
     environment:
+      NODE_ENV: production
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin
       RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: '-rabbit log_levels [{connection,info}]'
@@ -35,6 +36,7 @@ services:
     networks:
       - my_network
     environment:
+      NODE_ENV: production
       RABBITMQ_URL: 'amqp://admin:admin@rabbitmq:5672'
     depends_on:
       - rabbitmq
@@ -47,6 +49,8 @@ services:
     container_name: users_service
     ports:
       - '3001:3001'
+    environment:
+      NODE_ENV: production
     networks:
       - my_network
     env_file:
@@ -65,6 +69,7 @@ services:
     env_file:
       - .env
     environment:
+      NODE_ENV: production
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: admin
       RABBITMQ_PASS: admin
@@ -83,6 +88,11 @@ services:
       - .env
     depends_on:
       - rabbitmq # ✅ Đảm bảo RabbitMQ chạy trước
+    environment:
+      NODE_ENV: production
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: admin
+      RABBITMQ_PASS: admin
     restart: always
     networks:
       - my_network
@@ -98,6 +108,11 @@ services:
       - .env
     depends_on:
       - rabbitmq # ✅ Đảm bảo RabbitMQ chạy trước
+    environment:
+      NODE_ENV: production
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: admin
+      RABBITMQ_PASS: admin
     restart: always
     networks:
       - my_network
@@ -113,10 +128,15 @@ services:
       - .env
     depends_on:
       - rabbitmq # ✅ Đảm bảo RabbitMQ chạy trước
+    environment:
+      NODE_ENV: production
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: admin
+      RABBITMQ_PASS: admin
     restart: always
     networks:
       - my_network
-      
+
 networks:
   my_network:
     driver: bridge

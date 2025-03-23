@@ -25,23 +25,24 @@ export class ClientConfigService {
   }
 
   get usersClientOptions(): ClientOptions {
+    const isLocal = process.env.NODE_ENV !== 'production'
     return {
       transport: Transport.GRPC,
       options: {
         package: 'users',
         protoPath: "libs/contracts/src/users/users.proto",
-        url: `users_service:3001`
+        url: isLocal ? 'localhost:3001' : `users_service:3001`
       }
     }
   }
   get cracksClientOptions(): ClientOptions {
     const { user, password, host, queueName } = this.getRabbitMQConfig() // Get RabbitMQ config
+    const isLocal = process.env.NODE_ENV !== 'production'
+    const url = this.config.get<string>('RABBIT_LOCAL_URL')
     return {
       transport: Transport.RMQ,
       options: {
-        urls: [
-          `amqp://${user}:${password}@${host}`,
-          `amqp://${user}:${password}@rabbitmq:5672`],
+        urls: isLocal ? [`amqp://${user}:${password}@${host}`] : [`amqp://${user}:${password}@rabbitmq:5672`],
         queue: 'cracks_queue',
       },
     }
@@ -49,10 +50,12 @@ export class ClientConfigService {
 
   get buildingsClientOptions(): ClientOptions {
     const { user, password, host, queueName } = this.getRabbitMQConfig() // Get RabbitMQ config
+    const url = this.config.get<string>('RABBIT_LOCAL_URL')
+    const isLocal = process.env.NODE_ENV !== 'production'
     return {
       transport: Transport.RMQ,
       options: {
-        urls: [`amqp://${user}:${password}@${host}`, `amqp://${user}:${password}@rabbitmq:5672`],
+        urls: isLocal ? [`amqp://${user}:${password}@${host}`] : [`amqp://${user}:${password}@rabbitmq:5672`],
         queue: "buildings_queue",
         queueOptions: {
           durable: true,
@@ -64,11 +67,12 @@ export class ClientConfigService {
 
   get TasksClientOptions(): ClientOptions {
     const { user, password, host, queueName } = this.getRabbitMQConfig() // Get RabbitMQ config
-
+    const url = this.config.get<string>('RABBIT_LOCAL_URL')
+    const isLocal = process.env.NODE_ENV !== 'production'
     return {
       transport: Transport.RMQ,
       options: {
-        urls: [`amqp://${user}:${password}@${host}`, `amqp://${user}:${password}@rabbitmq:5672`],
+        urls: isLocal ? [`amqp://${user}:${password}@${host}`] : [`amqp://${user}:${password}@rabbitmq:5672`],
         queue: "tasks_queue",
         queueOptions: {
           durable: true,
@@ -79,10 +83,12 @@ export class ClientConfigService {
 
   get SchedulesClientOptions(): ClientOptions {
     const { user, password, host, queueName } = this.getRabbitMQConfig() // Get RabbitMQ config
+    const url = this.config.get<string>('RABBIT_LOCAL_URL')
+    const isLocal = process.env.NODE_ENV !== 'production'
     return {
       transport: Transport.RMQ,
       options: {
-        urls: [`amqp://${user}:${password}@${host}`, `amqp://${user}:${password}@rabbitmq:5672`],
+        urls: isLocal ? [`amqp://${user}:${password}@${host}`] : [`amqp://${user}:${password}@rabbitmq:5672`],
         queue: "schedules_queue",
         queueOptions: {
           durable: true,
