@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common"
 import { ConfigModule } from "@nestjs/config"
 import * as joi from "joi"
-import { ClientConfigService } from "./client-confit.service"
+import { ClientConfigService } from "./client-config.service"
 
 @Module({
     imports: [

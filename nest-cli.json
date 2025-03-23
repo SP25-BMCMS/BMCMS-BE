@@ -58,11 +58,11 @@
 
     "tasks": {
       "type": "application",
-      "root": "apps/tasks",
+      "root": "apps/Tasks",
       "entryFile": "main",
-      "sourceRoot": "apps/tasks/src",
+      "sourceRoot": "apps/Tasks/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/tasks/tsconfig.app.json"
+        "tsConfigPath": "apps/Tasks/tsconfig.app.json"
       }
     },
     "schedules": {

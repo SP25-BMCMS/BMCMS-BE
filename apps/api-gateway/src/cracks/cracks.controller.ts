@@ -23,13 +23,14 @@ import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-cra
 import { CreateCrackDetailDto } from '../../../../libs/contracts/src/cracks/create-crack-detail.dto'
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto'
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiConsumes, ApiQuery } from '@nestjs/swagger'
+import { CRACK_CLIENT } from '../constraints'
 
 
 @Controller('cracks')
 @ApiTags('cracks')
 // @UseGuards(PassportJwtAuthGuard)
 export class CracksController {
-  constructor(@Inject('CRACK_SERVICE') private readonly crackService: ClientProxy) { }
+  constructor(@Inject(CRACK_CLIENT) private readonly crackService: ClientProxy) { }
 
   @Get('crack-reports')
   @ApiOperation({ summary: 'Get all crack reports with pagination, search, and filter' })
@@ -61,7 +62,6 @@ export class CracksController {
           throw new InternalServerErrorException(err.message)
         })
       )
-
     )
   }
 
