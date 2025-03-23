@@ -3,6 +3,7 @@ import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { BuildingsService } from './buildings.service';
 import { UUID } from 'crypto';
 import { BUILDINGS_PATTERN } from 'libs/contracts/src/buildings/buildings.patterns';
+import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 @Controller('buildings')
 export class BuildingsController {
 
@@ -13,10 +14,22 @@ export class BuildingsController {
     return await this.BuildingsService.createBuilding(data);
   }
 
+  // @MessagePattern(BUILDINGS_PATTERN.GET)
+  // async getAllBuildings(@Payload() data: any) {
+  //   console.log('Getting all buildings...');
+  //   return await this.BuildingsService.readBuilding();
+  // }
   @MessagePattern(BUILDINGS_PATTERN.GET)
-  async getAllBuildings(@Payload() data: any) {
-    console.log('Getting all buildings...');
-    return await this.BuildingsService.readBuilding();
+  async getAllBuildings(@Payload() paginationParams: PaginationParams) {
+    try {
+      return await this.BuildingsService.readBuilding(paginationParams);
+    } catch (error) {
+      console.error("Error in getAllBuildings:", error);
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error retrieving buildings!'
+      });
+    }
   }
 
 

@@ -1,10 +1,10 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, Post, Put, Req, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common'
 import { BuildingsService } from './Buildings.service'
 import { catchError, NotFoundError } from 'rxjs';
 import { CreateBuildingDetailDto } from '@app/contracts/BuildingDetails/create-buildingdetails.dto';
 import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto';
 import { UpdateBuildingDto } from '@app/contracts/buildings/update-buildings.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { ApartmentService } from '../users/apartment/apartment.service';
 
 @Controller('building')
@@ -22,8 +22,20 @@ export class BuildingsController {
   // }
 
     @Get()
-    async getAllBuildings() {
-        return await this.buildingsService.getBuildings();
+    @ApiOperation({ summary: 'Get all buildings with pagination' })
+    @ApiQuery({ name: 'page', required: false, example: 1, description: 'Page number' })
+    @ApiQuery({ name: 'limit', required: false, example: 10, description: 'Items per page' })
+    @ApiQuery({ name: 'search', required: false, description: 'Search term for building name or description' })
+    async getAllBuildings(
+        @Query('page') page?: number,
+        @Query('limit') limit?: number,
+        @Query('search') search?: string
+    ) {
+        return await this.buildingsService.getBuildings({
+            page: Number(page) || 1,
+            limit: Number(limit) || 10,
+            search: search || ''
+        });
     }
 
     // New endpoint to get apartment with building details

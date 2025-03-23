@@ -3,18 +3,24 @@ import { ClientProxy } from '@nestjs/microservices'
 import { BUILDING_CLIENT } from '../constraints'
 import { BUILDINGS_PATTERN } from 'libs/contracts/src/buildings/buildings.patterns';
 import { firstValueFrom } from 'rxjs';
+import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 
 @Injectable()
 export class BuildingsService {
   constructor(@Inject(BUILDING_CLIENT) private readonly buildingsClient: ClientProxy) {}
 
-  // Get all buildings
-  async getBuildings() {
+  // Get all buildings with pagination support
+  async getBuildings(paginationParams?: PaginationParams) {
     try {
-      // Call the microservice via ClientProxy
-      const buildings = await this.buildingsClient.send(BUILDINGS_PATTERN.GET, {});
+      console.log("🚀 ~ BuildingsService ~ getBuildings ~ paginationParams:", paginationParams);
+      
+      // Call the microservice via ClientProxy with pagination parameters
+      const buildingsObservable = this.buildingsClient.send(BUILDINGS_PATTERN.GET, paginationParams || {});
+      const buildings = await firstValueFrom(buildingsObservable);
+      
       return buildings;
     } catch (error) {
+      console.error("Error in getBuildings:", error);
       throw new HttpException(
         'Error occurred while fetching buildings.',
         HttpStatus.INTERNAL_SERVER_ERROR
