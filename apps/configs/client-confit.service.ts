@@ -57,9 +57,6 @@
 
       get buildingsClientOptions(): ClientOptions {
         const { user, password, host, queueName } = this.getRabbitMQConfig(); // Get RabbitMQ config
-  const port = 3002;
-  console.log("🚀 ~ ClientConfigService ~ getBuildingsClientPort ~ BUILDINGS_CLIENT_PORT:", this.config.get<number>('BUILDINGS_CLIENT_PORT'))
-
         return {
           transport: Transport.RMQ,
                     options: {

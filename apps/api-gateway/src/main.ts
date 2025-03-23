@@ -44,7 +44,7 @@ async function bootstrap() {
       },
       'access-token',
     )
-    .addTag('users', 'User management endpoints')
+    // .addTag('users', 'User management endpoints')
     .addTag('buildings', 'Building management endpoints')
     .addTag('areas', 'Area management endpoints')
     .addTag('cracks', 'Crack monitoring endpoints')
@@ -63,11 +63,12 @@ async function bootstrap() {
       showExtensions: true,
     },
     customSiteTitle: 'BMCMS API Documentation',
-  };
+  }
 
   SwaggerModule.setup('api', app, document, customOptions)
 
-  await app.listen(3000)
+  const PORT = process.env.PORT || 3000
+  await app.listen(PORT)
   console.log(`Application is running on: ${await app.getUrl()}`)
   console.log(`Swagger documentation available at: ${await app.getUrl()}/api`)
 }

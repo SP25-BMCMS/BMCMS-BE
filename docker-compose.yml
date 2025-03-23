@@ -1,3 +1,5 @@
+version: '3.9'
+
 services:
   rabbitmq:
     image: rabbitmq:4.0.6-management
@@ -6,20 +8,109 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     ports:
-      - "5672:5672"   # AMQP protocol port
-      - "15672:15672" # Management UI port
-      - "15692:15692" # Prometheus metrics
+      - '5672:5672' # AMQP protocol port
+      - '15672:15672' # Management UI port
+      - '15692:15692' # Prometheus metrics
     env_file:
       - rabbitmq.env
     restart: always
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin
-      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,info}]"
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: '-rabbit log_levels [{connection,info}]'
     command: >
       /bin/bash -c "
       rabbitmq-plugins enable --offline rabbitmq_management &&
       rabbitmq-server"
 
+  api_gateway:
+    build:
+      context: .
+      dockerfile: ./apps/api-gateway/Dockerfile
+    container_name: api_gateway
+    ports:
+      - '3000:3000' # API Gateway lắng nghe trên cổng 3000
+    environment:
+      RABBITMQ_URL: 'amqp://admin:admin@rabbitmq:5672'
+    depends_on:
+      - rabbitmq
+    restart: always
+
+  users_service:
+    build:
+      context: ./
+      dockerfile: ./apps/users/Dockerfile
+    container_name: users_service
+    ports:
+      - '3001:3001'
+    env_file:
+      - .env
+    restart: always
+
+  # buildings_service:
+  #   build:
+  #     context: .
+  #     dockerfile: ./apps/buildings/Dockerfile
+  #   container_name: buildings_service
+  #   ports:
+  #     - '3002:3002'
+  #   env_file:
+  #     - .env
+  #   depends_on:
+  #     - db
+  #   restart: always
+
+  # cracks_service:
+  #   build:
+  #     context: .
+  #     dockerfile: ./apps/cracks/Dockerfile
+  #   container_name: cracks_service
+  #   ports:
+  #     - '3003:3003'
+  #   env_file:
+  #     - .env
+  #   depends_on:
+  #     - db
+  #   restart: always
+
+  # tasks_service:
+  #   build:
+  #     context: .
+  #     dockerfile: ./apps/Tasks/Dockerfile
+  #   container_name: tasks_service
+  #   ports:
+  #     - '3004:3004'
+  #   env_file:
+  #     - .env
+  #   depends_on:
+  #     - db
+  #   restart: always
+
+  # schedules_service:
+  #   build:
+  #     context: .
+  #     dockerfile: ./apps/schedules/Dockerfile
+  #   container_name: schedules_service
+  #   ports:
+  #     - '3005:3005'
+  #   env_file:
+  #     - .env
+  #   depends_on:
+  #     - db
+  #   restart: always
+
+  # db:
+  #   image: postgres:13-alpine
+  #   container_name: database
+  #   environment:
+  #     POSTGRES_USER: admin
+  #     POSTGRES_PASSWORD: 12345
+  #     POSTGRES_DB: main_db
+  #   ports:
+  #     - '5432:5432'
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+
 volumes:
   rabbitmq_data:
+  postgres_data:
