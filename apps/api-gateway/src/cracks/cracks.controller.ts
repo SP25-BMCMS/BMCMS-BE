@@ -1,3 +1,4 @@
+import { $Enums } from '@prisma/client-cracks'
 import {
   BadRequestException,
   Body,
@@ -17,32 +18,33 @@ import {
 } from '@nestjs/common'
 import { ClientProxy } from '@nestjs/microservices'
 import { FilesInterceptor } from '@nestjs/platform-express'
-import { catchError, firstValueFrom } from 'rxjs'
+import { catchError, firstValueFrom, tap } from 'rxjs'
 import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto'
 import { CreateCrackDetailDto } from '../../../../libs/contracts/src/cracks/create-crack-detail.dto'
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto'
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiConsumes, ApiQuery } from '@nestjs/swagger'
+import { CRACK_CLIENT } from '../constraints'
 
 
 @Controller('cracks')
 @ApiTags('cracks')
 // @UseGuards(PassportJwtAuthGuard)
 export class CracksController {
-  constructor(@Inject('CRACK_SERVICE') private readonly crackService: ClientProxy) { }
+  constructor(@Inject(CRACK_CLIENT) private readonly crackService: ClientProxy) { }
 
   @Get('crack-reports')
   @ApiOperation({ summary: 'Get all crack reports with pagination, search, and filter' })
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 10 })
   @ApiQuery({ name: 'search', required: false, example: 'nứt ngang' })
-  @ApiQuery({ name: 'severityFilter', required: false, example: 'high' })
+  @ApiQuery({ name: 'severityFilter', required: false, example: 'Unknown' })
   @ApiResponse({ status: 200, description: 'Returns paginated crack reports' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async getAllCrackReports(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('search') search?: string,
-    @Query('severityFilter') severityFilter?: string
+    @Query('severityFilter') severityFilter?: $Enums.Severity
   ) {
     return firstValueFrom(
       this.crackService.send(
@@ -54,7 +56,9 @@ export class CracksController {
           severityFilter
         }
       ).pipe(
+        tap(data => console.log('Data received from microservice:', data)), // Log dữ liệu
         catchError(err => {
+          console.error('Error from microservice:', err) // Log lỗi
           throw new InternalServerErrorException(err.message)
         })
       )
