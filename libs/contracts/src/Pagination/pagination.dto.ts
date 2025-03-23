@@ -1,3 +1,5 @@
+import { ApiProperty } from '@nestjs/swagger';
+
 // Định nghĩa interface cho tham số đầu vào phân trang
 export interface PaginationParams {
   page?: number;
@@ -7,6 +9,8 @@ export interface PaginationParams {
 
 // Định nghĩa generic response type cho kết quả phân trang
 export class PaginationResponseDto<T> {
+  statusCode?: number;
+  message?: string;
   data: T[];
   pagination: {
     total: number;
@@ -19,8 +23,12 @@ export class PaginationResponseDto<T> {
     data: T[],
     total: number,
     page: number = 1,
-    limit: number = 10
+    limit: number = 10,
+    statusCode: number = 200,
+    message: string = 'Data retrieved successfully'
   ) {
+    this.statusCode = statusCode;
+    this.message = message;
     this.data = data;
     this.pagination = {
       total,

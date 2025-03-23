@@ -17,14 +17,12 @@ export class BuildingsService {
       // Call the microservice via ClientProxy with pagination parameters
       const buildingsObservable = this.buildingsClient.send(BUILDINGS_PATTERN.GET, paginationParams || {});
       const buildings = await firstValueFrom(buildingsObservable);
-      
       return buildings;
     } catch (error) {
       console.error("Error in getBuildings:", error);
-      throw new HttpException(
+      throw new HttpException(  
         'Error occurred while fetching buildings.',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+        HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
