@@ -44,7 +44,7 @@ async function bootstrap() {
       },
       'access-token',
     )
-    // .addTag('users', 'User management endpoints')
+    .addTag('users', 'User management endpoints')
     .addTag('buildings', 'Building management endpoints')
     .addTag('areas', 'Area management endpoints')
     .addTag('cracks', 'Crack monitoring endpoints')

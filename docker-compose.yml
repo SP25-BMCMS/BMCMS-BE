@@ -53,74 +53,72 @@ services:
       - .env
     restart: always
 
+  buildings_service:
+    build:
+      context: .
+      dockerfile: ./apps/buildings/Dockerfile
+    container_name: buildings_service
+    ports:
+      - '3002:3002'
+    networks:
+      - my_network
+    env_file:
+      - .env
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: admin
+      RABBITMQ_PASS: admin
+    restart: always
+    depends_on:
+      - rabbitmq # ✅ Đảm bảo RabbitMQ chạy trước
+
+  cracks_service:
+    build:
+      context: .
+      dockerfile: ./apps/cracks/Dockerfile
+    container_name: cracks_service
+    ports:
+      - '3003:3003'
+    env_file:
+      - .env
+    depends_on:
+      - rabbitmq # ✅ Đảm bảo RabbitMQ chạy trước
+    restart: always
+    networks:
+      - my_network
+
+  tasks_service:
+    build:
+      context: .
+      dockerfile: ./apps/Tasks/Dockerfile
+    container_name: tasks_service
+    ports:
+      - '3004:3004'
+    env_file:
+      - .env
+    depends_on:
+      - rabbitmq # ✅ Đảm bảo RabbitMQ chạy trước
+    restart: always
+    networks:
+      - my_network
+
+  schedules_service:
+    build:
+      context: .
+      dockerfile: ./apps/schedules/Dockerfile
+    container_name: schedules_service
+    ports:
+      - '3005:3005'
+    env_file:
+      - .env
+    depends_on:
+      - rabbitmq # ✅ Đảm bảo RabbitMQ chạy trước
+    restart: always
+    networks:
+      - my_network
+      
 networks:
   my_network:
     driver: bridge
-
-  # buildings_service:
-  #   build:
-  #     context: .
-  #     dockerfile: ./apps/buildings/Dockerfile
-  #   container_name: buildings_service
-  #   ports:
-  #     - '3002:3002'
-  #   env_file:
-  #     - .env
-  #   depends_on:
-  #     - db
-  #   restart: always
-
-  # cracks_service:
-  #   build:
-  #     context: .
-  #     dockerfile: ./apps/cracks/Dockerfile
-  #   container_name: cracks_service
-  #   ports:
-  #     - '3003:3003'
-  #   env_file:
-  #     - .env
-  #   depends_on:
-  #     - db
-  #   restart: always
-
-  # tasks_service:
-  #   build:
-  #     context: .
-  #     dockerfile: ./apps/Tasks/Dockerfile
-  #   container_name: tasks_service
-  #   ports:
-  #     - '3004:3004'
-  #   env_file:
-  #     - .env
-  #   depends_on:
-  #     - db
-  #   restart: always
-
-  # schedules_service:
-  #   build:
-  #     context: .
-  #     dockerfile: ./apps/schedules/Dockerfile
-  #   container_name: schedules_service
-  #   ports:
-  #     - '3005:3005'
-  #   env_file:
-  #     - .env
-  #   depends_on:
-  #     - db
-  #   restart: always
-
-  # db:
-  #   image: postgres:13-alpine
-  #   container_name: database
-  #   environment:
-  #     POSTGRES_USER: admin
-  #     POSTGRES_PASSWORD: 12345
-  #     POSTGRES_DB: main_db
-  #   ports:
-  #     - '5432:5432'
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-
 volumes:
   rabbitmq_data:
-  # postgres_data:

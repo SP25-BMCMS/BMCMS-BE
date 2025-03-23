@@ -12,7 +12,7 @@ import { RolesGuard } from '../../guards/role.guard'
 import { UsersService } from './users.service'
 
 @Controller('auth')
-@ApiTags('Authentication & User Management')
+@ApiTags('users')
 export class UsersController {
     constructor(private usersService: UsersService) { }
 
@@ -23,7 +23,7 @@ export class UsersController {
     @SwaggerResponse({ status: 200, description: 'Login successful' })
     @SwaggerResponse({ status: 401, description: 'Unauthorized' })
     login(@Body() data: LoginDto) {
-        return this.usersService.login(data);
+        return this.usersService.login(data)
     }
 
     @Post('resident/login')
@@ -42,22 +42,22 @@ export class UsersController {
     @SwaggerResponse({ status: 401, description: 'Unauthorized' })
     async residentLogin(@Body() data: { phone: string, password: string }, @Res() res: any) {
         try {
-            const response = await this.usersService.residentLogin(data);
-            return res.status(HttpStatus.OK).json(response);
+            const response = await this.usersService.residentLogin(data)
+            return res.status(HttpStatus.OK).json(response)
         } catch (error) {
             // Get status code and message from error
             const status = error instanceof HttpException
                 ? error.getStatus()
-                : HttpStatus.UNAUTHORIZED;
+                : HttpStatus.UNAUTHORIZED
 
             const message = error instanceof HttpException
                 ? error.message
-                : 'Đăng nhập không thành công';
+                : 'Đăng nhập không thành công'
 
             return res.status(status).json({
                 statusCode: status,
                 message: message
-            });
+            })
         }
     }
 
@@ -77,13 +77,13 @@ export class UsersController {
     @SwaggerResponse({ status: 201, description: 'User created successfully' })
     @SwaggerResponse({ status: 400, description: 'Bad request' })
     async signup(@Body() userData: createUserDto, @Res() res: any): Promise<Response> {
-        const response = await this.usersService.signup(userData);
+        const response = await this.usersService.signup(userData)
 
         if (!response.isSuccess) {
-            return res.status(HttpStatus.BAD_REQUEST).json(response); // 🔴 400 Bad Request khi thất bại
+            return res.status(HttpStatus.BAD_REQUEST).json(response) // 🔴 400 Bad Request khi thất bại
         }
 
-        return res.status(HttpStatus.CREATED).json(response); // ✅ 201 Created khi thành công
+        return res.status(HttpStatus.CREATED).json(response) // ✅ 201 Created khi thành công
     }
 
     @UseGuards(PassportJwtAuthGuard)
@@ -121,14 +121,14 @@ export class UsersController {
     @SwaggerResponse({ status: 201, description: 'Working position created successfully' })
     @SwaggerResponse({ status: 400, description: 'Bad request' })
     async createWorkingPosition(@Body() data: CreateWorkingPositionDto) {
-        return this.usersService.createWorkingPosition(data);
+        return this.usersService.createWorkingPosition(data)
     }
 
     @Get('working-positions')
     @ApiOperation({ summary: 'Get all working positions' })
     @SwaggerResponse({ status: 200, description: 'Working positions retrieved successfully' })
     async getAllWorkingPositions() {
-        return this.usersService.getAllWorkingPositions();
+        return this.usersService.getAllWorkingPositions()
     }
 
     @Get('working-position/:positionId')
@@ -137,7 +137,7 @@ export class UsersController {
     @SwaggerResponse({ status: 200, description: 'Working position retrieved successfully' })
     @SwaggerResponse({ status: 404, description: 'Working position not found' })
     async getWorkingPositionById(@Param('positionId') positionId: string) {
-        return this.usersService.getWorkingPositionById(positionId);
+        return this.usersService.getWorkingPositionById(positionId)
     }
 
     @Delete('working-position/:positionId')
@@ -146,7 +146,7 @@ export class UsersController {
     @SwaggerResponse({ status: 200, description: 'Working position deleted successfully' })
     @SwaggerResponse({ status: 404, description: 'Working position not found' })
     async deleteWorkingPosition(@Param('positionId') positionId: string) {
-        return this.usersService.deleteWorkingPosition(positionId);
+        return this.usersService.deleteWorkingPosition(positionId)
     }
 
     @Post('department')
@@ -155,13 +155,13 @@ export class UsersController {
     @SwaggerResponse({ status: 201, description: 'Department created successfully' })
     @SwaggerResponse({ status: 404, description: 'Not found' })
     async createDepartment(@Body() data: CreateDepartmentDto, @Res() res: any) {
-        const response = await this.usersService.createDepartment(data);
+        const response = await this.usersService.createDepartment(data)
 
         if (!response.isSuccess) {
-            return res.status(HttpStatus.NOT_FOUND).json(response);
+            return res.status(HttpStatus.NOT_FOUND).json(response)
         }
 
-        return res.status(HttpStatus.CREATED).json(response);
+        return res.status(HttpStatus.CREATED).json(response)
     }
 
     @Get('apartments/:residentId')
@@ -170,13 +170,13 @@ export class UsersController {
     @SwaggerResponse({ status: 200, description: 'Apartments retrieved successfully' })
     @SwaggerResponse({ status: 404, description: 'Resident not found' })
     async getApartmentsByResidentId(@Param('residentId') residentId: string, @Res() res: any) {
-        const response = await this.usersService.getApartmentsByResidentId(residentId);
+        const response = await this.usersService.getApartmentsByResidentId(residentId)
 
         if (!response.isSuccess) {
-            return res.status(HttpStatus.NOT_FOUND).json(response);
+            return res.status(HttpStatus.NOT_FOUND).json(response)
         }
 
-        return res.status(HttpStatus.OK).json(response);
+        return res.status(HttpStatus.OK).json(response)
     }
 
     @UseGuards(PassportJwtAuthGuard, RolesGuard)
@@ -214,21 +214,21 @@ export class UsersController {
         @Res() res: any
     ) {
         try {
-            const response = await this.usersService.updateResidentApartments(residentId, data.apartments);
-            return res.status(HttpStatus.OK).json(response);
+            const response = await this.usersService.updateResidentApartments(residentId, data.apartments)
+            return res.status(HttpStatus.OK).json(response)
         } catch (error) {
             const status = error instanceof HttpException
                 ? error.getStatus()
-                : HttpStatus.INTERNAL_SERVER_ERROR;
+                : HttpStatus.INTERNAL_SERVER_ERROR
 
             const message = error instanceof HttpException
                 ? error.message
-                : 'Lỗi khi cập nhật căn hộ';
+                : 'Lỗi khi cập nhật căn hộ'
 
             return res.status(status).json({
                 statusCode: status,
                 message: message
-            });
+            })
         }
     }
 
@@ -269,8 +269,8 @@ export class UsersController {
         @Res() res: any
     ) {
         try {
-            const { accountStatus } = data;
-            const response = await this.usersService.updateAccountStatus(userId, accountStatus);
+            const { accountStatus } = data
+            const response = await this.usersService.updateAccountStatus(userId, accountStatus)
 
             // Kiểm tra kết quả trả về từ service để quyết định status code
             if (!response.isSuccess) {
@@ -279,27 +279,27 @@ export class UsersController {
                     response.message.toLowerCase().includes('không tìm thấy') ||
                     response.message.toLowerCase().includes('not found')
                 )) {
-                    return res.status(HttpStatus.NOT_FOUND).json(response);
+                    return res.status(HttpStatus.NOT_FOUND).json(response)
                 }
 
                 // Các trường hợp lỗi khác
-                return res.status(HttpStatus.BAD_REQUEST).json(response);
+                return res.status(HttpStatus.BAD_REQUEST).json(response)
             }
 
-            return res.status(HttpStatus.OK).json(response);
+            return res.status(HttpStatus.OK).json(response)
         } catch (error) {
             const status = error instanceof HttpException
                 ? error.getStatus()
-                : HttpStatus.INTERNAL_SERVER_ERROR;
+                : HttpStatus.INTERNAL_SERVER_ERROR
 
             const message = error instanceof HttpException
                 ? error.message
-                : 'Lỗi khi cập nhật trạng thái tài khoản';
+                : 'Lỗi khi cập nhật trạng thái tài khoản'
 
             return res.status(status).json({
                 statusCode: status,
                 message: message
-            });
+            })
         }
     }
 }

@@ -34,34 +34,26 @@ export class ClientConfigService {
       }
     }
   }
-
-  // get buildingsClientOptions(): ClientOptions {
-  //     return {
-  //         transport: Transport.TCP,
-  //         options: {
-  //             port: this.getBuildingsClientPort()
-  //         }
-  //     }
-  // }
   get cracksClientOptions(): ClientOptions {
+    const { user, password, host, queueName } = this.getRabbitMQConfig() // Get RabbitMQ config
     return {
       transport: Transport.RMQ,
       options: {
-        urls: ['amqp://localhost:5672'],
-        queue: 'building-maintenance',
+        urls: [
+          `amqp://${user}:${password}@${host}`,
+          `amqp://${user}:${password}@rabbitmq:5672`],
+        queue: 'cracks_queue',
       },
     }
   }
-
-
 
   get buildingsClientOptions(): ClientOptions {
     const { user, password, host, queueName } = this.getRabbitMQConfig() // Get RabbitMQ config
     return {
       transport: Transport.RMQ,
       options: {
-        urls: [`amqp://${user}:${password}@${host}`],
-        queue: "Building",
+        urls: [`amqp://${user}:${password}@${host}`, `amqp://${user}:${password}@rabbitmq:5672`],
+        queue: "buildings_queue",
         queueOptions: {
           durable: true,
         },
@@ -72,13 +64,12 @@ export class ClientConfigService {
 
   get TasksClientOptions(): ClientOptions {
     const { user, password, host, queueName } = this.getRabbitMQConfig() // Get RabbitMQ config
-    //  const port = 3003;
 
     return {
       transport: Transport.RMQ,
       options: {
-        urls: [`amqp://${user}:${password}@${host}`],
-        queue: "Tasks_queue",
+        urls: [`amqp://${user}:${password}@${host}`, `amqp://${user}:${password}@rabbitmq:5672`],
+        queue: "tasks_queue",
         queueOptions: {
           durable: true,
         },
@@ -88,12 +79,10 @@ export class ClientConfigService {
 
   get SchedulesClientOptions(): ClientOptions {
     const { user, password, host, queueName } = this.getRabbitMQConfig() // Get RabbitMQ config
-    //  const port = 3003;
-
     return {
       transport: Transport.RMQ,
       options: {
-        urls: [`amqp://${user}:${password}@${host}`],
+        urls: [`amqp://${user}:${password}@${host}`, `amqp://${user}:${password}@rabbitmq:5672`],
         queue: "schedules_queue",
         queueOptions: {
           durable: true,
@@ -101,14 +90,4 @@ export class ClientConfigService {
       },
     }
   };
-
-  //   get buildingsClientOptions(): ClientOptions {
-  //     return {
-  //         transport: Transport.RMQ,
-  //         options: {
-  //             urls: ['amqp://localhost:5672'],
-  //             queue: 'building-maintenance',
-  //         },
-  //     }
-  // }
 }
