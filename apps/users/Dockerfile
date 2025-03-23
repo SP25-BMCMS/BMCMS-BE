@@ -30,4 +30,5 @@ RUN npx prisma generate --schema=./apps/users/prisma/schema.prisma && \
 EXPOSE 3001
 
 # Lệnh khởi chạy ứng dụng khi container bắt đầu
-CMD ["npm", "start"]
+CMD ["npx", "nest", "start", "users", "--watch"]
+

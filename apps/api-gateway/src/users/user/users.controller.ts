@@ -1,17 +1,15 @@
-import { Body, Controller, Get, HttpCode, HttpException, HttpStatus, Post, Req, Res, UseGuards, Param, Put, Delete, Patch } from '@nestjs/common';
+import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto'
+import { LoginDto } from '@app/contracts/users/login.dto'
+import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, Patch, Post, Req, Res, UseGuards } from '@nestjs/common'
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiTags, ApiResponse as SwaggerResponse } from '@nestjs/swagger'
 import { Role } from '@prisma/client-users'
+import { createUserDto } from 'libs/contracts/src/users/create-user.dto'
+import { CreateWorkingPositionDto } from 'libs/contracts/src/users/create-working-position.dto'
 import { Roles } from '../../decorator/roles.decarator'
 import { PassportJwtAuthGuard } from '../../guards/passport-jwt-guard'
 import { PassportLocalGuard } from '../../guards/passport-local-guard'
-import { UsersService } from './users.service'
-import { createUserDto } from 'libs/contracts/src/users/create-user.dto'
 import { RolesGuard } from '../../guards/role.guard'
-import { ApiResponse } from '../../../../../libs/contracts/src/ApiReponse/api-response';
-import { LoginDto } from '@app/contracts/users/login.dto';
-import { CreateWorkingPositionDto } from 'libs/contracts/src/users/create-working-position.dto';
-import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
-import { UpdateAccountStatusDto } from '../../../../../libs/contracts/src/users/update-account-status.dto';
-import { ApiOperation, ApiResponse as SwaggerResponse, ApiTags, ApiBearerAuth, ApiBody, ApiParam } from '@nestjs/swagger';
+import { UsersService } from './users.service'
 
 @Controller('auth')
 @ApiTags('Authentication & User Management')

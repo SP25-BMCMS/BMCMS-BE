@@ -11,7 +11,7 @@ async function bootstrap() {
       options: {
         package: 'users',
         protoPath: join(process.cwd(), 'libs/contracts/src/users/users.proto'),
-        url: `localhost:3001`
+        url: `0.0.0.0:3001`
       },
     },
   )

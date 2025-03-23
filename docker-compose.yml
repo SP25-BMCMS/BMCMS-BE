@@ -22,6 +22,8 @@ services:
       /bin/bash -c "
       rabbitmq-plugins enable --offline rabbitmq_management &&
       rabbitmq-server"
+    networks:
+      - my_network
 
   api_gateway:
     build:
@@ -30,6 +32,8 @@ services:
     container_name: api_gateway
     ports:
       - '3000:3000' # API Gateway lắng nghe trên cổng 3000
+    networks:
+      - my_network
     environment:
       RABBITMQ_URL: 'amqp://admin:admin@rabbitmq:5672'
     depends_on:
@@ -43,9 +47,15 @@ services:
     container_name: users_service
     ports:
       - '3001:3001'
+    networks:
+      - my_network
     env_file:
       - .env
     restart: always
+
+networks:
+  my_network:
+    driver: bridge
 
   # buildings_service:
   #   build:
@@ -113,4 +123,4 @@ services:
 
 volumes:
   rabbitmq_data:
-  postgres_data:
+  # postgres_data:
