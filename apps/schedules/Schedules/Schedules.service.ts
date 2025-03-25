@@ -7,6 +7,7 @@ import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 import { ScheduleResponseDto } from '@app/contracts/schedules/Schedule.dto';
 import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules';
 import { $Enums } from '@prisma/client-Schedule';
+import { PaginationParams, PaginationResponseDto } from '../../../libs/contracts/src/Pagination/pagination.dto';
 
 
 @Injectable()
@@ -97,10 +98,26 @@ export class ScheduleService {
   }
 
   // Get all schedules
-  async getAllSchedules(): Promise<ApiResponse<ScheduleResponseDto[]>> {
+  async getAllSchedules(paginationParams?: PaginationParams): Promise<PaginationResponseDto<ScheduleResponseDto>> {
     try {
-      const schedules = await this.prisma.schedule.findMany();
+      // Default values if not provided
+      const page = Math.max(1, paginationParams?.page || 1);
+      const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10));
       
+      // Calculate skip value for pagination
+      const skip = (page - 1) * limit;
+      
+      // Get paginated data
+      const [schedules, total] = await Promise.all([
+        this.prisma.schedule.findMany({
+          skip,
+          take: limit,
+          orderBy: { created_at: 'desc' }
+        }),
+        this.prisma.schedule.count()
+      ]);
+      
+      // Transform to response DTOs
       const scheduleResponse: ScheduleResponseDto[] = schedules.map(schedule => ({
         ...schedule,
         start_date: schedule.start_date ? schedule.start_date : null,
@@ -108,12 +125,21 @@ export class ScheduleService {
         created_at: schedule.created_at,
         updated_at: schedule.updated_at,
       }));
-
-      return new ApiResponse<ScheduleResponseDto[]>(true, 'Schedules fetched successfully', scheduleResponse);
+      
+      // Use PaginationResponseDto for consistent response formatting
+      return new PaginationResponseDto(
+        scheduleResponse,
+        total,
+        page,
+        limit,
+        200,
+        schedules.length > 0 ? 'Schedules retrieved successfully' : 'No schedules found'
+      );
     } catch (error) {
+      console.error('Error retrieving schedules:', error);
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving schedules',
+        message: `Error retrieving schedules: ${error.message}`
       });
     }
   }

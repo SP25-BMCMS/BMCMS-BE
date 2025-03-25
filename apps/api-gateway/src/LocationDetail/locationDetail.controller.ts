@@ -1,9 +1,9 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, Post, Put, Req, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, Post, Put, Req, UseGuards, Query } from '@nestjs/common'
 import { LocationDetailService } from './locationDetail.service'
 import { catchError, NotFoundError } from 'rxjs';
 import { CreateLocationDetailDto } from 'libs/contracts/src/LocationDetails/create-locationdetails.dto';
 import { UpdateLocationDetailDto } from 'libs/contracts/src/LocationDetails/update.locationdetails';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
 
 @Controller('locationdetails')
 @ApiTags('location-details')
@@ -11,10 +11,17 @@ export class LocationDetailController {
   constructor(private readonly locationDetailService: LocationDetailService) { }
 
   @Get()
-  @ApiOperation({ summary: 'Get all location details' })
-  @ApiResponse({ status: 200, description: 'Returns all location details' })
-  async getAllBuildings() {
-    return await this.locationDetailService.getLocationDetails();
+  @ApiOperation({ summary: 'Get all location details with pagination' })
+  @ApiQuery({ name: 'page', required: false, example: 1, description: 'Page number' })
+  @ApiQuery({ name: 'limit', required: false, example: 10, description: 'Items per page' })
+  async getAllBuildings(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number
+  ) {
+    return await this.locationDetailService.getLocationDetails({
+      page: Number(page) || 1,
+      limit: Number(limit) || 10
+    });
   }
 
   // Create a new LocationDetail

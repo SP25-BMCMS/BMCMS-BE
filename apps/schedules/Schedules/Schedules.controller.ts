@@ -7,6 +7,7 @@ import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules';
 import { ScheduleResponseDto } from '@app/contracts/schedules/Schedule.dto';
 import { $Enums } from '@prisma/client-Schedule';
 import { SCHEDULES_PATTERN } from '@app/contracts/schedules/Schedule.patterns';
+import { PaginationParams, PaginationResponseDto } from '../../../libs/contracts/src/Pagination/pagination.dto';
 @Controller('schedules')
 export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) {}
@@ -28,8 +29,8 @@ export class ScheduleController {
   }
 
   @MessagePattern(SCHEDULES_PATTERN.GET)
-  async getAllSchedulesMicro(): Promise<ApiResponse<ScheduleResponseDto[]>> {
-    return this.scheduleService.getAllSchedules();
+  async getAllSchedulesMicro(@Payload() paginationParams: PaginationParams = {}): Promise<PaginationResponseDto<ScheduleResponseDto>> {
+    return this.scheduleService.getAllSchedules(paginationParams);
   }
 
   @MessagePattern(SCHEDULES_PATTERN.GET_BY_ID)

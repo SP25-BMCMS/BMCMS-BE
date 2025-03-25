@@ -17,6 +17,7 @@ import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 import { SCHEDULEJOB_PATTERN } from '@app/contracts/schedulesjob/ScheduleJob.patterns';
 import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status';
 import { UpdateScheduleJobDto } from '@app/contracts/schedulesjob/UpdateScheduleJobDto';
+import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 
 // import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto'
 // import { buildingsDto } from '@app/contracts/buildings/buildings.dto'
@@ -36,9 +37,9 @@ export class schedulejobsService {
   }
 
   // Get all Schedule Jobs (Microservice)
-  async getAllScheduleJobs(): Promise<any> {
+  async getAllScheduleJobs(paginationParams?: PaginationParams): Promise<any> {
     try {
-      return await this.scheduleJobClient.send(SCHEDULEJOB_PATTERN.GET, {});
+      return await this.scheduleJobClient.send(SCHEDULEJOB_PATTERN.GET, paginationParams || {});
     } catch (error) {
       throw new HttpException(
         'Error occurred while fetching all schedule jobs',

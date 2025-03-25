@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { Payload, RpcException } from '@nestjs/microservices';
+import { Injectable, Inject } from '@nestjs/common';
+import { Payload, RpcException, ClientProxy } from '@nestjs/microservices';
 import { PrismaClient } from '@prisma/client-building';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { UUID } from 'crypto';
@@ -7,11 +7,42 @@ import { date } from 'joi';
 import { buildingsDto } from 'libs/contracts/src/buildings/buildings.dto';
 import { CreateBuildingDto } from 'libs/contracts/src/buildings/create-buildings.dto';
 import { UpdateBuildingDto } from 'libs/contracts/src/buildings/update-buildings.dto';
+import { Observable } from 'rxjs';
+import { firstValueFrom, lastValueFrom } from 'rxjs';
+
+// Interface for UserService
+interface UserService {
+  getApartmentById(data: { apartmentId: string }): Observable<any>;
+}
 
 @Injectable()
 export class BuildingsService {
 
   private prisma = new PrismaClient();
+
+  constructor(
+    @Inject('USERS_CLIENT') private readonly usersClient: ClientProxy
+  ) {}
+
+  // Add this method to forward apartment requests to the users service
+  async getApartmentById(apartmentId: string) {
+    try {
+      console.log("🚀 ~ BuildingsService ~ getApartmentById ~ apartmentId:", apartmentId);
+      
+      // Forward the request to the Users service
+      const apartmentResponse = await firstValueFrom(
+        this.usersClient.send('get_apartment_by_id', { apartmentId })
+      );
+      
+      return apartmentResponse;
+    } catch (error) {
+      console.error("Error getting apartment from users service:", error);
+      throw new RpcException({
+        statusCode: 500,
+        message: `Error fetching apartment data: ${error.message}`
+      });
+    }
+  }
 
   // Create a new building
   async createBuilding(CreateBuildingDto: CreateBuildingDto) {
@@ -53,30 +84,69 @@ export class BuildingsService {
     }
   }
 
-  // Read a building by buildingId
-  async readBuilding() {
+  // Update readBuilding to support pagination
+  async readBuilding(paginationParams?: { page?: number; limit?: number; search?: string }) {
     try {
-      const getBuilding = await this.prisma.building.findMany({
-      });
-      if (getBuilding == null) {
+      // Default values if not provided
+      const page = paginationParams?.page || 1;
+      const limit = paginationParams?.limit || 10;
+      const search = paginationParams?.search || '';
+      
+      // Calculate skip value for pagination
+      const skip = (page - 1) * limit;
+      
+      // Create where condition for search
+      const where: any = {};
+      if (search) {
+        where.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } }
+        ];
+      }
+      
+      // Get paginated data
+      const [buildings, total] = await Promise.all([
+        this.prisma.building.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' }
+        }),
+        this.prisma.building.count({ where })
+      ]);
+      
+      if (buildings.length === 0) {
         return {
-          statusCode: 404,
-          message: 'No Building',
+          statusCode: 200,
+          message: 'No buildings found',
+          data: [],
+          pagination: {
+            total,
+            page,
+            limit,
+            totalPages: Math.max(1, Math.ceil(total / limit))
+          }
         };
       }
 
       return {
         statusCode: 200,
-        message: 'get Building successfully',
-        data: getBuilding,
+        message: 'Buildings retrieved successfully',
+        data: buildings,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.max(1, Math.ceil(total / limit))
+        }
       };
-
     } catch (error) {
-      throw new RpcException({ statusCode: 500, message: 'Error retrieving buildings!' })
-
+      console.error('Error retrieving buildings:', error);
+      throw new RpcException({ 
+        statusCode: 500, 
+        message: 'Error retrieving buildings!' 
+      });
     }
-
-
   }
 
   // Update an existing building

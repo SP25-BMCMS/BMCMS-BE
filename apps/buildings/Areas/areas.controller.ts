@@ -3,6 +3,7 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { AreasService } from './areas.service';
 import { AREAS_PATTERN } from 'libs/contracts/src/Areas/Areas.patterns';
+import { PaginationParams } from '../../../libs/contracts/src/Pagination/pagination.dto';
 
 @Controller('areas')
 export class AreasController {
@@ -14,10 +15,8 @@ export class AreasController {
   }
 
   @MessagePattern(AREAS_PATTERN.GET)
-  async getAllAreas() {
-    console.log("🚀 ~ AreasController ~ getAllAreas ~ getAllAreas:")
-    
-    return await this.areasService.getAllAreas();
+  async getAllAreas(@Payload() paginationParams: PaginationParams) {
+    return await this.areasService.getAllAreas(paginationParams);
   }
 
   @MessagePattern(AREAS_PATTERN.GET_BY_ID)

@@ -9,6 +9,7 @@ import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status';
 import { SCHEDULEJOB_PATTERN } from '@app/contracts/schedulesjob/ScheduleJob.patterns';
 import { UpdateScheduleJobDto } from '@app/contracts/schedulesjob/UpdateScheduleJobDto';
+import { PaginationParams, PaginationResponseDto } from '../../../libs/contracts/src/Pagination/pagination.dto';
 
 @Controller('schedule-jobs')
 export class ScheduleJobController {
@@ -22,8 +23,8 @@ export class ScheduleJobController {
   }
 
   @MessagePattern(SCHEDULEJOB_PATTERN.GET) 
-  async getAllScheduleJobs(): Promise<ApiResponse<ScheduleJobResponseDto[]>> {
-    return this.ScheduleJobsService.getAllScheduleJobs();
+  async getAllScheduleJobs(@Payload() paginationParams: PaginationParams = {}): Promise<PaginationResponseDto<ScheduleJobResponseDto>> {
+    return this.ScheduleJobsService.getAllScheduleJobs(paginationParams);
   }
 
   @MessagePattern(SCHEDULEJOB_PATTERN.GET_BY_ID) 

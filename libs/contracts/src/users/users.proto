@@ -19,9 +19,24 @@ service UserService {
   rpc CreateDepartment (CreateDepartmentRequest) returns (DepartmentApiResponse);
   rpc GetAllStaff (Empty) returns (StaffListResponse);
   rpc GetApartmentsByResidentId (GetApartmentsRequest) returns (GetApartmentsResponse);
-  rpc ResidentLogin (ResidentLoginRequest) returns (LoginResponse);
-  rpc UpdateResidentApartments (UpdateResidentApartmentsRequest) returns (UpdateResidentApartmentsResponse);
-  rpc UpdateAccountStatus (UpdateAccountStatusRequest) returns (UpdateAccountStatusResponse);
+  rpc GetApartmentById (GetApartmentByIdRequest) returns (ApiResponseApartment);
+
+}
+message GetApartmentByIdRequest {
+  string apartmentId = 1;
+}
+
+
+message ApiResponseApartment {
+  bool isSuccess = 1;
+  string message = 2;
+  ApartmentDTO data = 3; // Dữ liệu trả về là một ApartmentDTO
+}
+message ApartmentDTO {
+  string apartmentId = 1;
+  string apartmentName = 2;
+  string buildingId = 3;
+  BuildingInfo building = 4; // Thông tin về tòa nhà
 }
 
 message CreateUserRequest {
@@ -227,6 +242,7 @@ message ApartmentsListResponse {
 message GetApartmentsRequest {
   string residentId = 1;
 }
+
 
 message Apartment {
   string apartmentName = 1;

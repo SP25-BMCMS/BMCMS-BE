@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApiResponse } from 'libs/contracts/src/ApiReponse/api-response';
-import { CreateRepairMaterialDto } from 'libs/contracts/src/tasks/create-repair-material.dto';
+import { CreateRepairMaterialDto } from '@app/contracts/repairmaterials/create-repair-material.dto';
 
 @Injectable()
 export class RepairMaterialsService {
