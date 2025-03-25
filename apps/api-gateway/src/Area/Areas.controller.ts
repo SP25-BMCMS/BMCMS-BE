@@ -1,9 +1,10 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, Post, Put, Req, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common'
 import { AreasService } from './Areas.service'
 import { catchError, NotFoundError } from 'rxjs';
 import { CreateAreaDto } from '@app/contracts/Areas/create-areas.dto';
 import { UpdateAreaDto } from '@app/contracts/Areas/update.areas';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
+import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 
 @Controller('areas')
 @ApiTags('areas')
@@ -20,12 +21,17 @@ export class AreasController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all areas' })
-  @ApiResponse({ status: 200, description: 'Returns all areas' })
-  async getAllAreas() {
-    console.log("🚀 ~ AreasCsdssontroller ~ getAllAreas ~ getAllAreas:")
-
-    return await this.areasService.getAreas();
+  @ApiOperation({ summary: 'Get all areas with pagination' })
+  @ApiQuery({ name: 'page', required: false, example: 1, description: 'Page number' })
+  @ApiQuery({ name: 'limit', required: false, example: 10, description: 'Items per page' })
+  async getAllAreas(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number
+  ) {
+    return await this.areasService.getAllAreas({
+      page: Number(page) || 1,
+      limit: Number(limit) || 10
+    });
   }
 
   @Get(':id')
@@ -45,7 +51,7 @@ export class AreasController {
   @ApiResponse({ status: 404, description: 'Area not found' })
   @ApiResponse({ status: 400, description: 'Bad request' })
   async updateArea(@Param('id') id: string, @Body() updateAreaDto: UpdateAreaDto) {
-    return await this.areasService.updateArea({ ...updateAreaDto, areaId: id });
+    return await this.areasService.updateArea(id, updateAreaDto);
   }
 
   @Delete(':id')

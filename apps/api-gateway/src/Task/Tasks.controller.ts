@@ -9,13 +9,14 @@ import {
   Param, Patch,
   Post,
   Put,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import { TaskService } from './Tasks.service';
 import { catchError, firstValueFrom, NotFoundError } from 'rxjs';
 import { UpdateTaskDto } from '@app/contracts/tasks/update.Task';
-import { ApiOperation, ApiParam, ApiTags, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiTags, ApiResponse, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { ChangeTaskStatusDto } from '@app/contracts/tasks/ChangeTaskStatus.Dto ';
 
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
@@ -23,6 +24,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { TASK_CLIENT } from '../constraints';
 import { UpdateInspectionDto } from '../../../../libs/contracts/src/inspections/update-inspection.dto';
 import { CreateRepairMaterialDto } from 'libs/contracts/src/tasks/create-repair-material.dto';
+import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 
 @Controller('tasks')
 @ApiTags('tasks')
@@ -91,8 +93,24 @@ export class TaskController {
   @Get('tasks')
   @ApiOperation({ summary: 'Get all tasks' })
   @ApiResponse({ status: 200, description: 'Returns all tasks' })
-  async getAllTasks() {
-    return this.taskService.getAllTasks();
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (starting from 1)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
+  async getAllTasks(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number
+  ) {
+    try {
+      // Create pagination params object
+      const paginationParams: PaginationParams = {
+        page: page ? parseInt(page.toString()) : 1,
+        limit: limit ? parseInt(limit.toString()) : 10
+      };
+      
+      return this.taskService.getAllTasks(paginationParams);
+    } catch (error) {
+      console.error('Error in getAllTasks controller:', error);
+      throw new Error(`Failed to get tasks: ${error.message}`);
+    }
   }
 
   @Get('status/:status')

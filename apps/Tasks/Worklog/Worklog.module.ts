@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import {  WorkLogService } from './Worklog.service';
 import { WorkLogController } from './Worklog.controller';
-import { PrismaModule } from '../prisma/prisma.module';
+import { WorkLogService } from './Worklog.service';
+import { PrismaModule } from '../../users/prisma/prisma.module';
 
 @Module({
-    imports: [PrismaModule],
+  imports: [PrismaModule],
+  controllers: [WorkLogController],
   providers: [WorkLogService],
-  controllers: [WorkLogController]
 })
-export class WorklogsModule {}
+export class WorkLogModule {}

@@ -5,6 +5,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { schedulejobsService } from './schedulejobs.service';
 import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
@@ -12,10 +13,10 @@ import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.s
 import { CreateScheduleJobDto } from '@app/contracts/schedulesjob/create-schedule-job.dto';
 import { UpdateScheduleJobDto } from '@app/contracts/schedulesjob/UpdateScheduleJobDto';
 import { ScheduleJobResponseDto } from '@app/contracts/schedulesjob/schedule-job.dto';
-import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiResponse as SwaggerResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiResponse as SwaggerResponse, ApiQuery } from '@nestjs/swagger';
 
 @Controller('schedule-jobs')
-@ApiTags('schedules')
+@ApiTags('schedules-jobs')
 export class ScheduleJobsController {
   constructor(private readonly scheduleJobsService: schedulejobsService) { }
 
@@ -33,10 +34,17 @@ export class ScheduleJobsController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all schedule jobs' })
-  @SwaggerResponse({ status: 200, description: 'Returns all schedule jobs' })
-  async getAllScheduleJobs(): Promise<ApiResponse<any>> {
-    return this.scheduleJobsService.getAllScheduleJobs();
+  @ApiOperation({ summary: 'Get all schedule jobs with pagination' })
+  @ApiQuery({ name: 'page', required: false, example: 1, description: 'Page number' })
+  @ApiQuery({ name: 'limit', required: false, example: 10, description: 'Items per page' })
+  async getAllScheduleJobs(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number
+  ): Promise<ApiResponse<any>> {
+    return this.scheduleJobsService.getAllScheduleJobs({
+      page: Number(page) || 1,
+      limit: Number(limit) || 10
+    });
   }
 
   @Get(':schedule_job_id')

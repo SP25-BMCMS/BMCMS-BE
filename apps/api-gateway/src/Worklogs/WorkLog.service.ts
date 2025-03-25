@@ -7,6 +7,7 @@ import { TASK_CLIENT } from '../constraints';
 import { WORKLOG_PATTERN } from '@app/contracts/Worklog/Worklog.patterns';
 import { WorkLogResponseDto } from '@app/contracts/Worklog/Worklog.dto';
 import { firstValueFrom } from 'rxjs';
+import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 @Injectable()
 export class WorklogService {
   constructor(@Inject(TASK_CLIENT) private readonly taskClient: ClientProxy) {}
@@ -36,9 +37,15 @@ export class WorklogService {
     }
 
     
-    async getAllWorkLogs(): Promise<WorkLogResponseDto[]> {
-      const response = await firstValueFrom(this.taskClient.send(WORKLOG_PATTERN.GET, {})); 
-      return response as WorkLogResponseDto[];
+    async getAllWorkLogs(paginationParams: PaginationParams): Promise<WorkLogResponseDto[]> {
+      try {
+        return await firstValueFrom(
+          this.taskClient.send(WORKLOG_PATTERN.GET, paginationParams)
+        );
+      } catch (error) {
+        console.error('Error in getAllWorkLogs:', error);
+        throw error;
+      }
     }
 
   // async getWorkLogsByUserId(user_id: string): Promise<WorkLogResponseDto[]> {

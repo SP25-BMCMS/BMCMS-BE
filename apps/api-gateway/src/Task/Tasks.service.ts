@@ -15,6 +15,7 @@ import { INSPECTIONS_PATTERN } from '../../../../libs/contracts/src/inspections/
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
 import { UpdateInspectionDto } from '../../../../libs/contracts/src/inspections/update-inspection.dto';
 import { CreateRepairMaterialDto } from 'libs/contracts/src/tasks/create-repair-material.dto';
+import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 
 // import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto'
 // import { buildingsDto } from '@app/contracts/buildings/buildings.dto'
@@ -86,9 +87,9 @@ export class TaskService {
     }
   }
 
-  async getAllTasks() {
+  async getAllTasks(paginationParams: PaginationParams = {}) {
     try {
-      return await this.taskClient.send(TASKS_PATTERN.GET, {});
+      return await this.taskClient.send(TASKS_PATTERN.GET, paginationParams);
     } catch (error) {
       throw new HttpException(
         'Error occurred while fetching all tasks',

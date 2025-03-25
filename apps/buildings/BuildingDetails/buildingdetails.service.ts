@@ -4,9 +4,14 @@ import { PrismaClient  } from '@prisma/client-building';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { CreateBuildingDetailDto } from 'libs/contracts/src/BuildingDetails/create-buildingdetails.dto';
 import { UpdateBuildingDetailDto } from 'libs/contracts/src/BuildingDetails/update.buildingdetails';
+import { PrismaService } from '../../users/prisma/prisma.service';
+import { PaginationParams, PaginationResponseDto } from '../../../libs/contracts/src/Pagination/pagination.dto';
+
 @Injectable()
 export class BuildingDetailsService {
   private prisma = new PrismaClient();
+
+  constructor(private prismaService: PrismaService) {}
 
   async createBuildingDetail(createBuildingDetailDto: CreateBuildingDetailDto) {
     try {
@@ -33,19 +38,56 @@ export class BuildingDetailsService {
     }
   }
 
-  async getAllBuildingDetails() {
+  async getAllBuildingDetails(paginationParams: PaginationParams = { page: 1, limit: 10 }): Promise<PaginationResponseDto<any>> {
     try {
-      const buildingDetails = await this.prisma.buildingDetail.findMany();
-      return {
-        statusCode: 200,
-        message: 'Building Details fetched successfully',
-        data: buildingDetails,
-      };
-    } catch (error) {
-      throw new RpcException({
-        statusCode: 500,
-        message: 'Error retrieving building details',
+      const page = Number(paginationParams.page) || 1;
+      const limit = Number(paginationParams.limit) || 10;
+      const skip = (page - 1) * limit;
+
+      // Get total count
+      const total = await this.prisma.buildingDetail.count();
+
+      // Get paginated building details
+      const buildingDetails = await this.prisma.buildingDetail.findMany({
+        skip,
+        take: limit,
+        include: {
+          building: true,
+          locationDetails: true
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
       });
+
+      const responseData = {
+        statusCode: 200,
+        message: 'Danh sách chi tiết tòa nhà',
+        data: buildingDetails,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit)
+        }
+      };
+
+      return responseData;
+    } catch (error) {
+      console.error('Error in getAllBuildingDetails:', error);
+      const errorData = {
+        statusCode: 500,
+        message: error.message,
+        data: [],
+        pagination: {
+          total: 0,
+          page: Number(paginationParams.page) || 1,
+          limit: Number(paginationParams.limit) || 10,
+          totalPages: 0
+        }
+      };
+
+      return errorData;
     }
   }
 

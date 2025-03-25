@@ -1,7 +1,8 @@
 import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common'
 import { ClientProxy } from '@nestjs/microservices'
- import { BUILDING_CLIENT } from '../constraints'
+import { BUILDING_CLIENT } from '../constraints'
 import { BUILDINGDETAIL_PATTERN } from 'libs/contracts/src/BuildingDetails/buildingdetails.patterns';
+import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 // import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto'
 // import { buildingsDto } from '@app/contracts/buildings/buildings.dto'
 // import { catchError, firstValueFrom } from 'rxjs'
@@ -11,10 +12,10 @@ export class BuildingDetailService {
   constructor(@Inject(BUILDING_CLIENT) private readonly buildingsClient: ClientProxy) {}
 
   // Get all BuildingDetails
-  async getBuildingDetails() {
+  async getBuildingDetails(paginationParams?: PaginationParams) {
     try {
-      // Call the microservice to get all building details
-      const buildingDetails = await this.buildingsClient.send(BUILDINGDETAIL_PATTERN.GET, {});
+      // Call the microservice to get all building details with pagination
+      const buildingDetails = await this.buildingsClient.send(BUILDINGDETAIL_PATTERN.GET, paginationParams || {});
       return buildingDetails;
     } catch (error) {
       throw new HttpException(

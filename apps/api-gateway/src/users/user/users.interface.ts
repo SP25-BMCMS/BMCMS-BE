@@ -4,6 +4,7 @@ import { ApiResponse } from '../../../../../libs/contracts/src/ApiReponse/api-re
 import { CreateWorkingPositionDto } from '../../../../../libs/contracts/src/users/create-working-position.dto';
 import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
 import { UpdateAccountStatusDto } from '../../../../../libs/contracts/src/users/update-account-status.dto';
+import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 
 export interface UserInterface {
   login(data: { username: string, password: string }): Observable<any>;
@@ -15,7 +16,7 @@ export interface UserInterface {
   validateUser(data: { username: string, password: string }): Promise<any>;
 
   // Resident
-  getAllResidents({ }): Observable<any>;
+  getAllResidents(paginationParams: PaginationParams): Observable<any>;
   getResidentById(data: { id: string }): Observable<any>;
   createResident(data: { username: string, password: string }): Observable<any>;
   updateResident(data: { id: string, data: { username: string, password: string } }): Observable<any>;
