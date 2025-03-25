@@ -5,9 +5,10 @@ import { AuthService } from '../auth/auth.service'
 import { PrismaModule } from '../prisma/prisma.module'
 import { UsersModule } from '../users/users.module'
 import { ResidentsModule } from '../residents/residents.module'
+import { OtpModule } from '../otp/otp.module'
 
 @Module({
-    imports: [UsersModule, ResidentsModule, AuthModule, PrismaModule],
+    imports: [UsersModule, ResidentsModule, AuthModule, PrismaModule, OtpModule],
     controllers: [AuthController],
     providers: [AuthService],
 })

@@ -1,4 +1,4 @@
-import { Controller, } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { GrpcMethod } from '@nestjs/microservices'
 import { UsersService } from '../users/users.service'
 import { AuthService } from './auth.service'
@@ -6,6 +6,7 @@ import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto
 import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response';
 import { CreateWorkingPositionDto } from '../../../libs/contracts/src/users/create-working-position.dto';
 import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
+import { ApiOperation, ApiBody } from '@nestjs/swagger';
 
 
 @Controller()
@@ -23,10 +24,13 @@ export class AuthController {
 
     @GrpcMethod('UserService', 'Signup')
     async signup(data: createUserDto): Promise<ApiResponse<any>> {
-        const response = await this.authService.signup(data);
-        return response;
+        return await this.authService.signup(data);
     }
 
+    @GrpcMethod('UserService', 'VerifyOtpAndCompleteSignup')
+    async verifyOtpAndCompleteSignup(data: { phone: string; otp: string; userData: createUserDto }) {
+        return await this.authService.verifyOtpAndCompleteSignup(data);
+    }
 
     @GrpcMethod('UserService', 'GetUserInfo')
     async getUserInfo(data: { userId: string; username: string }) {

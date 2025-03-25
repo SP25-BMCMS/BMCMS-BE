@@ -8,21 +8,31 @@ import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response
 import { CreateWorkingPositionDto } from '../../../libs/contracts/src/users/create-working-position.dto';
 import { PositionName } from '@prisma/client-users';
 import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
+import { OtpService } from '../otp/otp.service';
 
 type AuthInput = { username: string; password: string }
-type SignInData = { userId: string; username: string, role: string }
-type AuthResult = { accessToken: string; refreshToken: string; userId: string; username: string }
+type AuthResult = { access_token: string }
 
 @Injectable()
 export class AuthService {
     constructor(
-        private readonly usersService: UsersService,
-        private readonly jwtService: JwtService,
+        private usersService: UsersService,
+        private jwtService: JwtService,
+        private otpService: OtpService,
     ) { }
+
+    private signIn(user: { userId: string; username: string; role: string }): AuthResult {
+        const payload = { sub: user.userId, username: user.username, role: user.role }
+        return { access_token: this.jwtService.sign(payload) }
+    }
 
     async authenticate(input: AuthInput): Promise<AuthResult> {
         const user = await this.validateUser(input)
         return this.signIn(user)
+    }
+
+    async logout(): Promise<{ message: string }> {
+        return { message: 'Logged out successfully' }
     }
 
     async validateUser(input: AuthInput) {
@@ -32,7 +42,6 @@ export class AuthService {
         if (!isPasswordValid)
             throw new RpcException({ statusCode: 401, message: 'invalid credentials!' })
 
-        // Check if account is inactive
         if (user.accountStatus === 'Inactive')
             throw new RpcException({ statusCode: 403, message: 'Account is inactive. Please contact admin for activation.' })
 
@@ -43,7 +52,6 @@ export class AuthService {
         try {
             const user = await this.usersService.getUserByPhone(phone);
 
-            // Check if user is a Resident
             if (user.role !== 'Resident') {
                 throw new RpcException({
                     statusCode: 401,
@@ -59,7 +67,6 @@ export class AuthService {
                 });
             }
 
-            // Check if account is inactive
             if (user.accountStatus === 'Inactive') {
                 throw new RpcException({
                     statusCode: 401,
@@ -73,7 +80,6 @@ export class AuthService {
                 role: user.role
             };
         } catch (error) {
-            // Re-throw RpcExceptions, but wrap other errors
             if (error instanceof RpcException) throw error;
 
             throw new RpcException({
@@ -83,41 +89,131 @@ export class AuthService {
         }
     }
 
-    async signIn(user: SignInData): Promise<AuthResult> {
-        const tokenPayload = { sub: user.userId, username: user.username, role: user.role }
-        const accessToken = await this.jwtService.signAsync(tokenPayload, { expiresIn: '1h' })
-        const refreshToken = await this.jwtService.signAsync(tokenPayload, { expiresIn: '1d' })
-
-        return {
-            accessToken,
-            refreshToken,
-            userId: user.userId,
-            username: user.username,
-        }
-    }
-
-    async refreshToken(token: string): Promise<AuthResult> {
-        if (!token) throw new UnauthorizedException('Refresh token is required')
-
-        try {
-            const decoded = this.jwtService.verify(token)
-            const user = { userId: decoded.sub, username: decoded.username, role: decoded.role }
-            return this.signIn(user)
-        } catch (error) {
-            throw new UnauthorizedException('Invalid or expired refresh token')
-        }
-    }
-
-    async logout(): Promise<{ message: string }> {
-        return { message: 'Logged out successfully' }
+    async residentLogin(data: { phone: string; password: string }): Promise<AuthResult> {
+        const user = await this.validateResidentByPhone(data.phone, data.password);
+        return this.signIn(user);
     }
 
     async signup(data: createUserDto): Promise<ApiResponse<any>> {
-        return await this.usersService.signup(data);
+        try {
+            // Check if username exists
+            try {
+                const existingUsername = await this.usersService.getUserByUsername(data.username);
+                if (existingUsername) {
+                    throw new RpcException({
+                        statusCode: 400,
+                        message: 'Tên đăng nhập đã tồn tại'
+                    });
+                }
+            } catch (error) {
+                // Ignore error if user not found
+                if (error instanceof RpcException && error.message !== 'Sai số điện thoại hoặc mật khẩu') {
+                    throw error;
+                }
+            }
+
+            // Check if email exists
+            try {
+                const existingEmail = await this.usersService.getUserByEmail(data.email);
+                if (existingEmail) {
+                    throw new RpcException({
+                        statusCode: 400,
+                        message: 'Email đã tồn tại'
+                    });
+                }
+            } catch (error) {
+                // Ignore error if user not found
+                if (error instanceof RpcException && error.message !== 'Email không tồn tại') {
+                    throw error;
+                }
+            }
+
+            // Check if phone exists
+            try {
+                const existingPhone = await this.usersService.getUserByPhone(data.phone);
+                if (existingPhone) {
+                    throw new RpcException({
+                        statusCode: 400,
+                        message: 'Số điện thoại đã tồn tại'
+                    });
+                }
+            } catch (error) {
+                // Ignore error if user not found
+                if (error instanceof RpcException && error.message !== 'Sai số điện thoại hoặc mật khẩu') {
+                    throw error;
+                }
+            }
+
+            // For Resident role, generate and send OTP first
+            if (data.role === 'Resident') {
+                // Generate and send OTP
+                await this.otpService.createOTP(data.phone);
+
+                return new ApiResponse(
+                    true,
+                    'Mã OTP đã được gửi đến số điện thoại của bạn',
+                    { phone: data.phone }
+                );
+            }
+
+            // For other roles, proceed with normal signup
+            return await this.usersService.signup(data);
+        } catch (error) {
+            if (error instanceof RpcException) {
+                throw error;
+            }
+            throw new RpcException({
+                statusCode: 500,
+                message: 'Lỗi hệ thống khi đăng ký'
+            });
+        }
     }
 
-    async getUserInfo(userId: string) {
-        return this.usersService.getUserById(userId)
+    async verifyOtpAndCompleteSignup(data: { phone: string; otp: string; userData: createUserDto }): Promise<ApiResponse<any>> {
+        try {
+            // Verify OTP and mark as used
+            const isValid = await this.otpService.verifyOTP(data.phone, data.otp);
+            if (!isValid) {
+                throw new RpcException({
+                    statusCode: 400,
+                    message: 'Xác thực OTP thất bại'
+                });
+            }
+
+            // Create user account
+            const response = await this.usersService.signup(data.userData);
+
+            if (!response.isSuccess) {
+                throw new RpcException({
+                    statusCode: 400,
+                    message: response.message
+                });
+            }
+
+            // Return user data without sensitive information
+            const userData = response.data;
+            const userResponse = {
+                userId: userData.userId,
+                username: userData.username,
+                email: userData.email,
+                phone: userData.phone,
+                role: userData.role,
+                dateOfBirth: userData.dateOfBirth,
+                gender: userData.gender,
+                accountStatus: userData.accountStatus
+            };
+
+            return new ApiResponse(true, 'Đăng ký thành công', userResponse);
+        } catch (error) {
+            console.error('Error in verifyOtpAndCompleteSignup:', error);
+            if (error instanceof RpcException) {
+                throw error;
+            }
+            throw new RpcException({
+                statusCode: 400,
+                message: error.message || 'Xác thực OTP thất bại'
+            });
+        }
     }
 
     // Working Position Methods
@@ -142,8 +238,7 @@ export class AuthService {
         return this.usersService.createDepartment(data);
     }
 
-    async residentLogin(data: { phone: string; password: string }): Promise<AuthResult> {
-        const user = await this.validateResidentByPhone(data.phone, data.password);
-        return this.signIn(user);
+    async getUserInfo(userId: string) {
+        return this.usersService.getUserById(userId)
     }
 }

@@ -47,6 +47,39 @@ export class UsersService implements OnModuleInit {
     }
   }
 
+  async verifyOtpAndCompleteSignup(data: { phone: string; otp: string; userData: createUserDto }) {
+    try {
+      console.log('Verifying OTP in API Gateway:', data);
+      const response = await lastValueFrom(
+        this.userService.verifyOtpAndCompleteSignup(data).pipe(
+          catchError((error) => {
+            console.error('OTP verification error in API Gateway:', error);
+            let errorMessage = 'Mã OTP không hợp lệ';
+            let statusCode = HttpStatus.BAD_REQUEST;
+
+            if (error && error.details) {
+              errorMessage = error.details;
+            }
+
+            return throwError(() => new HttpException(errorMessage, statusCode));
+          })
+        )
+      );
+
+      console.log('OTP verification response:', response);
+      return response;
+    } catch (error) {
+      console.error('Error in verifyOtpAndCompleteSignup:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        'Xác thực OTP thất bại',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+  }
 
   async logout() {
     return await lastValueFrom(this.userService.logout({}))
@@ -161,12 +194,10 @@ export class UsersService implements OnModuleInit {
           catchError((error) => {
             console.error('Resident login error:', error);
 
-            // Extract details from gRPC error
             let errorMessage = 'Sai số điện thoại hoặc mật khẩu';
             let statusCode = HttpStatus.UNAUTHORIZED;
 
             if (error && error.details) {
-              // Parse the error details
               if (error.details.includes('Tài khoản chưa được kích hoạt')) {
                 errorMessage = 'Tài khoản chưa được kích hoạt, vui lòng liên hệ ban quản lý để được kích hoạt';
                 statusCode = HttpStatus.UNAUTHORIZED;
@@ -174,12 +205,10 @@ export class UsersService implements OnModuleInit {
                 errorMessage = 'Sai số điện thoại hoặc mật khẩu';
                 statusCode = HttpStatus.UNAUTHORIZED;
               } else {
-                // For any other error messages, use the details from the error
                 errorMessage = error.details;
               }
             }
 
-            // Create and throw HttpException directly with the status code and message
             throw new HttpException(errorMessage, statusCode);
           })
         )
@@ -187,14 +216,44 @@ export class UsersService implements OnModuleInit {
 
       return response;
     } catch (error) {
-      // If it's already an HttpException, just rethrow it
       if (error instanceof HttpException) {
         throw error;
       }
 
-      // Otherwise, wrap in a generic HttpException
       throw new HttpException(
         'Đăng nhập không thành công',
+        HttpStatus.UNAUTHORIZED
+      );
+    }
+  }
+
+  async verifyOtpAndLogin(data: { phone: string, otp: string }) {
+    try {
+      const response = await lastValueFrom(
+        this.userService.verifyOtpAndLogin(data).pipe(
+          catchError((error) => {
+            console.error('OTP verification error:', error);
+
+            let errorMessage = 'Mã OTP không hợp lệ';
+            let statusCode = HttpStatus.UNAUTHORIZED;
+
+            if (error && error.details) {
+              errorMessage = error.details;
+            }
+
+            throw new HttpException(errorMessage, statusCode);
+          })
+        )
+      );
+
+      return response;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        'Xác thực OTP thất bại',
         HttpStatus.UNAUTHORIZED
       );
     }
@@ -282,6 +341,38 @@ export class UsersService implements OnModuleInit {
         'Lỗi hệ thống khi cập nhật trạng thái tài khoản',
         HttpStatus.INTERNAL_SERVER_ERROR
       );
+    }
+  }
+
+  async residentSignup(data: createUserDto) {
+    try {
+      // Set role to Resident
+      data.role = 'Resident';
+      const response = await firstValueFrom(
+        this.userService.signup(data).pipe(
+          catchError((error) => {
+            return throwError(() => new HttpException(error.details || 'Lỗi gRPC không xác định', HttpStatus.BAD_REQUEST));
+          })
+        )
+      );
+      return response;
+    } catch (error) {
+      throw new HttpException(error.message || 'Internal server error', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async staffSignup(data: createUserDto) {
+    try {
+      const response = await firstValueFrom(
+        this.userService.signup(data).pipe(
+          catchError((error) => {
+            return throwError(() => new HttpException(error.details || 'Lỗi gRPC không xác định', HttpStatus.BAD_REQUEST));
+          })
+        )
+      );
+      return response;
+    } catch (error) {
+      throw new HttpException(error.message || 'Internal server error', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

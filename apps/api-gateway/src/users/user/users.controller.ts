@@ -38,14 +38,13 @@ export class UsersController {
             required: ['phone', 'password']
         }
     })
-    @SwaggerResponse({ status: 200, description: 'Login successful' })
+    @SwaggerResponse({ status: 200, description: 'OTP sent successfully' })
     @SwaggerResponse({ status: 401, description: 'Unauthorized' })
     async residentLogin(@Body() data: { phone: string, password: string }, @Res() res: any) {
         try {
             const response = await this.usersService.residentLogin(data)
             return res.status(HttpStatus.OK).json(response)
         } catch (error) {
-            // Get status code and message from error
             const status = error instanceof HttpException
                 ? error.getStatus()
                 : HttpStatus.UNAUTHORIZED
@@ -53,6 +52,40 @@ export class UsersController {
             const message = error instanceof HttpException
                 ? error.message
                 : 'Đăng nhập không thành công'
+
+            return res.status(status).json({
+                statusCode: status,
+                message: message
+            })
+        }
+    }
+
+    @Post('resident/verify-otp')
+    @ApiOperation({ summary: 'Verify OTP and complete resident login' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                phone: { type: 'string', example: '0123456789' },
+                otp: { type: 'string', example: '123456' }
+            },
+            required: ['phone', 'otp']
+        }
+    })
+    @SwaggerResponse({ status: 200, description: 'Login successful' })
+    @SwaggerResponse({ status: 401, description: 'Invalid OTP' })
+    async verifyOtpAndLogin(@Body() data: { phone: string, otp: string }, @Res() res: any) {
+        try {
+            const response = await this.usersService.verifyOtpAndLogin(data)
+            return res.status(HttpStatus.OK).json(response)
+        } catch (error) {
+            const status = error instanceof HttpException
+                ? error.getStatus()
+                : HttpStatus.UNAUTHORIZED
+
+            const message = error instanceof HttpException
+                ? error.message
+                : 'Mã OTP không hợp lệ'
 
             return res.status(status).json({
                 statusCode: status,
@@ -72,18 +105,89 @@ export class UsersController {
     }
 
     @Post('signup')
-    @ApiOperation({ summary: 'Register a new user' })
-    @ApiBody({ type: createUserDto })
+    @ApiOperation({ summary: 'Sign up a new user' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                username: { type: 'string', example: 'john_doe' },
+                email: { type: 'string', example: 'john@example.com' },
+                password: { type: 'string', example: 'password123' },
+                phone: { type: 'string', example: '0123456789' },
+                role: { type: 'string', example: 'Resident' },
+                dateOfBirth: { type: 'string', format: 'date-time', example: '1990-01-01T00:00:00.000Z' },
+                gender: { type: 'string', example: 'Male' }
+            },
+            required: ['username', 'email', 'password', 'phone', 'role']
+        }
+    })
     @SwaggerResponse({ status: 201, description: 'User created successfully' })
     @SwaggerResponse({ status: 400, description: 'Bad request' })
-    async signup(@Body() userData: createUserDto, @Res() res: any): Promise<Response> {
-        const response = await this.usersService.signup(userData)
+    async signup(@Body() data: createUserDto, @Res() res: any) {
+        try {
+            const response = await this.usersService.signup(data)
+            return res.status(HttpStatus.CREATED).json(response)
+        } catch (error) {
+            const status = error instanceof HttpException
+                ? error.getStatus()
+                : HttpStatus.BAD_REQUEST
 
-        if (!response.isSuccess) {
-            return res.status(HttpStatus.BAD_REQUEST).json(response) // 🔴 400 Bad Request khi thất bại
+            const message = error instanceof HttpException
+                ? error.message
+                : 'Đăng ký không thành công'
+
+            return res.status(status).json({
+                statusCode: status,
+                message: message
+            })
         }
+    }
 
-        return res.status(HttpStatus.CREATED).json(response) // ✅ 201 Created khi thành công
+    @Post('verify-otp-signup')
+    @ApiOperation({ summary: 'Verify OTP and complete signup for resident' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                phone: { type: 'string', example: '0123456789' },
+                otp: { type: 'string', example: '123456' },
+                userData: {
+                    type: 'object',
+                    properties: {
+                        username: { type: 'string', example: 'john_doe' },
+                        email: { type: 'string', example: 'john@example.com' },
+                        password: { type: 'string', example: 'password123' },
+                        phone: { type: 'string', example: '0123456789' },
+                        role: { type: 'string', example: 'Resident' },
+                        dateOfBirth: { type: 'string', format: 'date-time', example: '1990-01-01T00:00:00.000Z' },
+                        gender: { type: 'string', example: 'Male' }
+                    },
+                    required: ['username', 'email', 'password', 'phone', 'role']
+                }
+            },
+            required: ['phone', 'otp', 'userData']
+        }
+    })
+    @SwaggerResponse({ status: 201, description: 'User created successfully' })
+    @SwaggerResponse({ status: 400, description: 'Invalid OTP or bad request' })
+    async verifyOtpAndCompleteSignup(@Body() data: { phone: string; otp: string; userData: createUserDto }, @Res() res: any) {
+        try {
+            const response = await this.usersService.verifyOtpAndCompleteSignup(data)
+            return res.status(HttpStatus.CREATED).json(response)
+        } catch (error) {
+            const status = error instanceof HttpException
+                ? error.getStatus()
+                : HttpStatus.BAD_REQUEST
+
+            const message = error instanceof HttpException
+                ? error.message
+                : 'Xác thực OTP thất bại'
+
+            return res.status(status).json({
+                statusCode: status,
+                message: message
+            })
+        }
     }
 
     @UseGuards(PassportJwtAuthGuard)

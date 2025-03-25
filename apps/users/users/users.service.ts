@@ -32,6 +32,12 @@ export class UsersService {
         return user;
     }
 
+    async getUserByEmail(email: string): Promise<UserDto | null> {
+        const user = await this.prisma.user.findUnique({ where: { email } });
+        if (!user) throw new RpcException({ statusCode: 401, message: 'Email không tồn tại' });
+        return user;
+    }
+
     async getUserById(userId: string): Promise<UserDto | null> {
         const user = await this.prisma.user.findUnique({
             where: { userId },
