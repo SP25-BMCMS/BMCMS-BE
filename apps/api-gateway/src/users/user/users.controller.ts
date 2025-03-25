@@ -406,4 +406,9 @@ export class UsersController {
             })
         }
     }
-}
+    } 
+    
+    // @Get('apartment/:apartmentId')
+    // async getApartmentById(@Param('apartmentId') apartmentId: string) {
+    //   return this.usersService.({ apartmentId });
+    // }

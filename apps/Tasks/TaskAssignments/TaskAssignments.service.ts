@@ -3,9 +3,14 @@ import { RpcException } from '@nestjs/microservices';
 import { AssignmentStatus, PrismaClient } from '@prisma/client-Task';
 import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create-taskAssigment.dto';
 import { UpdateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/update.taskAssigment';
+import { PrismaService } from '../../users/prisma/prisma.service';
+import { PaginationParams, PaginationResponseDto } from '../../../libs/contracts/src/Pagination/pagination.dto';
+
 @Injectable()
 export class TaskAssignmentsService {
   private prisma = new PrismaClient();
+
+  constructor(private prismaService: PrismaService) {}
 
   async createTaskAssignment(createTaskAssignmentDto: CreateTaskAssignmentDto) {
     try {
@@ -71,7 +76,6 @@ export class TaskAssignmentsService {
   //       message: 'Task assignment update failed',
   //     });
   //   }
-  // }
   async getTaskAssignmentByUserId(userId: string) {
     try {
       const assignments = await this.prisma.taskAssignment.findMany({
@@ -113,21 +117,61 @@ export class TaskAssignmentsService {
       });
     }
   }
-  async getAllTaskAssignments() {
+
+  async getAllTaskAssignments(paginationParams: PaginationParams = { page: 1, limit: 10 }): Promise<PaginationResponseDto<any>> {
     try {
-      const assignments = await this.prisma.taskAssignment.findMany();
-      return {
-        statusCode: 200,
-        message: 'All task assignments fetched successfully',
-        data: assignments,
-      };
-    } catch (error) {
-      throw new RpcException({
-        statusCode: 500,
-        message: 'Error fetching task assignments',
+      const page = Number(paginationParams.page) || 1;
+      const limit = Number(paginationParams.limit) || 10;
+      const skip = (page - 1) * limit;
+
+      // Get total count
+      const total = await this.prisma.taskAssignment.count();
+
+      // Get paginated task assignments
+      const taskAssignments = await this.prisma.taskAssignment.findMany({
+        skip,
+        take: limit,
+        include: {
+          task: true,
+         // assignedTo: true
+        },
+        orderBy: {
+          //assignedAt: 'desc'
+        }
       });
+
+      const responseData = {
+        statusCode: 200,
+        message: 'Danh sách phân công công việc',
+        data: taskAssignments,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit)
+        }
+      };
+
+      return responseData;
+    } catch (error) {
+      console.error('Error in getAllTaskAssignments:', error);
+      const errorData = {
+        statusCode: 500,
+        message: error.message,
+        data: [],
+        pagination: {
+          total: 0,
+          page: Number(paginationParams.page) || 1,
+          limit: Number(paginationParams.limit) || 10,
+          totalPages: 0
+        }
+      };
+
+      return errorData;
     }
-  } async reassignTaskAssignment(taskAssignmentId: string, newEmployeeId: string) {
+  }
+
+  async reassignTaskAssignment(taskAssignmentId: string, newEmployeeId: string) {
     try {
       const updatedAssignment = await this.prisma.taskAssignment.update({
         where: { assignment_id: taskAssignmentId },
@@ -146,7 +190,9 @@ export class TaskAssignmentsService {
         message: 'Error reassigning task assignment',
       });
     }
-  } async getTaskAssignmentByStatus(status: AssignmentStatus) {
+  }
+
+  async getTaskAssignmentByStatus(status: AssignmentStatus) {
     try {
       const assignments = await this.prisma.taskAssignment.findMany({
         where: { status },

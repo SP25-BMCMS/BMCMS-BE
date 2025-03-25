@@ -6,6 +6,7 @@ import { TaskService } from './Task.service';
 import { CreateTaskDto } from 'libs/contracts/src/tasks/create-Task.dto';
 import { ChangeTaskStatusDto } from 'libs/contracts/src/tasks/ChangeTaskStatus.Dto ';
 import { Status } from '@prisma/client-Task'; // Make sure Status is imported correctly
+import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 
 
 @Controller('task')
@@ -47,8 +48,8 @@ export class TasksController {
   }
 
   @MessagePattern(TASKS_PATTERN.GET)
-  async getAllTasks() {
-    return this.taskService.getAllTasks();
+  async getAllTasks(@Payload() data: PaginationParams = {}) {
+    return this.taskService.getAllTasks(data);
   }
 
   @MessagePattern(TASKS_PATTERN.GET_BY_STATUS)

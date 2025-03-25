@@ -12,6 +12,7 @@ import { CreateScheduleDto } from '@app/contracts/schedules/create-Schedules.dto
 import { SCHEDULES_PATTERN } from '@app/contracts/schedules/Schedule.patterns';
 import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules';
 import { $Enums } from '@prisma/client-Schedule';
+import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 
 // import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto'
 // import { buildingsDto } from '@app/contracts/buildings/buildings.dto'
@@ -76,9 +77,9 @@ export class SchedulesService {
   }
 
   // Get all schedules (Microservice)
-  async getAllSchedules(): Promise<any> {
+  async getAllSchedules(paginationParams: PaginationParams = {}): Promise<any> {
     try {
-      return await this.scheduleClient.send(SCHEDULES_PATTERN.GET, {});
+      return await this.scheduleClient.send(SCHEDULES_PATTERN.GET, paginationParams);
     } catch (error) {
       throw new HttpException(
         'Error occurred while fetching all schedules',

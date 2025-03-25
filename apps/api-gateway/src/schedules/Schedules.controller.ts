@@ -11,6 +11,7 @@ import {
   Put,
   Req,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { SchedulesService } from './Schedules.service';
 import { catchError, firstValueFrom, NotFoundError } from 'rxjs';
@@ -20,7 +21,8 @@ import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules';
 import { $Enums } from '@prisma/client-Schedule';
 import { ChangeScheduleTypeDto } from '@app/contracts/schedules/changeScheduleStatusDto ';
-import { ApiTags, ApiOperation, ApiResponse as SwaggerResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse as SwaggerResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
+import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 
 @Controller('schedules')
 @ApiTags('schedules')
@@ -69,8 +71,24 @@ export class SchedulesController {
   @Get()
   @ApiOperation({ summary: 'Get all schedules' })
   @SwaggerResponse({ status: 200, description: 'Returns all schedules' })
-  async getAllSchedules(): Promise<ApiResponse<ScheduleResponseDto[]>> {
-    return this.schedulesService.getAllSchedules();
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (starting from 1)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
+  async getAllSchedules(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number
+  ): Promise<any> {
+    try {
+      // Create pagination params object
+      const paginationParams: PaginationParams = {
+        page: page ? parseInt(page.toString()) : 1,
+        limit: limit ? parseInt(limit.toString()) : 10
+      };
+      
+      return this.schedulesService.getAllSchedules(paginationParams);
+    } catch (error) {
+      console.error('Error in getAllSchedules controller:', error);
+      throw new Error(`Failed to get schedules: ${error.message}`);
+    }
   }
 
   // Get schedule by ID

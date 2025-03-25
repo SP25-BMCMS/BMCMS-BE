@@ -5,6 +5,7 @@ import { UUID } from 'crypto';
 import { LOCATIONDETAIL_PATTERN } from 'libs/contracts/src/LocationDetails/Locationdetails.patterns';
 import { CreateLocationDetailDto } from 'libs/contracts/src/LocationDetails/create-locationdetails.dto';
 import { UpdateLocationDetailDto } from 'libs/contracts/src/LocationDetails/update.locationdetails';
+import { PaginationParams } from '../../../libs/contracts/src/Pagination/pagination.dto';
 
 @Controller('locationdetails')
 export class LocationDetailsController {
@@ -12,8 +13,8 @@ export class LocationDetailsController {
   constructor(private readonly locationDetailService: LocationDetailService) {}
 
   @MessagePattern(LOCATIONDETAIL_PATTERN.GET)
-  async getAllLocationDetail() {
-    return await this.locationDetailService.getAllLocationDetails();
+  async getAllLocationDetail(@Payload() paginationParams: PaginationParams) {
+    return await this.locationDetailService.getAllLocationDetails(paginationParams);
   }
 
 

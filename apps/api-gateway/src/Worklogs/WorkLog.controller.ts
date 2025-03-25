@@ -1,5 +1,5 @@
 // apps/api-gateway/src/worklog/worklog.controller.ts
-import { Controller, Post, Get, Body, Param, Put } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Put, Query } from '@nestjs/common';
 import { WorklogService } from './WorkLog.service';
 import { $Enums } from '@prisma/client-Task'
 import { CreateWorkLogDto } from '@app/contracts/Worklog/create-Worklog.dto';
@@ -8,7 +8,8 @@ import { UpdateWorkLogStatusDto } from '@app/contracts/Worklog/update.Worklog-st
 import { WorkLogResponseDto } from '@app/contracts/Worklog/Worklog.dto';
 import { IsUUID } from 'class-validator';
 import { UUID } from 'crypto';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
+import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 
 @Controller('worklogs')
 @ApiTags('worklogs')
@@ -25,10 +26,17 @@ export class WorkLogController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all worklogs' })
-  @ApiResponse({ status: 200, description: 'Returns all worklogs' })
-  async getAllWorkLogs(): Promise<WorkLogResponseDto[]> {
-    return this.workLogService.getAllWorkLogs();
+  @ApiOperation({ summary: 'Get all worklogs with pagination' })
+  @ApiQuery({ name: 'page', required: false, example: 1, description: 'Page number' })
+  @ApiQuery({ name: 'limit', required: false, example: 10, description: 'Items per page' })
+  async getAllWorkLogs(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number
+  ) {
+    return await this.workLogService.getAllWorkLogs({
+      page: Number(page) || 1,
+      limit: Number(limit) || 10
+    });
   }
 
   // @Get()

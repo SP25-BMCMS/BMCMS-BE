@@ -7,6 +7,7 @@ import { $Enums, PrismaClient } from '@prisma/client-Schedule';
 import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status';
 import { UpdateScheduleJobDto } from '@app/contracts/schedulesjob/UpdateScheduleJobDto';
+import { PaginationParams, PaginationResponseDto } from '../../../libs/contracts/src/Pagination/pagination.dto';
 
 @Injectable()
 export class ScheduleJobsService {
@@ -34,20 +35,51 @@ export class ScheduleJobsService {
   }
 
   // Get all Schedule Jobs
-  async getAllScheduleJobs(): Promise<ApiResponse<ScheduleJobResponseDto[]>> {
+  async getAllScheduleJobs(paginationParams?: PaginationParams): Promise<PaginationResponseDto<ScheduleJobResponseDto>> {
     try {
-      const scheduleJobs = await this.prisma.scheduleJob.findMany();
-      if (scheduleJobs.length === 0) {
-        throw new RpcException({
-          statusCode: 404,
-          mescsage: "Shedule job not found any",
-        });}
-
-      return new ApiResponse<ScheduleJobResponseDto[]>(true, "All schedule jobs fetched successfully", scheduleJobs);
-    }catch (error) {
+      // Default values if not provided
+      const page = Math.max(1, paginationParams?.page || 1);
+      const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10));
+      
+      // Calculate skip value for pagination
+      const skip = (page - 1) * limit;
+      
+      // Get total count for pagination metadata
+      const total = await this.prisma.scheduleJob.count();
+      
+      // If no schedule jobs found at all
+      if (total === 0) {
+        return new PaginationResponseDto(
+          [],
+          0,
+          page,
+          limit,
+          404,
+          "No schedule jobs found"
+        );
+      }
+      
+      // Get paginated data
+      const scheduleJobs = await this.prisma.scheduleJob.findMany({
+        skip,
+        take: limit,
+        orderBy: { created_at: 'desc' }
+      });
+      
+      // Use PaginationResponseDto for consistent response formatting
+      return new PaginationResponseDto(
+        scheduleJobs,
+        total,
+        page,
+        limit,
+        200,
+        scheduleJobs.length > 0 ? "Schedule jobs fetched successfully" : "No schedule jobs found for this page"
+      );
+    } catch (error) {
+      console.error('Error retrieving schedule jobs:', error);
       throw new RpcException({
         statusCode: 500,
-        message: "Error retrieving all schedule jobs" + error.message,
+        message: `Error retrieving schedule jobs: ${error.message}`
       });
     }
   }

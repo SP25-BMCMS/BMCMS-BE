@@ -1,10 +1,10 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, Post, Put, Req, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, Post, Put, Req, UseGuards, Query } from '@nestjs/common'
 import { BuildingDetailService } from './buildingDetail.service'
 import { catchError, NotFoundError } from 'rxjs';
 import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto';
 import { CreateBuildingDetailDto } from '@app/contracts/BuildingDetails/create-buildingdetails.dto';
 import { UpdateBuildingDetailDto } from '@app/contracts/BuildingDetails/update.buildingdetails';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
 
 @Controller('buildingdetails')
 @ApiTags('building-details')
@@ -13,10 +13,17 @@ export class BuildingDetailController {
 
 
   @Get()
-  @ApiOperation({ summary: 'Get all building details' })
-  @ApiResponse({ status: 200, description: 'Returns all building details' })
-  async getAllBuildings() {
-    return await this.BuildingsService.getBuildingDetails();
+  @ApiOperation({ summary: 'Get all building details with pagination' })
+  @ApiQuery({ name: 'page', required: false, example: 1, description: 'Page number' })
+  @ApiQuery({ name: 'limit', required: false, example: 10, description: 'Items per page' })
+  async getAllBuildings(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number
+  ) {
+    return await this.BuildingsService.getBuildingDetails({
+      page: Number(page) || 1,
+      limit: Number(limit) || 10
+    });
   }
 
   @Get(':id')
