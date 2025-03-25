@@ -82,41 +82,57 @@ export class BuildingsService {
   // Update an existing building
   async getBuildingById(buildingId: string) {
     try {
-      console.log("🚀 ~ BuildingsService ~ getBuildingById ~ buildingId:", buildingId)
-      console.log("SSDASDAASDASDASSD" + typeof buildingId); // Should print 'string'
+      console.log(`[BuildingsService] Fetching building with ID: ${buildingId}`);
+
+      if (!buildingId) {
+        console.error('[BuildingsService] Building ID is null or undefined');
+        return {
+          statusCode: 400,
+          message: 'Invalid building ID provided',
+        };
+      }
 
       const building = await this.prisma.building.findUnique({
         where: { buildingId },
+        include: {
+          area: true // Include related area information if needed
+        }
       });
-      console.log("🚀 ~ BuildingsService ~ getBuildingById ~ buildingId:", buildingId)
 
       if (!building) {
+        console.log(`[BuildingsService] Building not found for ID: ${buildingId}`);
         return {
           statusCode: 404,
           message: 'Building not found',
         };
       }
 
+      console.log(`[BuildingsService] Successfully retrieved building: ${buildingId}`);
       return {
         statusCode: 200,
         message: 'Building retrieved successfully',
         data: building,
       };
     } catch (error) {
-      console.log("🚀 ~ BuildingsService ~ getBuildingById ~ error:", error)
-      console.log("🚀 ~ BuildingsService ~ getBuildingById ~ error:", error)
-      console.log("🚀 ~ BuildingsService ~ getBuildingById ~ error:", error)
+      console.error('[BuildingsService] Error in getBuildingById:', error);
 
       if (error instanceof PrismaClientKnownRequestError) {
+        if (error.code === 'P2023') {
+          return {
+            statusCode: 400,
+            message: 'Invalid UUID format for building ID',
+          };
+        }
         return {
           statusCode: 404,
-          message: 'Building not found',
+          message: 'Building not found or database error',
         };
       }
-      throw new RpcException({
-        statusCode: 501,
-        message: 'Error retrieving building!',
-      });
+
+      return {
+        statusCode: 500,
+        message: 'Internal server error while retrieving building',
+      };
     }
   }
 

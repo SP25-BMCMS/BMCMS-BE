@@ -14,6 +14,7 @@ import {
   Query,
   Req,
   UploadedFiles,
+  UseGuards,
   UseInterceptors
 } from '@nestjs/common'
 import { ClientProxy } from '@nestjs/microservices'
@@ -23,10 +24,12 @@ import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-cra
 import { CreateCrackDetailDto } from '../../../../libs/contracts/src/cracks/create-crack-detail.dto'
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto'
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiConsumes, ApiQuery } from '@nestjs/swagger'
+import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard'
 import { CRACK_CLIENT } from '../constraints'
 
 
 @Controller('cracks')
+@UseGuards(PassportJwtAuthGuard)
 @ApiTags('cracks')
 // @UseGuards(PassportJwtAuthGuard)
 export class CracksController {

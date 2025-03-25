@@ -3,8 +3,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { ResidentDto } from '../../../libs/contracts/src/residents/resident.dto';
 import { ClientProxy } from '@nestjs/microservices';
 import { BUILDINGS_PATTERN } from '../../../libs/contracts/src/buildings/buildings.patterns';
-import { firstValueFrom, catchError, timeout } from 'rxjs';
-
+import { firstValueFrom, catchError, timeout, of, retry, from } from 'rxjs';
 
 @Injectable()
 export class ResidentsService {
@@ -12,6 +11,34 @@ export class ResidentsService {
     private prisma: PrismaService,
     @Inject('BUILDING_CLIENT') private readonly buildingClient: ClientProxy
   ) { }
+
+  private async getBuildingDetails(buildingId: string) {
+    try {
+      const response = await firstValueFrom(
+        this.buildingClient.send(
+          BUILDINGS_PATTERN.GET_BY_ID,
+          { buildingId }
+        ).pipe(
+          timeout(5000),
+          retry(2), // Retry 2 times before giving up
+          catchError(err => {
+            console.error(`Error fetching building ${buildingId} after retries:`, err);
+            return of({
+              statusCode: 404,
+              data: null
+            });
+          })
+        )
+      );
+      return response;
+    } catch (error) {
+      console.error(`Failed to get building ${buildingId}:`, error);
+      return {
+        statusCode: 404,
+        data: null
+      };
+    }
+  }
 
   async getAllResidents() {
     try {
@@ -34,44 +61,23 @@ export class ResidentsService {
         }
       });
 
-      // For each resident, get building details for each apartment
+      // Process residents in parallel with better error handling
       const residentsWithBuildingDetails = await Promise.all(
         residents.map(async (resident) => {
-          const apartmentsWithBuildings = await Promise.all(
-            resident.apartments.map(async (apartment) => {
-              try {
-                // Get building details from building service
-                const buildingResponse = await firstValueFrom(
-                  this.buildingClient.send(
-                    BUILDINGS_PATTERN.GET_BY_ID,
-                    { buildingId: apartment.buildingId }
-                  ).pipe(
-                    timeout(5000),
-                    catchError(err => {
-                      console.error(`Error fetching building ${apartment.buildingId}:`, err);
-                      return [];
-                    })
-                  )
-                );
+          // Process all apartments for a resident in parallel
+          const apartmentPromises = resident.apartments.map(async (apartment) => {
+            const buildingResponse = await this.getBuildingDetails(apartment.buildingId);
 
-                // Return apartment with building details
-                return {
-                  apartmentName: apartment.apartmentName,
-                  buildingId: apartment.buildingId,
-                  building: buildingResponse.statusCode === 200 ? buildingResponse.data : null
-                };
-              } catch (error) {
-                console.error(`Failed to get building for apartment ${apartment.apartmentName}:`, error);
-                return {
-                  apartmentName: apartment.apartmentName,
-                  buildingId: apartment.buildingId,
-                  building: null
-                };
-              }
-            })
-          );
+            return {
+              apartmentName: apartment.apartmentName,
+              buildingId: apartment.buildingId,
+              building: buildingResponse?.statusCode === 200 ? buildingResponse.data : null
+            };
+          });
 
-          // Return resident with enhanced apartment data
+          // Wait for all apartment details to be fetched
+          const apartmentsWithBuildings = await Promise.all(apartmentPromises);
+
           return {
             userId: resident.userId,
             username: resident.username,
@@ -96,7 +102,7 @@ export class ResidentsService {
       console.error('Error in getAllResidents:', error);
       return {
         isSuccess: false,
-        message: error.message,
+        message: error.message || 'Lỗi khi lấy danh sách cư dân',
         data: []
       };
     }
