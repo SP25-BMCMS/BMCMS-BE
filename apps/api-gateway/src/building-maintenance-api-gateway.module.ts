@@ -12,11 +12,13 @@ import { worklogModule } from './Worklogs/WorkLog.module'
 import { SchedulesModule } from './schedules/Schedules.module'
 import { ScheduleJobsController } from './schedulejobs/schedulejobs.controller'
 import { schedulejobsModule } from './schedulejobs/schedulejobs.module'
+import { InspectionModule } from './Inspection/Inspection.module'
+import { RepairMaterialModule } from './RepairMaterial/RepairMaterial.module'
 
 
 
 @Module({
-  imports: [UsersModule, ConfigModule.forRoot(),BuildingsModule,AreasModule,BuildingDetailModule,LocationDetailModule,CracksModule,TasksModule,TaskAssigmentModule,worklogModule,SchedulesModule,schedulejobsModule],
+  imports: [UsersModule, ConfigModule.forRoot(),BuildingsModule,AreasModule,BuildingDetailModule,LocationDetailModule,CracksModule,TasksModule,TaskAssigmentModule,worklogModule,SchedulesModule,schedulejobsModule,InspectionModule,RepairMaterialModule,InspectionModule],
  // controllers: [BuildingMaintenanceApiGatewayController],
  // providers: [BuildingMaintenanceApiGatewayService],
 })

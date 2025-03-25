@@ -112,17 +112,17 @@ export class TaskService {
   }
 
 
-  async createRepairMaterial(createRepairMaterialDto: CreateRepairMaterialDto) {
-    try {
-      return await this.taskClient.send(
-        TASKS_PATTERN.CREATE_REPAIR_MATERIAL,
-        createRepairMaterialDto
-      );
-    } catch (error) {
-      throw new HttpException(
-        'Error occurred while creating repair material',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
+  // async createRepairMaterial(createRepairMaterialDto: CreateRepairMaterialDto) {
+  //   try {
+  //     return await this.taskClient.send(
+  //       TASKS_PATTERN.CREATE_REPAIR_MATERIAL,
+  //       createRepairMaterialDto
+  //     );
+  //   } catch (error) {
+  //     throw new HttpException(
+  //       'Error occurred while creating repair material',
+  //       HttpStatus.INTERNAL_SERVER_ERROR,
+  //     );
+  //   }
+  // }
 }

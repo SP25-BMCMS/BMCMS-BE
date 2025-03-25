@@ -20,101 +20,95 @@ import { catchError, firstValueFrom, NotFoundError } from 'rxjs';
 import { ApiOperation, ApiParam, ApiTags, ApiResponse, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { ClientProxy } from '@nestjs/microservices';
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
-import { CreateInspectionDto } from 'libs/contracts/src/inspections/create-inspection.dto';
 import { UpdateInspectionDto } from 'libs/contracts/src/inspections/update-inspection.dto';
+import { CreateRepairMaterialDto } from '@app/contracts/repairmaterials/create-repair-material.dto';
 
 @Controller('inspections')
 @ApiTags('inspections')
 export class InspectionController {
   constructor(private readonly inspectionService: InspectionService) { }
-
-  @Post()
-  @ApiOperation({ summary: 'Create a new inspection' })
-  @ApiBody({ type: CreateInspectionDto })
-  @ApiResponse({ status: 201, description: 'Inspection created successfully' })
-  @ApiResponse({ status: 400, description: 'Bad request' })
-  async createInspection(@Body() createInspectionDto: CreateInspectionDto) {
-    return this.inspectionService.createInspection(createInspectionDto);
+  
+  @Get('inspection/task_assignment/:task_assignment_id')
+  @ApiOperation({ summary: 'Get inspection by task assignment ID' })
+  @ApiParam({ name: 'task_assignment_id', description: 'Task assignment ID' })
+  @ApiResponse({ status: 200, description: 'Inspection found' })
+  @ApiResponse({ status: 404, description: 'Inspection not found' })
+  async GetInspectionByTaskAssignmentId(
+    @Param('task_assignment_id') task_assignment_id: string,
+  ) {
+    return this.inspectionService.GetInspectionByTaskAssignmentId(task_assignment_id);
   }
 
-  @Put(':inspection_id')
-  @ApiOperation({ summary: 'Update an inspection' })
-  @ApiParam({ name: 'inspection_id', description: 'Inspection ID' })
+  @Patch('inspection/:id')
+  @ApiOperation({ summary: 'Update inspection' })
+  @ApiParam({ name: 'id', description: 'Inspection ID' })
   @ApiBody({ type: UpdateInspectionDto })
   @ApiResponse({ status: 200, description: 'Inspection updated successfully' })
   @ApiResponse({ status: 404, description: 'Inspection not found' })
-  @ApiResponse({ status: 400, description: 'Bad request' })
-  async updateInspection(
-    @Param('inspection_id') inspection_id: string,
-    @Body() updateInspectionDto: UpdateInspectionDto,
-  ) {
-    return this.inspectionService.updateInspection(inspection_id, updateInspectionDto);
+  async updateCrackReport(@Param('id') inspection_id: string, @Body() dto: UpdateInspectionDto) {
+    return this.inspectionService.updateInspection(inspection_id, dto);
   }
+ 
 
-  @Get(':inspection_id')
-  @ApiOperation({ summary: 'Get inspection by ID' })
-  @ApiParam({ name: 'inspection_id', description: 'Inspection ID' })
+  @Get('inspection/crack/:crack_id')
+  @ApiOperation({ summary: 'Get inspection by crack ID' })
+  @ApiParam({ name: 'crack_id', description: 'Crack ID' })
   @ApiResponse({ status: 200, description: 'Inspection found' })
   @ApiResponse({ status: 404, description: 'Inspection not found' })
-  async getInspectionById(@Param('inspection_id') inspection_id: string) {
-    return this.inspectionService.getInspectionById(inspection_id);
+  async GetInspectionByCrackId(
+    @Param('crack_id') crack_id: string,
+  ) {
+    return this.inspectionService.GetInspectionByCrackId(crack_id);
   }
 
-  @Delete(':inspection_id')
-  @ApiOperation({ summary: 'Delete an inspection' })
-  @ApiParam({ name: 'inspection_id', description: 'Inspection ID' })
-  @ApiResponse({ status: 200, description: 'Inspection deleted successfully' })
-  @ApiResponse({ status: 404, description: 'Inspection not found' })
-  async deleteInspection(@Param('inspection_id') inspection_id: string) {
-    return this.inspectionService.deleteInspection(inspection_id);
-  }
-
-  @Get()
+  @Get('inspections')
   @ApiOperation({ summary: 'Get all inspections' })
   @ApiResponse({ status: 200, description: 'Returns all inspections' })
-  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (starting from 1)' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
-  async getAllInspections(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number
-  ) {
-    try {
-      // Create pagination params object
-      const paginationParams: PaginationParams = {
-        page: page ? parseInt(page.toString()) : 1,
-        limit: limit ? parseInt(limit.toString()) : 10
-      };
-      
-      return this.inspectionService.getAllInspections(paginationParams);
-    } catch (error) {
-      console.error('Error in getAllInspections controller:', error);
-      throw new Error(`Failed to get inspections: ${error.message}`);
-    }
+  async GetAllInspections() {
+    return this.inspectionService.GetAllInspections();
   }
 
-  @Get('status/:status')
-  @ApiOperation({ summary: 'Get inspections by status' })
-  @ApiParam({ name: 'status', description: 'Inspection status' })
-  @ApiResponse({ status: 200, description: 'Returns inspections by status' })
-  async getInspectionsByStatus(@Param('status') status: string) {
-    return this.inspectionService.getInspectionsByStatus(status);
-  }
+  
+  
+  
+  
+  
+  // @Get('inspection/task_assignment/:task_assignment_id')
+  // @ApiOperation({ summary: 'Get inspection by task assignment ID' })
+  // @ApiParam({ name: 'task_assignment_id', description: 'Task assignment ID' })
+  // @ApiResponse({ status: 200, description: 'Inspection found' })
+  // @ApiResponse({ status: 404, description: 'Inspection not found' })
+  // async GetInspectionByTaskAssignmentId(
+  //   @Param('task_assignment_id') task_assignment_id: string,
+  // ) {
+  //   return this.inspectionService.GetInspectionByTaskAssignmentId(task_assignment_id);
+  // }
 
-  @Get('task/:task_id')
-  @ApiOperation({ summary: 'Get inspections by task ID' })
-  @ApiParam({ name: 'task_id', description: 'Task ID' })
-  @ApiResponse({ status: 200, description: 'Returns inspections for the task' })
-  @ApiResponse({ status: 404, description: 'No inspections found for this task' })
-  async getInspectionsByTaskId(@Param('task_id') task_id: string) {
-    return this.inspectionService.getInspectionsByTaskId(task_id);
-  }
+  // @Patch('inspection/:id')
+  // @ApiOperation({ summary: 'Update inspection' })
+  // @ApiParam({ name: 'id', description: 'Inspection ID' })
+  // @ApiBody({ type: UpdateInspectionDto })
+  // @ApiResponse({ status: 200, description: 'Inspection updated successfully' })
+  // @ApiResponse({ status: 404, description: 'Inspection not found' })
+  // async updateCrackReport(@Param('id') inspection_id: string, @Body() dto: UpdateInspectionDto) {
+  //   return this.inspectionService.updateInspection(inspection_id, dto);
+  // }
 
-  @Get('location/:location_id')
-  @ApiOperation({ summary: 'Get inspections by location ID' })
-  @ApiParam({ name: 'location_id', description: 'Location ID' })
-  @ApiResponse({ status: 200, description: 'Returns inspections for the location' })
-  @ApiResponse({ status: 404, description: 'No inspections found for this location' })
-  async getInspectionsByLocationId(@Param('location_id') location_id: string) {
-    return this.inspectionService.getInspectionsByLocationId(location_id);
-  }
+  // @Get('inspection/crack/:crack_id')
+  // @ApiOperation({ summary: 'Get inspection by crack ID' })
+  // @ApiParam({ name: 'crack_id', description: 'Crack ID' })
+  // @ApiResponse({ status: 200, description: 'Inspection found' })
+  // @ApiResponse({ status: 404, description: 'Inspection not found' })
+  // async GetInspectionByCrackId(
+  //   @Param('crack_id') crack_id: string,
+  // ) {
+  //   return this.inspectionService.GetInspectionByCrackId(crack_id);
+  // }
+
+  // @Get('inspections')
+  // @ApiOperation({ summary: 'Get all inspections' })
+  // @ApiResponse({ status: 200, description: 'Returns all inspections' })
+  // async GetAllInspections() {
+  //   return this.inspectionService.GetAllInspections();
+  // }
 } 

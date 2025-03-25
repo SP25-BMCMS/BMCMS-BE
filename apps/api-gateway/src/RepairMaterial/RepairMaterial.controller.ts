@@ -27,7 +27,7 @@ import { RepairMaterialService } from './RepairMaterial.service';
 export class RepairMaterialController {
   constructor(private readonly repairMaterialService: RepairMaterialService) { }
 
-  @Post('repair-materials')
+  @Post()
   @ApiOperation({ summary: 'Create repair material' })
   @ApiBody({ type: CreateRepairMaterialDto })
   @ApiResponse({ status: 201, description: 'Repair material created successfully' })
