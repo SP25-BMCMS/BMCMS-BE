@@ -105,7 +105,10 @@ export class UsersController {
     }
 
     @Post('signup')
-    @ApiOperation({ summary: 'Sign up a new user' })
+    @ApiOperation({
+        summary: 'Sign up a new user',
+        description: 'For Resident role: Sends OTP to email for verification. For other roles: Creates account directly.'
+    })
     @ApiBody({
         schema: {
             type: 'object',
@@ -121,8 +124,23 @@ export class UsersController {
             required: ['username', 'email', 'password', 'phone', 'role']
         }
     })
-    @SwaggerResponse({ status: 201, description: 'User created successfully' })
-    @SwaggerResponse({ status: 400, description: 'Bad request' })
+    @SwaggerResponse({
+        status: 201,
+        description: 'For Resident: OTP sent successfully. For other roles: User created successfully',
+        schema: {
+            properties: {
+                isSuccess: { type: 'boolean', example: true },
+                message: { type: 'string', example: 'Mã OTP đã được gửi đến email của bạn' },
+                data: {
+                    type: 'object',
+                    properties: {
+                        email: { type: 'string', example: 'john@example.com' }
+                    }
+                }
+            }
+        }
+    })
+    @SwaggerResponse({ status: 400, description: 'Bad request - User already exists' })
     async signup(@Body() data: createUserDto, @Res() res: any) {
         try {
             const response = await this.usersService.signup(data)
@@ -146,7 +164,7 @@ export class UsersController {
     @Post('verify-otp-signup')
     @ApiOperation({
         summary: 'Verify OTP and complete signup for resident',
-        description: 'Verify OTP sent to resident\'s email and complete the registration process'
+        description: 'Verify OTP sent to resident\'s email and complete the registration process. Email in verification must match email in userData.'
     })
     @ApiBody({
         schema: {
@@ -155,7 +173,7 @@ export class UsersController {
                 email: {
                     type: 'string',
                     example: 'john@example.com',
-                    description: 'Email that received the OTP'
+                    description: 'Email that received the OTP (must match email in userData)'
                 },
                 otp: {
                     type: 'string',
@@ -173,7 +191,7 @@ export class UsersController {
                         email: {
                             type: 'string',
                             example: 'john@example.com',
-                            description: 'Valid email address'
+                            description: 'Email address (must match the email that received OTP)'
                         },
                         password: {
                             type: 'string',
@@ -225,7 +243,7 @@ export class UsersController {
                         role: { type: 'string', example: 'Resident' },
                         dateOfBirth: { type: 'string', example: '1990-01-01T00:00:00.000Z' },
                         gender: { type: 'string', example: 'Male' },
-                        accountStatus: { type: 'string', example: 'Active' }
+                        accountStatus: { type: 'string', example: 'Inactive' }
                     }
                 }
             }
@@ -233,11 +251,11 @@ export class UsersController {
     })
     @SwaggerResponse({
         status: 400,
-        description: 'Invalid OTP or bad request',
+        description: 'Invalid OTP or email mismatch',
         schema: {
             properties: {
                 statusCode: { type: 'number', example: 400 },
-                message: { type: 'string', example: 'Mã OTP không hợp lệ hoặc đã hết hạn' }
+                message: { type: 'string', example: 'Email xác thực OTP phải khớp với email đăng ký' }
             }
         }
     })
