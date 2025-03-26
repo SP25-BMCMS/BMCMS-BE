@@ -292,7 +292,7 @@ message UpdateAccountStatusResponse {
 }
 
 message VerifyOtpAndCompleteSignupRequest {
-  string phone = 1;
+  string email = 1;
   string otp = 2;
   CreateUserRequest userData = 3;
 }

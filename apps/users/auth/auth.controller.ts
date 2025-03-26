@@ -28,7 +28,7 @@ export class AuthController {
     }
 
     @GrpcMethod('UserService', 'VerifyOtpAndCompleteSignup')
-    async verifyOtpAndCompleteSignup(data: { phone: string; otp: string; userData: createUserDto }) {
+    async verifyOtpAndCompleteSignup(data: { email: string; otp: string; userData: createUserDto }) {
         return await this.authService.verifyOtpAndCompleteSignup(data);
     }
 

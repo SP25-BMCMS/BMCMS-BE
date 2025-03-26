@@ -156,13 +156,13 @@ export class AuthService {
 
             // For Resident role, generate and send OTP first
             if (data.role === 'Resident') {
-                // Generate and send OTP
-                await this.otpService.createOTP(data.phone);
+                // Generate and send OTP via email
+                await this.otpService.createOTP(data.email);
 
                 return new ApiResponse(
                     true,
-                    'Mã OTP đã được gửi đến số điện thoại của bạn',
-                    { phone: data.phone }
+                    'Mã OTP đã được gửi đến email của bạn',
+                    { email: data.email }
                 );
             }
 
@@ -179,10 +179,18 @@ export class AuthService {
         }
     }
 
-    async verifyOtpAndCompleteSignup(data: { phone: string; otp: string; userData: createUserDto }): Promise<ApiResponse<any>> {
+    async verifyOtpAndCompleteSignup(data: { email: string; otp: string; userData: createUserDto }): Promise<ApiResponse<any>> {
         try {
+            // Check if email in OTP verification matches email in userData
+            if (data.email !== data.userData.email) {
+                throw new RpcException({
+                    statusCode: 400,
+                    message: 'Email xác thực OTP phải khớp với email đăng ký'
+                });
+            }
+
             // Verify OTP and mark as used
-            const isValid = await this.otpService.verifyOTP(data.phone, data.otp);
+            const isValid = await this.otpService.verifyOTP(data.email, data.otp);
             if (!isValid) {
                 throw new RpcException({
                     statusCode: 400,

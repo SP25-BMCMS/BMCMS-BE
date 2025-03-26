@@ -1,41 +1,41 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { SmsService } from '../sms/sms.service';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class OtpService {
     constructor(
         private prisma: PrismaService,
-        private smsService: SmsService
+        private emailService: EmailService
     ) { }
 
-    async createOTP(phone: string): Promise<string> {
+    async createOTP(email: string): Promise<string> {
         // Generate a 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
         // Store OTP in database with 5 minutes expiration
         await this.prisma.otp.create({
             data: {
-                phone,
+                email,
                 otp,
                 expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
                 used: false
             }
         });
 
-        // Send OTP via SMS
-        await this.smsService.sendOtp(phone, otp);
+        // Send OTP via Email
+        await this.emailService.sendOtp(email, otp);
 
         return otp;
     }
 
-    async verifyOTP(phone: string, otp: string): Promise<boolean> {
+    async verifyOTP(email: string, otp: string): Promise<boolean> {
         try {
-            console.log('Verifying OTP:', { phone, otp });
+            console.log('Verifying OTP:', { email, otp });
 
             const otpRecord = await this.prisma.otp.findFirst({
                 where: {
-                    phone,
+                    email,
                     otp,
                     used: false,
                     expiresAt: {

@@ -146,21 +146,21 @@ export class UsersController {
     @Post('verify-otp-signup')
     @ApiOperation({
         summary: 'Verify OTP and complete signup for resident',
-        description: 'Verify OTP sent to resident\'s phone number and complete the registration process'
+        description: 'Verify OTP sent to resident\'s email and complete the registration process'
     })
     @ApiBody({
         schema: {
             type: 'object',
             properties: {
-                phone: {
+                email: {
                     type: 'string',
-                    example: '0123456789',
-                    description: 'Phone number that received the OTP'
+                    example: 'john@example.com',
+                    description: 'Email that received the OTP'
                 },
                 otp: {
                     type: 'string',
                     example: '123456',
-                    description: '6-digit OTP code received via SMS'
+                    description: '6-digit OTP code received via email'
                 },
                 userData: {
                     type: 'object',
@@ -183,7 +183,7 @@ export class UsersController {
                         phone: {
                             type: 'string',
                             example: '0123456789',
-                            description: 'Phone number (must match the phone that received OTP)'
+                            description: 'Phone number'
                         },
                         role: {
                             type: 'string',
@@ -205,7 +205,7 @@ export class UsersController {
                     required: ['username', 'email', 'password', 'phone', 'role']
                 }
             },
-            required: ['phone', 'otp', 'userData']
+            required: ['email', 'otp', 'userData']
         }
     })
     @SwaggerResponse({
@@ -251,7 +251,7 @@ export class UsersController {
             }
         }
     })
-    async verifyOtpAndCompleteSignup(@Body() data: { phone: string; otp: string; userData: createUserDto }, @Res() res: any) {
+    async verifyOtpAndCompleteSignup(@Body() data: { email: string; otp: string; userData: createUserDto }, @Res() res: any) {
         try {
             const response = await this.usersService.verifyOtpAndCompleteSignup(data)
             return res.status(HttpStatus.CREATED).json(response)

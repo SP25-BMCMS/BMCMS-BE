@@ -39,7 +39,7 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  async verifyOtpAndCompleteSignup(data: { phone: string; otp: string; userData: createUserDto }) {
+  async verifyOtpAndCompleteSignup(data: { email: string; otp: string; userData: createUserDto }) {
     try {
       console.log('Verifying OTP in API Gateway:', data);
       const response = await lastValueFrom(

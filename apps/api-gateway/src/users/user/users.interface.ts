@@ -42,7 +42,7 @@ export interface UserInterface {
 
   // Resident Authentication
   residentLogin(data: { phone: string, password: string }): Observable<any>;
-  verifyOtpAndCompleteSignup(data: { phone: string; otp: string; userData: createUserDto }): Observable<any>;
+  verifyOtpAndCompleteSignup(data: { email: string; otp: string; userData: createUserDto }): Observable<any>;
   verifyOtpAndLogin(data: { phone: string, otp: string }): Observable<any>;
 
   updateResidentApartments(data: { residentId: string; apartments: { apartmentName: string; buildingId: string }[] }): Observable<any>;

@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { OtpService } from './otp.service';
 import { PrismaModule } from '../prisma/prisma.module';
-import { SmsModule } from '../sms/sms.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
-    imports: [PrismaModule, SmsModule],
+    imports: [PrismaModule, EmailModule],
     providers: [OtpService],
     exports: [OtpService],
 })
