@@ -144,23 +144,63 @@ export class UsersController {
     }
 
     @Post('verify-otp-signup')
-    @ApiOperation({ summary: 'Verify OTP and complete signup for resident' })
+    @ApiOperation({
+        summary: 'Verify OTP and complete signup for resident',
+        description: 'Verify OTP sent to resident\'s phone number and complete the registration process'
+    })
     @ApiBody({
         schema: {
             type: 'object',
             properties: {
-                phone: { type: 'string', example: '0123456789' },
-                otp: { type: 'string', example: '123456' },
+                phone: {
+                    type: 'string',
+                    example: '0123456789',
+                    description: 'Phone number that received the OTP'
+                },
+                otp: {
+                    type: 'string',
+                    example: '123456',
+                    description: '6-digit OTP code received via SMS'
+                },
                 userData: {
                     type: 'object',
                     properties: {
-                        username: { type: 'string', example: 'john_doe' },
-                        email: { type: 'string', example: 'john@example.com' },
-                        password: { type: 'string', example: 'password123' },
-                        phone: { type: 'string', example: '0123456789' },
-                        role: { type: 'string', example: 'Resident' },
-                        dateOfBirth: { type: 'string', format: 'date-time', example: '1990-01-01T00:00:00.000Z' },
-                        gender: { type: 'string', example: 'Male' }
+                        username: {
+                            type: 'string',
+                            example: 'john_doe',
+                            description: 'Unique username for the account'
+                        },
+                        email: {
+                            type: 'string',
+                            example: 'john@example.com',
+                            description: 'Valid email address'
+                        },
+                        password: {
+                            type: 'string',
+                            example: 'password123',
+                            description: 'Password (min 6 characters)'
+                        },
+                        phone: {
+                            type: 'string',
+                            example: '0123456789',
+                            description: 'Phone number (must match the phone that received OTP)'
+                        },
+                        role: {
+                            type: 'string',
+                            example: 'Resident',
+                            description: 'User role (must be Resident)'
+                        },
+                        dateOfBirth: {
+                            type: 'string',
+                            format: 'date-time',
+                            example: '1990-01-01T00:00:00.000Z',
+                            description: 'Optional date of birth'
+                        },
+                        gender: {
+                            type: 'string',
+                            example: 'Male',
+                            description: 'Optional gender'
+                        }
                     },
                     required: ['username', 'email', 'password', 'phone', 'role']
                 }
@@ -168,8 +208,49 @@ export class UsersController {
             required: ['phone', 'otp', 'userData']
         }
     })
-    @SwaggerResponse({ status: 201, description: 'User created successfully' })
-    @SwaggerResponse({ status: 400, description: 'Invalid OTP or bad request' })
+    @SwaggerResponse({
+        status: 201,
+        description: 'User created successfully',
+        schema: {
+            properties: {
+                isSuccess: { type: 'boolean', example: true },
+                message: { type: 'string', example: 'Đăng ký thành công' },
+                data: {
+                    type: 'object',
+                    properties: {
+                        userId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+                        username: { type: 'string', example: 'john_doe' },
+                        email: { type: 'string', example: 'john@example.com' },
+                        phone: { type: 'string', example: '0123456789' },
+                        role: { type: 'string', example: 'Resident' },
+                        dateOfBirth: { type: 'string', example: '1990-01-01T00:00:00.000Z' },
+                        gender: { type: 'string', example: 'Male' },
+                        accountStatus: { type: 'string', example: 'Active' }
+                    }
+                }
+            }
+        }
+    })
+    @SwaggerResponse({
+        status: 400,
+        description: 'Invalid OTP or bad request',
+        schema: {
+            properties: {
+                statusCode: { type: 'number', example: 400 },
+                message: { type: 'string', example: 'Mã OTP không hợp lệ hoặc đã hết hạn' }
+            }
+        }
+    })
+    @SwaggerResponse({
+        status: 409,
+        description: 'Username or email already exists',
+        schema: {
+            properties: {
+                statusCode: { type: 'number', example: 409 },
+                message: { type: 'string', example: 'Username hoặc Email đã tồn tại' }
+            }
+        }
+    })
     async verifyOtpAndCompleteSignup(@Body() data: { phone: string; otp: string; userData: createUserDto }, @Res() res: any) {
         try {
             const response = await this.usersService.verifyOtpAndCompleteSignup(data)
@@ -406,9 +487,9 @@ export class UsersController {
             })
         }
     }
-    } 
-    
-    // @Get('apartment/:apartmentId')
-    // async getApartmentById(@Param('apartmentId') apartmentId: string) {
-    //   return this.usersService.({ apartmentId });
-    // }
+}
+
+// @Get('apartment/:apartmentId')
+// async getApartmentById(@Param('apartmentId') apartmentId: string) {
+//   return this.usersService.({ apartmentId });
+// }
