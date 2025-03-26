@@ -11,7 +11,8 @@ import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto'
 import { OtpService } from '../otp/otp.service';
 
 type AuthInput = { username: string; password: string }
-type AuthResult = { access_token: string }
+type SignInData = { userId: string; username: string, role: string }
+type AuthResult = { accessToken: string; refreshToken: string; userId: string; username: string }
 
 @Injectable()
 export class AuthService {
@@ -21,9 +22,17 @@ export class AuthService {
         private otpService: OtpService,
     ) { }
 
-    private signIn(user: { userId: string; username: string; role: string }): AuthResult {
-        const payload = { sub: user.userId, username: user.username, role: user.role }
-        return { access_token: this.jwtService.sign(payload) }
+    async signIn(user: SignInData): Promise<AuthResult> {
+        const tokenPayload = { sub: user.userId, username: user.username, role: user.role }
+        const accessToken = await this.jwtService.signAsync(tokenPayload, { expiresIn: '1h' })
+        const refreshToken = await this.jwtService.signAsync(tokenPayload, { expiresIn: '1d' })
+
+        return {
+            accessToken,
+            refreshToken,
+            userId: user.userId,
+            username: user.username,
+        }
     }
 
     async authenticate(input: AuthInput): Promise<AuthResult> {
@@ -42,6 +51,7 @@ export class AuthService {
         if (!isPasswordValid)
             throw new RpcException({ statusCode: 401, message: 'invalid credentials!' })
 
+        // Check if account is inactive
         if (user.accountStatus === 'Inactive')
             throw new RpcException({ statusCode: 403, message: 'Account is inactive. Please contact admin for activation.' })
 

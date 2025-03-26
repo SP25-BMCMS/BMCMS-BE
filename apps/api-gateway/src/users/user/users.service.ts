@@ -19,16 +19,8 @@ export class UsersService implements OnModuleInit {
     this.userService = this.client.getService<UserInterface>('UserService')
   }
 
-  async login(data: LoginDto) {
-    try {
-      const response = await lastValueFrom(this.userService.login(data));
-      return response;
-    } catch (error) {
-      throw new HttpException(
-        error?.message || 'Login failed',
-        error?.statusCode || HttpStatus.INTERNAL_SERVER_ERROR
-      );
-    }
+  async login(data: { username: string, password: string }) {
+    return await lastValueFrom(this.userService.login(data))
   }
 
   async signup(userData: createUserDto): Promise<ApiResponse<any>> {
