@@ -629,23 +629,35 @@ export class UsersService {
                             });
                         }
 
-                        if (buildingResponse.statusCode === 404 || !buildingResponse.exists) {
+                        // Nếu building không tồn tại, throw lỗi 404
+                        if (buildingResponse.statusCode === 404) {
                             throw new RpcException({
                                 statusCode: HttpStatus.NOT_FOUND,
                                 message: `Không tìm thấy tòa nhà với ID ${apartment.buildingId}`
                             });
                         }
 
-                        // If successful, break the retry loop
+                        // Nếu có lỗi khác, throw lỗi 503
+                        if (buildingResponse.statusCode !== 200) {
+                            throw new RpcException({
+                                statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+                                message: 'Dịch vụ tòa nhà không khả dụng'
+                            });
+                        }
+
+                        // Nếu thành công, thoát vòng lặp retry
                         break;
                     } catch (error) {
                         console.error(`Error checking building ${apartment.buildingId}:`, error);
-                        retryCount++;
 
-                        if (error instanceof RpcException) {
-                            throw error; // Re-throw RpcException to preserve the original error
+                        // Nếu là lỗi 404, throw ngay lập tức
+                        if (error instanceof RpcException && error.message.includes('Không tìm thấy tòa nhà')) {
+                            throw error;
                         }
 
+                        retryCount++;
+
+                        // Nếu đã retry hết số lần, throw lỗi 503
                         if (retryCount === maxRetries) {
                             console.error('Max retries reached:', error);
                             throw new RpcException({
@@ -654,7 +666,7 @@ export class UsersService {
                             });
                         }
 
-                        // Wait before retrying
+                        // Đợi trước khi retry
                         await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
                     }
                 }

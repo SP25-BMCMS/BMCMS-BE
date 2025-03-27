@@ -10,6 +10,8 @@ import { UpdateBuildingDto } from 'libs/contracts/src/buildings/update-buildings
 import { Observable } from 'rxjs';
 import { firstValueFrom, lastValueFrom } from 'rxjs';
 
+const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
+
 // Interface for UserService
 interface UserService {
   getApartmentById(data: { apartmentId: string }): Observable<any>;
@@ -21,7 +23,7 @@ export class BuildingsService {
   private prisma = new PrismaClient();
 
   constructor(
-    @Inject('USERS_CLIENT') private readonly usersClient: ClientProxy
+    @Inject(BUILDINGS_CLIENT) private readonly buildingsClient: ClientProxy
   ) { }
 
   // Add this method to forward apartment requests to the users service
@@ -31,7 +33,7 @@ export class BuildingsService {
 
       // Forward the request to the Users service
       const apartmentResponse = await firstValueFrom(
-        this.usersClient.send('get_apartment_by_id', { apartmentId })
+        this.buildingsClient.send('get_apartment_by_id', { apartmentId })
       );
 
       return apartmentResponse;
