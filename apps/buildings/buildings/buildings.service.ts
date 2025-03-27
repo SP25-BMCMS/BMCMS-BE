@@ -22,18 +22,18 @@ export class BuildingsService {
 
   constructor(
     @Inject('USERS_CLIENT') private readonly usersClient: ClientProxy
-  ) {}
+  ) { }
 
   // Add this method to forward apartment requests to the users service
   async getApartmentById(apartmentId: string) {
     try {
       console.log("🚀 ~ BuildingsService ~ getApartmentById ~ apartmentId:", apartmentId);
-      
+
       // Forward the request to the Users service
       const apartmentResponse = await firstValueFrom(
         this.usersClient.send('get_apartment_by_id', { apartmentId })
       );
-      
+
       return apartmentResponse;
     } catch (error) {
       console.error("Error getting apartment from users service:", error);
@@ -91,10 +91,10 @@ export class BuildingsService {
       const page = paginationParams?.page || 1;
       const limit = paginationParams?.limit || 10;
       const search = paginationParams?.search || '';
-      
+
       // Calculate skip value for pagination
       const skip = (page - 1) * limit;
-      
+
       // Create where condition for search
       const where: any = {};
       if (search) {
@@ -103,7 +103,7 @@ export class BuildingsService {
           { description: { contains: search, mode: 'insensitive' } }
         ];
       }
-      
+
       // Get paginated data
       const [buildings, total] = await Promise.all([
         this.prisma.building.findMany({
@@ -114,7 +114,7 @@ export class BuildingsService {
         }),
         this.prisma.building.count({ where })
       ]);
-      
+
       if (buildings.length === 0) {
         return {
           statusCode: 200,
@@ -142,9 +142,9 @@ export class BuildingsService {
       };
     } catch (error) {
       console.error('Error retrieving buildings:', error);
-      throw new RpcException({ 
-        statusCode: 500, 
-        message: 'Error retrieving buildings!' 
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error retrieving buildings!'
       });
     }
   }
@@ -272,33 +272,25 @@ export class BuildingsService {
     try {
       console.log(`Checking building existence for ID: ${buildingId}`);
 
+      if (!buildingId) {
+        console.error('Building ID is required');
+        return null;
+      }
+
       const building = await this.prisma.building.findUnique({
         where: { buildingId },
       });
 
       if (!building) {
         console.log(`Building with ID ${buildingId} not found`);
-        return {
-          statusCode: 404,
-          message: `Building with ID ${buildingId} not found`,
-          exists: false
-        };
+        return null;
       }
 
       console.log(`Building with ID ${buildingId} exists`);
-      return {
-        statusCode: 200,
-        message: 'Building exists',
-        exists: true,
-        data: building
-      };
+      return building;
     } catch (error) {
       console.error('Error checking building existence:', error);
-      return {
-        statusCode: 500,
-        message: 'Error checking building existence',
-        exists: false
-      };
+      throw error;
     }
   }
 }

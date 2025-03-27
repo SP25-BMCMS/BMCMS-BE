@@ -17,7 +17,7 @@ const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
 @Injectable()
 export class UsersService {
     constructor(private prisma: PrismaService,
-        @Inject('BUILDING_CLIENT') private readonly buildingClient: ClientProxy
+        @Inject(BUILDINGS_CLIENT) private readonly buildingClient: ClientProxy
     ) { }
 
     async getUserByUsername(username: string): Promise<UserDto | null> {
@@ -596,39 +596,67 @@ export class UsersService {
                 });
             }
 
-            // Validate building IDs
+            // Validate building IDs with retry mechanism
             for (const apartment of apartments) {
-                try {
-                    const buildingResponse = await firstValueFrom(
-                        this.buildingClient.send(
-                            BUILDINGS_PATTERN.CHECK_EXISTS,
-                            { buildingId: apartment.buildingId }
-                        ).pipe(
-                            timeout(5000),
-                            catchError(err => {
-                                console.error('Error communicating with building service:', err);
-                                throw new RpcException({
-                                    statusCode: HttpStatus.SERVICE_UNAVAILABLE,
-                                    message: 'Dịch vụ tòa nhà không khả dụng'
-                                });
-                            })
-                        )
-                    );
+                let retryCount = 0;
+                const maxRetries = 3;
+                let lastError = null;
 
-                    if (buildingResponse.statusCode === 404 || !buildingResponse.exists) {
-                        throw new RpcException({
-                            statusCode: HttpStatus.NOT_FOUND,
-                            message: `Không tìm thấy tòa nhà với ID ${apartment.buildingId}`
-                        });
+                while (retryCount < maxRetries) {
+                    try {
+                        console.log(`Checking building ID: ${apartment.buildingId} (Attempt ${retryCount + 1}/${maxRetries})`);
+
+                        const buildingResponse = await firstValueFrom(
+                            this.buildingClient.send(
+                                BUILDINGS_PATTERN.CHECK_EXISTS,
+                                { buildingId: apartment.buildingId }
+                            ).pipe(
+                                timeout(5000),
+                                catchError(err => {
+                                    console.error(`Error on attempt ${retryCount + 1}:`, err);
+                                    lastError = err;
+                                    throw err;
+                                })
+                            )
+                        );
+
+                        console.log('Building service response:', buildingResponse);
+
+                        if (!buildingResponse) {
+                            throw new RpcException({
+                                statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+                                message: 'Dịch vụ tòa nhà không phản hồi'
+                            });
+                        }
+
+                        if (buildingResponse.statusCode === 404 || !buildingResponse.exists) {
+                            throw new RpcException({
+                                statusCode: HttpStatus.NOT_FOUND,
+                                message: `Không tìm thấy tòa nhà với ID ${apartment.buildingId}`
+                            });
+                        }
+
+                        // If successful, break the retry loop
+                        break;
+                    } catch (error) {
+                        console.error(`Error checking building ${apartment.buildingId}:`, error);
+                        retryCount++;
+
+                        if (error instanceof RpcException) {
+                            throw error; // Re-throw RpcException to preserve the original error
+                        }
+
+                        if (retryCount === maxRetries) {
+                            console.error('Max retries reached:', error);
+                            throw new RpcException({
+                                statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+                                message: 'Dịch vụ tòa nhà không khả dụng. Vui lòng thử lại sau.'
+                            });
+                        }
+
+                        // Wait before retrying
+                        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
                     }
-                } catch (error) {
-                    if (error instanceof RpcException) {
-                        throw error;
-                    }
-                    throw new RpcException({
-                        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-                        message: error.message || 'Lỗi khi kiểm tra tòa nhà'
-                    });
                 }
             }
 
@@ -637,7 +665,7 @@ export class UsersService {
                 where: { userId: residentId },
                 data: {
                     apartments: {
-                        create: apartments // Chỉ tạo thêm căn hộ mới
+                        create: apartments
                     }
                 },
                 include: {

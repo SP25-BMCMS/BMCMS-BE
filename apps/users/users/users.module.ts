@@ -10,21 +10,15 @@ const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
   imports: [PrismaModule,
     ClientsModule.register([
       {
-        name: 'BUILDING_CLIENT',
-        transport: Transport.RMQ,
-        options: {
-          urls: ['amqp://admin:admin@localhost:5672'],
-          queue: 'Building',
-          queueOptions: { durable: true }
-        }
-      },
-      {
         name: BUILDINGS_CLIENT,
         transport: Transport.RMQ,
         options: {
           urls: ['amqp://admin:admin@localhost:5672'],
-          queue: 'Building',
-          queueOptions: { durable: true }
+          queue: 'buildings_queue',
+          queueOptions: {
+            durable: true,
+            prefetchCount: 1
+          }
         }
       }
     ])

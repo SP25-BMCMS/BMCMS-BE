@@ -62,7 +62,40 @@ export class BuildingsController {
 
   @MessagePattern(BUILDINGS_PATTERN.CHECK_EXISTS)
   async checkBuildingExists(@Payload() data: { buildingId: string }) {
-    console.log('Received request to check building existence:', data);
-    return this.BuildingsService.checkBuildingExists(data.buildingId);
+    try {
+      console.log('Received request to check building existence:', data);
+
+      if (!data.buildingId) {
+        return {
+          statusCode: 400,
+          message: 'Building ID is required',
+          exists: false
+        };
+      }
+
+      const building = await this.BuildingsService.checkBuildingExists(data.buildingId);
+
+      if (!building) {
+        return {
+          statusCode: 404,
+          message: `Building with ID ${data.buildingId} not found`,
+          exists: false
+        };
+      }
+
+      return {
+        statusCode: 200,
+        message: 'Building exists',
+        exists: true,
+        data: building
+      };
+    } catch (error) {
+      console.error('Error in checkBuildingExists:', error);
+      return {
+        statusCode: 500,
+        message: 'Error checking building existence',
+        exists: false
+      };
+    }
   }
 }
