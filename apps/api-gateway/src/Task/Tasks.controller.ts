@@ -18,7 +18,7 @@ import { catchError, firstValueFrom, NotFoundError } from 'rxjs';
 import { UpdateTaskDto } from '@app/contracts/tasks/update.Task';
 import { ApiOperation, ApiParam, ApiTags, ApiResponse, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { ChangeTaskStatusDto } from '@app/contracts/tasks/ChangeTaskStatus.Dto ';
-
+import { CreateTaskDto } from '@app/contracts/tasks/create-Task.dto';
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
 import { ClientProxy } from '@nestjs/microservices';
 import { TASK_CLIENT } from '../constraints';
@@ -33,10 +33,14 @@ export class TaskController {
 
   @Post('task')
   @ApiOperation({ summary: 'Create a new task' })
-  @ApiBody({ schema: { type: 'object' } })
-  @ApiResponse({ status: 201, description: 'Task created successfully' })
+  @ApiBody({ type: CreateTaskDto })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'Task created successfully',
+    type: CreateTaskDto 
+  })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  async createTask(@Body() createTaskDto: any) {
+  async createTask(@Body() createTaskDto: CreateTaskDto) {
     return this.taskService.createTask(createTaskDto);
   }
 
