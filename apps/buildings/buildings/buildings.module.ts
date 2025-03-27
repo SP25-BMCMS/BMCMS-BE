@@ -15,8 +15,8 @@ import { ConfigService } from '@nestjs/config';
                 useFactory: (configService: ConfigService) => ({
                     transport: Transport.RMQ,
                     options: {
-                        urls: [`amqp://${configService.get('RABBITMQ_USER')}:${configService.get('RABBITMQ_PASSWORD')}@${configService.get('RABBITMQ_HOST')}`],
-                        queue: configService.get('RABBITMQ_QUEUE_NAME'),
+                        urls: ['amqp://admin:admin@rabbitmq:5672'],
+                        queue: 'buildings_queue',
                         queueOptions: {
                             durable: true,
                         },
