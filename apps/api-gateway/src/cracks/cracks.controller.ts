@@ -23,15 +23,16 @@ import { catchError, firstValueFrom, tap } from 'rxjs'
 import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto'
 import { CreateCrackDetailDto } from '../../../../libs/contracts/src/cracks/create-crack-detail.dto'
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto'
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiConsumes, ApiQuery } from '@nestjs/swagger'
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody, ApiConsumes, ApiQuery, ApiBearerAuth } from '@nestjs/swagger'
 import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard'
 import { CRACK_CLIENT } from '../constraints'
 
 
 @Controller('cracks')
-@UseGuards(PassportJwtAuthGuard)
 @ApiTags('cracks')
 // @UseGuards(PassportJwtAuthGuard)
+@UseGuards(PassportJwtAuthGuard)
+@ApiBearerAuth('access-token')
 export class CracksController {
   constructor(@Inject(CRACK_CLIENT) private readonly crackService: ClientProxy) { }
 
@@ -43,6 +44,7 @@ export class CracksController {
   @ApiQuery({ name: 'severityFilter', required: false, example: 'Unknown' })
   @ApiResponse({ status: 200, description: 'Returns paginated crack reports' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
+
   async getAllCrackReports(
     @Query('page') page?: number,
     @Query('limit') limit?: number,

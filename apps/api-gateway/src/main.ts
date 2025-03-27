@@ -39,7 +39,7 @@ async function bootstrap() {
         scheme: 'bearer',
         bearerFormat: 'JWT',
         name: 'Authorization',
-        description: 'Enter JWT token',
+        description: 'Enter Bearer Token',
         in: 'header',
       },
       'access-token',
@@ -73,3 +73,4 @@ async function bootstrap() {
   console.log(`Swagger documentation available at: ${await app.getUrl()}/api`)
 }
 bootstrap()
+  
