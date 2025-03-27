@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config'
 async function bootstrap() {
   const app = await NestFactory.create(BuildingModule)
   const configService = app.get(ConfigService)
-  const microservicePort = configService.get<number>('BUILDINGS_SERVICE_PORT') || 3002  // Đổi cổng Microservice Buildings
+  // const microservicePort = configService.get<number>('BUILDINGS_SERVICE_PORT') || 3002  // Đổi cổng Microservice Buildings
 
   const user = configService.get('RABBITMQ_USER')
   const password = configService.get('RABBITMQ_PASSWORD')
@@ -24,7 +24,7 @@ async function bootstrap() {
       }
     }
   });
-  await app.listen(microservicePort) // Đảm bảo ứng dụng NestJS lắng nghe đúng cổng HTTP
+  // await app.listen(microservicePort) // Đảm bảo ứng dụng NestJS lắng nghe đúng cổng HTTP
 
   await app.startAllMicroservices()
 
