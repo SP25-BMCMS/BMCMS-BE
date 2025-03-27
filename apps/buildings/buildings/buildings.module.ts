@@ -4,25 +4,29 @@ import { BuildingsController } from './buildings.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { join } from 'path';
+import { ConfigService } from '@nestjs/config';
 
 @Module({
     imports: [
         PrismaModule,
-        ClientsModule.register([
+        ClientsModule.registerAsync([
             {
                 name: 'USERS_CLIENT',
-                transport: Transport.RMQ,
-                options: {
-                    urls: [process.env.RABBIT_MQ_URI || 'amqp://localhost:5672'],
-                    queue: 'users_queue',
-                    queueOptions: {
-                        durable: false
+                useFactory: (configService: ConfigService) => ({
+                    transport: Transport.RMQ,
+                    options: {
+                        urls: [`amqp://${configService.get('RABBITMQ_USER')}:${configService.get('RABBITMQ_PASSWORD')}@${configService.get('RABBITMQ_HOST')}`],
+                        queue: configService.get('RABBITMQ_QUEUE_NAME'),
+                        queueOptions: {
+                            durable: true,
+                        },
                     },
-                },
+                }),
+                inject: [ConfigService],
             },
         ]),
     ],
     providers: [BuildingsService],
     controllers: [BuildingsController]
 })
-export class BuildingsModule {}
+export class BuildingsModule { }
