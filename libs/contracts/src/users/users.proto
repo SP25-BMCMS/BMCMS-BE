@@ -249,11 +249,12 @@ message GetApartmentsRequest {
 
 message Apartment {
   string apartmentName = 1;
-  string buildingId = 2;
+  string apartmentId = 2;
+   BuildingInfo building = 3;
 }
 
 message GetApartmentsResponse {
-  bool success = 1;
+  bool isSuccess = 1;
   string message = 2;
   repeated Apartment data = 3;
 }

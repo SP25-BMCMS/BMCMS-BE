@@ -1,18 +1,18 @@
-import { BadRequestException, HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common'
 import { ClientProxy, RpcException } from '@nestjs/microservices'
 import * as bcrypt from 'bcrypt'
 import { PrismaService } from '../prisma/prisma.service'
-import { UserDto } from '../../../libs/contracts/src/users/user.dto';
-import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto';
-import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response';
-import { Role, AccountStatus } from '@prisma/client-users';
-import { CreateWorkingPositionDto } from '../../../libs/contracts/src/users/create-working-position.dto';
-import { PositionName } from '@prisma/client-users';
-import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
-import { catchError, firstValueFrom, throwError, timeout } from 'rxjs';
-import { BUILDINGS_PATTERN } from '../../../libs/contracts/src/buildings/buildings.patterns';
+import { UserDto } from '../../../libs/contracts/src/users/user.dto'
+import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto'
+import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response'
+import { Role, AccountStatus } from '@prisma/client-users'
+import { CreateWorkingPositionDto } from '../../../libs/contracts/src/users/create-working-position.dto'
+import { PositionName } from '@prisma/client-users'
+import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto'
+import { catchError, firstValueFrom, of, retry, throwError, timeout } from 'rxjs'
+import { BUILDINGS_PATTERN } from '../../../libs/contracts/src/buildings/buildings.patterns'
 
-const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
+const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 
 @Injectable()
 export class UsersService {
@@ -27,15 +27,15 @@ export class UsersService {
     }
 
     async getUserByPhone(phone: string): Promise<UserDto | null> {
-        const user = await this.prisma.user.findUnique({ where: { phone } });
-        if (!user) throw new RpcException({ statusCode: 401, message: 'Sai số điện thoại hoặc mật khẩu' });
-        return user;
+        const user = await this.prisma.user.findUnique({ where: { phone } })
+        if (!user) throw new RpcException({ statusCode: 401, message: 'Sai số điện thoại hoặc mật khẩu' })
+        return user
     }
 
     async getUserByEmail(email: string): Promise<UserDto | null> {
-        const user = await this.prisma.user.findUnique({ where: { email } });
-        if (!user) throw new RpcException({ statusCode: 401, message: 'Email không tồn tại' });
-        return user;
+        const user = await this.prisma.user.findUnique({ where: { email } })
+        if (!user) throw new RpcException({ statusCode: 401, message: 'Email không tồn tại' })
+        return user
     }
 
     async getUserById(userId: string): Promise<UserDto | null> {
@@ -55,11 +55,11 @@ export class UsersService {
         try {
             // Check if building exists for each apartment if user is a resident
             if (userData.role === Role.Resident && userData.apartments && userData.apartments.length > 0) {
-                console.log('Validating building IDs for resident apartments...');
+                console.log('Validating building IDs for resident apartments...')
 
                 for (const apartment of userData.apartments) {
                     try {
-                        console.log(`Checking building ID: ${apartment.buildingId}`);
+                        console.log(`Checking building ID: ${apartment.buildingId}`)
 
                         const buildingResponse = await firstValueFrom(
                             this.buildingClient.send(
@@ -68,28 +68,28 @@ export class UsersService {
                             ).pipe(
                                 timeout(5000),
                                 catchError(err => {
-                                    console.error('Error communicating with building service:', err);
-                                    throw new Error('Building service unavailable');
+                                    console.error('Error communicating with building service:', err)
+                                    throw new Error('Building service unavailable')
                                 })
                             )
-                        );
+                        )
 
-                        console.log('Building service response:', buildingResponse);
+                        console.log('Building service response:', buildingResponse)
 
                         if (buildingResponse.statusCode === 404 || !buildingResponse.exists) {
                             return new ApiResponse(
                                 false,
                                 `Building with ID ${apartment.buildingId} not found`,
                                 null
-                            );
+                            )
                         }
                     } catch (error) {
-                        console.error('Error validating building:', error);
+                        console.error('Error validating building:', error)
                         return new ApiResponse(
                             false,
                             error.message || 'Error validating building',
                             null
-                        );
+                        )
                     }
                 }
             }
@@ -98,15 +98,15 @@ export class UsersService {
                 where: {
                     OR: [{ username: userData.username }, { email: userData.email }],
                 },
-            });
+            })
 
             if (existingUser) {
-                return new ApiResponse(false, 'Username hoặc Email đã tồn tại', null);
+                return new ApiResponse(false, 'Username hoặc Email đã tồn tại', null)
             }
 
-            const hashedPassword = await bcrypt.hash(userData.password, 10);
+            const hashedPassword = await bcrypt.hash(userData.password, 10)
 
-            let newUser;
+            let newUser
             if (userData.role === Role.Admin || userData.role === Role.Manager) {
                 newUser = await this.prisma.user.create({
                     data: {
@@ -120,7 +120,7 @@ export class UsersService {
                         accountStatus: userData.accountStatus === 'Inactive' ?
                             AccountStatus.Inactive : AccountStatus.Active, // Default to Active for Admin/Manager
                     }
-                });
+                })
             } else {
                 newUser = await this.prisma.user.create({
                     data: {
@@ -153,7 +153,7 @@ export class UsersService {
                             }
                             : undefined,
                     }
-                });
+                })
             }
 
             // ✅ Truy vấn lại để lấy đầy đủ thông tin
@@ -163,7 +163,7 @@ export class UsersService {
                     apartments: true,
                     userDetails: true
                 }
-            });
+            })
 
             return new ApiResponse(true, 'User đã được tạo thành công', {
                 userId: fullUser?.userId,
@@ -184,11 +184,11 @@ export class UsersService {
                     apartmentName: apartment.apartmentName,
                     buildingId: apartment.buildingId
                 })) ?? []
-            });
+            })
 
         } catch (error) {
-            console.error('🔥 Lỗi trong UsersService:', error);
-            return new ApiResponse(false, 'Lỗi không xác định khi tạo user', null);
+            console.error('🔥 Lỗi trong UsersService:', error)
+            return new ApiResponse(false, 'Lỗi không xác định khi tạo user', null)
         }
     }
 
@@ -199,11 +199,11 @@ export class UsersService {
 
         // Validate building IDs if apartments are being updated
         if (data.apartments && data.apartments.length > 0) {
-            console.log('Validating building IDs for apartment updates...');
+            console.log('Validating building IDs for apartment updates...')
 
             for (const apartment of data.apartments) {
                 try {
-                    console.log(`Checking building ID: ${apartment.buildingId}`);
+                    console.log(`Checking building ID: ${apartment.buildingId}`)
 
                     const buildingResponse = await firstValueFrom(
                         this.buildingClient.send(
@@ -212,29 +212,29 @@ export class UsersService {
                         ).pipe(
                             timeout(5000),
                             catchError(err => {
-                                console.error('Error communicating with building service:', err);
+                                console.error('Error communicating with building service:', err)
                                 throw new RpcException({
                                     statusCode: HttpStatus.SERVICE_UNAVAILABLE,
                                     message: 'Building service unavailable'
-                                });
+                                })
                             })
                         )
-                    );
+                    )
 
                     if (buildingResponse.statusCode === 404 || !buildingResponse.exists) {
                         throw new RpcException({
                             statusCode: HttpStatus.NOT_FOUND,
                             message: `Building with ID ${apartment.buildingId} not found`
-                        });
+                        })
                     }
                 } catch (error) {
                     if (error instanceof RpcException) {
-                        throw error;
+                        throw error
                     }
                     throw new RpcException({
                         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
                         message: error.message || 'Error validating building'
-                    });
+                    })
                 }
             }
         }
@@ -245,11 +245,11 @@ export class UsersService {
             accountStatus: data.accountStatus ?
                 (data.accountStatus === 'Active' ? AccountStatus.Active : AccountStatus.Inactive)
                 : undefined
-        };
+        }
 
         // Remove accountStatus from original data object to avoid type issues
         if (data.accountStatus) {
-            delete data.accountStatus;
+            delete data.accountStatus
         }
 
         return this.prisma.user.update({
@@ -267,7 +267,7 @@ export class UsersService {
                     }
                     : undefined, // ✅ Chỉ cập nhật nếu có apartments
             },
-        });
+        })
     }
 
     async deleteUser(userId: string): Promise<{ message: string }> {
@@ -283,11 +283,11 @@ export class UsersService {
 
     async createWorkingPosition(data: CreateWorkingPositionDto) {
         try {
-            console.log('Received data:', data); // Debug dữ liệu nhận từ gRPC
+            console.log('Received data:', data) // Debug dữ liệu nhận từ gRPC
 
             // Kiểm tra xem giá trị có hợp lệ hay không
             if (!Object.values(PositionName).includes(data.positionName as PositionName)) {
-                throw new Error(`Invalid positionName: ${data.positionName}`);
+                throw new Error(`Invalid positionName: ${data.positionName}`)
             }
 
 
@@ -297,7 +297,7 @@ export class UsersService {
                     positionName: data.positionName as PositionName,  // ✅ Chuyển string thành enum
                     description: data.description,
                 }
-            });
+            })
 
             return {
                 isSuccess: true,
@@ -307,60 +307,60 @@ export class UsersService {
                     positionName: newPosition.positionName.toString(),  // ✅ Chuyển Enum thành chuỗi
                     description: newPosition.description,
                 }
-            };
+            }
         } catch (error) {
-            console.error('🔥 Error creating working position:', error);
+            console.error('🔥 Error creating working position:', error)
             throw new RpcException({
                 statusCode: HttpStatus.BAD_REQUEST,
                 message: 'Failed to create working position'
-            });
+            })
         }
     }
 
     async getAllWorkingPositions(): Promise<{
         workingPositions: {
-            positionId: string;
-            positionName: PositionName;
-            description?: string;
+            positionId: string
+            positionName: PositionName
+            description?: string
         }[]
     }> {
         try {
-            const positions = await this.prisma.workingPosition.findMany();
+            const positions = await this.prisma.workingPosition.findMany()
             return {
                 workingPositions: positions.map(position => ({
                     positionId: position.positionId,
                     positionName: position.positionName,
                     description: position.description,
                 }))
-            };
+            }
         } catch (error) {
-            console.error('Error fetching working positions:', error);
+            console.error('Error fetching working positions:', error)
             throw new RpcException({
                 statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
                 message: 'Failed to fetch working positions'
-            });
+            })
         }
     }
 
     async getWorkingPositionById(data: { positionId: string }): Promise<{
-        isSuccess: boolean;
-        message: string;
+        isSuccess: boolean
+        message: string
         data: {
-            positionId: string;
-            positionName: PositionName;
-            description?: string;
-        } | null;
+            positionId: string
+            positionName: PositionName
+            description?: string
+        } | null
     }> {
         try {
             const position = await this.prisma.workingPosition.findUnique({
                 where: { positionId: data.positionId }
-            });
+            })
 
             if (!position) {
                 throw new RpcException({
                     statusCode: HttpStatus.NOT_FOUND,
                     message: 'Working Position not found'
-                });
+                })
             }
 
             return {
@@ -371,29 +371,29 @@ export class UsersService {
                     positionName: position.positionName,
                     description: position.description,
                 }
-            };
+            }
         } catch (error) {
-            console.error('Error fetching working position:', error);
+            console.error('Error fetching working position:', error)
             throw new RpcException({
                 statusCode: HttpStatus.BAD_REQUEST,
                 message: 'Failed to retrieve working position'
-            });
+            })
         }
     }
 
     async deleteWorkingPosition(data: { positionId: string }): Promise<{
-        isSuccess: boolean;
-        message: string;
+        isSuccess: boolean
+        message: string
         data: {
-            positionId: string;
-            positionName: PositionName;
-            description?: string;
-        } | null;
+            positionId: string
+            positionName: PositionName
+            description?: string
+        } | null
     }> {
         try {
             const deletedPosition = await this.prisma.workingPosition.delete({
                 where: { positionId: data.positionId }
-            });
+            })
 
             return {
                 isSuccess: true,
@@ -403,42 +403,42 @@ export class UsersService {
                     positionName: deletedPosition.positionName,
                     description: deletedPosition.description,
                 }
-            };
+            }
         } catch (error) {
-            console.error('Error deleting working position:', error);
+            console.error('Error deleting working position:', error)
             throw new RpcException({
                 statusCode: HttpStatus.BAD_REQUEST,
                 message: 'Failed to delete working position'
-            });
+            })
         }
     }
 
     async createDepartment(data: CreateDepartmentDto) {
         try {
-            console.log('📥 Checking if area exists in Building Microservice:', data.area);
+            console.log('📥 Checking if area exists in Building Microservice:', data.area)
 
             const areaExistsResponse = await firstValueFrom(
                 this.buildingClient.send('check_area_exists', { areaName: data.area }).pipe(
                     timeout(5000),
                     catchError((err) => {
-                        console.error('❌ Error contacting Building Microservice:', err);
+                        console.error('❌ Error contacting Building Microservice:', err)
                         throw new RpcException({
                             statusCode: HttpStatus.SERVICE_UNAVAILABLE,
                             message: 'Building Microservice is not responding'
-                        });
+                        })
                     })
                 )
-            );
+            )
 
             if (!areaExistsResponse.exists) {
-                console.error(`❌ Area '${data.area}' does not exist in Building Microservice`);
+                console.error(`❌ Area '${data.area}' does not exist in Building Microservice`)
                 throw new RpcException({
                     statusCode: HttpStatus.NOT_FOUND,
                     message: `Area '${data.area}' does not exist in Building Microservice`
-                });
+                })
             }
 
-            console.log('✅ Area exists, creating Department...');
+            console.log('✅ Area exists, creating Department...')
 
             const newDepartment = await this.prisma.department.create({
                 data: {
@@ -446,7 +446,7 @@ export class UsersService {
                     description: data.description,
                     area: data.area
                 }
-            });
+            })
 
             return {
                 isSuccess: true,
@@ -457,22 +457,58 @@ export class UsersService {
                     description: newDepartment.description,
                     area: newDepartment.area
                 }
-            };
+            }
         } catch (error) {
-            console.error('🔥 Error creating department:', error);
+            console.error('🔥 Error creating department:', error)
 
             if (error instanceof RpcException) {
-                throw error;
+                throw error
             }
 
             throw new RpcException({
                 statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
                 message: error.message || 'Unexpected error creating department'
-            });
+            })
         }
     }
 
-    async getApartmentsByResidentId(residentId: string): Promise<{ isSuccess: boolean; message: string; data: { apartmentName: string; buildingId: string }[] }> {
+    private async getBuildingDetails(buildingId: string) {
+        try {
+            const response = await firstValueFrom(
+                this.buildingClient.send(
+                    BUILDINGS_PATTERN.GET_BY_ID,
+                    { buildingId }
+                ).pipe(
+                    timeout(5000),
+                    retry(2), // Retry 2 times before giving up
+                    catchError(err => {
+                        console.error(`Error fetching building ${buildingId} after retries:`, err)
+                        return of({
+                            statusCode: 404,
+                            data: null
+                        })
+                    })
+                )
+            )
+            return response
+        } catch (error) {
+            console.error(`Failed to get building ${buildingId}:`, error)
+            return {
+                statusCode: 404,
+                data: null
+            }
+        }
+    }
+
+    async getApartmentsByResidentId(residentId: string): Promise<{
+        isSuccess: boolean
+        message: string
+        data: {
+            apartmentName: string
+            apartmentId: string
+            building: any // Thay thế 'any' bằng kiểu dữ liệu chính xác của building
+        }[]
+    }> {
         try {
             const user = await this.prisma.user.findUnique({
                 where: {
@@ -480,23 +516,33 @@ export class UsersService {
                     role: Role.Resident
                 },
                 include: { apartments: true }
-            });
+            })
 
             if (!user) {
-                return { isSuccess: false, message: 'Resident not found', data: [] };
+                return { isSuccess: false, message: 'Resident not found', data: [] }
             }
+
+            // Xử lý các căn hộ của người dùng song song
+            const apartmentPromises = user.apartments.map(async (apartment) => {
+                const buildingResponse = await this.getBuildingDetails(apartment.buildingId)
+
+                return {
+                    apartmentName: apartment.apartmentName,
+                    apartmentId: apartment.apartmentId,
+                    building: buildingResponse?.statusCode === 200 ? buildingResponse.data : null
+                }
+            })
+
+            // Chờ tất cả các chi tiết căn hộ được lấy
+            const apartmentsWithBuildings = await Promise.all(apartmentPromises)
 
             return {
                 isSuccess: true,
                 message: 'Success',
-                data: user.apartments.map(apartment => ({
-                    apartmentName: apartment.apartmentName,
-                    buildingId: apartment.buildingId
-                }))
-            };
-
+                data: apartmentsWithBuildings
+            }
         } catch (error) {
-            return { isSuccess: false, message: 'Failed to retrieve apartments', data: [] };
+            return { isSuccess: false, message: 'Failed to retrieve apartments', data: [] }
         }
     }
 
@@ -516,15 +562,15 @@ export class UsersService {
                         }
                     }
                 }
-            });
+            })
 
             if (!staffMembers || staffMembers.length === 0) {
-                return { isSuccess: true, message: 'No staff members found', data: [] };
+                return { isSuccess: true, message: 'No staff members found', data: [] }
             }
 
             // Convert to user response format without exposing sensitive fields
             const staffData = staffMembers.map(staff => {
-                const { password, ...userWithoutPassword } = staff;
+                const { password, ...userWithoutPassword } = staff
                 return {
                     ...userWithoutPassword,
                     dateOfBirth: staff.dateOfBirth ? staff.dateOfBirth.toISOString() : null,
@@ -542,20 +588,20 @@ export class UsersService {
                             area: staff.userDetails.department.area || ''
                         } : null
                     } : null
-                };
-            });
+                }
+            })
 
             return {
                 isSuccess: true,
                 message: 'Successfully retrieved all staff members',
                 data: staffData as unknown as UserDto[]
-            };
+            }
         } catch (error) {
-            console.error('Error fetching staff members:', error);
+            console.error('Error fetching staff members:', error)
             throw new RpcException({
                 statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
                 message: 'Failed to fetch staff members'
-            });
+            })
         }
     }
 
@@ -570,41 +616,41 @@ export class UsersService {
                 include: {
                     apartments: true
                 }
-            });
+            })
 
             if (!user) {
                 throw new RpcException({
                     statusCode: HttpStatus.NOT_FOUND,
                     message: 'Không tìm thấy cư dân'
-                });
+                })
             }
 
             // Check for duplicate apartments
-            const existingApartments = user.apartments;
+            const existingApartments = user.apartments
             const duplicateApartments = apartments.filter(newApt =>
                 existingApartments.some(existingApt =>
                     existingApt.apartmentName === newApt.apartmentName &&
                     existingApt.buildingId === newApt.buildingId
                 )
-            );
+            )
 
             if (duplicateApartments.length > 0) {
-                const duplicateNames = duplicateApartments.map(apt => apt.apartmentName).join(', ');
+                const duplicateNames = duplicateApartments.map(apt => apt.apartmentName).join(', ')
                 throw new RpcException({
                     statusCode: HttpStatus.BAD_REQUEST,
                     message: `Cư dân đã sở hữu các căn hộ sau: ${duplicateNames}`
-                });
+                })
             }
 
             // Validate building IDs with retry mechanism
             for (const apartment of apartments) {
-                let retryCount = 0;
-                const maxRetries = 3;
-                let lastError = null;
+                let retryCount = 0
+                const maxRetries = 3
+                let lastError = null
 
                 while (retryCount < maxRetries) {
                     try {
-                        console.log(`Checking building ID: ${apartment.buildingId} (Attempt ${retryCount + 1}/${maxRetries})`);
+                        console.log(`Checking building ID: ${apartment.buildingId} (Attempt ${retryCount + 1}/${maxRetries})`)
 
                         const buildingResponse = await firstValueFrom(
                             this.buildingClient.send(
@@ -613,20 +659,20 @@ export class UsersService {
                             ).pipe(
                                 timeout(5000),
                                 catchError(err => {
-                                    console.error(`Error on attempt ${retryCount + 1}:`, err);
-                                    lastError = err;
-                                    throw err;
+                                    console.error(`Error on attempt ${retryCount + 1}:`, err)
+                                    lastError = err
+                                    throw err
                                 })
                             )
-                        );
+                        )
 
-                        console.log('Building service response:', buildingResponse);
+                        console.log('Building service response:', buildingResponse)
 
                         if (!buildingResponse) {
                             throw new RpcException({
                                 statusCode: HttpStatus.SERVICE_UNAVAILABLE,
                                 message: 'Dịch vụ tòa nhà không phản hồi'
-                            });
+                            })
                         }
 
                         // Nếu building không tồn tại, throw lỗi 404
@@ -634,7 +680,7 @@ export class UsersService {
                             throw new RpcException({
                                 statusCode: HttpStatus.NOT_FOUND,
                                 message: `Không tìm thấy tòa nhà với ID ${apartment.buildingId}`
-                            });
+                            })
                         }
 
                         // Nếu có lỗi khác, throw lỗi 503
@@ -642,32 +688,32 @@ export class UsersService {
                             throw new RpcException({
                                 statusCode: HttpStatus.SERVICE_UNAVAILABLE,
                                 message: 'Dịch vụ tòa nhà không khả dụng'
-                            });
+                            })
                         }
 
                         // Nếu thành công, thoát vòng lặp retry
-                        break;
+                        break
                     } catch (error) {
-                        console.error(`Error checking building ${apartment.buildingId}:`, error);
+                        console.error(`Error checking building ${apartment.buildingId}:`, error)
 
                         // Nếu là lỗi 404, throw ngay lập tức
                         if (error instanceof RpcException && error.message.includes('Không tìm thấy tòa nhà')) {
-                            throw error;
+                            throw error
                         }
 
-                        retryCount++;
+                        retryCount++
 
                         // Nếu đã retry hết số lần, throw lỗi 503
                         if (retryCount === maxRetries) {
-                            console.error('Max retries reached:', error);
+                            console.error('Max retries reached:', error)
                             throw new RpcException({
                                 statusCode: HttpStatus.SERVICE_UNAVAILABLE,
                                 message: 'Dịch vụ tòa nhà không khả dụng. Vui lòng thử lại sau.'
-                            });
+                            })
                         }
 
                         // Đợi trước khi retry
-                        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+                        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount))
                     }
                 }
             }
@@ -683,7 +729,7 @@ export class UsersService {
                 include: {
                     apartments: true
                 }
-            });
+            })
 
             return {
                 isSuccess: true,
@@ -696,16 +742,16 @@ export class UsersService {
                         buildingId: apt.buildingId
                     }))
                 }
-            };
+            }
         } catch (error) {
-            console.error('Error updating resident apartments:', error);
+            console.error('Error updating resident apartments:', error)
             if (error instanceof RpcException) {
-                throw error;
+                throw error
             }
             throw new RpcException({
                 statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
                 message: 'Lỗi khi thêm căn hộ'
-            });
+            })
         }
     }
 
@@ -714,24 +760,24 @@ export class UsersService {
             // Kiểm tra xem user có tồn tại không
             const user = await this.prisma.user.findUnique({
                 where: { userId }
-            });
+            })
 
             if (!user) {
                 return {
                     isSuccess: false,
                     message: `Không tìm thấy người dùng với ID: ${userId}`,
                     data: null
-                };
+                }
             }
 
             // Chuyển đổi accountStatus string thành enum
-            const status = accountStatus === 'Active' ? AccountStatus.Active : AccountStatus.Inactive;
+            const status = accountStatus === 'Active' ? AccountStatus.Active : AccountStatus.Inactive
 
             // Cập nhật trạng thái tài khoản
             const updatedUser = await this.prisma.user.update({
                 where: { userId },
                 data: { accountStatus: status }
-            });
+            })
 
             // Lấy thông tin đầy đủ của user sau khi cập nhật
             const fullUser = await this.prisma.user.findUnique({
@@ -745,26 +791,26 @@ export class UsersService {
                     },
                     apartments: true
                 }
-            });
+            })
 
             // Format dữ liệu trả về theo dạng JSON phù hợp
             const formattedResponse = {
                 accountStatus: fullUser.accountStatus
-            };
+            }
 
 
             return {
                 isSuccess: true,
                 message: `Cập nhật trạng thái tài khoản thành ${accountStatus}`,
                 data: formattedResponse
-            };
+            }
         } catch (error) {
-            console.error('Error updating account status:', error);
+            console.error('Error updating account status:', error)
             return {
                 isSuccess: false,
                 message: `Lỗi khi cập nhật trạng thái tài khoản: ${error.message}`,
                 data: null
-            };
+            }
         }
     }
 }
