@@ -249,9 +249,8 @@ message GetApartmentsRequest {
 
 message Apartment {
   string apartmentName = 1;
-  string buildingId = 2;
-  string apartmentId = 3;
-   BuildingInfo building = 4;
+  string apartmentId = 2;
+   BuildingInfo building = 3;
 }
 
 message GetApartmentsResponse {

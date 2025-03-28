@@ -528,7 +528,6 @@ export class UsersService {
 
                 return {
                     apartmentName: apartment.apartmentName,
-                    buildingId: apartment.buildingId,
                     apartmentId: apartment.apartmentId,
                     building: buildingResponse?.statusCode === 200 ? buildingResponse.data : null
                 }
