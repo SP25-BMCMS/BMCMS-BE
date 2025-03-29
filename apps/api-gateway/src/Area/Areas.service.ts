@@ -12,7 +12,7 @@ import { UpdateAreaDto } from '@app/contracts/Areas/update.areas';
 
 @Injectable()
 export class AreasService {
-  constructor(@Inject(BUILDING_CLIENT) private readonly areasClient: ClientProxy) {}
+  constructor(@Inject(BUILDING_CLIENT) private readonly areasClient: ClientProxy) { }
 
   async getAllAreas(paginationParams: PaginationParams) {
     try {
@@ -38,7 +38,7 @@ export class AreasService {
   async getAreaById(areaId: string) {
     try {
       return await firstValueFrom(
-        this.areasClient.send(AREAS_PATTERN.GET_BY_ID, { area_id: areaId })
+        this.areasClient.send(AREAS_PATTERN.GET_BY_ID, { areaId })
       );
     } catch (error) {
       throw new HttpException('Error occurred while fetching area by ID.', HttpStatus.NOT_FOUND);

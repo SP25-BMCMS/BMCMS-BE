@@ -7,7 +7,7 @@ import { PaginationParams } from '../../../libs/contracts/src/Pagination/paginat
 
 @Controller('areas')
 export class AreasController {
-  constructor(private readonly areasService: AreasService) {}
+  constructor(private readonly areasService: AreasService) { }
 
   @MessagePattern(AREAS_PATTERN.CREATE)
   async createArea(@Payload() createAreaDto: any) {

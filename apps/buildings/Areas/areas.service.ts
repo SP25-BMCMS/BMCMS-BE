@@ -8,7 +8,7 @@ import { PaginationParams, PaginationResponseDto } from '../../../libs/contracts
 
 @Injectable()
 export class AreasService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   private prismaClient = new PrismaClient();
   //constructor(private readonly prisma: PrismaClient) // Inject PrismaService
@@ -103,9 +103,16 @@ export class AreasService {
   // Get area by ID
   async getAreaById(areaId: string) {
     try {
+      console.log('Searching for area with ID:', areaId);
       const area = await this.prismaClient.area.findUnique({
         where: { areaId },
+        include: {
+          buildings: true
+        }
       });
+
+      console.log('Found area:', area);
+
       if (!area) {
         return {
           statusCode: 404,
@@ -118,6 +125,7 @@ export class AreasService {
         data: area,
       };
     } catch (error) {
+      console.error('Error in getAreaById:', error);
       throw new RpcException({
         statusCode: 500,
         message: 'Error retrieving area',
