@@ -1,18 +1,19 @@
-
-import { Module } from '@nestjs/common'
-import { ClientProxyFactory, ClientOptions, Transport } from '@nestjs/microservices'
-import { ClientConfigService } from 'apps/configs/client-config.service'
-import { AreasService } from './Areas.service'
-import { BUILDING_CLIENT } from '../constraints'
-import { AreasController as AreasController } from './Areas.controller'
-import { ClientConfigModule } from 'apps/configs/client-config.module'
-import { ConfigModule, ConfigService } from '@nestjs/config'
-import { PassportModule } from '@nestjs/passport'
+import { Module } from '@nestjs/common';
+import {
+  ClientProxyFactory,
+  ClientOptions,
+  Transport,
+} from '@nestjs/microservices';
+import { ClientConfigService } from 'apps/configs/client-config.service';
+import { AreasService } from './Areas.service';
+import { BUILDING_CLIENT } from '../constraints';
+import { AreasController as AreasController } from './Areas.controller';
+import { ClientConfigModule } from 'apps/configs/client-config.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { PassportModule } from '@nestjs/passport';
 
 @Module({
-  imports: [ClientConfigModule,
-    ConfigModule
-  ],
+  imports: [ClientConfigModule, ConfigModule],
   providers: [
     AreasService,
     PassportModule,
@@ -20,8 +21,8 @@ import { PassportModule } from '@nestjs/passport'
     {
       provide: BUILDING_CLIENT,
       useFactory: (configService: ClientConfigService) => {
-        const clientOptions = configService.buildingsClientOptions // Getting the client options
-        return ClientProxyFactory.create(clientOptions) // Using the correct options for RabbitMQ
+        const clientOptions = configService.buildingsClientOptions; // Getting the client options
+        return ClientProxyFactory.create(clientOptions); // Using the correct options for RabbitMQ
       },
       inject: [ClientConfigService], // Inject ClientConfigService to get the correct options
     },
@@ -61,4 +62,4 @@ import { PassportModule } from '@nestjs/passport'
 //     },
 //   ],
 // })
-export class AreasModule { }
+export class AreasModule {}

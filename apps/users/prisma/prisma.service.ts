@@ -1,36 +1,37 @@
-import { PrismaClient } from '@prisma/client-users'
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
+import { PrismaClient } from '@prisma/client-users';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PrismaService
-    extends PrismaClient
-    implements OnModuleInit, OnModuleDestroy {
-    constructor(config: ConfigService) {
-        console.log('User Initialized'); // Add a debug log to ensure service is being initialized
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
+  constructor(config: ConfigService) {
+    console.log('User Initialized'); // Add a debug log to ensure service is being initialized
 
-        const url = config.get<string>('DB_USER_SERVICE')
-        super({
-            datasources: {
-                db: {
-                    url,
-                },
-            },
-        })
-    }
+    const url = config.get<string>('DB_USER_SERVICE');
+    super({
+      datasources: {
+        db: {
+          url,
+        },
+      },
+    });
+  }
 
-    async onModuleInit() {
-        await this.$connect()
-    }
+  async onModuleInit() {
+    await this.$connect();
+  }
 
-    async onModuleDestroy() {
-        await this.$disconnect()
-    }
+  async onModuleDestroy() {
+    await this.$disconnect();
+  }
 
-    async cleanDatabase() {
-        if (process.env.NODE_ENV === 'production') return
+  async cleanDatabase() {
+    if (process.env.NODE_ENV === 'production') return;
 
-        // teardown logic
-        return Promise.all([this.user.deleteMany()])
-    }
+    // teardown logic
+    return Promise.all([this.user.deleteMany()]);
+  }
 }

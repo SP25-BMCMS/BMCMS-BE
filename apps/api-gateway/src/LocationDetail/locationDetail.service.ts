@@ -1,6 +1,6 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common'
-import { ClientProxy } from '@nestjs/microservices'
-import { BUILDING_CLIENT } from '../constraints'
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+import { BUILDING_CLIENT } from '../constraints';
 import { LOCATIONDETAIL_PATTERN } from 'libs/contracts/src/LocationDetails/Locationdetails.patterns';
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 // import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto'
@@ -8,18 +8,23 @@ import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 // import { catchError, firstValueFrom } from 'rxjs'
 @Injectable()
 export class LocationDetailService {
-  constructor(@Inject(BUILDING_CLIENT) private readonly buildingsClient: ClientProxy) {}
+  constructor(
+    @Inject(BUILDING_CLIENT) private readonly buildingsClient: ClientProxy,
+  ) {}
 
   // Get all LocationDetails
   async getLocationDetails(paginationParams?: PaginationParams) {
     try {
       // Call the microservice to get all location details with pagination
-      const locationDetails = await this.buildingsClient.send(LOCATIONDETAIL_PATTERN.GET, paginationParams || {});
+      const locationDetails = await this.buildingsClient.send(
+        LOCATIONDETAIL_PATTERN.GET,
+        paginationParams || {},
+      );
       return locationDetails;
     } catch (error) {
       throw new HttpException(
         'Error occurred while fetching location details.',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -28,12 +33,15 @@ export class LocationDetailService {
   async createLocationDetail(createLocationDetailDto: any) {
     try {
       // Call the microservice to create a new location detail
-      const newLocationDetail = await this.buildingsClient.send(LOCATIONDETAIL_PATTERN.CREATE, createLocationDetailDto);
+      const newLocationDetail = await this.buildingsClient.send(
+        LOCATIONDETAIL_PATTERN.CREATE,
+        createLocationDetailDto,
+      );
       return newLocationDetail;
     } catch (error) {
       throw new HttpException(
         'Error occurred while creating location detail.',
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -41,25 +49,31 @@ export class LocationDetailService {
   // Get LocationDetail by ID
   async getLocationDetailById(locationDetailId: string) {
     try {
-      const locationDetail = await this.buildingsClient.send(LOCATIONDETAIL_PATTERN.GET_BY_ID, { locationDetailId });
+      const locationDetail = await this.buildingsClient.send(
+        LOCATIONDETAIL_PATTERN.GET_BY_ID,
+        { locationDetailId },
+      );
       return locationDetail;
     } catch (error) {
       throw new HttpException(
         'Error occurred while fetching location detail by ID.',
-        HttpStatus.NOT_FOUND
+        HttpStatus.NOT_FOUND,
       );
     }
   }
 
   // Update LocationDetail
-  async updateLocationDetail( updateLocationDetailDto: any) {
+  async updateLocationDetail(updateLocationDetailDto: any) {
     try {
-      const updatedLocationDetail = await this.buildingsClient.send(LOCATIONDETAIL_PATTERN.UPDATE, updateLocationDetailDto);
+      const updatedLocationDetail = await this.buildingsClient.send(
+        LOCATIONDETAIL_PATTERN.UPDATE,
+        updateLocationDetailDto,
+      );
       return updatedLocationDetail;
     } catch (error) {
       throw new HttpException(
         'Error occurred while updating location detail.',
-        HttpStatus.BAD_REQUEST
+        HttpStatus.BAD_REQUEST,
       );
     }
   }
@@ -67,12 +81,15 @@ export class LocationDetailService {
   // Delete LocationDetail by ID
   async deleteLocationDetail(locationDetailId: string) {
     try {
-      const deletedLocationDetail = await this.buildingsClient.send(LOCATIONDETAIL_PATTERN.DELETE, { locationDetailId });
+      const deletedLocationDetail = await this.buildingsClient.send(
+        LOCATIONDETAIL_PATTERN.DELETE,
+        { locationDetailId },
+      );
       return deletedLocationDetail;
     } catch (error) {
       throw new HttpException(
         'Error occurred while deleting location detail.',
-        HttpStatus.NOT_FOUND
+        HttpStatus.NOT_FOUND,
       );
     }
   }

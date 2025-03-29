@@ -4,8 +4,8 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
 
 @Module({
-    imports: [PrismaModule, EmailModule],
-    providers: [OtpService],
-    exports: [OtpService],
+  imports: [PrismaModule, EmailModule],
+  providers: [OtpService],
+  exports: [OtpService],
 })
-export class OtpModule { } 
+export class OtpModule {}

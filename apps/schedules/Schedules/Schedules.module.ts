@@ -4,8 +4,8 @@ import { ScheduleService } from './Schedules.service';
 import { ScheduleController } from './Schedules.controller';
 
 @Module({
-    imports: [PrismaModule],
+  imports: [PrismaModule],
   providers: [ScheduleService],
-  controllers: [ScheduleController]
+  controllers: [ScheduleController],
 })
 export class SchedulesModule {}

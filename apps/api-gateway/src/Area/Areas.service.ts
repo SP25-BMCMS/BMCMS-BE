@@ -1,6 +1,6 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common'
-import { ClientProxy } from '@nestjs/microservices'
-import { BUILDING_CLIENT } from '../constraints'
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+import { BUILDING_CLIENT } from '../constraints';
 import { AREAS_PATTERN } from 'libs/contracts/src/Areas/Areas.patterns';
 import { firstValueFrom } from 'rxjs';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
@@ -12,12 +12,18 @@ import { UpdateAreaDto } from '@app/contracts/Areas/update.areas';
 
 @Injectable()
 export class AreasService {
+<<<<<<< HEAD
   constructor(@Inject(BUILDING_CLIENT) private readonly areasClient: ClientProxy) { }
+=======
+  constructor(
+    @Inject(BUILDING_CLIENT) private readonly areasClient: ClientProxy,
+  ) {}
+>>>>>>> 997a396dcb679c81372b8a7ef02d2852176ff458
 
   async getAllAreas(paginationParams: PaginationParams) {
     try {
       return await firstValueFrom(
-        this.areasClient.send(AREAS_PATTERN.GET, paginationParams)
+        this.areasClient.send(AREAS_PATTERN.GET, paginationParams),
       );
     } catch (error) {
       console.error('Error in getAllAreas:', error);
@@ -28,10 +34,13 @@ export class AreasService {
   async createArea(createAreaDto: CreateAreaDto) {
     try {
       return await firstValueFrom(
-        this.areasClient.send(AREAS_PATTERN.CREATE, createAreaDto)
+        this.areasClient.send(AREAS_PATTERN.CREATE, createAreaDto),
       );
     } catch (error) {
-      throw new HttpException('Error occurred while creating area.', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        'Error occurred while creating area.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -41,27 +50,36 @@ export class AreasService {
         this.areasClient.send(AREAS_PATTERN.GET_BY_ID, { areaId })
       );
     } catch (error) {
-      throw new HttpException('Error occurred while fetching area by ID.', HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        'Error occurred while fetching area by ID.',
+        HttpStatus.NOT_FOUND,
+      );
     }
   }
 
   async updateArea(id: string, updateAreaDto: UpdateAreaDto) {
     try {
       return await firstValueFrom(
-        this.areasClient.send(AREAS_PATTERN.UPDATE, { id, ...updateAreaDto })
+        this.areasClient.send(AREAS_PATTERN.UPDATE, { id, ...updateAreaDto }),
       );
     } catch (error) {
-      throw new HttpException('Error occurred while updating area.', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Error occurred while updating area.',
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 
   async deleteArea(areaId: string) {
     try {
       return await firstValueFrom(
-        this.areasClient.send(AREAS_PATTERN.DELELTE, { area_id: areaId })
+        this.areasClient.send(AREAS_PATTERN.DELELTE, { area_id: areaId }),
       );
     } catch (error) {
-      throw new HttpException('Error occurred while deleting area.', HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        'Error occurred while deleting area.',
+        HttpStatus.NOT_FOUND,
+      );
     }
   }
 }

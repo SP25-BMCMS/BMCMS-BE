@@ -8,11 +8,9 @@ import { ChangeTaskStatusDto } from 'libs/contracts/src/tasks/ChangeTaskStatus.D
 import { Status } from '@prisma/client-Task'; // Make sure Status is imported correctly
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 
-
 @Controller('task')
 export class TasksController {
-
-  constructor(private readonly taskService: TaskService) { }
+  constructor(private readonly taskService: TaskService) {}
 
   @MessagePattern(TASKS_PATTERN.CREATE)
   async createTask(@Payload() createTaskDto: CreateTaskDto) {
@@ -39,8 +37,13 @@ export class TasksController {
   //   return this.taskService.changeTaskStatus(payload.taskid, payload.ChangeTaskStatusDto);
   // }
   @MessagePattern(TASKS_PATTERN.CHANGE_STATUS)
-  async changeTaskStatus(@Payload() payload: { task_id: string, status: string }) {
-    console.log("🚀 ~ TasksController ~ changeTaskStatus ~ status:", payload.status)
+  async changeTaskStatus(
+    @Payload() payload: { task_id: string; status: string },
+  ) {
+    console.log(
+      '🚀 ~ TasksController ~ changeTaskStatus ~ status:',
+      payload.status,
+    );
     const { task_id, status } = payload;
 
     // Pass the correct status enum value to the service
@@ -56,5 +59,4 @@ export class TasksController {
   async getTasksByStatus(@Payload() payload: { status: Status }) {
     return this.taskService.getTasksByStatus(payload.status);
   }
-
 }

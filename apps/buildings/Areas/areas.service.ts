@@ -4,7 +4,10 @@ import { RpcException } from '@nestjs/microservices';
 import { CreateAreaDto } from 'libs/contracts/src/Areas/create-areas.dto';
 import { UpdateAreaDto } from 'libs/contracts/src/Areas/update.areas';
 import { PrismaService } from '../../users/prisma/prisma.service';
-import { PaginationParams, PaginationResponseDto } from '../../../libs/contracts/src/Pagination/pagination.dto';
+import {
+  PaginationParams,
+  PaginationResponseDto,
+} from '../../../libs/contracts/src/Pagination/pagination.dto';
 
 @Injectable()
 export class AreasService {
@@ -36,7 +39,9 @@ export class AreasService {
   }
 
   // Get all areas
-  async getAllAreas(paginationParams: PaginationParams): Promise<PaginationResponseDto<any>> {
+  async getAllAreas(
+    paginationParams: PaginationParams,
+  ): Promise<PaginationResponseDto<any>> {
     try {
       // Default values if not provided
       const page = Math.max(1, paginationParams?.page || 1);
@@ -56,8 +61,8 @@ export class AreasService {
             total: 0,
             page,
             limit,
-            totalPages: 0
-          }
+            totalPages: 0,
+          },
         };
       }
 
@@ -66,23 +71,26 @@ export class AreasService {
         skip,
         take: limit,
         include: {
-          buildings: true
+          buildings: true,
         },
         orderBy: {
-          createdAt: 'desc'
-        }
+          createdAt: 'desc',
+        },
       });
 
       return {
         statusCode: 200,
-        message: areas.length > 0 ? 'Areas fetched successfully' : 'No areas found for this page',
+        message:
+          areas.length > 0
+            ? 'Areas fetched successfully'
+            : 'No areas found for this page',
         data: areas,
         pagination: {
           total,
           page,
           limit,
-          totalPages: Math.ceil(total / limit)
-        }
+          totalPages: Math.ceil(total / limit),
+        },
       };
     } catch (error) {
       console.error('Error in getAllAreas:', error);
@@ -94,8 +102,8 @@ export class AreasService {
           total: 0,
           page: paginationParams?.page || 1,
           limit: paginationParams?.limit || 10,
-          totalPages: 0
-        }
+          totalPages: 0,
+        },
       };
     }
   }
@@ -140,8 +148,8 @@ export class AreasService {
         where: { areaId },
         data: {
           description: updateAreaDto.description,
-          name: updateAreaDto.name
-        }
+          name: updateAreaDto.name,
+        },
       });
       return {
         statusCode: 200,

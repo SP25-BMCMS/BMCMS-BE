@@ -9,7 +9,7 @@ import { UpdateInspectionDto } from '../../../libs/contracts/src/inspections/upd
 
 @Controller('inspections')
 export class InspectionsController {
-  constructor(private readonly inspectionService: InspectionsService) { }
+  constructor(private readonly inspectionService: InspectionsService) {}
 
   @MessagePattern(INSPECTIONS_PATTERN.GET_BY_ID_Task_Assignment)
   async GetInspectionByTaskAssignmentId(
@@ -21,8 +21,13 @@ export class InspectionsController {
   }
 
   @MessagePattern(INSPECTIONS_PATTERN.UPDATE)
-  async updateInspection(@Payload() data: { inspection_id: string; dto: UpdateInspectionDto }) {
-    return await this.inspectionService.updateInspection(data.inspection_id, data.dto);
+  async updateInspection(
+    @Payload() data: { inspection_id: string; dto: UpdateInspectionDto },
+  ) {
+    return await this.inspectionService.updateInspection(
+      data.inspection_id,
+      data.dto,
+    );
   }
 
   // @MessagePattern(INSPECTIONS_PATTERN.GET_BY_CRACK_ID)

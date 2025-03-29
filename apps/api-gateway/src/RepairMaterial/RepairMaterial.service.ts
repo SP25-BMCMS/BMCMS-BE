@@ -16,21 +16,21 @@ import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 
 @Injectable()
 export class RepairMaterialService {
-  constructor(@Inject(TASK_CLIENT) private readonly taskClient: ClientProxy) { }
+  constructor(@Inject(TASK_CLIENT) private readonly taskClient: ClientProxy) {}
 
   async createRepairMaterial(createRepairMaterialDto: CreateRepairMaterialDto) {
-      try {
-        return await firstValueFrom(
-          this.taskClient.send(
-            REPAIRMATERIAL_PATTERN.CREATE_REPAIR_MATERIAL,
-            createRepairMaterialDto
-          )
-        );
-      } catch (error) {
-        throw new HttpException(
-          'Error occurred while creating repair material',
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
+    try {
+      return await firstValueFrom(
+        this.taskClient.send(
+          REPAIRMATERIAL_PATTERN.CREATE_REPAIR_MATERIAL,
+          createRepairMaterialDto,
+        ),
+      );
+    } catch (error) {
+      throw new HttpException(
+        'Error occurred while creating repair material',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
-} 
+  }
+}

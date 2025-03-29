@@ -4,7 +4,7 @@ import { PaginationParams } from '../../../libs/contracts/src/Pagination/paginat
 
 @Injectable()
 export class EmployeesService {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
   async getAllStaff(paginationParams: PaginationParams = {}) {
     return this.usersService.getAllStaff(paginationParams);
