@@ -30,9 +30,12 @@ export class ApartmentsService {
       );
     } catch (error) {
       console.error('Error retrieving apartment:', error);
+      if (error instanceof RpcException) {
+        throw error; // Re-throw the RpcException if it's already one
+      }
       throw new RpcException({
         statusCode: 500,
-        message: 'Apartment not found',
+        message: 'Internal server error',
       });
     }
   }

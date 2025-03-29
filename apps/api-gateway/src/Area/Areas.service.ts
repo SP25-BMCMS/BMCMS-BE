@@ -12,13 +12,8 @@ import { UpdateAreaDto } from '@app/contracts/Areas/update.areas';
 
 @Injectable()
 export class AreasService {
-<<<<<<< HEAD
   constructor(@Inject(BUILDING_CLIENT) private readonly areasClient: ClientProxy) { }
-=======
-  constructor(
-    @Inject(BUILDING_CLIENT) private readonly areasClient: ClientProxy,
-  ) {}
->>>>>>> 997a396dcb679c81372b8a7ef02d2852176ff458
+
 
   async getAllAreas(paginationParams: PaginationParams) {
     try {

@@ -126,6 +126,15 @@ message BuildingInfo {
   string Status = 7;
   string construction_date = 8;
   string completion_date = 9;
+  AreaInfo area = 10;
+}
+
+message AreaInfo {
+  string areaId = 1;
+  string name = 2;
+  string description = 3;
+  string createdAt = 4;
+  string updatedAt = 5;
 }
 
 message UsersListResponse {

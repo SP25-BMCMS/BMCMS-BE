@@ -21,7 +21,11 @@ export class AreasController {
 
   @MessagePattern(AREAS_PATTERN.GET_BY_ID)
   async getAreaById(@Payload() payload: { areaId: string }) {
-    return this.areasService.getAreaById(payload.areaId);
+    console.log('AreasController received request for area:', payload.areaId);
+    console.log('Full payload:', payload);
+    const result = await this.areasService.getAreaById(payload.areaId);
+    console.log('AreasController returning result:', result);
+    return result;
   }
 
   @MessagePattern(AREAS_PATTERN.UPDATE)

@@ -111,7 +111,7 @@ export class AreasService {
   // Get area by ID
   async getAreaById(areaId: string) {
     try {
-      console.log('Searching for area with ID:', areaId);
+      console.log('AreasService searching for area with ID:', areaId);
       const area = await this.prismaClient.area.findUnique({
         where: { areaId },
         include: {
@@ -119,21 +119,23 @@ export class AreasService {
         }
       });
 
-      console.log('Found area:', area);
+      console.log('AreasService found area:', area);
 
       if (!area) {
+        console.log('AreasService: Area not found');
         return {
           statusCode: 404,
           message: 'Area not found',
         };
       }
+      console.log('AreasService: Returning area data');
       return {
         statusCode: 200,
         message: 'Area retrieved successfully',
         data: area,
       };
     } catch (error) {
-      console.error('Error in getAreaById:', error);
+      console.error('AreasService Error in getAreaById:', error);
       throw new RpcException({
         statusCode: 500,
         message: 'Error retrieving area',

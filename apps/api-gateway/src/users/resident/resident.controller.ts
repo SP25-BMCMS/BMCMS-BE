@@ -1,30 +1,40 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards, HttpStatus, HttpCode, NotFoundException } from '@nestjs/common';
 import { ResidentService } from './resident.service';
 
 @Controller('resident')
 export class ResidentController {
-  constructor(private residentService: ResidentService) {}
+    constructor(private residentService: ResidentService) { }
 
-  // @UseGuards(PassportJwtAuthGuard, RolesGuard)
-  @Get('all-residents')
-  // @Roles(Role.Admin)
-  getAllResidents() {
-    return this.residentService.getAllResidents();
-  }
+    // @UseGuards(PassportJwtAuthGuard, RolesGuard)
+    @Get('all-residents')
+    // @Roles(Role.Admin)
+    getAllResidents() {
+        return this.residentService.getAllResidents();
+    }
 
-  @Get(':residentId/apartments')
-  getApartmentsByResidentId(@Param('residentId') residentId: string) {
-    return this.residentService.getApartmentsByResidentId(residentId);
-  }
+    @Get(':residentId/apartments')
+    @HttpCode(HttpStatus.OK)
+    async getApartmentsByResidentId(@Param('residentId') residentId: string) {
+        const response = await this.residentService.getApartmentsByResidentId(residentId);
+        if (!response.isSuccess) {
+            throw new NotFoundException(response.message);
+        }
+        return response;
+    }
 
-  @Get(':residentId/apartments/:apartmentId')
-  getApartmentByResidentAndApartmentId(
-    @Param('residentId') residentId: string,
-    @Param('apartmentId') apartmentId: string,
-  ) {
-    return this.residentService.getApartmentByResidentAndApartmentId(
-      residentId,
-      apartmentId,
-    );
-  }
+    @Get(':residentId/apartments/:apartmentId')
+    @HttpCode(HttpStatus.OK)
+    async getApartmentByResidentAndApartmentId(
+        @Param('residentId') residentId: string,
+        @Param('apartmentId') apartmentId: string,
+    ) {
+        const response = await this.residentService.getApartmentByResidentAndApartmentId(
+            residentId,
+            apartmentId,
+        );
+        if (!response.isSuccess) {
+            throw new NotFoundException(response.message);
+        }
+        return response;
+    }
 }
