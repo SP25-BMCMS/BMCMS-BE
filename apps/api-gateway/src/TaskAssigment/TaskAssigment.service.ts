@@ -1,10 +1,10 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common'
-import { ClientProxy, RpcException } from '@nestjs/microservices'
-import { TASK_CLIENT } from '../constraints'
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
+import { TASK_CLIENT } from '../constraints';
 import { TASKASSIGNMENT_PATTERN } from 'libs/contracts/src/taskAssigment/taskAssigment.patterns';
 import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create-taskAssigment.dto';
 import { UpdateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/update.taskAssigment';
-import {AssignmentStatus} from '@prisma/client-Task'
+import { AssignmentStatus } from '@prisma/client-Task';
 import { firstValueFrom } from 'rxjs';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 
@@ -16,7 +16,10 @@ export class TaskAssignmentService {
   async createTaskAssignment(createTaskAssignmentDto: CreateTaskAssignmentDto) {
     try {
       return await firstValueFrom(
-        this.taskClient.send(TASKASSIGNMENT_PATTERN.CREATE, createTaskAssignmentDto)
+        this.taskClient.send(
+          TASKASSIGNMENT_PATTERN.CREATE,
+          createTaskAssignmentDto,
+        ),
       );
     } catch (error) {
       throw new RpcException({
@@ -27,10 +30,16 @@ export class TaskAssignmentService {
   }
 
   // Update Task Assignment
-  async updateTaskAssignment(taskAssignmentId: string, updateTaskAssignmentDto: UpdateTaskAssignmentDto) {
+  async updateTaskAssignment(
+    taskAssignmentId: string,
+    updateTaskAssignmentDto: UpdateTaskAssignmentDto,
+  ) {
     try {
       return await firstValueFrom(
-        this.taskClient.send(TASKASSIGNMENT_PATTERN.UPDATE, { id: taskAssignmentId, ...updateTaskAssignmentDto })
+        this.taskClient.send(TASKASSIGNMENT_PATTERN.UPDATE, {
+          id: taskAssignmentId,
+          ...updateTaskAssignmentDto,
+        }),
       );
     } catch (error) {
       throw new RpcException({
@@ -43,7 +52,9 @@ export class TaskAssignmentService {
   // Delete Task Assignment (Change status to 'notcompleted')
   async deleteTaskAssignment(taskAssignmentId: string) {
     try {
-      return await this.taskClient.send(TASKASSIGNMENT_PATTERN.DELELTE, { taskAssignmentId });
+      return await this.taskClient.send(TASKASSIGNMENT_PATTERN.DELELTE, {
+        taskAssignmentId,
+      });
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
@@ -55,7 +66,9 @@ export class TaskAssignmentService {
   // Get Task Assignments by User ID
   async getTaskAssignmentByUserId(userId: string) {
     try {
-      return await this.taskClient.send(TASKASSIGNMENT_PATTERN.GET_BY_USERID, { userId });
+      return await this.taskClient.send(TASKASSIGNMENT_PATTERN.GET_BY_USERID, {
+        userId,
+      });
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
@@ -68,7 +81,9 @@ export class TaskAssignmentService {
   async getTaskAssignmentById(taskAssignmentId: string) {
     try {
       return await firstValueFrom(
-        this.taskClient.send(TASKASSIGNMENT_PATTERN.GET_BY_TASKID, { assignment_id: taskAssignmentId })
+        this.taskClient.send(TASKASSIGNMENT_PATTERN.GET_BY_TASKID, {
+          assignment_id: taskAssignmentId,
+        }),
       );
     } catch (error) {
       throw new RpcException({
@@ -82,7 +97,7 @@ export class TaskAssignmentService {
   async getAllTaskAssignments(paginationParams: PaginationParams) {
     try {
       return await firstValueFrom(
-        this.taskClient.send(TASKASSIGNMENT_PATTERN.GET, paginationParams)
+        this.taskClient.send(TASKASSIGNMENT_PATTERN.GET, paginationParams),
       );
     } catch (error) {
       console.error('Error in getAllTaskAssignments:', error);
@@ -91,9 +106,15 @@ export class TaskAssignmentService {
   }
 
   // Reassign Task Assignment
-  async reassignTaskAssignment(taskAssignmentId: string, newEmployeeId: string) {
+  async reassignTaskAssignment(
+    taskAssignmentId: string,
+    newEmployeeId: string,
+  ) {
     try {
-      return await this.taskClient.send(TASKASSIGNMENT_PATTERN.REASSIGN, { taskAssignmentId, newEmployeeId });
+      return await this.taskClient.send(TASKASSIGNMENT_PATTERN.REASSIGN, {
+        taskAssignmentId,
+        newEmployeeId,
+      });
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
@@ -105,7 +126,9 @@ export class TaskAssignmentService {
   // Get Task Assignments by Status
   async getTaskAssignmentsByStatus(status: AssignmentStatus) {
     try {
-      return await this.taskClient.send(TASKASSIGNMENT_PATTERN.GET_BY_STATUS, { status });
+      return await this.taskClient.send(TASKASSIGNMENT_PATTERN.GET_BY_STATUS, {
+        status,
+      });
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
@@ -116,7 +139,9 @@ export class TaskAssignmentService {
 
   async getTaskAssignmentsByTaskId(taskId: string) {
     return await firstValueFrom(
-      this.taskClient.send(TASKASSIGNMENT_PATTERN.GET_BY_TASKID, { task_id: taskId })
+      this.taskClient.send(TASKASSIGNMENT_PATTERN.GET_BY_TASKID, {
+        task_id: taskId,
+      }),
     );
   }
 }

@@ -4,8 +4,8 @@ import { InspectionsController } from './Inspections.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-    imports: [PrismaModule],
+  imports: [PrismaModule],
   providers: [InspectionsService],
-  controllers: [InspectionsController]
+  controllers: [InspectionsController],
 })
 export class InspectionsModule {}

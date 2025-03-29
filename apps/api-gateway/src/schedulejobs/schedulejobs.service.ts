@@ -24,10 +24,17 @@ import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 // import { catchError, firstValueFrom } from 'rxjs'
 @Injectable()
 export class schedulejobsService {
-  constructor(@Inject(SCHEDULE_CLIENT) private readonly scheduleJobClient: ClientProxy) {}
-  async createScheduleJob(createScheduleJobDto: CreateScheduleJobDto) : Promise<any>{
+  constructor(
+    @Inject(SCHEDULE_CLIENT) private readonly scheduleJobClient: ClientProxy,
+  ) {}
+  async createScheduleJob(
+    createScheduleJobDto: CreateScheduleJobDto,
+  ): Promise<any> {
     try {
-      return await this.scheduleJobClient.send(SCHEDULEJOB_PATTERN.CREATE, createScheduleJobDto);
+      return await this.scheduleJobClient.send(
+        SCHEDULEJOB_PATTERN.CREATE,
+        createScheduleJobDto,
+      );
     } catch (error) {
       throw new HttpException(
         'Error occurred while creating schedule job',
@@ -39,7 +46,10 @@ export class schedulejobsService {
   // Get all Schedule Jobs (Microservice)
   async getAllScheduleJobs(paginationParams?: PaginationParams): Promise<any> {
     try {
-      return await this.scheduleJobClient.send(SCHEDULEJOB_PATTERN.GET, paginationParams || {});
+      return await this.scheduleJobClient.send(
+        SCHEDULEJOB_PATTERN.GET,
+        paginationParams || {},
+      );
     } catch (error) {
       throw new HttpException(
         'Error occurred while fetching all schedule jobs',
@@ -51,7 +61,9 @@ export class schedulejobsService {
   // Get Schedule Job by ID (Microservice)
   async getScheduleJobById(schedule_job_id: string): Promise<any> {
     try {
-      return await this.scheduleJobClient.send(SCHEDULEJOB_PATTERN.GET_BY_ID, { schedule_job_id });
+      return await this.scheduleJobClient.send(SCHEDULEJOB_PATTERN.GET_BY_ID, {
+        schedule_job_id,
+      });
     } catch (error) {
       throw new HttpException(
         'Error occurred while fetching schedule job by ID',
@@ -61,23 +73,28 @@ export class schedulejobsService {
   }
 
   // Update Schedule Job Status (Microservice)
-  async updateScheduleJobStatus(schedulejobs_id: string,
+  async updateScheduleJobStatus(
+    schedulejobs_id: string,
     updateScheduleJobStatusDto: UpdateScheduleJobStatusDto,
   ): Promise<any> {
     try {
-      return await this.scheduleJobClient.send(SCHEDULEJOB_PATTERN.UPDATE_STATUS, {
-        schedulejobs_id,
-        ...updateScheduleJobStatusDto,
-      });
+      return await this.scheduleJobClient.send(
+        SCHEDULEJOB_PATTERN.UPDATE_STATUS,
+        {
+          schedulejobs_id,
+          ...updateScheduleJobStatusDto,
+        },
+      );
     } catch (error) {
       throw new HttpException(
         'Error occurred while updating schedule job status',
         HttpStatus.BAD_REQUEST,
       );
     }
-  }async updateScheduleJob(
+  }
+  async updateScheduleJob(
     schedule_job_id: string,
-    updateScheduleJobDto: UpdateScheduleJobDto
+    updateScheduleJobDto: UpdateScheduleJobDto,
   ): Promise<any> {
     try {
       // Sending the request to the microservice

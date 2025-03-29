@@ -4,9 +4,11 @@ import {
   Delete,
   Get,
   HttpCode,
-  HttpStatus, Inject,
+  HttpStatus,
+  Inject,
   NotFoundException,
-  Param, Patch,
+  Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -16,7 +18,14 @@ import {
 import { TaskService } from './Tasks.service';
 import { catchError, firstValueFrom, NotFoundError } from 'rxjs';
 import { UpdateTaskDto } from '@app/contracts/tasks/update.Task';
-import { ApiOperation, ApiParam, ApiTags, ApiResponse, ApiBody, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+  ApiResponse,
+  ApiBody,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { ChangeTaskStatusDto } from '@app/contracts/tasks/ChangeTaskStatus.Dto ';
 import { CreateTaskDto } from '@app/contracts/tasks/create-Task.dto';
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
@@ -29,15 +38,15 @@ import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 @Controller('tasks')
 @ApiTags('tasks')
 export class TaskController {
-  constructor(private readonly taskService: TaskService) { }
+  constructor(private readonly taskService: TaskService) {}
 
   @Post('task')
   @ApiOperation({ summary: 'Create a new task' })
   @ApiBody({ type: CreateTaskDto })
-  @ApiResponse({ 
-    status: 201, 
+  @ApiResponse({
+    status: 201,
     description: 'Task created successfully',
-    type: CreateTaskDto 
+    type: CreateTaskDto,
   })
   @ApiResponse({ status: 400, description: 'Bad request' })
   async createTask(@Body() createTaskDto: CreateTaskDto) {
@@ -97,19 +106,29 @@ export class TaskController {
   @Get('tasks')
   @ApiOperation({ summary: 'Get all tasks' })
   @ApiResponse({ status: 200, description: 'Returns all tasks' })
-  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (starting from 1)' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number (starting from 1)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Items per page',
+  })
   async getAllTasks(
     @Query('page') page?: number,
-    @Query('limit') limit?: number
+    @Query('limit') limit?: number,
   ) {
     try {
       // Create pagination params object
       const paginationParams: PaginationParams = {
         page: page ? parseInt(page.toString()) : 1,
-        limit: limit ? parseInt(limit.toString()) : 10
+        limit: limit ? parseInt(limit.toString()) : 10,
       };
-      
+
       return this.taskService.getAllTasks(paginationParams);
     } catch (error) {
       console.error('Error in getAllTasks controller:', error);
@@ -124,8 +143,6 @@ export class TaskController {
   async getTasksByStatus(@Param('status') status: string) {
     return this.taskService.getTasksByStatus(status);
   }
-
- 
 
   // @Post('repair-materials')
   // @ApiOperation({ summary: 'Create repair material' })

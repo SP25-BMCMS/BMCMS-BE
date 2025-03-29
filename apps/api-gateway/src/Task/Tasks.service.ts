@@ -22,7 +22,7 @@ import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 // import { catchError, firstValueFrom } from 'rxjs'
 @Injectable()
 export class TaskService {
-  constructor(@Inject(TASK_CLIENT) private readonly taskClient: ClientProxy) { }
+  constructor(@Inject(TASK_CLIENT) private readonly taskClient: ClientProxy) {}
 
   async createTask(createTaskDto: any) {
     try {
@@ -110,7 +110,6 @@ export class TaskService {
       );
     }
   }
-
 
   // async createRepairMaterial(createRepairMaterialDto: CreateRepairMaterialDto) {
   //   try {

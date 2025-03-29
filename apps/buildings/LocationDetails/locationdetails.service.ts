@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { Payload, RpcException } from '@nestjs/microservices';
-import { PrismaClient  } from '@prisma/client-building';
+import { PrismaClient } from '@prisma/client-building';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { CreateLocationDetailDto } from 'libs/contracts/src/LocationDetails/create-locationdetails.dto';
 import { UpdateLocationDetailDto } from 'libs/contracts/src/LocationDetails/update.locationdetails';
-import { PaginationParams, PaginationResponseDto } from '../../../libs/contracts/src/Pagination/pagination.dto';
+import {
+  PaginationParams,
+  PaginationResponseDto,
+} from '../../../libs/contracts/src/Pagination/pagination.dto';
 
 @Injectable()
 export class LocationDetailService {
@@ -23,12 +26,15 @@ export class LocationDetailService {
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'LocationDetail creation failed :' +error.message,
+        message: 'LocationDetail creation failed :' + error.message,
       });
     }
   }
 
-  async updateLocationDetail(locationDetailId: string, updateLocationDetailDto: UpdateLocationDetailDto) {
+  async updateLocationDetail(
+    locationDetailId: string,
+    updateLocationDetailDto: UpdateLocationDetailDto,
+  ) {
     try {
       const updatedLocationDetail = await this.prisma.locationDetail.update({
         where: { locationDetailId },
@@ -47,7 +53,9 @@ export class LocationDetailService {
     }
   }
 
-  async getAllLocationDetails(paginationParams: PaginationParams = { page: 1, limit: 10 }): Promise<PaginationResponseDto<any>> {
+  async getAllLocationDetails(
+    paginationParams: PaginationParams = { page: 1, limit: 10 },
+  ): Promise<PaginationResponseDto<any>> {
     try {
       const page = Number(paginationParams.page) || 1;
       const limit = Number(paginationParams.limit) || 10;
@@ -61,8 +69,8 @@ export class LocationDetailService {
         skip,
         take: limit,
         orderBy: {
-          createdAt: 'desc'
-        }
+          createdAt: 'desc',
+        },
       });
 
       const responseData = {
@@ -73,8 +81,8 @@ export class LocationDetailService {
           total,
           page,
           limit,
-          totalPages: Math.ceil(total / limit)
-        }
+          totalPages: Math.ceil(total / limit),
+        },
       };
 
       return responseData;
@@ -88,8 +96,8 @@ export class LocationDetailService {
           total: 0,
           page: Number(paginationParams.page) || 1,
           limit: Number(paginationParams.limit) || 10,
-          totalPages: 0
-        }
+          totalPages: 0,
+        },
       };
 
       return errorData;

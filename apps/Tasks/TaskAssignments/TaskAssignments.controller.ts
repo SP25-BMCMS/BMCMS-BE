@@ -4,19 +4,32 @@ import { TASKASSIGNMENT_PATTERN } from 'libs/contracts/src/taskAssigment/taskAss
 import { TaskAssignmentsService } from './TaskAssignments.service';
 import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create-taskAssigment.dto';
 import { UpdateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/update.taskAssigment';
-import { AssignmentStatus } from '@prisma/client-Task'
+import { AssignmentStatus } from '@prisma/client-Task';
 @Controller('task-assignments')
 export class TaskAssignmentsController {
-  constructor(private readonly taskAssignmentService: TaskAssignmentsService) { }
+  constructor(private readonly taskAssignmentService: TaskAssignmentsService) {}
 
   @MessagePattern(TASKASSIGNMENT_PATTERN.CREATE)
-  async createTaskAssignment(@Payload() createTaskAssignmentDto: CreateTaskAssignmentDto) {
-    return this.taskAssignmentService.createTaskAssignment(createTaskAssignmentDto);
+  async createTaskAssignment(
+    @Payload() createTaskAssignmentDto: CreateTaskAssignmentDto,
+  ) {
+    return this.taskAssignmentService.createTaskAssignment(
+      createTaskAssignmentDto,
+    );
   }
 
   @MessagePattern(TASKASSIGNMENT_PATTERN.UPDATE)
-  async updateTaskAssignment(@Payload() payload: { taskAssignmentId: string, updateTaskAssignmentDto: UpdateTaskAssignmentDto }) {
-    return this.taskAssignmentService.updateTaskAssignment(payload.taskAssignmentId, payload.updateTaskAssignmentDto);
+  async updateTaskAssignment(
+    @Payload()
+    payload: {
+      taskAssignmentId: string;
+      updateTaskAssignmentDto: UpdateTaskAssignmentDto;
+    },
+  ) {
+    return this.taskAssignmentService.updateTaskAssignment(
+      payload.taskAssignmentId,
+      payload.updateTaskAssignmentDto,
+    );
   }
 
   // @MessagePattern(TASKASSIGNMENT_PATTERN.DELELTE)
@@ -30,8 +43,12 @@ export class TaskAssignmentsController {
   }
 
   @MessagePattern(TASKASSIGNMENT_PATTERN.GET_BY_TASKID)
-  async getTaskAssignmentById(@Payload() payload: { taskAssignmentId: string }) {
-    return this.taskAssignmentService.getTaskAssignmentById(payload.taskAssignmentId);
+  async getTaskAssignmentById(
+    @Payload() payload: { taskAssignmentId: string },
+  ) {
+    return this.taskAssignmentService.getTaskAssignmentById(
+      payload.taskAssignmentId,
+    );
   }
 
   @MessagePattern(TASKASSIGNMENT_PATTERN.GET)
@@ -40,12 +57,19 @@ export class TaskAssignmentsController {
   }
 
   @MessagePattern(TASKASSIGNMENT_PATTERN.REASSIGN)
-  async reassignTaskAssignment(@Payload() payload: { taskAssignmentId: string, newEmployeeId: string }) {
-    return this.taskAssignmentService.reassignTaskAssignment(payload.taskAssignmentId, payload.newEmployeeId);
+  async reassignTaskAssignment(
+    @Payload() payload: { taskAssignmentId: string; newEmployeeId: string },
+  ) {
+    return this.taskAssignmentService.reassignTaskAssignment(
+      payload.taskAssignmentId,
+      payload.newEmployeeId,
+    );
   }
 
   @MessagePattern(TASKASSIGNMENT_PATTERN.GET_BY_STATUS)
-  async getTaskAssignmentByStatus(@Payload() payload: { status: AssignmentStatus }) {
+  async getTaskAssignmentByStatus(
+    @Payload() payload: { status: AssignmentStatus },
+  ) {
     return this.taskAssignmentService.getTaskAssignmentByStatus(payload.status);
   }
 }

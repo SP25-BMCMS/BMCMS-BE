@@ -21,21 +21,33 @@ import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules';
 import { $Enums } from '@prisma/client-Schedule';
 import { ChangeScheduleTypeDto } from '@app/contracts/schedules/changeScheduleStatusDto ';
-import { ApiTags, ApiOperation, ApiResponse as SwaggerResponse, ApiParam, ApiBody, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse as SwaggerResponse,
+  ApiParam,
+  ApiBody,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 
 @Controller('schedules')
 @ApiTags('schedules')
 export class SchedulesController {
-  constructor(private readonly schedulesService: SchedulesService) { }
+  constructor(private readonly schedulesService: SchedulesService) {}
 
   // Create schedule
   @Post()
   @ApiOperation({ summary: 'Create a new schedule' })
   @ApiBody({ type: CreateScheduleDto })
-  @SwaggerResponse({ status: 201, description: 'Schedule created successfully' })
+  @SwaggerResponse({
+    status: 201,
+    description: 'Schedule created successfully',
+  })
   @SwaggerResponse({ status: 400, description: 'Bad request' })
-  async createSchedule(@Body() createScheduleDto: CreateScheduleDto): Promise<ApiResponse<ScheduleResponseDto>> {
+  async createSchedule(
+    @Body() createScheduleDto: CreateScheduleDto,
+  ): Promise<ApiResponse<ScheduleResponseDto>> {
     return this.schedulesService.createSchedule(createScheduleDto);
   }
 
@@ -44,7 +56,10 @@ export class SchedulesController {
   @ApiOperation({ summary: 'Update a schedule' })
   @ApiParam({ name: 'schedule_id', description: 'Schedule ID' })
   @ApiBody({ type: UpdateScheduleDto })
-  @SwaggerResponse({ status: 200, description: 'Schedule updated successfully' })
+  @SwaggerResponse({
+    status: 200,
+    description: 'Schedule updated successfully',
+  })
   @SwaggerResponse({ status: 404, description: 'Schedule not found' })
   async updateSchedule(
     @Param('schedule_id') schedule_id: string,
@@ -58,32 +73,48 @@ export class SchedulesController {
   @ApiOperation({ summary: 'Change schedule type' })
   @ApiParam({ name: 'schedule_id', description: 'Schedule ID' })
   @ApiBody({ type: ChangeScheduleTypeDto })
-  @SwaggerResponse({ status: 200, description: 'Schedule type changed successfully' })
+  @SwaggerResponse({
+    status: 200,
+    description: 'Schedule type changed successfully',
+  })
   @SwaggerResponse({ status: 404, description: 'Schedule not found' })
   async changeScheduleType(
     @Param('schedule_id') schedule_id: string,
     @Body() changeScheduleTypeDto: ChangeScheduleTypeDto,
   ): Promise<ApiResponse<ScheduleResponseDto>> {
-    return this.schedulesService.changeScheduleType(schedule_id, changeScheduleTypeDto.schedule_type);
+    return this.schedulesService.changeScheduleType(
+      schedule_id,
+      changeScheduleTypeDto.schedule_type,
+    );
   }
 
   // Get all schedules
   @Get()
   @ApiOperation({ summary: 'Get all schedules' })
   @SwaggerResponse({ status: 200, description: 'Returns all schedules' })
-  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (starting from 1)' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number (starting from 1)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Items per page',
+  })
   async getAllSchedules(
     @Query('page') page?: number,
-    @Query('limit') limit?: number
+    @Query('limit') limit?: number,
   ): Promise<any> {
     try {
       // Create pagination params object
       const paginationParams: PaginationParams = {
         page: page ? parseInt(page.toString()) : 1,
-        limit: limit ? parseInt(limit.toString()) : 10
+        limit: limit ? parseInt(limit.toString()) : 10,
       };
-      
+
       return this.schedulesService.getAllSchedules(paginationParams);
     } catch (error) {
       console.error('Error in getAllSchedules controller:', error);
@@ -97,7 +128,9 @@ export class SchedulesController {
   @ApiParam({ name: 'schedule_id', description: 'Schedule ID' })
   @SwaggerResponse({ status: 200, description: 'Schedule found' })
   @SwaggerResponse({ status: 404, description: 'Schedule not found' })
-  async getScheduleById(@Param('schedule_id') schedule_id: string): Promise<ApiResponse<ScheduleResponseDto>> {
+  async getScheduleById(
+    @Param('schedule_id') schedule_id: string,
+  ): Promise<ApiResponse<ScheduleResponseDto>> {
     return this.schedulesService.getScheduleById(schedule_id);
   }
 }

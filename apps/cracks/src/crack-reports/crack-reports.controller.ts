@@ -1,27 +1,42 @@
-import { Controller, Inject } from '@nestjs/common'
-import { ClientProxy, Ctx, MessagePattern, Payload, RmqContext, RpcException } from '@nestjs/microservices'
-import { $Enums } from '@prisma/client-cracks'
-import { ApiResponse } from 'libs/contracts/src/ApiReponse/api-response'
-import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto'
-import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto'
-import { CrackReportsService } from './crack-reports.service'
+import { Controller, Inject } from '@nestjs/common';
+import {
+  ClientProxy,
+  Ctx,
+  MessagePattern,
+  Payload,
+  RmqContext,
+  RpcException,
+} from '@nestjs/microservices';
+import { $Enums } from '@prisma/client-cracks';
+import { ApiResponse } from 'libs/contracts/src/ApiReponse/api-response';
+import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto';
+import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
+import { CrackReportsService } from './crack-reports.service';
 
 @Controller()
 export class CrackReportsController {
   constructor(
     private readonly crackReportsService: CrackReportsService,
-    @Inject('TASK_SERVICE') private readonly taskClient: ClientProxy
-  ) { }
+    @Inject('TASK_SERVICE') private readonly taskClient: ClientProxy,
+  ) {}
 
   @MessagePattern({ cmd: 'get-all-crack-report' })
-  async getAllCrackReports(@Payload() data: { 
-    page?: number, 
-    limit?: number, 
-    search?: string, 
-    severityFilter?: $Enums.Severity 
-  }) {
+  async getAllCrackReports(
+    @Payload()
+    data: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      severityFilter?: $Enums.Severity;
+    },
+  ) {
     const { page = 1, limit = 10, search = '', severityFilter } = data;
-    return await this.crackReportsService.getAllCrackReports(page, limit, search, severityFilter);
+    return await this.crackReportsService.getAllCrackReports(
+      page,
+      limit,
+      search,
+      severityFilter,
+    );
   }
 
   @MessagePattern({ cmd: 'get-crack-report-by-id' })
@@ -32,22 +47,28 @@ export class CrackReportsController {
   @MessagePattern({ cmd: 'create-crack-report' })
   async createCrackReport(
     @Payload() payload: { dto: AddCrackReportDto; userId: string },
-    @Ctx() context: RmqContext
+    @Ctx() context: RmqContext,
   ) {
     console.log('📩 Payload nhận được:', payload); // ✅ Debug xem có userId không
     const { dto, userId } = payload;
 
     if (!userId) {
-      throw new RpcException(new ApiResponse(false, 'Lỗi: Không tìm thấy userId trong token'));
+      throw new RpcException(
+        new ApiResponse(false, 'Lỗi: Không tìm thấy userId trong token'),
+      );
     }
 
     return await this.crackReportsService.addCrackReport(dto, userId);
   }
 
-
   @MessagePattern({ cmd: 'update-crack-report' })
-  async updateCrackReport(@Payload() data: { crackId: string; dto: UpdateCrackReportDto }) {
-    return await this.crackReportsService.updateCrackReport(data.crackId, data.dto);
+  async updateCrackReport(
+    @Payload() data: { crackId: string; dto: UpdateCrackReportDto },
+  ) {
+    return await this.crackReportsService.updateCrackReport(
+      data.crackId,
+      data.dto,
+    );
   }
 
   @MessagePattern({ cmd: 'delete-crack-report' })
@@ -57,7 +78,7 @@ export class CrackReportsController {
 
   @MessagePattern({ cmd: 'update-crack-report-status' })
   async updateCrackReportStatus(
-    @Payload() payload: { crackReportId: string; managerId: string }
+    @Payload() payload: { crackReportId: string; managerId: string },
   ) {
     return await this.crackReportsService.updateCrackReportStatus(
       payload.crackReportId,

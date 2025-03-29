@@ -9,10 +9,9 @@ import { schedulejobsModule } from '../schedulejob/schedulejob.module';
     ConfigModule.forRoot({ isGlobal: true }),
     ClientConfigModule,
     SchedulesModule,
-    schedulejobsModule
+    schedulejobsModule,
   ],
-  controllers: [
-  ],
+  controllers: [],
   providers: [],
 })
 export class ScheduleModule {}

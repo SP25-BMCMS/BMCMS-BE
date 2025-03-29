@@ -4,7 +4,10 @@ import { AssignmentStatus, PrismaClient } from '@prisma/client-Task';
 import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create-taskAssigment.dto';
 import { UpdateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/update.taskAssigment';
 import { PrismaService } from '../../users/prisma/prisma.service';
-import { PaginationParams, PaginationResponseDto } from '../../../libs/contracts/src/Pagination/pagination.dto';
+import {
+  PaginationParams,
+  PaginationResponseDto,
+} from '../../../libs/contracts/src/Pagination/pagination.dto';
 
 @Injectable()
 export class TaskAssignmentsService {
@@ -35,7 +38,10 @@ export class TaskAssignmentsService {
     }
   }
 
-  async updateTaskAssignment(taskAssignmentId: string, updateTaskAssignmentDto: UpdateTaskAssignmentDto) {
+  async updateTaskAssignment(
+    taskAssignmentId: string,
+    updateTaskAssignmentDto: UpdateTaskAssignmentDto,
+  ) {
     try {
       const updatedAssignment = await this.prisma.taskAssignment.update({
         where: { assignment_id: taskAssignmentId },
@@ -118,7 +124,9 @@ export class TaskAssignmentsService {
     }
   }
 
-  async getAllTaskAssignments(paginationParams: PaginationParams = { page: 1, limit: 10 }): Promise<PaginationResponseDto<any>> {
+  async getAllTaskAssignments(
+    paginationParams: PaginationParams = { page: 1, limit: 10 },
+  ): Promise<PaginationResponseDto<any>> {
     try {
       const page = Number(paginationParams.page) || 1;
       const limit = Number(paginationParams.limit) || 10;
@@ -133,11 +141,11 @@ export class TaskAssignmentsService {
         take: limit,
         include: {
           task: true,
-         // assignedTo: true
+          // assignedTo: true
         },
         orderBy: {
           //assignedAt: 'desc'
-        }
+        },
       });
 
       const responseData = {
@@ -148,8 +156,8 @@ export class TaskAssignmentsService {
           total,
           page,
           limit,
-          totalPages: Math.ceil(total / limit)
-        }
+          totalPages: Math.ceil(total / limit),
+        },
       };
 
       return responseData;
@@ -163,15 +171,18 @@ export class TaskAssignmentsService {
           total: 0,
           page: Number(paginationParams.page) || 1,
           limit: Number(paginationParams.limit) || 10,
-          totalPages: 0
-        }
+          totalPages: 0,
+        },
       };
 
       return errorData;
     }
   }
 
-  async reassignTaskAssignment(taskAssignmentId: string, newEmployeeId: string) {
+  async reassignTaskAssignment(
+    taskAssignmentId: string,
+    newEmployeeId: string,
+  ) {
     try {
       const updatedAssignment = await this.prisma.taskAssignment.update({
         where: { assignment_id: taskAssignmentId },
