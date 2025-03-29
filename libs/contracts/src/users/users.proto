@@ -24,6 +24,7 @@ service UserService {
   rpc UpdateAccountStatus (UpdateAccountStatusRequest) returns (UpdateAccountStatusResponse);
   rpc VerifyOtpAndCompleteSignup (VerifyOtpAndCompleteSignupRequest) returns (ApiResponseUser);
   rpc GetApartmentById (GetApartmentByIdRequest) returns (ApiResponseApartment);
+  rpc GetApartmentByResidentAndApartmentId(GetApartmentDetailRequest) returns (GetApartmentDetailsReponse);
 }
 message GetApartmentByIdRequest {
   string apartmentId = 1;
@@ -296,4 +297,15 @@ message VerifyOtpAndCompleteSignupRequest {
   string email = 1;
   string otp = 2;
   CreateUserRequest userData = 3;
+}
+
+message GetApartmentDetailRequest {
+  string residentId = 1;
+  string apartmentId = 2;
+}
+
+message GetApartmentDetailsReponse {
+  bool isSuccess = 1;
+  string message = 2;
+  Apartment data = 3;
 }

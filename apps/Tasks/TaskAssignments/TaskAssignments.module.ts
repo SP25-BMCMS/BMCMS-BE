@@ -4,8 +4,8 @@ import { TaskAssignmentsController } from './TaskAssignments.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-    imports: [PrismaModule],
+  imports: [PrismaModule],
   providers: [TaskAssignmentsService],
-  controllers: [TaskAssignmentsController]
+  controllers: [TaskAssignmentsController],
 })
 export class TaskAssignmentsModule {}

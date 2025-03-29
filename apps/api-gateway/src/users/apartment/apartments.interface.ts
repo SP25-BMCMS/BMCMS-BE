@@ -5,7 +5,5 @@ import { CreateWorkingPositionDto } from '../../../../../libs/contracts/src/user
 import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
 
 export interface UserInterface {
- 
   getApartmentById(data: { apartmentId: string }): Observable<any>;
-
 }

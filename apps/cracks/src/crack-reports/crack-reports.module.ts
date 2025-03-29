@@ -16,7 +16,9 @@ import { Transport } from '@nestjs/microservices';
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
-            urls: [`amqp://${configService.get('RABBITMQ_USER')}:${configService.get('RABBITMQ_PASSWORD')}@${configService.get('RABBITMQ_HOST')}`],
+            urls: [
+              `amqp://${configService.get('RABBITMQ_USER')}:${configService.get('RABBITMQ_PASSWORD')}@${configService.get('RABBITMQ_HOST')}`,
+            ],
             queue: configService.get('RABBITMQ_QUEUE_NAME'),
             queueOptions: {
               durable: true,
@@ -31,4 +33,4 @@ import { Transport } from '@nestjs/microservices';
   providers: [CrackReportsService, PrismaService], // Thêm TASK_SERVICE vào providers
   exports: [CrackReportsService], // Xuất CrackReportsService để các module khác có thể sử dụng
 })
-export class CrackReportsModule { }
+export class CrackReportsModule {}

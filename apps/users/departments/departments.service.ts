@@ -2,8 +2,6 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DepartmentsService {
-
-
   findAll() {
     return `This action returns all departments`;
   }
@@ -11,8 +9,6 @@ export class DepartmentsService {
   findOne(id: number) {
     return `This action returns a #${id} department`;
   }
-
-
 
   remove(id: number) {
     return `This action removes a #${id} department`;

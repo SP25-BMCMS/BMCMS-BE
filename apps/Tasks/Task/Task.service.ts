@@ -4,7 +4,10 @@ import { PrismaClient, Status } from '@prisma/client-Task';
 import { RpcException } from '@nestjs/microservices';
 import { CreateTaskDto } from 'libs/contracts/src/tasks/create-Task.dto';
 import { UpdateTaskDto } from 'libs/contracts/src/tasks/update.Task';
-import { PaginationParams, PaginationResponseDto } from 'libs/contracts/src/Pagination/pagination.dto';
+import {
+  PaginationParams,
+  PaginationResponseDto,
+} from 'libs/contracts/src/Pagination/pagination.dto';
 
 @Injectable()
 export class TaskService {
@@ -174,20 +177,20 @@ export class TaskService {
       // Default values if not provided
       const page = Math.max(1, paginationParams?.page || 1);
       const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10));
-      
+
       // Calculate skip value for pagination
       const skip = (page - 1) * limit;
-      
+
       // Get paginated data
       const [tasks, total] = await Promise.all([
         this.prisma.task.findMany({
           skip,
           take: limit,
-         // orderBy: { createdAt: 'desc' }
+          // orderBy: { createdAt: 'desc' }
         }),
-        this.prisma.task.count()
+        this.prisma.task.count(),
       ]);
-      
+
       // Use PaginationResponseDto for consistent response formatting
       return new PaginationResponseDto(
         tasks,
@@ -195,13 +198,13 @@ export class TaskService {
         page,
         limit,
         200,
-        tasks.length > 0 ? 'Tasks retrieved successfully' : 'No tasks found'
+        tasks.length > 0 ? 'Tasks retrieved successfully' : 'No tasks found',
       );
     } catch (error) {
       console.error('Error retrieving tasks:', error);
       throw new RpcException({
         statusCode: 500,
-        message: `Error retrieving tasks: ${error.message}`
+        message: `Error retrieving tasks: ${error.message}`,
       });
     }
   }

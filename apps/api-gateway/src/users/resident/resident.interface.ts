@@ -1,5 +1,5 @@
-import { Observable } from 'rxjs'
+import { Observable } from 'rxjs';
 
 export interface ResidentInterface {
-    getAllResidents({ }): Observable<any>
+  getAllResidents({}): Observable<any>;
 }

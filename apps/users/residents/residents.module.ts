@@ -26,20 +26,20 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
                 : [`amqp://${user}:${password}@rabbitmq:5672`],
               queue: 'buildings_queue',
               queueOptions: {
-                durable: true
+                durable: true,
               },
               socketOptions: {
                 heartbeatIntervalInSeconds: 5,
-                reconnectTimeInSeconds: 5
-              }
-            }
+                reconnectTimeInSeconds: 5,
+              },
+            },
           };
         },
-        inject: [ConfigService]
-      }
-    ])
+        inject: [ConfigService],
+      },
+    ]),
   ],
   controllers: [ResidentsController],
   providers: [ResidentsService],
 })
-export class ResidentsModule { }
+export class ResidentsModule {}

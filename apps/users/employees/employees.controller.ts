@@ -1,11 +1,19 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { EmployeesService } from './employees.service';
 import { GrpcMethod, Payload } from '@nestjs/microservices';
 import { PaginationParams } from '../../../libs/contracts/src/Pagination/pagination.dto';
 
 @Controller('employees')
 export class EmployeesController {
-  constructor(private readonly employeesService: EmployeesService) { }
+  constructor(private readonly employeesService: EmployeesService) {}
 
   @GrpcMethod('UserService', 'GetAllStaff')
   async getAllStaff(@Payload() paginationParams: PaginationParams = {}) {

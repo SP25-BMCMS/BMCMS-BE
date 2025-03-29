@@ -1,13 +1,11 @@
-import { Controller, Param } from '@nestjs/common';
-import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
-import { BuildingsService } from './buildings.service';
-import { UUID } from 'crypto';
-import { BUILDINGS_PATTERN } from 'libs/contracts/src/buildings/buildings.patterns';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
+import { Controller } from '@nestjs/common';
+import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
+import { BUILDINGS_PATTERN } from 'libs/contracts/src/buildings/buildings.patterns';
+import { BuildingsService } from './buildings.service';
 @Controller('buildings')
 export class BuildingsController {
-
-  constructor(private BuildingsService: BuildingsService) { }
+  constructor(private BuildingsService: BuildingsService) {}
 
   @MessagePattern(BUILDINGS_PATTERN.CREATE)
   async createBuilding(@Payload() data: any) {
@@ -24,14 +22,13 @@ export class BuildingsController {
     try {
       return await this.BuildingsService.readBuilding(paginationParams);
     } catch (error) {
-      console.error("Error in getAllBuildings:", error);
+      console.error('Error in getAllBuildings:', error);
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving buildings!'
+        message: 'Error retrieving buildings!',
       });
     }
   }
-
 
   @MessagePattern(BUILDINGS_PATTERN.UPDATE)
   updateBuilding(@Payload() data: any) {
@@ -44,7 +41,10 @@ export class BuildingsController {
   }
   @MessagePattern(BUILDINGS_PATTERN.GET_BY_ID)
   async getBuildingById(@Payload() payload: { buildingId: string }) {
-    console.log("🚀 ~ BuildingsController ~ getBuildingById ~ payload:", payload.buildingId)
+    console.log(
+      '🚀 ~ BuildingsController ~ getBuildingById ~ payload:',
+      payload.buildingId,
+    );
 
     return this.BuildingsService.getBuildingById(payload.buildingId);
   }
@@ -57,7 +57,10 @@ export class BuildingsController {
   @MessagePattern('check_area_exists') // 🟢 Đảm bảo có handler này
   async checkAreaExists(@Payload() data: { areaName: string }) {
     const area = await this.BuildingsService.checkAreaExists(data.areaName);
-    return { exists: !!area, message: area ? 'Area exists' : 'Area does not exist' };
+    return {
+      exists: !!area,
+      message: area ? 'Area exists' : 'Area does not exist',
+    };
   }
 
   @MessagePattern(BUILDINGS_PATTERN.CHECK_EXISTS)
@@ -69,17 +72,19 @@ export class BuildingsController {
         return {
           statusCode: 400,
           message: 'Building ID is required',
-          exists: false
+          exists: false,
         };
       }
 
-      const building = await this.BuildingsService.checkBuildingExists(data.buildingId);
+      const building = await this.BuildingsService.checkBuildingExists(
+        data.buildingId,
+      );
 
       if (!building) {
         return {
           statusCode: 404,
           message: `Building with ID ${data.buildingId} not found`,
-          exists: false
+          exists: false,
         };
       }
 
@@ -87,14 +92,14 @@ export class BuildingsController {
         statusCode: 200,
         message: 'Building exists',
         exists: true,
-        data: building
+        data: building,
       };
     } catch (error) {
       console.error('Error in checkBuildingExists:', error);
       return {
         statusCode: 500,
         message: 'Error checking building existence',
-        exists: false
+        exists: false,
       };
     }
   }

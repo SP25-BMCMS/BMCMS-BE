@@ -1,11 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { Payload, RpcException } from '@nestjs/microservices';
-import { PrismaClient  } from '@prisma/client-building';
+import { PrismaClient } from '@prisma/client-building';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { CreateBuildingDetailDto } from 'libs/contracts/src/BuildingDetails/create-buildingdetails.dto';
 import { UpdateBuildingDetailDto } from 'libs/contracts/src/BuildingDetails/update.buildingdetails';
 import { PrismaService } from '../../users/prisma/prisma.service';
-import { PaginationParams, PaginationResponseDto } from '../../../libs/contracts/src/Pagination/pagination.dto';
+import {
+  PaginationParams,
+  PaginationResponseDto,
+} from '../../../libs/contracts/src/Pagination/pagination.dto';
 
 @Injectable()
 export class BuildingDetailsService {
@@ -18,11 +21,11 @@ export class BuildingDetailsService {
       const newBuildingDetail = await this.prisma.buildingDetail.create({
         data: {
           name: createBuildingDetailDto.name,
-        //  description: createBuildingDetailDto.description,
-        total_apartments: createBuildingDetailDto.floorNumber,
+          //  description: createBuildingDetailDto.description,
+          total_apartments: createBuildingDetailDto.floorNumber,
           buildingId: createBuildingDetailDto.buildingId,
-         // areaType: createBuildingDetailDto.areaType,
-         // locationDetails: BuildingDetailDto.locationDetails,  // Nếu có dữ liệu locationDetails
+          // areaType: createBuildingDetailDto.areaType,
+          // locationDetails: BuildingDetailDto.locationDetails,  // Nếu có dữ liệu locationDetails
         },
       });
       return {
@@ -38,7 +41,9 @@ export class BuildingDetailsService {
     }
   }
 
-  async getAllBuildingDetails(paginationParams: PaginationParams = { page: 1, limit: 10 }): Promise<PaginationResponseDto<any>> {
+  async getAllBuildingDetails(
+    paginationParams: PaginationParams = { page: 1, limit: 10 },
+  ): Promise<PaginationResponseDto<any>> {
     try {
       const page = Number(paginationParams.page) || 1;
       const limit = Number(paginationParams.limit) || 10;
@@ -53,11 +58,11 @@ export class BuildingDetailsService {
         take: limit,
         include: {
           building: true,
-          locationDetails: true
+          locationDetails: true,
         },
         orderBy: {
-          createdAt: 'desc'
-        }
+          createdAt: 'desc',
+        },
       });
 
       const responseData = {
@@ -68,8 +73,8 @@ export class BuildingDetailsService {
           total,
           page,
           limit,
-          totalPages: Math.ceil(total / limit)
-        }
+          totalPages: Math.ceil(total / limit),
+        },
       };
 
       return responseData;
@@ -83,8 +88,8 @@ export class BuildingDetailsService {
           total: 0,
           page: Number(paginationParams.page) || 1,
           limit: Number(paginationParams.limit) || 10,
-          totalPages: 0
-        }
+          totalPages: 0,
+        },
       };
 
       return errorData;
@@ -115,17 +120,20 @@ export class BuildingDetailsService {
     }
   }
 
-  async updateBuildingDetail(buildingDetailId: string, updateBuildingDetailDto: UpdateBuildingDetailDto) {
+  async updateBuildingDetail(
+    buildingDetailId: string,
+    updateBuildingDetailDto: UpdateBuildingDetailDto,
+  ) {
     try {
       const updatedBuildingDetail = await this.prisma.buildingDetail.update({
         where: { buildingDetailId },
         data: {
           name: updateBuildingDetailDto.name,
-         // description: updateBuildingDetailDto.description,
-        //  floorNumber: updateBuildingDetailDto.floorNumber,
-//          buildingId: updateBuildingDetailDto.buildingId,
-        //  areaType: updateBuildingDetailDto.areaType,
-         // locationDetails: updateBuildingDetailDto.locationDetails, // Nếu có thay đổi locationDetails
+          // description: updateBuildingDetailDto.description,
+          //  floorNumber: updateBuildingDetailDto.floorNumber,
+          //          buildingId: updateBuildingDetailDto.buildingId,
+          //  areaType: updateBuildingDetailDto.areaType,
+          // locationDetails: updateBuildingDetailDto.locationDetails, // Nếu có thay đổi locationDetails
         },
       });
       return {
