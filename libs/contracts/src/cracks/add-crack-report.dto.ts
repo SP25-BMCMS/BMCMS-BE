@@ -1,34 +1,34 @@
 import { IsEnum, IsNotEmpty, IsString, IsUUID, ValidateNested, IsArray, IsOptional, IsBoolean } from 'class-validator';
-import { $Enums } from '@prisma/client-cracks';
-import { Type } from 'class-transformer';
-import { CreateCrackDetailDto } from './create-crack-detail.dto';
+import { Transform, Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { Severity } from '@prisma/client-cracks';
+import { $Enums } from '@prisma/client-cracks';
+
+export class CrackDetailDto {
+  @ApiProperty({ type: 'string', format: 'binary' })
+  @IsString()
+  @IsNotEmpty()
+  file: string; // Base64 string
+
+  @ApiProperty({ enum: Severity, required: false })
+  @IsOptional()
+  severity?: Severity;
+}
+
+// Define a custom type to handle multer files with base64 buffers
+export interface ProcessedFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  buffer: string | Buffer; // Can be string (base64) or Buffer
+  destination?: string;
+  filename?: string;
+  path?: string;
+}
 
 export class AddCrackReportDto {
-  // @IsUUID()
-  // @IsNotEmpty()
-  // buildingDetailId: string;
-
-  // @IsString()
-  // @IsNotEmpty()
-  // description: string;
-
-  // @IsBoolean()
-  // @IsNotEmpty()
-  // isPrivatesAsset: boolean;
-
-  // @IsString()
-  // @IsOptional()
-  // position?: string;
-
-  // @IsEnum($Enums.ReportStatus)
-  // @IsOptional()
-  // status?: $Enums.ReportStatus = $Enums.ReportStatus.Pending; // Mặc định Reported
-
-  // @IsArray()
-  // @ValidateNested({ each: true })
-  // @Type(() => CreateCrackDetailDto)
-  // crackDetails: CreateCrackDetailDto[];
   @IsUUID()
   @IsNotEmpty()
   @ApiProperty({
@@ -47,6 +47,11 @@ export class AddCrackReportDto {
 
   @IsBoolean()
   @IsNotEmpty()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @ApiProperty({
     description: 'Indicates whether the building asset is a private asset.',
     example: true,
@@ -57,41 +62,22 @@ export class AddCrackReportDto {
   @IsOptional()
   @ApiProperty({
     description: 'Position of the crack or asset in the building.',
-    example: 'Wall A',
+    example: 'rainbow/s106/15/left',
     required: false,
   })
   position?: string;
 
   @IsEnum($Enums.ReportStatus)
   @IsOptional()
-  @ApiProperty({
-    description: 'The status of the report.',
-    enum: $Enums.ReportStatus,
-    example: 'Pending'+'InProgress'+'InFixing'+'Reviewing'+'Rejected'+'Completed',
-    required: false,
-  })
   status?: $Enums.ReportStatus = $Enums.ReportStatus.Pending;
 
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => CreateCrackDetailDto)
   @ApiProperty({
-    description: 'Details of the cracks reported in the building.',
-    type: [CreateCrackDetailDto],
-    example: [
-      { crackType: 'Vertical', severity: 'High' },
-      { crackType: 'Horizontal', severity: 'Medium' },
-    ],
+    type: 'array',
+    items: {
+      type: 'string',
+      format: 'binary',
+    },
+    description: 'Array of crack images',
   })
-  crackDetails: CreateCrackDetailDto[];
-
-  @IsString()
-  @IsOptional()
-  @ApiProperty({
-    description: 'Cover image URL of the building (optional)',
-    type: String,
-    example: 'https://example.com/building-image.jpg',
-    required: false,
-  })
-  coverImageUrl?: string;
+  files: ProcessedFile[];
 }

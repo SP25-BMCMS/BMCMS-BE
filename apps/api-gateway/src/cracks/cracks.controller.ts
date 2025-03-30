@@ -44,7 +44,7 @@ import { CRACK_CLIENT } from '../constraints';
 export class CracksController {
   constructor(
     @Inject(CRACK_CLIENT) private readonly crackService: ClientProxy,
-  ) {}
+  ) { }
 
   @Get('crack-reports')
   @ApiOperation({
@@ -100,20 +100,128 @@ export class CracksController {
 
   @Post('crack-reports')
   @ApiOperation({ summary: 'Create a new crack report' })
-  @ApiBody({ type: AddCrackReportDto })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    type: AddCrackReportDto,
+    description: 'Create a new crack report with images',
+    schema: {
+      type: 'object',
+      properties: {
+        buildingDetailId: {
+          type: 'string',
+          example: 'c5fa23cc-86d4-4514-b4e5-3f9bce511c29',
+          description: 'The unique identifier of the building detail'
+        },
+        description: {
+          type: 'string',
+          example: 'Kiểm tra nứt tường',
+          description: 'Description of the crack report'
+        },
+        isPrivatesAsset: {
+          type: 'boolean',
+          example: false,
+          description: 'Indicates whether the building asset is a private asset'
+        },
+        position: {
+          type: 'string',
+          example: 'rainbow/s106/15/left',
+          description: 'Position of the crack or asset in the building'
+        },
+        files: {
+          type: 'array',
+          items: {
+            type: 'string',
+            format: 'binary',
+          },
+          description: 'Array of crack images',
+          example: ['file1.jpg', 'file2.jpg']
+        }
+      },
+      required: ['buildingDetailId', 'description', 'isPrivatesAsset', 'files']
+    }
+  })
   @ApiResponse({
     status: 201,
     description: 'Crack report created successfully',
+    schema: {
+      example: {
+        isSuccess: true,
+        message: 'Crack Report and Crack Details created successfully',
+        data: [{
+          crackReport: {
+            crackReportId: "uuid",
+            buildingDetailId: "c5fa23cc-86d4-4514-b4e5-3f9bce511c29",
+            description: "Kiểm tra nứt tường",
+            isPrivatesAsset: false,
+            position: "rainbow/s106/15/left",
+            status: "Pending",
+            reportedBy: "user-id",
+            verifiedBy: "123123123",
+            createdAt: "2024-03-21T10:00:00Z",
+            updatedAt: "2024-03-21T10:00:00Z"
+          },
+          crackDetails: [
+            {
+              crackDetailsId: "uuid",
+              crackReportId: "uuid",
+              photoUrl: "https://kane-20250314-bmcms.s3.amazonaws.com/uploads/26a19f85-74a4-418e-b0e7-79c118d20bd1.jpg",
+              severity: "Medium",
+              aiDetectionUrl: "https://kane-20250314-bmcms.s3.amazonaws.com/annotated/26a19f85-74a4-418e-b0e7-79c118d20bd1.jpg",
+              createdAt: "2024-03-21T10:00:00Z",
+              updatedAt: "2024-03-21T10:00:00Z"
+            }
+          ]
+        }]
+      }
+    }
   })
-  @ApiResponse({ status: 400, description: 'Bad request' })
-  async createCrackReport(@Body() dto: AddCrackReportDto, @Req() req) {
-    const userId = req.user.userId; // ✅ Lấy UserID từ token
+  @ApiResponse({
+    status: 400,
+    description: 'Bad request - Invalid position format or duplicate data',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: "Invalid position format. Expected format: 'area/building/floor/direction'",
+        error: "Bad Request"
+      }
+    }
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Building detail not found',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: "BuildingDetailId not found with id = c5fa23cc-86d4-4514-b4e5-3f9bce511c29",
+        error: "Not Found"
+      }
+    }
+  })
+  @UseInterceptors(FilesInterceptor('files', 10))
+  async createCrackReport(
+    @Body() dto: AddCrackReportDto,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Req() req
+  ) {
+    const userId = req.user.userId;
+
+    // Convert file buffers to base64 for transport over RabbitMQ
+    const processedFiles = files.map(file => ({
+      ...file,
+      buffer: file.buffer.toString('base64')
+    }));
+
+    dto.files = processedFiles;
 
     return firstValueFrom(
       this.crackService
         .send({ cmd: 'create-crack-report' }, { dto, userId })
         .pipe(
           catchError((err) => {
+            console.error('Error in API Gateway:', err);
+            if (err.status === 404) {
+              throw new NotFoundException(err.message);
+            }
             throw new BadRequestException(err.message);
           }),
         ),

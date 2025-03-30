@@ -8,11 +8,15 @@ import { Status } from '@prisma/client-Task';
 import { $Enums, Prisma, CrackReport } from '@prisma/client-cracks';
 import { ApiResponse } from 'libs/contracts/src/ApiReponse/api-response';
 import { TASKS_PATTERN } from 'libs/contracts/src/tasks/task.patterns';
+import { BUILDINGDETAIL_PATTERN } from 'libs/contracts/src/BuildingDetails/buildingdetails.patterns';
 import { firstValueFrom } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto';
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { S3UploaderService, UploadResult } from '../crack-details/s3-uploader.service';
+
+const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
 
 @Injectable()
 export class CrackReportsService {
@@ -21,7 +25,9 @@ export class CrackReportsService {
   constructor(
     private prismaService: PrismaService,
     @Inject('TASK_SERVICE') private readonly taskClient: ClientProxy,
+    @Inject(BUILDINGS_CLIENT) private readonly buildingClient: ClientProxy,
     private configService: ConfigService,
+    private s3UploaderService: S3UploaderService,
   ) {
     this.s3 = new S3Client({
       region: this.configService.get<string>('AWS_REGION'),
@@ -123,16 +129,48 @@ export class CrackReportsService {
   async addCrackReport(dto: AddCrackReportDto, userId: string) {
     try {
       return await this.prismaService.$transaction(async (prisma) => {
+        // Check if buildingDetailId exists
+        if (dto.buildingDetailId) {
+          try {
+            const buildingDetail = await firstValueFrom(
+              this.buildingClient
+                .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId: dto.buildingDetailId })
+                .pipe(
+                  catchError((error) => {
+                    console.error('Error checking building detail:', error);
+                    throw new RpcException({
+                      status: 404,
+                      message: 'BuildingDetailId not found with id = ' + dto.buildingDetailId
+                    });
+                  }),
+                ),
+            );
+
+            if (buildingDetail.statusCode === 404) {
+              throw new RpcException({
+                status: 404,
+                message: 'BuildingDetailId not found with id = ' + dto.buildingDetailId
+              });
+            }
+          } catch (error) {
+            if (error instanceof RpcException) {
+              throw error;
+            }
+            throw new RpcException({
+              status: 404,
+              message: 'BuildingDetailId not found with id = ' + dto.buildingDetailId
+            });
+          }
+        }
+
         // 🔹 Validate position format if isPrivatesAsset is false
         if (!dto.isPrivatesAsset) {
           const positionParts = dto.position?.split('/');
           if (!positionParts || positionParts.length !== 4) {
-            throw new RpcException(
-              new ApiResponse(
-                false,
-                `Invalid position format. Expected format: "area/building/floor/direction". Provided: ${dto.position}`,
-              ),
-            );
+            throw new RpcException({
+              status: 400,
+              message: `Invalid position format. Expected format: "area/building/floor/direction". Provided: ${dto.position}`
+            });
           }
           const [area, building, floor, direction] = positionParts;
           console.log(
@@ -157,15 +195,26 @@ export class CrackReportsService {
 
         // 🔹 2. Create CrackDetails if isPrivatesAsset is true
         let newCrackDetails = [];
-        if (dto.crackDetails?.length > 0) {
+        if (dto.files?.length > 0) {
+          // Upload files to S3
+          const uploadResult = await this.s3UploaderService.uploadFiles(dto.files);
+
+          if (!uploadResult.isSuccess) {
+            throw new RpcException({
+              status: 400,
+              message: uploadResult.message
+            });
+          }
+
+          // Create crack details with uploaded URLs
           newCrackDetails = await Promise.all(
-            dto.crackDetails.map(async (detail) => {
+            (uploadResult.data as UploadResult).uploadImage.map((photoUrl, index) => {
               return prisma.crackDetail.create({
                 data: {
                   crackReportId: newCrackReport.crackReportId,
-                  photoUrl: detail.photoUrl,
-                  severity: detail.severity ?? $Enums.Severity.Unknown,
-                  aiDetectionUrl: detail.aiDetectionUrl ?? detail.photoUrl,
+                  photoUrl: photoUrl,
+                  severity: $Enums.Severity.Medium, // Hardcode severity as Medium
+                  aiDetectionUrl: (uploadResult.data as UploadResult).annotatedImage[index],
                 },
               });
             }),
@@ -187,14 +236,18 @@ export class CrackReportsService {
         if (error.code === 'P2002') {
           throw new RpcException({
             status: 400,
-            message: 'Duplicate data error',
+            message: 'Duplicate data error'
           });
         }
       }
 
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
       throw new RpcException({
         status: 500,
-        message: 'System error, please try again later',
+        message: 'System error, please try again later'
       });
     }
   }

@@ -5,6 +5,12 @@ import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
 import { RpcException } from '@nestjs/microservices';
 import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
+import { ProcessedFile } from '../../../../libs/contracts/src/cracks/add-crack-report.dto';
+
+export interface UploadResult {
+  uploadImage: string[];
+  annotatedImage: string[];
+}
 
 @Injectable()
 export class S3UploaderService {
@@ -24,43 +30,53 @@ export class S3UploaderService {
     this.bucketName = this.configService.get<string>('AWS_S3_BUCKET');
   }
 
-  async uploadFiles(files: Express.Multer.File[]) {
+  async uploadFiles(files: ProcessedFile[]): Promise<ApiResponse<UploadResult>> {
     if (files.length === 0) {
       throw new RpcException(new ApiResponse(false, 'Files not found!'));
     }
 
-    // Upload ảnh gốc lên S3
-    const uploadPromises = files.map(async (file) => {
-      const fileName = `${uuidv4()}${path.extname(file.originalname)}`;
+    try {
+      // Upload ảnh gốc lên S3
+      const uploadPromises = files.map(async (file) => {
+        const fileName = `${uuidv4()}${path.extname(file.originalname)}`;
 
-      const uploadParams = {
-        Bucket: this.bucketName,
-        Key: `uploads/${fileName}`,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-      };
+        // Convert base64 string back to buffer if necessary
+        const fileBuffer = typeof file.buffer === 'string'
+          ? Buffer.from(file.buffer, 'base64')
+          : file.buffer;
 
-      await this.s3.send(new PutObjectCommand(uploadParams));
+        const uploadParams = {
+          Bucket: this.bucketName,
+          Key: `uploads/${fileName}`,
+          Body: fileBuffer,
+          ContentType: file.mimetype,
+        };
 
-      return fileName; // Chỉ lưu tên file
-    });
+        await this.s3.send(new PutObjectCommand(uploadParams));
 
-    // Chờ tất cả ảnh upload xong
-    const fileNames = await Promise.all(uploadPromises);
+        return fileName; // Chỉ lưu tên file
+      });
 
-    // Tạo URL cho ảnh gốc và ảnh đã annotate
-    const uploadImage = fileNames.map(
-      (fileName) =>
-        `https://${this.bucketName}.s3.amazonaws.com/uploads/${fileName}`,
-    );
-    const annotatedImage = fileNames.map(
-      (fileName) =>
-        `https://${this.bucketName}.s3.amazonaws.com/annotated/${fileName}`,
-    );
+      // Chờ tất cả ảnh upload xong
+      const fileNames = await Promise.all(uploadPromises);
 
-    return new ApiResponse(true, 'Upload Image success!', {
-      uploadImage,
-      annotatedImage,
-    });
+      // Tạo URL cho ảnh gốc và ảnh đã annotate
+      const uploadImage = fileNames.map(
+        (fileName) =>
+          `https://${this.bucketName}.s3.amazonaws.com/uploads/${fileName}`,
+      );
+      const annotatedImage = fileNames.map(
+        (fileName) =>
+          `https://${this.bucketName}.s3.amazonaws.com/annotated/${fileName}`,
+      );
+
+      return new ApiResponse(true, 'Upload Image success!', {
+        uploadImage,
+        annotatedImage,
+      });
+    } catch (error) {
+      console.error('Error uploading files to S3:', error);
+      throw new RpcException(new ApiResponse(false, 'Failed to upload files: ' + error.message));
+    }
   }
 }
