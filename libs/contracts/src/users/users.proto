@@ -192,6 +192,7 @@ message ResidentsListResponse {
 message PaginationRequest {
   int32 page = 1;
   int32 limit = 2;
+  string search = 3;
 }
 
 message PaginationResponse {

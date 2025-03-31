@@ -6,6 +6,10 @@ import { lastValueFrom } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 
+interface SearchPaginationParams extends PaginationParams {
+  search?: string;
+}
+
 @Injectable()
 export class ResidentService {
   private userService: UserInterface;
@@ -16,21 +20,20 @@ export class ResidentService {
     this.userService = this.client.getService<UserInterface>('UserService');
   }
 
-  async getAllResidents(paginationParams: PaginationParams) {
-    const { page, limit } = paginationParams;
-    console.log('API Gateway Service - Sending pagination parameters:', { page, limit });
+  async getAllResidents(paginationParams: SearchPaginationParams) {
+    const { page, limit, search } = paginationParams;
 
     // Ensure we're sending numbers, not undefined
     const params = {
       page: typeof page === 'number' ? page : 1,
-      limit: typeof limit === 'number' ? limit : 10
+      limit: typeof limit === 'number' ? limit : 10,
+      search: search || ''
     };
 
     const response = await lastValueFrom(
       this.userService.getAllResidents(params),
     );
 
-    console.log('API Gateway Service - Received pagination response:', response.pagination);
 
     return response;
   }

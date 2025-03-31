@@ -7,8 +7,7 @@ export class ResidentsController {
   constructor(private readonly residentsService: ResidentsService) { }
 
   @GrpcMethod('UserService', 'getAllResidents')
-  async getAllResidents(@Payload() paginationParams: { page?: number; limit?: number }) {
-    console.log('GRPC: getAllResidents called with pagination:', paginationParams);
+  async getAllResidents(@Payload() paginationParams: { page?: number; limit?: number; search?: string }) {
     const result = await this.residentsService.getAllResidents(paginationParams);
 
     // Kiểm tra xem có dữ liệu trả về không

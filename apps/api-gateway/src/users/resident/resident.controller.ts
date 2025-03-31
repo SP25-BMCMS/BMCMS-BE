@@ -16,12 +16,15 @@ export class ResidentController {
     @Get('all-residents')
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
+    @ApiQuery({ name: 'search', required: false, type: String, description: 'Tìm kiếm theo username, email hoặc phone' })
     // @Roles(Role.Admin)
     async getAllResidents(
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+        @Query('search') search?: string,
     ) {
-        const result = await this.residentService.getAllResidents({ page, limit });
+        console.log(`API Gateway Controller - Getting all residents with page: ${page}, limit: ${limit}, search: ${search || 'none'}`);
+        const result = await this.residentService.getAllResidents({ page, limit, search });
 
         return {
             success: result.success || true,

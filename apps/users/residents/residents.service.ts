@@ -71,25 +71,37 @@ export class ResidentsService {
     }
   }
 
-  async getAllResidents(paginationParams?: { page?: number; limit?: number }) {
+  async getAllResidents(paginationParams?: { page?: number; limit?: number; search?: string }) {
     try {
-      const { page = 1, limit = 10 } = paginationParams || {};
+      const { page = 1, limit = 10, search = '' } = paginationParams || {};
       const skip = (page - 1) * limit;
 
-      // Get total count for pagination
+      console.log(`Service - Getting residents with params - page: ${page}, limit: ${limit}, search: ${search || 'none'}, skip: ${skip}`);
+
+      // Tạo điều kiện tìm kiếm
+      const whereCondition: any = {
+        role: 'Resident'
+      };
+
+      // Nếu có từ khóa tìm kiếm
+      if (search && search.trim()) {
+        whereCondition.OR = [
+          { username: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { phone: { contains: search, mode: 'insensitive' } }
+        ];
+      }
+
+      // Get total count for pagination with search filter
       const totalCount = await this.prisma.user.count({
-        where: {
-          role: 'Resident'
-        }
+        where: whereCondition
       });
 
       const totalPages = Math.ceil(totalCount / limit);
 
-      // Get all users with Resident role with pagination
+      // Get all users with Resident role with pagination and search
       const residents = await this.prisma.user.findMany({
-        where: {
-          role: 'Resident'
-        },
+        where: whereCondition,
         select: {
           userId: true,
           username: true,
