@@ -10,7 +10,7 @@ service UserService {
   rpc Logout (Empty) returns (LogoutResponse);
   rpc Test (TestRequest) returns (TestResponse);
   rpc ValidateUser (LoginRequest) returns (UserResponse);
-  rpc GetAllResidents (Empty) returns (ResidentsListResponse);
+  rpc GetAllResidents (PaginationRequest) returns (ResidentsListResponse);
   rpc CreateWorkingPosition (CreateWorkingPositionRequest) returns (WorkingPositionApiResponse);
   rpc GetAllWorkingPositions (Empty) returns (WorkingPositionsListResponse);
   rpc GetWorkingPositionById (WorkingPositionByIdRequest) returns (WorkingPositionApiResponse);
@@ -18,10 +18,29 @@ service UserService {
   rpc DeleteWorkingPosition (WorkingPositionByIdRequest) returns (WorkingPositionApiResponse);
   rpc CreateDepartment (CreateDepartmentRequest) returns (DepartmentApiResponse);
   rpc GetAllStaff (Empty) returns (StaffListResponse);
-  rpc GetApartmentsByResidentId (GetApartmentsRequest) returns (GetApartmentsResponse);
+  rpc GetApartmentsByResidentId (GetApartmentsRequest) returns (GetApartmentByResidentIdResponse);
   rpc ResidentLogin (ResidentLoginRequest) returns (LoginResponse);
   rpc UpdateResidentApartments (UpdateResidentApartmentsRequest) returns (UpdateResidentApartmentsResponse);
   rpc UpdateAccountStatus (UpdateAccountStatusRequest) returns (UpdateAccountStatusResponse);
+  rpc VerifyOtpAndCompleteSignup (VerifyOtpAndCompleteSignupRequest) returns (ApiResponseUser);
+  rpc GetApartmentById (GetApartmentByIdRequest) returns (ApiResponseApartment);
+  rpc GetApartmentByResidentAndApartmentId(GetApartmentDetailRequest) returns (GetApartmentByResidentAndApartmentIdResponse);
+}
+message GetApartmentByIdRequest {
+  string apartmentId = 1;
+}
+
+
+message ApiResponseApartment {
+  bool isSuccess = 1;
+  string message = 2;
+  ApartmentDTO data = 3; // Dữ liệu trả về là một ApartmentDTO
+}
+message ApartmentDTO {
+  string apartmentId = 1;
+  string apartmentName = 2;
+  string buildingId = 3;
+  BuildingInfo building = 4; // Thông tin về tòa nhà
 }
 
 message CreateUserRequest {
@@ -42,7 +61,7 @@ message CreateUserRequest {
 
 message ApartmentRequest {
   string apartmentName = 1;
-  string buildingId = 2;
+  string buildingDetailId = 2;
 }
 
 message ApiResponseUser {
@@ -65,7 +84,7 @@ message UserResponse {
   string dateOfBirth = 6;
   string gender = 7;
   UserDetailsResponse userDetails = 8;
-  repeated ApartmentResponse apartments = 9;
+  repeated GetApartmentRepsonse apartments = 9;
   string accountStatus = 10;
 }
 
@@ -92,9 +111,10 @@ message DepartmentDetails {
 }
 
 message ApartmentResponse {
-  string apartmentName = 1;
-  string buildingId = 2;
-  BuildingInfo building = 3;
+  string apartmentId = 1;
+  string apartmentName = 2;
+  string buildingDetailId = 3;
+  BuildingDetailInfo buildingDetails = 4;
 }
 
 message BuildingInfo {
@@ -107,6 +127,51 @@ message BuildingInfo {
   string Status = 7;
   string construction_date = 8;
   string completion_date = 9;
+  AreaInfo area = 10;
+}
+
+message GetApartmentRepsonse {
+  string apartmentId = 1;
+  string apartmentName = 2;
+  BuildingDetailInfo buildingDetails = 3;
+}
+
+message GetApartmentByResidentIdResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  repeated GetApartmentRepsonse data = 3;
+}
+
+message GetApartmentByResidentAndApartmentIdResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  GetApartmentRepsonse data = 3;
+}
+
+message BuildingDetailInfo {
+  string buildingDetailId = 1;
+  string name = 2;
+  int32 total_apartments = 3;
+  BuildingInfo building = 4;
+}
+
+message LocationDetailInfo {
+  string locationDetailId = 1;
+  string roomNumber = 2;
+  int32 floorNumber = 3;
+  string positionSide = 4;
+  string areaType = 5;
+  string description = 6;
+  string createdAt = 7;
+  string updatedAt = 8;
+}
+
+message AreaInfo {
+  string areaId = 1;
+  string name = 2;
+  string description = 3;
+  string createdAt = 4;
+  string updatedAt = 5;
 }
 
 message UsersListResponse {
@@ -120,9 +185,23 @@ message ResidentResponse {
 }
 
 message ResidentsListResponse {
-  bool success = 1;
+  bool isSuccess = 1;
   string message = 2;
   repeated UserResponse data = 3;
+  PaginationResponse pagination = 4;
+}
+
+message PaginationRequest {
+  int32 page = 1;
+  int32 limit = 2;
+  string search = 3;
+}
+
+message PaginationResponse {
+  int32 total = 1;
+  int32 page = 2;
+  int32 limit = 3;
+  int32 totalPages = 4;
 }
 
 message LoginRequest {
@@ -228,15 +307,17 @@ message GetApartmentsRequest {
   string residentId = 1;
 }
 
+
 message Apartment {
   string apartmentName = 1;
-  string buildingId = 2;
+  string apartmentId = 2;
+  BuildingInfo building = 3;
 }
 
 message GetApartmentsResponse {
-  bool success = 1;
+  bool isSuccess = 1;
   string message = 2;
-  repeated Apartment data = 3;
+  repeated UserResponse data = 3;
 }
 
 message StaffListResponse {
@@ -271,3 +352,22 @@ message UpdateAccountStatusResponse {
   string message = 2;
   UserResponse data = 3;
 }
+
+message VerifyOtpAndCompleteSignupRequest {
+  string email = 1;
+  string otp = 2;
+  CreateUserRequest userData = 3;
+}
+
+message GetApartmentDetailRequest {
+  string residentId = 1;
+  string apartmentId = 2;
+}
+
+message GetApartmentDetailsReponse {
+  bool isSuccess = 1;
+  string message = 2;
+  Apartment data = 3;
+}
+
+

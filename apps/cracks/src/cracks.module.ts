@@ -14,4 +14,4 @@ import { CrackDetailsModule } from './crack-details/crack-details.module';
     PrismaModule,
   ],
 })
-export class CracksModule { }
+export class CracksModule {}

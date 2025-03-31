@@ -19,11 +19,13 @@ async function bootstrap() {
     credentials: true,
     allowedHeaders: 'Content-Type, Authorization',
   })
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-  }))
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  )
 
   app.useGlobalFilters(new HttpExceptionFilter())
   //  app.useGlobalFilters(new RpcToHttpExceptionFilter())
@@ -31,7 +33,9 @@ async function bootstrap() {
   //  await app.listen(process.env.port ?? 3000)
   const config = new DocumentBuilder()
     .setTitle('BMCMS - Building Management & Crack Monitoring System')
-    .setDescription('API for managing buildings, monitoring cracks, and handling maintenance tasks')
+    .setDescription(
+      'API for managing buildings, monitoring cracks, and handling maintenance tasks',
+    )
     .setVersion('1.0')
     .addBearerAuth(
       {
@@ -39,7 +43,7 @@ async function bootstrap() {
         scheme: 'bearer',
         bearerFormat: 'JWT',
         name: 'Authorization',
-        description: 'Enter JWT token',
+        description: 'Enter Bearer Token',
         in: 'header',
       },
       'access-token',
@@ -50,6 +54,7 @@ async function bootstrap() {
     .addTag('cracks', 'Crack monitoring endpoints')
     .addTag('tasks', 'Task management endpoints')
     .addTag('schedules', 'Schedule management endpoints')
+    .addTag('notifications', 'Notification management endpoints')
     .build()
 
   const document = SwaggerModule.createDocument(app, config)

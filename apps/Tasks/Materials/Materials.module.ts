@@ -4,8 +4,8 @@ import { MaterialsController } from './Materials.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-    imports: [PrismaModule],
+  imports: [PrismaModule],
   providers: [MaterialsService],
-  controllers: [MaterialsController]
+  controllers: [MaterialsController],
 })
 export class MaterialsModule {}

@@ -1,23 +1,32 @@
 import { Injectable } from '@nestjs/common';
 import { Payload, RpcException } from '@nestjs/microservices';
-import { PrismaClient  } from '@prisma/client-building';
+import { PrismaClient } from '@prisma/client-building';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { CreateBuildingDetailDto } from 'libs/contracts/src/BuildingDetails/create-buildingdetails.dto';
 import { UpdateBuildingDetailDto } from 'libs/contracts/src/BuildingDetails/update.buildingdetails';
+import { PrismaService } from '../../users/prisma/prisma.service';
+import {
+  PaginationParams,
+  PaginationResponseDto,
+} from '../../../libs/contracts/src/Pagination/pagination.dto';
+import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
+
 @Injectable()
 export class BuildingDetailsService {
   private prisma = new PrismaClient();
+
+  constructor(private prismaService: PrismaService) { }
 
   async createBuildingDetail(createBuildingDetailDto: CreateBuildingDetailDto) {
     try {
       const newBuildingDetail = await this.prisma.buildingDetail.create({
         data: {
           name: createBuildingDetailDto.name,
-        //  description: createBuildingDetailDto.description,
-        total_apartments: createBuildingDetailDto.floorNumber,
+          //  description: createBuildingDetailDto.description,
+          total_apartments: createBuildingDetailDto.floorNumber,
           buildingId: createBuildingDetailDto.buildingId,
-         // areaType: createBuildingDetailDto.areaType,
-         // locationDetails: BuildingDetailDto.locationDetails,  // Nếu có dữ liệu locationDetails
+          // areaType: createBuildingDetailDto.areaType,
+          // locationDetails: BuildingDetailDto.locationDetails,  // Nếu có dữ liệu locationDetails
         },
       });
       return {
@@ -33,39 +42,101 @@ export class BuildingDetailsService {
     }
   }
 
-  async getAllBuildingDetails() {
+  async getAllBuildingDetails(
+    paginationParams: PaginationParams = { page: 1, limit: 10 },
+  ): Promise<PaginationResponseDto<any>> {
     try {
-      const buildingDetails = await this.prisma.buildingDetail.findMany();
-      return {
-        statusCode: 200,
-        message: 'Building Details fetched successfully',
-        data: buildingDetails,
-      };
-    } catch (error) {
-      throw new RpcException({
-        statusCode: 500,
-        message: 'Error retrieving building details',
+      const page = Number(paginationParams.page) || 1;
+      const limit = Number(paginationParams.limit) || 10;
+      const skip = (page - 1) * limit;
+
+      // Get total count
+      const total = await this.prisma.buildingDetail.count();
+
+      // Get paginated building details
+      const buildingDetails = await this.prisma.buildingDetail.findMany({
+        skip,
+        take: limit,
+        include: {
+          building: true,
+          locationDetails: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
       });
+
+      const responseData = {
+        statusCode: 200,
+        message: 'Danh sách chi tiết tòa nhà',
+        data: buildingDetails,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+
+      return responseData;
+    } catch (error) {
+      console.error('Error in getAllBuildingDetails:', error);
+      const errorData = {
+        statusCode: 500,
+        message: error.message,
+        data: [],
+        pagination: {
+          total: 0,
+          page: Number(paginationParams.page) || 1,
+          limit: Number(paginationParams.limit) || 10,
+          totalPages: 0,
+        },
+      };
+
+      return errorData;
     }
   }
 
   async getBuildingDetailById(buildingDetailId: string) {
     try {
+      console.log(`Fetching building detail with ID: ${buildingDetailId}`);
+
       const buildingDetail = await this.prisma.buildingDetail.findUnique({
         where: { buildingDetailId },
+        include: {
+          building: {
+            include: {
+              area: true
+            }
+          },
+          //locationDetails: true
+        }
       });
+
       if (!buildingDetail) {
+        console.log(`Building detail not found for ID: ${buildingDetailId}`);
         return {
           statusCode: 404,
           message: 'Building Detail not found',
         };
       }
+
+      console.log(`Building detail found for ID: ${buildingDetailId}`);
+      console.log('Building information:', {
+        hasBuildingInfo: !!buildingDetail.building,
+        buildingId: buildingDetail.building?.buildingId,
+        hasAreaInfo: !!buildingDetail.building?.area,
+        areaId: buildingDetail.building?.area?.areaId,
+        // hasLocationDetails: Array.isArray(buildingDetail.locationDetails) ? buildingDetail.locationDetails.length : 0
+      });
+
       return {
         statusCode: 200,
         message: 'Building Detail retrieved successfully',
         data: buildingDetail,
       };
     } catch (error) {
+      console.error(`Error retrieving building detail ${buildingDetailId}:`, error);
       throw new RpcException({
         statusCode: 500,
         message: 'Error retrieving building detail',
@@ -73,17 +144,20 @@ export class BuildingDetailsService {
     }
   }
 
-  async updateBuildingDetail(buildingDetailId: string, updateBuildingDetailDto: UpdateBuildingDetailDto) {
+  async updateBuildingDetail(
+    buildingDetailId: string,
+    updateBuildingDetailDto: UpdateBuildingDetailDto,
+  ) {
     try {
       const updatedBuildingDetail = await this.prisma.buildingDetail.update({
         where: { buildingDetailId },
         data: {
           name: updateBuildingDetailDto.name,
-         // description: updateBuildingDetailDto.description,
-        //  floorNumber: updateBuildingDetailDto.floorNumber,
-//          buildingId: updateBuildingDetailDto.buildingId,
-        //  areaType: updateBuildingDetailDto.areaType,
-         // locationDetails: updateBuildingDetailDto.locationDetails, // Nếu có thay đổi locationDetails
+          // description: updateBuildingDetailDto.description,
+          //  floorNumber: updateBuildingDetailDto.floorNumber,
+          //          buildingId: updateBuildingDetailDto.buildingId,
+          //  areaType: updateBuildingDetailDto.areaType,
+          // locationDetails: updateBuildingDetailDto.locationDetails, // Nếu có thay đổi locationDetails
         },
       });
       return {
@@ -112,6 +186,42 @@ export class BuildingDetailsService {
       throw new RpcException({
         statusCode: 400,
         message: 'Building Detail deletion failed',
+      });
+    }
+  }
+
+  async checkBuildingDetailExists(buildingDetailId: string) {
+    try {
+      const buildingDetail = await this.prisma.buildingDetail.findUnique({
+        where: { buildingDetailId },
+        include: {
+          building: {
+            include: {
+              area: true
+            }
+          },
+          locationDetails: true
+        }
+      });
+
+      if (!buildingDetail) {
+        return {
+          statusCode: 404,
+          message: 'Building Detail not found',
+          exists: false
+        };
+      }
+
+      return {
+        statusCode: 200,
+        message: 'Building Detail exists',
+        exists: true,
+        data: buildingDetail,
+      };
+    } catch (error) {
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error checking building detail',
       });
     }
   }

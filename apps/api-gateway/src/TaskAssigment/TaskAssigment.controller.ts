@@ -1,22 +1,51 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, Post, Put, Req, UseGuards } from '@nestjs/common'
-import { TaskAssignmentService } from './TaskAssigment.service'
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  NotFoundException,
+  Param,
+  Post,
+  Put,
+  Req,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
+import { TaskAssignmentService } from './TaskAssigment.service';
 import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create-taskAssigment.dto';
 import { UpdateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/update.taskAssigment';
-import { AssignmentStatus } from '@prisma/client-Task'
-import { ApiBody, ApiOperation, ApiParam, ApiTags, ApiResponse } from '@nestjs/swagger';
+import { AssignmentStatus } from '@prisma/client-Task';
+import {
+  ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+  ApiResponse,
+  ApiQuery,
+} from '@nestjs/swagger';
+import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 
 @Controller('task-assignments')
 @ApiTags('task-assignments')
 export class TaskAssignmentController {
-  constructor(private readonly taskAssignmentService: TaskAssignmentService) { }
+  constructor(private readonly taskAssignmentService: TaskAssignmentService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new task assignment' })
   @ApiBody({ type: CreateTaskAssignmentDto })
-  @ApiResponse({ status: 201, description: 'Task assignment created successfully' })
+  @ApiResponse({
+    status: 201,
+    description: 'Task assignment created successfully',
+  })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  async createTaskAssignment(@Body() createTaskAssignmentDto: CreateTaskAssignmentDto) {
-    return this.taskAssignmentService.createTaskAssignment(createTaskAssignmentDto);
+  async createTaskAssignment(
+    @Body() createTaskAssignmentDto: CreateTaskAssignmentDto,
+  ) {
+    return this.taskAssignmentService.createTaskAssignment(
+      createTaskAssignmentDto,
+    );
   }
 
   // Update an existing Task Assignment
@@ -24,22 +53,33 @@ export class TaskAssignmentController {
   @ApiOperation({ summary: 'Update a task assignment' })
   @ApiParam({ name: 'taskAssignmentId', description: 'Task assignment ID' })
   @ApiBody({ type: UpdateTaskAssignmentDto })
-  @ApiResponse({ status: 200, description: 'Task assignment updated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Task assignment updated successfully',
+  })
   @ApiResponse({ status: 404, description: 'Task assignment not found' })
   async updateTaskAssignment(
     @Param('taskAssignmentId') taskAssignmentId: string,
     @Body() updateTaskAssignmentDto: UpdateTaskAssignmentDto,
   ) {
-    return this.taskAssignmentService.updateTaskAssignment(taskAssignmentId, updateTaskAssignmentDto);
+    return this.taskAssignmentService.updateTaskAssignment(
+      taskAssignmentId,
+      updateTaskAssignmentDto,
+    );
   }
 
   // Delete a Task Assignment (change status to 'notcompleted')
   @Delete(':taskAssignmentId')
   @ApiOperation({ summary: 'Delete a task assignment' })
   @ApiParam({ name: 'taskAssignmentId', description: 'Task assignment ID' })
-  @ApiResponse({ status: 200, description: 'Task assignment deleted successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Task assignment deleted successfully',
+  })
   @ApiResponse({ status: 404, description: 'Task assignment not found' })
-  async deleteTaskAssignment(@Param('taskAssignmentId') taskAssignmentId: string) {
+  async deleteTaskAssignment(
+    @Param('taskAssignmentId') taskAssignmentId: string,
+  ) {
     return this.taskAssignmentService.deleteTaskAssignment(taskAssignmentId);
   }
 
@@ -47,7 +87,10 @@ export class TaskAssignmentController {
   @Get('user/:userId')
   @ApiOperation({ summary: 'Get task assignments by user ID' })
   @ApiParam({ name: 'userId', description: 'User ID' })
-  @ApiResponse({ status: 200, description: 'Returns task assignments for the user' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns task assignments for the user',
+  })
   @ApiResponse({ status: 404, description: 'User not found' })
   async getTaskAssignmentByUserId(@Param('userId') userId: string) {
     return this.taskAssignmentService.getTaskAssignmentByUserId(userId);
@@ -59,16 +102,35 @@ export class TaskAssignmentController {
   @ApiParam({ name: 'taskAssignmentId', description: 'Task assignment ID' })
   @ApiResponse({ status: 200, description: 'Task assignment found' })
   @ApiResponse({ status: 404, description: 'Task assignment not found' })
-  async getTaskAssignmentById(@Param('taskAssignmentId') taskAssignmentId: string) {
+  async getTaskAssignmentById(
+    @Param('taskAssignmentId') taskAssignmentId: string,
+  ) {
     return this.taskAssignmentService.getTaskAssignmentById(taskAssignmentId);
   }
 
   // Get all Task Assignments
   @Get()
-  @ApiOperation({ summary: 'Get all task assignments' })
-  @ApiResponse({ status: 200, description: 'Returns all task assignments' })
-  async getAllTaskAssignments() {
-    return this.taskAssignmentService.getAllTaskAssignments();
+  @ApiOperation({ summary: 'Get all task assignments with pagination' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    example: 1,
+    description: 'Page number',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    example: 10,
+    description: 'Items per page',
+  })
+  async getAllTaskAssignments(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return await this.taskAssignmentService.getAllTaskAssignments({
+      page: Number(page) || 1,
+      limit: Number(limit) || 10,
+    });
   }
 
   // Reassign Task Assignment
@@ -79,18 +141,24 @@ export class TaskAssignmentController {
     schema: {
       type: 'object',
       properties: {
-        newEmployeeId: { type: 'string', example: '12345' }
+        newEmployeeId: { type: 'string', example: '12345' },
       },
-      required: ['newEmployeeId']
-    }
+      required: ['newEmployeeId'],
+    },
   })
-  @ApiResponse({ status: 200, description: 'Task assignment reassigned successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Task assignment reassigned successfully',
+  })
   @ApiResponse({ status: 404, description: 'Task assignment not found' })
   async reassignTaskAssignment(
     @Param('taskAssignmentId') taskAssignmentId: string,
     @Body() { newEmployeeId }: { newEmployeeId: string },
   ) {
-    return this.taskAssignmentService.reassignTaskAssignment(taskAssignmentId, newEmployeeId);
+    return this.taskAssignmentService.reassignTaskAssignment(
+      taskAssignmentId,
+      newEmployeeId,
+    );
   }
 
   // Get Task Assignments by Status
@@ -98,12 +166,103 @@ export class TaskAssignmentController {
   @ApiOperation({ summary: 'Get task assignments by status' })
   @ApiParam({
     name: 'status',
-    description: 'The status of the task assignment (e.g., "completed", "pending","inprogress","reassigned")',
+    description:
+      'The status of the task assignment (e.g., "completed", "pending","inprogress","reassigned")',
     type: String,
     example: 'completed',
   })
-  @ApiResponse({ status: 200, description: 'Returns task assignments with the specified status' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns task assignments with the specified status',
+  })
   async getTaskAssignmentsByStatus(@Param('status') status: AssignmentStatus) {
     return this.taskAssignmentService.getTaskAssignmentsByStatus(status);
+  }
+
+  @Get('task/:taskId')
+  @ApiOperation({ summary: 'Get task assignments by task ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns task assignments for the specified task',
+  })
+  async getTaskAssignmentsByTaskId(@Param('taskId') taskId: string) {
+    return this.taskAssignmentService.getTaskAssignmentsByTaskId(taskId);
+  }
+
+  @Post('assign')
+  @ApiOperation({ summary: 'Assign a task to an employee' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        taskId: { type: 'string', example: '12345' },
+        employeeId: { type: 'string', example: '67890' },
+        description: { type: 'string', example: 'Fix the crack in building A, floor 3' }
+      },
+      required: ['taskId', 'employeeId', 'description'],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Task assigned to employee successfully',
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Employee has unconfirmed tasks or unable to assign task' 
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Task or employee not found' 
+  })
+  async assignTaskToEmployee(
+    @Body() payload: { taskId: string; employeeId: string; description: string },
+  ) {
+    return this.taskAssignmentService.assignTaskToEmployee(
+      payload.taskId,
+      payload.employeeId,
+      payload.description
+    );
+  }
+
+  @Put(':assignment_id/change-status')
+  @ApiOperation({ summary: 'Change task assignment status' })
+  @ApiParam({
+    name: 'assignment_id',
+    description: 'ID of the task assignment',
+    type: 'string',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['Pending', 'Verified', 'Unverified', 'InFixing', 'Fixed', 'Confirmed', 'Reassigned'],
+          example: 'InFixing'
+        }
+      },
+      required: ['status'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Task assignment status changed successfully',
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Task assignment not found' 
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Invalid status value' 
+  })
+  async changeTaskAssignmentStatus(
+    @Param('assignment_id') assignment_id: string,
+    @Body() payload: { status: AssignmentStatus },
+  ) {
+    return this.taskAssignmentService.changeTaskAssignmentStatus({
+      assignment_id,
+      status: payload.status
+    });
   }
 }

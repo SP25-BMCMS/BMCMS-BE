@@ -6,6 +6,9 @@ import { PrismaService } from '../../prisma/prisma.service'; // Import PrismaSer
 import { ClientsModule } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
 import { Transport } from '@nestjs/microservices';
+import { S3UploaderModule } from '../crack-details/s3-uploader.module';
+
+const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
 
 @Module({
   imports: [
@@ -13,19 +16,52 @@ import { Transport } from '@nestjs/microservices';
     ClientsModule.registerAsync([
       {
         name: 'TASK_SERVICE',
-        useFactory: (configService: ConfigService) => ({
-          transport: Transport.RMQ,
-          options: {
-            urls: [`amqp://${configService.get('RABBITMQ_USER')}:${configService.get('RABBITMQ_PASSWORD')}@${configService.get('RABBITMQ_HOST')}`],
-            queue: configService.get('RABBITMQ_QUEUE_NAME'),
-            queueOptions: {
-              durable: true,
+        useFactory: (configService: ConfigService) => {
+          const user = configService.get('RABBITMQ_USER');
+          const password = configService.get('RABBITMQ_PASSWORD');
+          const host = configService.get('RABBITMQ_HOST');
+          const isLocal = process.env.NODE_ENV !== 'production';
+          return {
+            transport: Transport.RMQ,
+            options: {
+              urls: isLocal
+                ? [`amqp://${user}:${password}@${host}`]
+                : [`amqp://${user}:${password}@rabbitmq:5672`],
+              queue: 'tasks_queue',
+              queueOptions: {
+                durable: true,
+                prefetchCount: 1,
+              },
             },
-          },
-        }),
+          };
+        },
+        inject: [ConfigService],
+      },
+      {
+        name: BUILDINGS_CLIENT,
+        useFactory: (configService: ConfigService) => {
+          const user = configService.get('RABBITMQ_USER');
+          const password = configService.get('RABBITMQ_PASSWORD');
+          const host = configService.get('RABBITMQ_HOST');
+          const isLocal = process.env.NODE_ENV !== 'production';
+          return {
+            transport: Transport.RMQ,
+            options: {
+              urls: isLocal
+                ? [`amqp://${user}:${password}@${host}`]
+                : [`amqp://${user}:${password}@rabbitmq:5672`],
+              queue: 'buildings_queue',
+              queueOptions: {
+                durable: true,
+                prefetchCount: 1,
+              },
+            },
+          };
+        },
         inject: [ConfigService],
       },
     ]),
+    S3UploaderModule,
   ],
   controllers: [CrackReportsController],
   providers: [CrackReportsService, PrismaService], // Thêm TASK_SERVICE vào providers

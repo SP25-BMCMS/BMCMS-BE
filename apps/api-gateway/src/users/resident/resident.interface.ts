@@ -1,5 +1,6 @@
-import { Observable } from 'rxjs'
+import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
+import { Observable } from 'rxjs';
 
 export interface ResidentInterface {
-    getAllResidents({ }): Observable<any>
+  getAllResidents(paginationParams: PaginationParams): Observable<any>;
 }

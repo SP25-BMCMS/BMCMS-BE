@@ -12,18 +12,24 @@ import { CreateScheduleDto } from '@app/contracts/schedules/create-Schedules.dto
 import { SCHEDULES_PATTERN } from '@app/contracts/schedules/Schedule.patterns';
 import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules';
 import { $Enums } from '@prisma/client-Schedule';
+import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 
 // import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto'
 // import { buildingsDto } from '@app/contracts/buildings/buildings.dto'
 // import { catchError, firstValueFrom } from 'rxjs'
 @Injectable()
 export class SchedulesService {
-  constructor(@Inject(SCHEDULE_CLIENT) private readonly scheduleClient: ClientProxy) {}
+  constructor(
+    @Inject(SCHEDULE_CLIENT) private readonly scheduleClient: ClientProxy,
+  ) {}
 
   // Create schedule (Microservice)
   async createSchedule(createScheduleDto: CreateScheduleDto): Promise<any> {
     try {
-      return await this.scheduleClient.send(SCHEDULES_PATTERN.CREATE, createScheduleDto);
+      return await this.scheduleClient.send(
+        SCHEDULES_PATTERN.CREATE,
+        createScheduleDto,
+      );
     } catch (error) {
       throw new HttpException(
         'Error occurred while creating schedule',
@@ -33,7 +39,10 @@ export class SchedulesService {
   }
 
   // Update schedule (Microservice)
-  async updateSchedule(schedule_id: string, updateScheduleDto: UpdateScheduleDto): Promise<any> {
+  async updateSchedule(
+    schedule_id: string,
+    updateScheduleDto: UpdateScheduleDto,
+  ): Promise<any> {
     try {
       return await this.scheduleClient.send(SCHEDULES_PATTERN.UPDATE, {
         schedule_id,
@@ -48,7 +57,10 @@ export class SchedulesService {
   }
 
   // Change schedule type (Microservice)
-  async changeScheduleType(schedule_id: string, schedule_type: $Enums.ScheduleType): Promise<any> {
+  async changeScheduleType(
+    schedule_id: string,
+    schedule_type: $Enums.ScheduleType,
+  ): Promise<any> {
     try {
       return await this.scheduleClient.send(SCHEDULES_PATTERN.UPDATE_TYPE, {
         schedule_id,
@@ -64,9 +76,15 @@ export class SchedulesService {
 
   // Get schedule by ID (Microservice)
   async getScheduleById(schedule_id: string): Promise<any> {
-    console.log("🚀 ~ SchedulesService ~ getScheduleById ~ schedule_id:", schedule_id)
+    console.log(
+      '🚀 ~ SchedulesService ~ getScheduleById ~ schedule_id:',
+      schedule_id,
+    );
     try {
-      return await this.scheduleClient.send(SCHEDULES_PATTERN.GET_BY_ID, schedule_id );
+      return await this.scheduleClient.send(
+        SCHEDULES_PATTERN.GET_BY_ID,
+        schedule_id,
+      );
     } catch (error) {
       throw new HttpException(
         'Error occurred while fetching schedule by ID',
@@ -76,9 +94,12 @@ export class SchedulesService {
   }
 
   // Get all schedules (Microservice)
-  async getAllSchedules(): Promise<any> {
+  async getAllSchedules(paginationParams: PaginationParams = {}): Promise<any> {
     try {
-      return await this.scheduleClient.send(SCHEDULES_PATTERN.GET, {});
+      return await this.scheduleClient.send(
+        SCHEDULES_PATTERN.GET,
+        paginationParams,
+      );
     } catch (error) {
       throw new HttpException(
         'Error occurred while fetching all schedules',
@@ -107,7 +128,8 @@ export class SchedulesService {
       });
     } catch (error) {
       throw new HttpException(
-        'Task not found for the given schedule assignment ID = ' + schedule_assignment_id,
+        'Task not found for the given schedule assignment ID = ' +
+          schedule_assignment_id,
         HttpStatus.NOT_FOUND,
       );
     }

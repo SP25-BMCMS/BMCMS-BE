@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {BuildingDetailController as BuildingDetailController } from './buildingDetail.controller';
+import { BuildingDetailController as BuildingDetailController } from './buildingDetail.controller';
 
 describe('BuildingDetailController', () => {
   let controller: BuildingDetailController;

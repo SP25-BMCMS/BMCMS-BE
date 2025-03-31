@@ -6,11 +6,10 @@ import { TaskService } from './Task.service';
 import { CreateTaskDto } from 'libs/contracts/src/tasks/create-Task.dto';
 import { ChangeTaskStatusDto } from 'libs/contracts/src/tasks/ChangeTaskStatus.Dto ';
 import { Status } from '@prisma/client-Task'; // Make sure Status is imported correctly
-
+import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 
 @Controller('task')
 export class TasksController {
-
   constructor(private readonly taskService: TaskService) { }
 
   @MessagePattern(TASKS_PATTERN.CREATE)
@@ -38,8 +37,13 @@ export class TasksController {
   //   return this.taskService.changeTaskStatus(payload.taskid, payload.ChangeTaskStatusDto);
   // }
   @MessagePattern(TASKS_PATTERN.CHANGE_STATUS)
-  async changeTaskStatus(@Payload() payload: { task_id: string, status: string }) {
-    console.log("🚀 ~ TasksController ~ changeTaskStatus ~ status:", payload.status)
+  async changeTaskStatus(
+    @Payload() payload: { task_id: string; status: string },
+  ) {
+    console.log(
+      '🚀 ~ TasksController ~ changeTaskStatus ~ status:',
+      payload.status,
+    );
     const { task_id, status } = payload;
 
     // Pass the correct status enum value to the service
@@ -47,13 +51,12 @@ export class TasksController {
   }
 
   @MessagePattern(TASKS_PATTERN.GET)
-  async getAllTasks() {
-    return this.taskService.getAllTasks();
+  async getAllTasks(@Payload() data: PaginationParams = {}) {
+    return this.taskService.getAllTasks(data);
   }
 
   @MessagePattern(TASKS_PATTERN.GET_BY_STATUS)
   async getTasksByStatus(@Payload() payload: { status: Status }) {
     return this.taskService.getTasksByStatus(payload.status);
   }
-
 }

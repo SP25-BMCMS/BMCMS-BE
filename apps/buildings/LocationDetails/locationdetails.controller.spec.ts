@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {LocationDetailsController as locationDetailsController } from './locationdetails.controller';
+import { LocationDetailsController as locationDetailsController } from './locationdetails.controller';
 
 describe('locationDetailsController', () => {
   let controller: locationDetailsController;
@@ -9,7 +9,9 @@ describe('locationDetailsController', () => {
       controllers: [locationDetailsController],
     }).compile();
 
-    controller = module.get<locationDetailsController>(locationDetailsController);
+    controller = module.get<locationDetailsController>(
+      locationDetailsController,
+    );
   });
 
   it('should be defined', () => {

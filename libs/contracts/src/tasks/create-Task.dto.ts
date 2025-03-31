@@ -8,19 +8,42 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateTaskDto {
   @IsString()
-  @ApiProperty({ description: 'Description of the task', type: String })  // Adding description for description field
+  @IsNotEmpty()
+  @ApiProperty({ 
+    description: 'Description of the task', 
+    type: String,
+    required: true,
+    example: 'Fix crack in building A'
+  })
   description: string;
 
   @IsNotEmpty()
   @IsEnum($Enums.Status)
-  @ApiProperty({ description: 'The status of the task', enum: $Enums.Status })  // Enum for status
+  @ApiProperty({ 
+    description: 'The status of the task', 
+    enum: $Enums.Status,
+    required: true,
+    example: 'Assigned|Completed'
+  })
   status: $Enums.Status;
 
   @IsString()
-  @ApiProperty({ description: 'The crack ID associated with the task', type: String })  // Description for crack_id
+  @IsNotEmpty()
+  @ApiProperty({ 
+    description: 'The crack ID associated with the task', 
+    type: String,
+    required: true,
+    example: '123e4567-e89b-12d3-a456-426614174000'
+  })
   crack_id: string;
 
   @IsString()
-  @ApiProperty({ description: 'The schedule job ID associated with the task', type: String })  // Description for schedule_job_id
+  @IsNotEmpty()
+  @ApiProperty({ 
+    description: 'The schedule job ID associated with the task', 
+    type: String,
+    required: true,
+    example: '123e4567-e89b-12d3-a456-426614174001'
+  })
   schedule_job_id: string;
 }

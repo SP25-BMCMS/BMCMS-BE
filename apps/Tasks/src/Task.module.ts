@@ -12,7 +12,7 @@ import { RepairMaterialsService } from '../RepairMaterials/RepairMaterials.servi
 import { InspectionsService } from '../Inspections/Inspections.service';
 import { InspectionsController } from '../Inspections/Inspections.controller';
 import { TaskAssignmentsModule } from '../TaskAssignments/TaskAssignments.module';
-import { WorklogsModule } from '../Worklog/Worklog.module';
+import { WorkLogModule } from '../Worklog/Worklog.module';
 
 @Module({
   imports: [
@@ -23,7 +23,7 @@ import { WorklogsModule } from '../Worklog/Worklog.module';
     TasksModule,
     RepairMaterialsModule,
     TaskAssignmentsModule,
-    WorklogsModule
+    WorkLogModule,
   ],
   controllers: [
     TasksController,

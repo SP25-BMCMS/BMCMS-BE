@@ -4,37 +4,52 @@ import {
   Delete,
   Get,
   HttpCode,
-  HttpStatus, Inject,
+  HttpStatus,
+  Inject,
   NotFoundException,
-  Param, Patch,
+  Param,
+  Patch,
   Post,
   Put,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import { TaskService } from './Tasks.service';
 import { catchError, firstValueFrom, NotFoundError } from 'rxjs';
 import { UpdateTaskDto } from '@app/contracts/tasks/update.Task';
-import { ApiOperation, ApiParam, ApiTags, ApiResponse, ApiBody } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+  ApiResponse,
+  ApiBody,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { ChangeTaskStatusDto } from '@app/contracts/tasks/ChangeTaskStatus.Dto ';
-
+import { CreateTaskDto } from '@app/contracts/tasks/create-Task.dto';
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
 import { ClientProxy } from '@nestjs/microservices';
 import { TASK_CLIENT } from '../constraints';
 import { UpdateInspectionDto } from '../../../../libs/contracts/src/inspections/update-inspection.dto';
-import { CreateRepairMaterialDto } from 'libs/contracts/src/tasks/create-repair-material.dto';
+import { CreateRepairMaterialDto } from '@app/contracts/repairmaterials/create-repair-material.dto';
+import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 
 @Controller('tasks')
 @ApiTags('tasks')
 export class TaskController {
-  constructor(private readonly taskService: TaskService) { }
+  constructor(private readonly taskService: TaskService) {}
 
   @Post('task')
   @ApiOperation({ summary: 'Create a new task' })
-  @ApiBody({ schema: { type: 'object' } })
-  @ApiResponse({ status: 201, description: 'Task created successfully' })
+  @ApiBody({ type: CreateTaskDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Task created successfully',
+    type: CreateTaskDto,
+  })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  async createTask(@Body() createTaskDto: any) {
+  async createTask(@Body() createTaskDto: CreateTaskDto) {
     return this.taskService.createTask(createTaskDto);
   }
 
@@ -91,8 +106,34 @@ export class TaskController {
   @Get('tasks')
   @ApiOperation({ summary: 'Get all tasks' })
   @ApiResponse({ status: 200, description: 'Returns all tasks' })
-  async getAllTasks() {
-    return this.taskService.getAllTasks();
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number (starting from 1)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Items per page',
+  })
+  async getAllTasks(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    try {
+      // Create pagination params object
+      const paginationParams: PaginationParams = {
+        page: page ? parseInt(page.toString()) : 1,
+        limit: limit ? parseInt(limit.toString()) : 10,
+      };
+
+      return this.taskService.getAllTasks(paginationParams);
+    } catch (error) {
+      console.error('Error in getAllTasks controller:', error);
+      throw new Error(`Failed to get tasks: ${error.message}`);
+    }
   }
 
   @Get('status/:status')
@@ -103,51 +144,12 @@ export class TaskController {
     return this.taskService.getTasksByStatus(status);
   }
 
-  @Get('inspection/task_assignment/:task_assignment_id')
-  @ApiOperation({ summary: 'Get inspection by task assignment ID' })
-  @ApiParam({ name: 'task_assignment_id', description: 'Task assignment ID' })
-  @ApiResponse({ status: 200, description: 'Inspection found' })
-  @ApiResponse({ status: 404, description: 'Inspection not found' })
-  async GetInspectionByTaskAssignmentId(
-    @Param('task_assignment_id') task_assignment_id: string,
-  ) {
-    return this.taskService.GetInspectionByTaskAssignmentId(task_assignment_id);
-  }
-
-  @Patch('inspection/:id')
-  @ApiOperation({ summary: 'Update inspection' })
-  @ApiParam({ name: 'id', description: 'Inspection ID' })
-  @ApiBody({ type: UpdateInspectionDto })
-  @ApiResponse({ status: 200, description: 'Inspection updated successfully' })
-  @ApiResponse({ status: 404, description: 'Inspection not found' })
-  async updateCrackReport(@Param('id') inspection_id: string, @Body() dto: UpdateInspectionDto) {
-    return this.taskService.updateInspection(inspection_id, dto);
-  }
-
-  @Get('inspection/crack/:crack_id')
-  @ApiOperation({ summary: 'Get inspection by crack ID' })
-  @ApiParam({ name: 'crack_id', description: 'Crack ID' })
-  @ApiResponse({ status: 200, description: 'Inspection found' })
-  @ApiResponse({ status: 404, description: 'Inspection not found' })
-  async GetInspectionByCrackId(
-    @Param('crack_id') crack_id: string,
-  ) {
-    return this.taskService.GetInspectionByCrackId(crack_id);
-  }
-
-  @Get('inspections')
-  @ApiOperation({ summary: 'Get all inspections' })
-  @ApiResponse({ status: 200, description: 'Returns all inspections' })
-  async GetAllInspections() {
-    return this.taskService.GetAllInspections();
-  }
-
-  @Post('repair-materials')
-  @ApiOperation({ summary: 'Create repair material' })
-  @ApiBody({ type: CreateRepairMaterialDto })
-  @ApiResponse({ status: 201, description: 'Repair material created successfully' })
-  @ApiResponse({ status: 400, description: 'Bad request' })
-  async createRepairMaterial(@Body() createRepairMaterialDto: CreateRepairMaterialDto) {
-    return this.taskService.createRepairMaterial(createRepairMaterialDto);
-  }
+  // @Post('repair-materials')
+  // @ApiOperation({ summary: 'Create repair material' })
+  // @ApiBody({ type: CreateRepairMaterialDto })
+  // @ApiResponse({ status: 201, description: 'Repair material created successfully' })
+  // @ApiResponse({ status: 400, description: 'Bad request' })
+  // async createRepairMaterial(@Body() createRepairMaterialDto: CreateRepairMaterialDto) {
+  //   return this.taskService.createRepairMaterial(createRepairMaterialDto);
+  // }
 }

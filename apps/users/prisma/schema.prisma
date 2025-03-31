@@ -37,10 +37,10 @@ model UserDetails {
 }
 
 model Apartment {
-  apartmentId   String @id @default(uuid())
-  apartmentName String
-  buildingId    String
-  ownerId       String @map("owner_id")
+  apartmentId      String @id @default(uuid())
+  apartmentName    String
+  buildingDetailId String
+  ownerId          String @map("owner_id")
 
   owner User @relation(fields: [ownerId], references: [userId], onDelete: Cascade)
 }
@@ -62,6 +62,18 @@ model WorkingPosition {
   description  String?
 
   UserDetails UserDetails[]
+}
+
+model Otp {
+  id        String   @id @default(uuid())
+  email     String
+  otp       String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("otps")
 }
 
 enum Role {

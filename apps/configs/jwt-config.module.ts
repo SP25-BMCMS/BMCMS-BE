@@ -1,18 +1,18 @@
-import { Global, Module } from '@nestjs/common'
-import { JwtModule } from '@nestjs/jwt'
-import { JWT_SECRET } from '../configs/jwt-secret'
+import { Global, Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { JWT_SECRET } from '../configs/jwt-secret';
 
 @Global()
 @Module({
-    imports: [
-        JwtModule.register({
-            global: true,
-            secret: JWT_SECRET,
-            signOptions: {
-                expiresIn: '1d',
-            },
-        }),
-    ],
-    exports: [JwtModule],
+  imports: [
+    JwtModule.register({
+      global: true,
+      secret: JWT_SECRET,
+      signOptions: {
+        expiresIn: '1d',
+      },
+    }),
+  ],
+  exports: [JwtModule],
 })
-export class JwtConfigModule { }
+export class JwtConfigModule {}
