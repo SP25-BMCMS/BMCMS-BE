@@ -54,7 +54,7 @@ export class InspectionController {
   @ApiBody({ type: UpdateInspectionDto })
   @ApiResponse({ status: 200, description: 'Inspection updated successfully' })
   @ApiResponse({ status: 404, description: 'Inspection not found' })
-  async updateCrackReport(
+  async updateInspection(
     @Param('id') inspection_id: string,
     @Body() dto: UpdateInspectionDto,
   ) {
