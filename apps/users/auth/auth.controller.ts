@@ -12,7 +12,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
-  ) {}
+  ) { }
 
   @GrpcMethod('UserService', 'Login')
   async login(data: { username: string; password: string }) {
@@ -97,7 +97,7 @@ export class AuthController {
   @GrpcMethod('UserService', 'UpdateResidentApartments')
   async updateResidentApartments(data: {
     residentId: string;
-    apartments: { apartmentName: string; buildingId: string }[];
+    apartments: { apartmentName: string; buildingDetailId: string }[];
   }) {
     return await this.usersService.updateResidentApartments(
       data.residentId,

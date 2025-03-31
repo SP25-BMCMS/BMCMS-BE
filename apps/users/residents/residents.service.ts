@@ -92,18 +92,58 @@ export class ResidentsService {
         }
       });
 
+      console.log('Found residents:', residents.length);
+
       // Process residents in parallel with better error handling
       const residentsWithBuildingDetails = await Promise.all(
         residents.map(async (resident) => {
           // Process all apartments for a resident in parallel
           const apartmentPromises = resident.apartments.map(async (apartment) => {
-            const buildingResponse = await this.getBuildingDetails(apartment.buildingId);
+            console.log(`Processing apartment ${apartment.apartmentName} with buildingDetailId ${apartment.buildingDetailId}`);
 
-            return {
-              apartmentName: apartment.apartmentName,
-              buildingId: apartment.buildingId,
-              building: buildingResponse?.statusCode === 200 ? buildingResponse.data : null
-            };
+            try {
+              // Get building detail information
+              const buildingDetailResponse = await firstValueFrom(
+                this.buildingClient.send(
+                  BUILDINGDETAIL_PATTERN.GET_BY_ID,
+                  { buildingDetailId: apartment.buildingDetailId }
+                ).pipe(
+                  timeout(5000),
+                  retry(2),
+                  catchError(err => {
+                    console.error(`Error fetching building detail ${apartment.buildingDetailId}:`, err);
+                    return of({ statusCode: 404, data: null });
+                  })
+                )
+              );
+
+              console.log(`Building detail response for ${apartment.buildingDetailId}:`,
+                buildingDetailResponse?.statusCode,
+                buildingDetailResponse?.data?.building ? 'Has building' : 'No building',
+                buildingDetailResponse?.data?.building?.buildingId ? 'Has buildingId' : 'No buildingId'
+              );
+
+              // Lấy thông tin buildingDetail từ response
+              const buildingDetail = buildingDetailResponse?.statusCode === 200 ?
+                buildingDetailResponse.data : null;
+
+              // Format response theo đúng cấu trúc proto
+              return {
+                apartmentName: apartment.apartmentName,
+                buildingDetails: buildingDetail ? {
+                  buildingDetailId: buildingDetail.buildingDetailId,
+                  name: buildingDetail.name,
+                  total_apartments: buildingDetail.total_apartments || 0,
+                  building: buildingDetail.building || null // Đã có thông tin building và area từ buildingDetail
+                } : null
+              };
+            } catch (error) {
+              console.error(`Error processing apartment ${apartment.apartmentName}:`, error);
+              return {
+                apartmentName: apartment.apartmentName,
+                buildingDetails: null
+              };
+            }
           });
 
           // Wait for all apartment details to be fetched
@@ -142,133 +182,248 @@ export class ResidentsService {
   async getApartmentsByResidentId(residentId: string) {
     try {
       console.log('Getting apartments for resident:', residentId);
+      console.log('Building client available:', !!this.buildingClient);
+
+      // Get user information first with explicit fields according to proto
+      const resident = await this.prisma.user.findUnique({
+        where: { userId: residentId },
+        select: {
+          userId: true,
+          username: true,
+          email: true,
+          phone: true,
+          dateOfBirth: true,
+          gender: true,
+          accountStatus: true,
+          role: true,
+          userDetails: true
+        }
+      });
+
+      if (!resident) {
+        console.log(`Resident with ID ${residentId} not found`);
+        return {
+          isSuccess: false,
+          success: false,
+          message: "Resident not found",
+          data: []
+        };
+      }
+
+      console.log('Found resident:', resident.username);
+
+      // Get apartments for this resident
       const apartments = await this.prisma.apartment.findMany({
         where: {
           ownerId: residentId
         }
       });
-      console.log('Found apartments:', apartments);
 
-      if (!apartments || apartments.length === 0) {
-        return {
-          isSuccess: false,
-          message: "Resident not found",
-          statusCode: 404,
-          data: []
-        };
-      }
+      console.log(`Found ${apartments.length} apartments for resident ${residentId}`);
 
-      // Process apartments with building and area details
-      const apartmentsWithDetails = await Promise.all(
-        apartments.map(async (apartment) => {
+      // Create a UserResponse object exactly as defined in the proto
+      const userResponse = {
+        userId: resident.userId || '',
+        username: resident.username || '',
+        email: resident.email || '',
+        phone: resident.phone || '',
+        role: resident.role || 'Resident',
+        dateOfBirth: resident.dateOfBirth ? resident.dateOfBirth.toISOString() : '',
+        gender: resident.gender || '',
+        accountStatus: resident.accountStatus || 'Active',
+        userDetails: resident.userDetails || null,
+        apartments: [] // Will populate with GetApartmentRepsonse objects
+      };
+
+      if (apartments.length > 0) {
+        // Process apartments with building details
+        const apartmentPromises = apartments.map(async (apartment) => {
           try {
-            console.log('Processing apartment:', apartment.apartmentName);
+            console.log(`Processing apartment ${apartment.apartmentName} with buildingDetailId ${apartment.buildingDetailId}`);
 
-            // Get building details from building service
-            const buildingResponse = await firstValueFrom(
+            // Get building detail information
+            const buildingDetailResponse = apartment.buildingDetailId ? await firstValueFrom(
               this.buildingClient.send(
-                BUILDINGS_PATTERN.GET_BY_ID,
-                { buildingId: apartment.buildingId }
+                BUILDINGDETAIL_PATTERN.GET_BY_ID,
+                { buildingDetailId: apartment.buildingDetailId }
               ).pipe(
                 timeout(5000),
                 retry(2),
                 catchError(err => {
-                  console.error(`Error fetching building ${apartment.buildingId} after retries:`, err);
-                  return of({
-                    statusCode: 404,
-                    data: null
-                  });
+                  console.error(`Error fetching building detail ${apartment.buildingDetailId}:`, err);
+                  return of({ statusCode: 404, data: null });
                 })
               )
-            );
+            ) : { statusCode: 404, data: null };
 
-            let areaInfo = null;
-            if (buildingResponse?.statusCode === 200 && buildingResponse.data?.areaId) {
-              console.log('Found areaId in building:', buildingResponse.data.areaId);
-              const areaResponse = await this.getAreaDetails(buildingResponse.data.areaId);
-              console.log('Area response:', areaResponse);
-              if (areaResponse?.statusCode === 200) {
-                areaInfo = areaResponse.data;
-                console.log('Successfully got area info:', areaInfo);
-              } else {
-                console.log('Failed to get area info, status:', areaResponse?.statusCode);
-              }
-            } else {
-              console.log('No areaId found in building');
-            }
+            console.log('Building detail response status:', buildingDetailResponse?.statusCode);
 
-            // Get building details
-            let buildingDetails = [];
-            if (buildingResponse?.statusCode === 200) {
-              console.log('Fetching building details for building:', apartment.buildingId);
-              const buildingDetailsResponse = await firstValueFrom(
-                this.buildingClient.send(
-                  BUILDINGDETAIL_PATTERN.GET_BY_ID,
-                  { buildingId: apartment.buildingId }
-                ).pipe(
-                  timeout(5000),
-                  retry(2),
-                  catchError(err => {
-                    console.error(`Error fetching building details for ${apartment.buildingId} after retries:`, err);
-                    return of({
-                      statusCode: 404,
-                      data: []
-                    });
-                  })
-                )
-              );
+            // Get buildingDetail information
+            const buildingDetail = buildingDetailResponse?.statusCode === 200 ?
+              buildingDetailResponse.data : null;
 
-              console.log('Raw building details response:', JSON.stringify(buildingDetailsResponse, null, 2));
-
-              if (buildingDetailsResponse?.statusCode === 200) {
-                // Handle both single object and array responses
-                buildingDetails = Array.isArray(buildingDetailsResponse.data)
-                  ? buildingDetailsResponse.data
-                  : [buildingDetailsResponse.data];
-                console.log('Successfully got building details:', JSON.stringify(buildingDetails, null, 2));
-              } else {
-                console.log('Failed to get building details, status:', buildingDetailsResponse?.statusCode);
-                console.log('Error message:', buildingDetailsResponse?.message);
-              }
-            }
-
-            const response = {
-              apartmentName: apartment.apartmentName,
-              apartmentId: apartment.apartmentId,
-              building: buildingResponse?.statusCode === 200 ? {
-                ...buildingResponse.data,
-                area: areaInfo,
-                buildingDetails: buildingDetails
+            // Construct a GetApartmentRepsonse object exactly as defined in the proto
+            return {
+              apartmentName: apartment.apartmentName || '',
+              buildingDetails: buildingDetail ? {
+                buildingDetailId: buildingDetail.buildingDetailId || '',
+                name: buildingDetail.name || '',
+                total_apartments: buildingDetail.total_apartments || 0,
+                building: buildingDetail.building ? {
+                  buildingId: buildingDetail.building.buildingId || '',
+                  name: buildingDetail.building.name || '',
+                  description: buildingDetail.building.description || '',
+                  numberFloor: buildingDetail.building.numberFloor || 0,
+                  imageCover: buildingDetail.building.imageCover || '',
+                  areaId: buildingDetail.building.areaId || '',
+                  Status: buildingDetail.building.Status || '',
+                  construction_date: buildingDetail.building.construction_date || '',
+                  completion_date: buildingDetail.building.completion_date || '',
+                  area: buildingDetail.building.area || null
+                } : null
               } : null
             };
-            console.log('Final apartment response:', JSON.stringify(response, null, 2));
-            return response;
           } catch (error) {
-            console.error(`Failed to process apartment ${apartment.apartmentName}:`, error);
+            console.error(`Error processing apartment ${apartment.apartmentName}:`, error);
             return {
-              apartmentName: apartment.apartmentName,
-              apartmentId: apartment.apartmentId,
-              building: null
+              apartmentName: apartment.apartmentName || '',
+              buildingDetails: null
             };
           }
-        })
-      );
+        });
 
+        // Wait for all apartment details to be fetched
+        const processedApartments = await Promise.all(apartmentPromises);
+        console.log('Processed apartments:', processedApartments.length);
+
+        // Make sure we don't have undefined values that could cause serialization issues
+        userResponse.apartments = processedApartments.map(apt => ({
+          apartmentName: apt.apartmentName || '',
+          buildingDetails: apt.buildingDetails
+        }));
+      }
+
+      console.log('Final user response structure:', {
+        userId: userResponse.userId,
+        username: userResponse.username,
+        apartments: userResponse.apartments.length
+      });
+
+      // Return in the format expected by GetApartmentsResponse proto
       return {
         isSuccess: true,
+        success: true,
         message: "Success",
-        statusCode: 200,
-        data: apartmentsWithDetails
+        data: [userResponse] // Always wrap in array with valid data
       };
     } catch (error) {
       console.error('Error in getApartmentsByResidentId:', error);
       return {
         isSuccess: false,
-        message: error.message,
-        statusCode: 500,
+        success: false,
+        message: error.message || 'Unknown error',
         data: []
       };
     }
   }
 
+  async getApartmentByResidentAndApartmentId(residentId: string, apartmentId: string) {
+    try {
+      console.log(`Getting apartment for resident ${residentId} and apartment ${apartmentId}`);
+
+      // Get user information first
+      const resident = await this.prisma.user.findUnique({
+        where: { userId: residentId },
+        select: {
+          userId: true,
+          username: true,
+          email: true,
+          phone: true,
+          role: true
+        }
+      });
+
+      if (!resident) {
+        console.log(`Resident with ID ${residentId} not found`);
+        return {
+          isSuccess: false,
+          success: false,
+          message: "Resident not found",
+          data: null
+        };
+      }
+
+      // Find the specific apartment
+      const apartment = await this.prisma.apartment.findFirst({
+        where: {
+          apartmentId: apartmentId,
+          ownerId: residentId
+        }
+      });
+
+      if (!apartment) {
+        console.log(`Apartment with ID ${apartmentId} not found for resident ${residentId}`);
+        return {
+          isSuccess: false,
+          success: false,
+          message: "Apartment not found",
+          data: null
+        };
+      }
+
+      console.log(`Found apartment: ${apartment.apartmentName}`);
+
+      // Get building detail information
+      let buildingDetail = null;
+
+      if (apartment.buildingDetailId) {
+        const buildingDetailResponse = await firstValueFrom(
+          this.buildingClient.send(
+            BUILDINGDETAIL_PATTERN.GET_BY_ID,
+            { buildingDetailId: apartment.buildingDetailId }
+          ).pipe(
+            timeout(5000),
+            retry(2),
+            catchError(err => {
+              console.error(`Error fetching building detail ${apartment.buildingDetailId}:`, err);
+              return of({ statusCode: 404, data: null });
+            })
+          )
+        );
+
+        console.log(`Building detail response status: ${buildingDetailResponse?.statusCode}`);
+
+        if (buildingDetailResponse?.statusCode === 200) {
+          buildingDetail = buildingDetailResponse.data;
+        }
+      }
+
+      // Create apartment response
+      const apartmentResponse = {
+        apartmentName: apartment.apartmentName,
+        apartmentId: apartment.apartmentId,
+        building: buildingDetail?.building || null
+      };
+
+      console.log('Apartment response:', JSON.stringify({
+        apartmentName: apartmentResponse.apartmentName,
+        hasBuilding: !!apartmentResponse.building
+      }));
+
+      return {
+        isSuccess: true,
+        success: true,
+        message: "Success",
+        data: apartmentResponse
+      };
+    } catch (error) {
+      console.error('Error in getApartmentByResidentAndApartmentId:', error);
+      return {
+        isSuccess: false,
+        success: false,
+        message: error.message || 'Unknown error',
+        data: null
+      };
+    }
+  }
 }

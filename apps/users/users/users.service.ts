@@ -24,6 +24,7 @@ import {
   timeout,
 } from 'rxjs';
 import { BUILDINGS_PATTERN } from '../../../libs/contracts/src/buildings/buildings.patterns';
+import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns';
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
 
@@ -32,7 +33,7 @@ export class UsersService {
   constructor(
     private prisma: PrismaService,
     @Inject(BUILDINGS_CLIENT) private readonly buildingClient: ClientProxy,
-  ) {}
+  ) { }
 
   async getUserByUsername(username: string): Promise<UserDto | null> {
     const user = await this.prisma.user.findUnique({ where: { username } });
@@ -92,12 +93,12 @@ export class UsersService {
 
         for (const apartment of userData.apartments) {
           try {
-            console.log(`Checking building ID: ${apartment.buildingId}`);
+            console.log(`Checking building ID: ${apartment.buildingDetailId}`);
 
             const buildingResponse = await firstValueFrom(
               this.buildingClient
-                .send(BUILDINGS_PATTERN.CHECK_EXISTS, {
-                  buildingId: apartment.buildingId,
+                .send(BUILDINGDETAIL_PATTERN.CHECK_EXISTS, {
+                  buildingDetailId: apartment.buildingDetailId,
                 })
                 .pipe(
                   timeout(5000),
@@ -119,7 +120,7 @@ export class UsersService {
             ) {
               return new ApiResponse(
                 false,
-                `Building with ID ${apartment.buildingId} not found`,
+                `Building with ID ${apartment.buildingDetailId} not found`,
                 null,
               );
             }
@@ -186,22 +187,22 @@ export class UsersService {
             userDetails:
               userData.role === Role.Staff
                 ? {
-                    create: {
-                      positionId: userData.positionId ?? null,
-                      departmentId: userData.departmentId ?? null,
-                      staffStatus: userData.staffStatus ?? null,
-                      image: userData.image ?? null,
-                    },
-                  }
+                  create: {
+                    positionId: userData.positionId ?? null,
+                    departmentId: userData.departmentId ?? null,
+                    staffStatus: userData.staffStatus ?? null,
+                    image: userData.image ?? null,
+                  },
+                }
                 : undefined,
             apartments:
               userData.role === Role.Resident && userData.apartments
                 ? {
-                    create: userData.apartments.map((apartment) => ({
-                      apartmentName: apartment.apartmentName,
-                      buildingId: apartment.buildingId,
-                    })),
-                  }
+                  create: userData.apartments.map((apartment) => ({
+                    apartmentName: apartment.apartmentName,
+                    buildingDetailId: apartment.buildingDetailId,
+                  })),
+                }
                 : undefined,
           },
         });
@@ -229,16 +230,16 @@ export class UsersService {
         accountStatus: fullUser?.accountStatus ?? null,
         userDetails: fullUser?.userDetails
           ? {
-              positionId: fullUser?.userDetails.positionId,
-              departmentId: fullUser?.userDetails.departmentId,
-              staffStatus: fullUser?.userDetails.staffStatus,
-              image: fullUser?.userDetails.image,
-            }
+            positionId: fullUser?.userDetails.positionId,
+            departmentId: fullUser?.userDetails.departmentId,
+            staffStatus: fullUser?.userDetails.staffStatus,
+            image: fullUser?.userDetails.image,
+          }
           : null,
         apartments:
           fullUser?.apartments.map((apartment) => ({
             apartmentName: apartment.apartmentName,
-            buildingId: apartment.buildingId,
+            buildingDetailId: apartment.buildingDetailId,
           })) ?? [],
       });
     } catch (error) {
@@ -261,12 +262,12 @@ export class UsersService {
 
       for (const apartment of data.apartments) {
         try {
-          console.log(`Checking building ID: ${apartment.buildingId}`);
+          console.log(`Checking building ID: ${apartment.buildingDetailId}`);
 
           const buildingResponse = await firstValueFrom(
             this.buildingClient
-              .send(BUILDINGS_PATTERN.CHECK_EXISTS, {
-                buildingId: apartment.buildingId,
+              .send(BUILDINGDETAIL_PATTERN.CHECK_EXISTS, {
+                buildingDetailId: apartment.buildingDetailId,
               })
               .pipe(
                 timeout(5000),
@@ -286,7 +287,7 @@ export class UsersService {
           if (buildingResponse.statusCode === 404 || !buildingResponse.exists) {
             throw new RpcException({
               statusCode: HttpStatus.NOT_FOUND,
-              message: `Building with ID ${apartment.buildingId} not found`,
+              message: `Building with ID ${apartment.buildingDetailId} not found`,
             });
           }
         } catch (error) {
@@ -323,12 +324,12 @@ export class UsersService {
         accountStatus: updateData.accountStatus, // Use converted enum value
         apartments: data.apartments
           ? {
-              set: [], // 🛠 Xóa danh sách cũ (nếu cần)
-              create: data.apartments.map((apt) => ({
-                apartmentName: apt.apartmentName,
-                buildingId: apt.buildingId,
-              })),
-            }
+            set: [], // 🛠 Xóa danh sách cũ (nếu cần)
+            create: data.apartments.map((apt) => ({
+              apartmentName: apt.apartmentName,
+              buildingDetailId: apt.buildingDetailId,
+            })),
+          }
           : undefined, // ✅ Chỉ cập nhật nếu có apartments
       },
     });
@@ -542,17 +543,17 @@ export class UsersService {
     }
   }
 
-  private async getBuildingDetails(buildingId: string) {
+  private async getBuildingDetails(buildingDetailId: string) {
     try {
       const response = await firstValueFrom(
         this.buildingClient
-          .send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId })
+          .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId })
           .pipe(
             timeout(5000),
             retry(2), // Retry 2 times before giving up
             catchError((err) => {
               console.error(
-                `Error fetching building ${buildingId} after retries:`,
+                `Error fetching buildingDetail ${buildingDetailId} after retries:`,
                 err,
               );
               return of({
@@ -564,7 +565,7 @@ export class UsersService {
       );
       return response;
     } catch (error) {
-      console.error(`Failed to get building ${buildingId}:`, error);
+      console.error(`Failed to get buildingDetail ${buildingDetailId}:`, error);
       return {
         statusCode: 404,
         data: null,
@@ -577,8 +578,7 @@ export class UsersService {
     message: string;
     data: {
       apartmentName: string;
-      apartmentId: string;
-      building: any; // Thay thế 'any' bằng kiểu dữ liệu chính xác của building
+      buildingDetails: any; // Thay thế 'any' bằng kiểu dữ liệu chính xác của building
     }[];
   }> {
     try {
@@ -597,13 +597,12 @@ export class UsersService {
       // Xử lý các căn hộ của người dùng song song
       const apartmentPromises = user.apartments.map(async (apartment) => {
         const buildingResponse = await this.getBuildingDetails(
-          apartment.buildingId,
+          apartment.buildingDetailId,
         );
 
         return {
           apartmentName: apartment.apartmentName,
-          apartmentId: apartment.apartmentId,
-          building:
+          buildingDetails:
             buildingResponse?.statusCode === 200 ? buildingResponse.data : null,
         };
       });
@@ -661,26 +660,26 @@ export class UsersService {
             : null,
           userDetails: staff.userDetails
             ? {
-                ...staff.userDetails,
-                position: staff.userDetails.position
-                  ? {
-                      positionId: staff.userDetails.position.positionId,
-                      positionName:
-                        staff.userDetails.position.positionName.toString(),
-                      description: staff.userDetails.position.description || '',
-                    }
-                  : null,
-                department: staff.userDetails.department
-                  ? {
-                      departmentId: staff.userDetails.department.departmentId,
-                      departmentName:
-                        staff.userDetails.department.departmentName,
-                      description:
-                        staff.userDetails.department.description || '',
-                      area: staff.userDetails.department.area || '',
-                    }
-                  : null,
-              }
+              ...staff.userDetails,
+              position: staff.userDetails.position
+                ? {
+                  positionId: staff.userDetails.position.positionId,
+                  positionName:
+                    staff.userDetails.position.positionName.toString(),
+                  description: staff.userDetails.position.description || '',
+                }
+                : null,
+              department: staff.userDetails.department
+                ? {
+                  departmentId: staff.userDetails.department.departmentId,
+                  departmentName:
+                    staff.userDetails.department.departmentName,
+                  description:
+                    staff.userDetails.department.description || '',
+                  area: staff.userDetails.department.area || '',
+                }
+                : null,
+            }
             : null,
         };
       });
@@ -701,7 +700,7 @@ export class UsersService {
 
   async updateResidentApartments(
     residentId: string,
-    apartments: { apartmentName: string; buildingId: string }[],
+    apartments: { apartmentName: string; buildingDetailId: string }[],
   ): Promise<{ isSuccess: boolean; message: string; data: any }> {
     try {
       // Check if user exists and is a Resident
@@ -716,10 +715,11 @@ export class UsersService {
       });
 
       if (!user) {
-        throw new RpcException({
-          statusCode: HttpStatus.NOT_FOUND,
+        return {
+          isSuccess: false,
           message: 'Không tìm thấy cư dân',
-        });
+          data: null
+        };
       }
 
       // Check for duplicate apartments
@@ -728,7 +728,7 @@ export class UsersService {
         existingApartments.some(
           (existingApt) =>
             existingApt.apartmentName === newApt.apartmentName &&
-            existingApt.buildingId === newApt.buildingId,
+            existingApt.buildingDetailId === newApt.buildingDetailId,
         ),
       );
 
@@ -736,97 +736,48 @@ export class UsersService {
         const duplicateNames = duplicateApartments
           .map((apt) => apt.apartmentName)
           .join(', ');
-        throw new RpcException({
-          statusCode: HttpStatus.BAD_REQUEST,
+        return {
+          isSuccess: false,
           message: `Cư dân đã sở hữu các căn hộ sau: ${duplicateNames}`,
-        });
+          data: null
+        };
       }
 
-      // Validate building IDs with retry mechanism
+      // Validate buildingDetail IDs
       for (const apartment of apartments) {
-        let retryCount = 0;
-        const maxRetries = 3;
-        let lastError = null;
+        try {
+          const buildingResponse = await firstValueFrom(
+            this.buildingClient
+              .send(BUILDINGDETAIL_PATTERN.CHECK_EXISTS, {
+                buildingDetailId: apartment.buildingDetailId,
+              })
+              .pipe(
+                timeout(5000),
+                catchError((err) => {
+                  console.error('Error checking building:', err);
+                  return of({
+                    statusCode: 503,
+                    message: 'Dịch vụ tòa nhà không phản hồi',
+                    exists: false
+                  });
+                }),
+              ),
+          );
 
-        while (retryCount < maxRetries) {
-          try {
-            console.log(
-              `Checking building ID: ${apartment.buildingId} (Attempt ${retryCount + 1}/${maxRetries})`,
-            );
-
-            const buildingResponse = await firstValueFrom(
-              this.buildingClient
-                .send(BUILDINGS_PATTERN.CHECK_EXISTS, {
-                  buildingId: apartment.buildingId,
-                })
-                .pipe(
-                  timeout(5000),
-                  catchError((err) => {
-                    console.error(`Error on attempt ${retryCount + 1}:`, err);
-                    lastError = err;
-                    throw err;
-                  }),
-                ),
-            );
-
-            console.log('Building service response:', buildingResponse);
-
-            if (!buildingResponse) {
-              throw new RpcException({
-                statusCode: HttpStatus.SERVICE_UNAVAILABLE,
-                message: 'Dịch vụ tòa nhà không phản hồi',
-              });
-            }
-
-            // Nếu building không tồn tại, throw lỗi 404
-            if (buildingResponse.statusCode === 404) {
-              throw new RpcException({
-                statusCode: HttpStatus.NOT_FOUND,
-                message: `Không tìm thấy tòa nhà với ID ${apartment.buildingId}`,
-              });
-            }
-
-            // Nếu có lỗi khác, throw lỗi 503
-            if (buildingResponse.statusCode !== 200) {
-              throw new RpcException({
-                statusCode: HttpStatus.SERVICE_UNAVAILABLE,
-                message: 'Dịch vụ tòa nhà không khả dụng',
-              });
-            }
-
-            // Nếu thành công, thoát vòng lặp retry
-            break;
-          } catch (error) {
-            console.error(
-              `Error checking building ${apartment.buildingId}:`,
-              error,
-            );
-
-            // Nếu là lỗi 404, throw ngay lập tức
-            if (
-              error instanceof RpcException &&
-              error.message.includes('Không tìm thấy tòa nhà')
-            ) {
-              throw error;
-            }
-
-            retryCount++;
-
-            // Nếu đã retry hết số lần, throw lỗi 503
-            if (retryCount === maxRetries) {
-              console.error('Max retries reached:', error);
-              throw new RpcException({
-                statusCode: HttpStatus.SERVICE_UNAVAILABLE,
-                message:
-                  'Dịch vụ tòa nhà không khả dụng. Vui lòng thử lại sau.',
-              });
-            }
-
-            // Đợi trước khi retry
-            await new Promise((resolve) =>
-              setTimeout(resolve, 1000 * retryCount),
-            );
+          if (!buildingResponse.exists) {
+            return {
+              isSuccess: false,
+              message: `Không tìm thấy tòa nhà với ID ${apartment.buildingDetailId}`,
+              data: null
+            };
           }
+        } catch (error) {
+          console.error('Error validating building:', error);
+          return {
+            isSuccess: false,
+            message: 'Lỗi khi kiểm tra thông tin tòa nhà',
+            data: null
+          };
         }
       }
 
@@ -851,19 +802,17 @@ export class UsersService {
           username: updatedUser.username,
           apartments: updatedUser.apartments.map((apt) => ({
             apartmentName: apt.apartmentName,
-            buildingId: apt.buildingId,
+            buildingDetailId: apt.buildingDetailId,
           })),
         },
       };
     } catch (error) {
       console.error('Error updating resident apartments:', error);
-      if (error instanceof RpcException) {
-        throw error;
-      }
-      throw new RpcException({
-        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      return {
+        isSuccess: false,
         message: 'Lỗi khi thêm căn hộ',
-      });
+        data: null
+      };
     }
   }
 
@@ -951,19 +900,21 @@ export class UsersService {
         };
       }
 
+      // Get building details for this apartment
       const buildingResponse = await this.getBuildingDetails(
-        apartment.buildingId,
+        apartment.buildingDetailId,
       );
+
+      const formattedResponse = {
+        apartmentName: apartment.apartmentName,
+        apartmentId: apartment.apartmentId,
+        buildingDetails: buildingResponse?.statusCode === 200 ? buildingResponse.data : null,
+      };
 
       return {
         isSuccess: true,
         message: 'Success',
-        data: {
-          apartmentId: apartment.apartmentId,
-          apartmentName: apartment.apartmentName,
-          building:
-            buildingResponse?.statusCode === 200 ? buildingResponse.data : null,
-        },
+        data: formattedResponse,
       };
     } catch (error) {
       console.error('Error fetching apartment:', error);

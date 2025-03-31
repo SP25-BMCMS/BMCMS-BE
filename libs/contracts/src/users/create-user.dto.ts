@@ -93,7 +93,7 @@ export class createUserDto {
     // 🔥 If Resident, can create multiple apartments
     @IsOptional()
     @ApiProperty()
-    apartments?: { apartmentName: string; buildingId: string }[];
+    apartments?: { apartmentName: string; buildingDetailId: string }[];
 
     // ✅ If Staff, add these fields
     @IsString()

@@ -9,7 +9,7 @@ import { PaginationParams } from '../../../libs/contracts/src/Pagination/paginat
 
 @Controller('building-details')
 export class BuildingDetailsController {
-  constructor(private readonly buildingDetailService: BuildingDetailsService) {}
+  constructor(private readonly buildingDetailService: BuildingDetailsService) { }
 
   @MessagePattern(BUILDINGDETAIL_PATTERN.CREATE)
   async createBuildingDetail(@Payload() createBuildingDetailDto: any) {
@@ -27,9 +27,19 @@ export class BuildingDetailsController {
   async getBuildingDetailById(
     @Payload() payload: { buildingDetailId: string },
   ) {
-    return this.buildingDetailService.getBuildingDetailById(
+    console.log('Building detail requested for ID:', payload.buildingDetailId);
+    const result = await this.buildingDetailService.getBuildingDetailById(
       payload.buildingDetailId,
     );
+    console.log('Building detail response:', {
+      statusCode: result.statusCode,
+      hasBuildingInfo: !!result.data?.building,
+      buildingId: result.data?.building?.buildingId,
+      hasAreaInfo: !!result.data?.building?.area,
+      areaId: result.data?.building?.area?.areaId,
+      // hasLocationDetails: Array.isArray(result.data?.locationDetails) ? result.data?.locationDetails.length : 0
+    });
+    return result;
   }
 
   @MessagePattern(BUILDINGDETAIL_PATTERN.UPDATE)
@@ -45,5 +55,10 @@ export class BuildingDetailsController {
     return this.buildingDetailService.deleteBuildingDetail(
       payload.buildingDetailId,
     );
+  }
+
+  @MessagePattern(BUILDINGDETAIL_PATTERN.CHECK_EXISTS)
+  async checkBuildingDetailExists(@Payload() payload: { buildingDetailId: string }) {
+    return this.buildingDetailService.checkBuildingDetailExists(payload.buildingDetailId);
   }
 }

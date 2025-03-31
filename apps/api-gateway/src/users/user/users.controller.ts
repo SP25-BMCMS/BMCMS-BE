@@ -34,7 +34,7 @@ import { UsersService } from './users.service';
 @Controller('auth')
 @ApiTags('users')
 export class UsersController {
-  constructor(private usersService: UsersService) {}
+  constructor(private usersService: UsersService) { }
 
   @UseGuards(PassportLocalGuard)
   @Post('login')
@@ -485,9 +485,9 @@ export class UsersController {
             type: 'object',
             properties: {
               apartmentName: { type: 'string', example: 'A101' },
-              buildingId: { type: 'string', example: '12345' },
+              buildingDetailId: { type: 'string', example: '12345' },
             },
-            required: ['apartmentName', 'buildingId'],
+            required: ['apartmentName', 'buildingDetailId'],
           },
         },
       },
@@ -507,7 +507,7 @@ export class UsersController {
   async updateResidentApartments(
     @Param('residentId') residentId: string,
     @Body()
-    data: { apartments: { apartmentName: string; buildingId: string }[] },
+    data: { apartments: { apartmentName: string; buildingDetailId: string }[] },
     @Res() res: any,
   ) {
     try {

@@ -9,9 +9,9 @@ import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 export interface UserInterface {
   login(data: { username: string; password: string }): Observable<any>;
   signup(userData: createUserDto): Observable<ApiResponse<any>>; // ✅ Sửa kiểu trả về
-  logout({}): Observable<any>;
+  logout({ }): Observable<any>;
   getUserInfo(data: { userId: string; username: string }): Observable<any>;
-  getAllUsers({}): Observable<any>;
+  getAllUsers({ }): Observable<any>;
   test(data: { username: string; password: string }): Observable<any>;
   validateUser(data: { username: string; password: string }): Promise<any>;
 
@@ -29,11 +29,11 @@ export interface UserInterface {
   getResidentByPhone(data: { phone: string }): Observable<any>;
 
   // Staff/Employee Methods
-  getAllStaff({}): Observable<any>;
+  getAllStaff({ }): Observable<any>;
 
   // Working Position Methods
   createWorkingPosition(data: CreateWorkingPositionDto): Observable<any>;
-  getAllWorkingPositions({}): Observable<any>;
+  getAllWorkingPositions({ }): Observable<any>;
   getWorkingPositionById(data: { positionId: string }): Observable<any>;
   deleteWorkingPosition(data: { positionId: string }): Observable<any>;
 
@@ -41,7 +41,12 @@ export interface UserInterface {
   createDepartment(data: CreateDepartmentDto): Observable<any>;
 
   // Apartments Methods
-  getApartmentsByResidentId(data: { residentId: string }): Observable<any>;
+  getApartmentsByResidentId(data: { residentId: string }): Observable<{
+    isSuccess?: boolean;
+    success?: boolean;
+    message: string;
+    data: any[]; // Mảng các user response
+  }>;
   getApartmentByResidentAndApartmentId(data: {
     residentId: string;
     apartmentId: string;
@@ -58,7 +63,7 @@ export interface UserInterface {
 
   updateResidentApartments(data: {
     residentId: string;
-    apartments: { apartmentName: string; buildingId: string }[];
+    apartments: { apartmentName: string; buildingDetailId: string }[];
   }): Observable<any>;
 
   // Account Status

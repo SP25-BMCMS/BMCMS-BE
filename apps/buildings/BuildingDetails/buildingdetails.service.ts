@@ -9,12 +9,13 @@ import {
   PaginationParams,
   PaginationResponseDto,
 } from '../../../libs/contracts/src/Pagination/pagination.dto';
+import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 
 @Injectable()
 export class BuildingDetailsService {
   private prisma = new PrismaClient();
 
-  constructor(private prismaService: PrismaService) {}
+  constructor(private prismaService: PrismaService) { }
 
   async createBuildingDetail(createBuildingDetailDto: CreateBuildingDetailDto) {
     try {
@@ -98,21 +99,44 @@ export class BuildingDetailsService {
 
   async getBuildingDetailById(buildingDetailId: string) {
     try {
+      console.log(`Fetching building detail with ID: ${buildingDetailId}`);
+
       const buildingDetail = await this.prisma.buildingDetail.findUnique({
         where: { buildingDetailId },
+        include: {
+          building: {
+            include: {
+              area: true
+            }
+          },
+          //locationDetails: true
+        }
       });
+
       if (!buildingDetail) {
+        console.log(`Building detail not found for ID: ${buildingDetailId}`);
         return {
           statusCode: 404,
           message: 'Building Detail not found',
         };
       }
+
+      console.log(`Building detail found for ID: ${buildingDetailId}`);
+      console.log('Building information:', {
+        hasBuildingInfo: !!buildingDetail.building,
+        buildingId: buildingDetail.building?.buildingId,
+        hasAreaInfo: !!buildingDetail.building?.area,
+        areaId: buildingDetail.building?.area?.areaId,
+        // hasLocationDetails: Array.isArray(buildingDetail.locationDetails) ? buildingDetail.locationDetails.length : 0
+      });
+
       return {
         statusCode: 200,
         message: 'Building Detail retrieved successfully',
         data: buildingDetail,
       };
     } catch (error) {
+      console.error(`Error retrieving building detail ${buildingDetailId}:`, error);
       throw new RpcException({
         statusCode: 500,
         message: 'Error retrieving building detail',
@@ -162,6 +186,42 @@ export class BuildingDetailsService {
       throw new RpcException({
         statusCode: 400,
         message: 'Building Detail deletion failed',
+      });
+    }
+  }
+
+  async checkBuildingDetailExists(buildingDetailId: string) {
+    try {
+      const buildingDetail = await this.prisma.buildingDetail.findUnique({
+        where: { buildingDetailId },
+        include: {
+          building: {
+            include: {
+              area: true
+            }
+          },
+          locationDetails: true
+        }
+      });
+
+      if (!buildingDetail) {
+        return {
+          statusCode: 404,
+          message: 'Building Detail not found',
+          exists: false
+        };
+      }
+
+      return {
+        statusCode: 200,
+        message: 'Building Detail exists',
+        exists: true,
+        data: buildingDetail,
+      };
+    } catch (error) {
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error checking building detail',
       });
     }
   }

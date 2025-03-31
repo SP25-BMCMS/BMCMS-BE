@@ -19,7 +19,7 @@ import { LoginDto } from 'libs/contracts/src/users/login.dto';
 export class UsersService implements OnModuleInit {
   private userService: UserInterface;
 
-  constructor(@Inject(USERS_CLIENT) private readonly client: ClientGrpc) {}
+  constructor(@Inject(USERS_CLIENT) private readonly client: ClientGrpc) { }
 
   onModuleInit() {
     this.userService = this.client.getService<UserInterface>('UserService');
@@ -204,18 +204,14 @@ export class UsersService implements OnModuleInit {
   ): Promise<{
     isSuccess: boolean;
     message: string;
-    data: { apartmentName: string; buildingId: string }[];
+    data: any[];
   }> {
     try {
       const response = await lastValueFrom(
         this.userService.getApartmentsByResidentId({ residentId }),
       );
 
-      if (
-        !response ||
-        typeof response !== 'object' ||
-        !('isSuccess' in response)
-      ) {
+      if (!response || typeof response !== 'object') {
         return {
           isSuccess: false,
           message: 'Invalid response from user service',
@@ -223,7 +219,11 @@ export class UsersService implements OnModuleInit {
         };
       }
 
-      return response;
+      return {
+        isSuccess: response.isSuccess || response.success || false,
+        message: response.message || 'Success',
+        data: response.data || []
+      };
     } catch (error) {
       return { isSuccess: false, message: 'Service unavailable', data: [] };
     }
@@ -303,7 +303,7 @@ export class UsersService implements OnModuleInit {
 
   async updateResidentApartments(
     residentId: string,
-    apartments: { apartmentName: string; buildingId: string }[],
+    apartments: { apartmentName: string; buildingDetailId: string }[],
   ) {
     try {
       const response = await lastValueFrom(
