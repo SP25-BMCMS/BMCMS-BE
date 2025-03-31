@@ -10,7 +10,7 @@ service UserService {
   rpc Logout (Empty) returns (LogoutResponse);
   rpc Test (TestRequest) returns (TestResponse);
   rpc ValidateUser (LoginRequest) returns (UserResponse);
-  rpc GetAllResidents (Empty) returns (ResidentsListResponse);
+  rpc GetAllResidents (PaginationRequest) returns (ResidentsListResponse);
   rpc CreateWorkingPosition (CreateWorkingPositionRequest) returns (WorkingPositionApiResponse);
   rpc GetAllWorkingPositions (Empty) returns (WorkingPositionsListResponse);
   rpc GetWorkingPositionById (WorkingPositionByIdRequest) returns (WorkingPositionApiResponse);
@@ -169,9 +169,17 @@ message ResidentResponse {
 }
 
 message ResidentsListResponse {
-  bool success = 1;
+  bool isSuccess = 1;
   string message = 2;
   repeated UserResponse data = 3;
+  PaginationInfo pagination = 4;
+}
+
+message PaginationInfo {
+  int32 total = 1;
+  int32 page = 2;
+  int32 limit = 3;
+  int32 totalPages = 4;
 }
 
 message LoginRequest {
@@ -338,4 +346,9 @@ message GetApartmentDetailsReponse {
   bool isSuccess = 1;
   string message = 2;
   Apartment data = 3;
+}
+
+message PaginationRequest {
+  int32 page = 1;
+  int32 limit = 2;
 }

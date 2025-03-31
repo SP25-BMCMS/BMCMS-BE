@@ -3,6 +3,7 @@ import { USERS_CLIENT } from '../../constraints';
 import { ClientGrpc } from '@nestjs/microservices';
 import { UserInterface } from '../user/users.interface';
 import { lastValueFrom } from 'rxjs';
+import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 
 @Injectable()
 export class ResidentService {
@@ -14,8 +15,19 @@ export class ResidentService {
     this.userService = this.client.getService<UserInterface>('UserService');
   }
 
-  async getAllResidents() {
-    return await lastValueFrom(this.userService.getAllResidents({}));
+  async getAllResidents(paginationParams: PaginationParams) {
+    const { page, limit } = paginationParams;
+    console.log('API Gateway Service - Sending pagination parameters:', { page, limit });
+    
+    // Ensure we're sending numbers, not undefined
+    const params = {
+      page: typeof page === 'number' ? page : 1,
+      limit: typeof limit === 'number' ? limit : 10
+    };
+    
+    return await lastValueFrom(
+      this.userService.GetAllResidents(params),
+    );
   }
 
   async getResidentById(id: string) {
