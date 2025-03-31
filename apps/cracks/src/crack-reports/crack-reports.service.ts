@@ -15,6 +15,7 @@ import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-cra
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { S3UploaderService, UploadResult } from '../crack-details/s3-uploader.service';
+import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns';
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
 
@@ -131,17 +132,17 @@ export class CrackReportsService {
     try {
       return await this.prismaService.$transaction(async (prisma) => {
         // Check if buildingDetailId exists
-        if (dto.buildingDetailId) {
+        if (dto.buildingId) {
           try {
             const buildingDetail = await firstValueFrom(
               this.buildingClient
-                .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId: dto.buildingDetailId })
+                .send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: dto.buildingId })
                 .pipe(
                   catchError((error) => {
                     console.error('Error checking building detail:', error);
                     throw new RpcException({
                       status: 404,
-                      message: 'BuildingDetailId not found with id = ' + dto.buildingDetailId
+                      message: 'buildingId not found with id = ' + dto.buildingId
                     });
                   }),
                 ),
@@ -150,7 +151,7 @@ export class CrackReportsService {
             if (buildingDetail.statusCode === 404) {
               throw new RpcException({
                 status: 404,
-                message: 'BuildingDetailId not found with id = ' + dto.buildingDetailId
+                message: 'buildingId not found with id = ' + dto.buildingId
               });
             }
           } catch (error) {
@@ -159,7 +160,7 @@ export class CrackReportsService {
             }
             throw new RpcException({
               status: 404,
-              message: 'BuildingDetailId not found with id = ' + dto.buildingDetailId
+              message: 'buildingId not found with id = ' + dto.buildingId
             });
           }
         }
@@ -183,7 +184,7 @@ export class CrackReportsService {
         // 🔹 1. Create CrackReport
         const newCrackReport = await prisma.crackReport.create({
           data: {
-            buildingDetailId: dto.buildingDetailId,
+            buildingId: dto.buildingId,
             description: dto.description,
             isPrivatesAsset: dto.isPrivatesAsset,
             position: dto.isPrivatesAsset ? null : dto.position,

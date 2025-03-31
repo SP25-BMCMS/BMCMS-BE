@@ -15,17 +15,17 @@ datasource db {
 }
 
 model CrackReport {
-  crackReportId    String        @id @default(uuid())
-  buildingDetailId String
-  description      String
-  isPrivatesAsset  Boolean
-  position         String?
-  status           ReportStatus  @default(Pending)
-  reportedBy       String
-  verifiedBy       String
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  crackDetails     CrackDetail[]
+  crackReportId   String        @id @default(uuid())
+  buildingId      String
+  description     String
+  isPrivatesAsset Boolean
+  position        String?
+  status          ReportStatus  @default(Pending)
+  reportedBy      String
+  verifiedBy      String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  crackDetails    CrackDetail[]
 }
 
 model CrackDetail {
