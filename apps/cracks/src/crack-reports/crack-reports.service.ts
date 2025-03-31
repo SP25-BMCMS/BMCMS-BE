@@ -4,7 +4,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
-import { Status } from '@prisma/client-Task';
+import { AssignmentStatus, Status } from '@prisma/client-Task';
 import { $Enums, Prisma, CrackReport } from '@prisma/client-cracks';
 import { ApiResponse } from 'libs/contracts/src/ApiReponse/api-response';
 import { TASKS_PATTERN } from 'libs/contracts/src/tasks/task.patterns';
@@ -293,21 +293,60 @@ export class CrackReportsService {
   }
 
   async deleteCrackReport(crackReportId: string) {
-    const existingReport = await this.prismaService.crackReport.findUnique({
-      where: { crackReportId },
-    })
-    if (!existingReport) {
-      throw new RpcException(
-        new ApiResponse(false, 'Crack Report không tồn tại'),
-      )
-    }
+    try {
+      // Sử dụng transaction để đảm bảo tính toàn vẹn dữ liệu
+      return await this.prismaService.$transaction(async (prisma) => {
+        // Kiểm tra báo cáo tồn tại
+        const existingReport = await prisma.crackReport.findUnique({
+          where: { crackReportId },
+          include: { crackDetails: true }
+        })
 
-    await this.prismaService.crackReport.delete({ where: { crackReportId } })
-    return new ApiResponse(true, 'Crack Report đã được xóa thành công')
+        if (!existingReport) {
+          throw new RpcException(
+            new ApiResponse(false, 'Crack Report không tồn tại'),
+          )
+        }
+
+        // Lấy tất cả ID của CrackDetail
+        const crackDetailIds = existingReport.crackDetails.map(detail => detail.crackDetailsId);
+
+
+        // Xóa tất cả CrackSegment liên quan đến các CrackDetail của báo cáo này
+        if (crackDetailIds.length > 0) {
+          await prisma.crackSegment.deleteMany({
+            where: {
+              crackDetailsId: { in: crackDetailIds }
+            }
+          });
+        }
+
+        // Xóa tất cả CrackDetail của báo cáo
+        await prisma.crackDetail.deleteMany({
+          where: { crackReportId }
+        });
+
+        // Xóa CrackReport
+        await prisma.crackReport.delete({
+          where: { crackReportId }
+        });
+
+        return new ApiResponse(true, 'Crack Report và các dữ liệu liên quan đã được xóa thành công', {
+          crackReportId,
+          crackDetailIds,
+          deletedSegmentsCount: crackDetailIds.length > 0 ? crackDetailIds.length : 0,
+          deletedDetailsCount: existingReport.crackDetails.length
+        });
+      });
+    } catch (error) {
+      console.error('Lỗi khi xóa Crack Report:', error);
+      throw new RpcException(
+        new ApiResponse(false, 'Lỗi hệ thống khi xóa Crack Report. Vui lòng thử lại sau.')
+      );
+    }
   }
 
   async updateCrackReportStatus(crackReportId: string, managerId: string) {
-    console.log("🚀 Kha ne ~ crackReportId, managerId", crackReportId, managerId)
     try {
       return await this.prismaService.$transaction(async (prisma) => {
         const existingReport = await prisma.crackReport.findUnique({
@@ -330,6 +369,7 @@ export class CrackReportsService {
         let createTaskAssignmentResponse
 
         try {
+          // Create task first
           createTaskResponse = await firstValueFrom(
             this.taskClient
               .send(TASKS_PATTERN.CREATE, {
@@ -341,32 +381,42 @@ export class CrackReportsService {
               .pipe(
                 catchError((error) => {
                   console.error('Task creation error:', error)
-                  throw new ApiResponse(false, 'Không thể tạo task')
+                  throw new RpcException(
+                    new ApiResponse(false, 'Không thể tạo task')
+                  )
                 })
               )
           )
 
-          // Uncomment and modify task assignment if needed
+          // Check if task creation was successful and task_id exists
+          if (!createTaskResponse || !createTaskResponse.data || !createTaskResponse.data.task_id) {
+            throw new RpcException(
+              new ApiResponse(false, 'Task được tạo nhưng không trả về task_id hợp lệ')
+            )
+          }
+
+          // Then use the ASSIGN_TO_EMPLOYEE pattern instead of CREATE
           createTaskAssignmentResponse = await firstValueFrom(
             this.taskClient
-              .send(TASKASSIGNMENT_PATTERN.CREATE, {
-                task_id: createTaskResponse.task_id,
-                employee_id: managerId,
+              .send(TASKASSIGNMENT_PATTERN.ASSIGN_TO_EMPLOYEE, {
+                taskId: createTaskResponse.data.task_id,
+                employeeId: managerId,
                 description: `Phân công xử lý báo cáo nứt ${crackReportId}`,
-                status: Status.Assigned,
+                status: AssignmentStatus.Pending,
               })
               .pipe(
                 catchError((error) => {
                   console.error('Task assignment error:', error)
                   throw new RpcException(
-                    new ApiResponse(false, 'Không thể tạo phân công task'),
+                    new ApiResponse(false, 'Không thể tạo phân công task')
                   )
                 }),
               ),
           )
         } catch (taskError) {
           console.error('Task creation/assignment error:', taskError)
-          // Optionally, you can choose to continue or rollback
+          // We should throw the error to rollback the transaction
+          throw taskError
         }
 
         return new ApiResponse(
@@ -381,8 +431,13 @@ export class CrackReportsService {
       })
     } catch (error) {
       console.error('🔥 Lỗi trong updateCrackReportStatus:', error)
+
+      if (error instanceof RpcException) {
+        throw error
+      }
+
       throw new RpcException(
-        new ApiResponse(false, 'Lỗi hệ thống, vui lòng thử lại sau'),
+        new ApiResponse(false, 'Lỗi hệ thống, vui lòng thử lại sau')
       )
     }
   }

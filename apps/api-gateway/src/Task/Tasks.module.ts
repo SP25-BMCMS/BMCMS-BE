@@ -6,7 +6,7 @@ import {
 } from '@nestjs/microservices';
 import { ClientConfigService } from 'apps/configs/client-config.service';
 import { TaskService } from './Tasks.service';
-import { TASK_CLIENT } from '../constraints';
+import { CRACK_CLIENT, TASK_CLIENT } from '../constraints';
 import { TaskController as TasksController } from './Tasks.controller';
 import { ClientConfigModule } from 'apps/configs/client-config.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -26,7 +26,15 @@ import { PassportModule } from '@nestjs/passport';
       },
       inject: [ClientConfigService], // Inject ClientConfigService to get the correct options
     },
+    {
+      provide: CRACK_CLIENT,
+      useFactory: (configService: ClientConfigService) => {
+        const clientOptions = configService.cracksClientOptions;
+        return ClientProxyFactory.create(clientOptions);
+      },
+      inject: [ClientConfigService],
+    },
   ],
   controllers: [TasksController],
 })
-export class TasksModule {}
+export class TasksModule { }

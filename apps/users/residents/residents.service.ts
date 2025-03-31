@@ -71,23 +71,37 @@ export class ResidentsService {
     }
   }
 
-  async getAllResidents(paginationParams?: { page?: number; limit?: number }) {
+  async getAllResidents(paginationParams?: { page?: number; limit?: number; search?: string }) {
     try {
-      const { page = 1, limit = 10 } = paginationParams || {};
+      const { page = 1, limit = 10, search = '' } = paginationParams || {};
       const skip = (page - 1) * limit;
 
-      // Get total count for pagination
+      console.log(`Service - Getting residents with params - page: ${page}, limit: ${limit}, search: ${search || 'none'}, skip: ${skip}`);
+
+      // Tạo điều kiện tìm kiếm
+      const whereCondition: any = {
+        role: 'Resident'
+      };
+
+      // Nếu có từ khóa tìm kiếm
+      if (search && search.trim()) {
+        whereCondition.OR = [
+          { username: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { phone: { contains: search, mode: 'insensitive' } }
+        ];
+      }
+
+      // Get total count for pagination with search filter
       const totalCount = await this.prisma.user.count({
-        where: {
-          role: 'Resident'
-        }
+        where: whereCondition
       });
 
-      // Get all users with Resident role with pagination
+      const totalPages = Math.ceil(totalCount / limit);
+
+      // Get all users with Resident role with pagination and search
       const residents = await this.prisma.user.findMany({
-        where: {
-          role: 'Resident'
-        },
+        where: whereCondition,
         select: {
           userId: true,
           username: true,
@@ -141,6 +155,7 @@ export class ResidentsService {
 
               // Format response theo đúng cấu trúc proto
               return {
+                apartmentId: apartment.apartmentId,
                 apartmentName: apartment.apartmentName,
                 buildingDetails: buildingDetail ? {
                   buildingDetailId: buildingDetail.buildingDetailId,
@@ -176,16 +191,19 @@ export class ResidentsService {
         })
       );
 
+      const paginationData = {
+        total: totalCount,
+        page: page,
+        limit: limit,
+        totalPages: totalPages
+      };
+
+
       return {
         isSuccess: true,
         message: 'Danh sách cư dân',
         data: residentsWithBuildingDetails,
-        pagination: {
-          total: totalCount,
-          page,
-          limit,
-          totalPages: Math.ceil(totalCount / limit)
-        }
+        pagination: paginationData
       };
     } catch (error) {
       console.error('Error in getAllResidents:', error);
@@ -205,9 +223,6 @@ export class ResidentsService {
 
   async getApartmentsByResidentId(residentId: string) {
     try {
-      console.log('Getting apartments for resident:', residentId);
-      console.log('Building client available:', !!this.buildingClient);
-
       // Get user information first with explicit fields according to proto
       const resident = await this.prisma.user.findUnique({
         where: { userId: residentId },
@@ -225,7 +240,6 @@ export class ResidentsService {
       });
 
       if (!resident) {
-        console.log(`Resident with ID ${residentId} not found`);
         return {
           isSuccess: false,
           success: false,
@@ -234,7 +248,6 @@ export class ResidentsService {
         };
       }
 
-      console.log('Found resident:', resident.username);
 
       // Get apartments for this resident
       const apartments = await this.prisma.apartment.findMany({
@@ -243,28 +256,20 @@ export class ResidentsService {
         }
       });
 
-      console.log(`Found ${apartments.length} apartments for resident ${residentId}`);
+      // Return apartments directly instead of wrapping in user object
+      if (apartments.length === 0) {
+        return {
+          isSuccess: true,
+          success: true,
+          message: "No apartments found",
+          data: []
+        };
+      }
 
-      // Create a UserResponse object exactly as defined in the proto
-      const userResponse = {
-        userId: resident.userId || '',
-        username: resident.username || '',
-        email: resident.email || '',
-        phone: resident.phone || '',
-        role: resident.role || 'Resident',
-        dateOfBirth: resident.dateOfBirth ? resident.dateOfBirth.toISOString() : '',
-        gender: resident.gender || '',
-        accountStatus: resident.accountStatus || 'Active',
-        userDetails: resident.userDetails || null,
-        apartments: [] // Will populate with GetApartmentRepsonse objects
-      };
-
-      if (apartments.length > 0) {
-        // Process apartments with building details
-        const apartmentPromises = apartments.map(async (apartment) => {
+      // Process apartments with building details
+      const processedApartments = await Promise.all(
+        apartments.map(async (apartment) => {
           try {
-            console.log(`Processing apartment ${apartment.apartmentName} with buildingDetailId ${apartment.buildingDetailId}`);
-
             // Get building detail information
             const buildingDetailResponse = apartment.buildingDetailId ? await firstValueFrom(
               this.buildingClient.send(
@@ -274,21 +279,18 @@ export class ResidentsService {
                 timeout(5000),
                 retry(2),
                 catchError(err => {
-                  console.error(`Error fetching building detail ${apartment.buildingDetailId}:`, err);
                   return of({ statusCode: 404, data: null });
                 })
               )
             ) : { statusCode: 404, data: null };
-
-            console.log('Building detail response status:', buildingDetailResponse?.statusCode);
-
             // Get buildingDetail information
             const buildingDetail = buildingDetailResponse?.statusCode === 200 ?
               buildingDetailResponse.data : null;
 
-            // Construct a GetApartmentRepsonse object exactly as defined in the proto
+            // Explicit apartment response object
             return {
-              apartmentName: apartment.apartmentName || '',
+              apartmentId: apartment.apartmentId,
+              apartmentName: apartment.apartmentName,
               buildingDetails: buildingDetail ? {
                 buildingDetailId: buildingDetail.buildingDetailId || '',
                 name: buildingDetail.name || '',
@@ -308,40 +310,23 @@ export class ResidentsService {
               } : null
             };
           } catch (error) {
-            console.error(`Error processing apartment ${apartment.apartmentName}:`, error);
             return {
+              apartmentId: apartment.apartmentId || '',
               apartmentName: apartment.apartmentName || '',
               buildingDetails: null
             };
           }
-        });
+        })
+      );
 
-        // Wait for all apartment details to be fetched
-        const processedApartments = await Promise.all(apartmentPromises);
-        console.log('Processed apartments:', processedApartments.length);
-
-        // Make sure we don't have undefined values that could cause serialization issues
-        userResponse.apartments = processedApartments.map(apt => ({
-          apartmentName: apt.apartmentName || '',
-          buildingDetails: apt.buildingDetails
-        }));
-      }
-
-      console.log('Final user response structure:', {
-        userId: userResponse.userId,
-        username: userResponse.username,
-        apartments: userResponse.apartments.length
-      });
-
-      // Return in the format expected by GetApartmentsResponse proto
+      // Return in the format expected by GetApartmentByResidentIdResponse proto
       return {
         isSuccess: true,
         success: true,
         message: "Success",
-        data: [userResponse] // Always wrap in array with valid data
+        data: processedApartments
       };
     } catch (error) {
-      console.error('Error in getApartmentsByResidentId:', error);
       return {
         isSuccess: false,
         success: false,
@@ -428,11 +413,6 @@ export class ResidentsService {
         apartmentId: apartment.apartmentId,
         building: buildingDetail?.building || null
       };
-
-      console.log('Apartment response:', JSON.stringify({
-        apartmentName: apartmentResponse.apartmentName,
-        hasBuilding: !!apartmentResponse.building
-      }));
 
       return {
         isSuccess: true,

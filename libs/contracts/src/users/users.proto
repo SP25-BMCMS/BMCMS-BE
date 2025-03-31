@@ -111,9 +111,10 @@ message DepartmentDetails {
 }
 
 message ApartmentResponse {
-  string apartmentName = 1;
-  string buildingDetailId = 2;
-  BuildingDetailInfo buildingDetails = 3;
+  string apartmentId = 1;
+  string apartmentName = 2;
+  string buildingDetailId = 3;
+  BuildingDetailInfo buildingDetails = 4;
 }
 
 message BuildingInfo {
@@ -130,8 +131,9 @@ message BuildingInfo {
 }
 
 message GetApartmentRepsonse {
-  string apartmentName = 1;
-  BuildingDetailInfo buildingDetails = 2;
+  string apartmentId = 1;
+  string apartmentName = 2;
+  BuildingDetailInfo buildingDetails = 3;
 }
 
 message GetApartmentByResidentIdResponse {
@@ -192,6 +194,7 @@ message ResidentsListResponse {
 message PaginationRequest {
   int32 page = 1;
   int32 limit = 2;
+  string search = 3;
 }
 
 message PaginationResponse {
@@ -308,7 +311,7 @@ message GetApartmentsRequest {
 message Apartment {
   string apartmentName = 1;
   string apartmentId = 2;
-   BuildingInfo building = 3;
+  BuildingInfo building = 3;
 }
 
 message GetApartmentsResponse {
@@ -366,4 +369,5 @@ message GetApartmentDetailsReponse {
   string message = 2;
   Apartment data = 3;
 }
+
 

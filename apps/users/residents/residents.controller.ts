@@ -7,8 +7,7 @@ export class ResidentsController {
   constructor(private readonly residentsService: ResidentsService) { }
 
   @GrpcMethod('UserService', 'getAllResidents')
-  async getAllResidents(@Payload() paginationParams: { page?: number; limit?: number }) {
-    console.log('GRPC: getAllResidents called with pagination:', paginationParams);
+  async getAllResidents(@Payload() paginationParams: { page?: number; limit?: number; search?: string }) {
     const result = await this.residentsService.getAllResidents(paginationParams);
 
     // Kiểm tra xem có dữ liệu trả về không
@@ -29,7 +28,8 @@ export class ResidentsController {
     return {
       success: true,
       message: result.message,
-      data: result.data
+      data: result.data,
+      pagination: result.pagination
     };
   }
 
@@ -38,14 +38,26 @@ export class ResidentsController {
     console.log(`GRPC Controller - getApartmentsByResidentId called with ID: ${data.residentId}`);
     try {
       const result = await this.residentsService.getApartmentsByResidentId(data.residentId);
-      console.log('GRPC Controller - Service result detail:', JSON.stringify(result, null, 2));
+      console.log('GRPC Controller - Service result:', JSON.stringify({
+        isSuccess: result.isSuccess,
+        message: result.message,
+        dataLength: result.data?.length || 0
+      }));
+
+      // Kiểm tra và log thông tin apartment ID
+      if (result.data?.length > 0 && result.data[0].apartments?.length > 0) {
+        const firstApartment = result.data[0].apartments[0];
+        console.log('First apartment data:', JSON.stringify({
+          apartmentId: firstApartment.apartmentId,
+          apartmentName: firstApartment.apartmentName,
+          hasBuildingDetails: !!firstApartment.buildingDetails
+        }));
+      }
 
       // Kiểm tra kỹ dữ liệu trước khi trả về
       const filteredData = result.data?.filter(item => item && Object.keys(item).length > 0) || [];
-      console.log(`Filtered ${result.data?.length || 0} to ${filteredData.length} non-empty items`);
 
       if (filteredData.length === 0 && result.isSuccess) {
-        console.log('No valid data found, creating placeholder response');
         return {
           success: true,
           isSuccess: true,
@@ -79,14 +91,8 @@ export class ResidentsController {
         })
       };
 
-      console.log('GRPC Controller - Final response data:',
-        response.data.length > 0 ?
-          `${response.data.length} items, first item has ${response.data[0].apartments?.length || 0} apartments` :
-          'Empty array');
-
       return response;
     } catch (error) {
-      console.error('GRPC Controller - Error in getApartmentsByResidentId:', error);
       return {
         success: false,
         isSuccess: false,

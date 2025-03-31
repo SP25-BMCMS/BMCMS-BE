@@ -16,18 +16,25 @@ const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
     ClientsModule.registerAsync([
       {
         name: 'TASK_SERVICE',
-        useFactory: (configService: ConfigService) => ({
-          transport: Transport.RMQ,
-          options: {
-            urls: [
-              `amqp://${configService.get('RABBITMQ_USER')}:${configService.get('RABBITMQ_PASSWORD')}@${configService.get('RABBITMQ_HOST')}`,
-            ],
-            queue: configService.get('RABBITMQ_QUEUE_NAME'),
-            queueOptions: {
-              durable: true,
+        useFactory: (configService: ConfigService) => {
+          const user = configService.get('RABBITMQ_USER');
+          const password = configService.get('RABBITMQ_PASSWORD');
+          const host = configService.get('RABBITMQ_HOST');
+          const isLocal = process.env.NODE_ENV !== 'production';
+          return {
+            transport: Transport.RMQ,
+            options: {
+              urls: isLocal
+                ? [`amqp://${user}:${password}@${host}`]
+                : [`amqp://${user}:${password}@rabbitmq:5672`],
+              queue: 'tasks_queue',
+              queueOptions: {
+                durable: true,
+                prefetchCount: 1,
+              },
             },
-          },
-        }),
+          };
+        },
         inject: [ConfigService],
       },
       {
