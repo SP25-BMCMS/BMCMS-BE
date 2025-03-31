@@ -1,8 +1,11 @@
-import { Controller, Get, Param, UseGuards, HttpStatus, HttpCode, NotFoundException, Query } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards, HttpStatus, HttpCode, NotFoundException, Query, DefaultValuePipe, ParseIntPipe } from '@nestjs/common';
 import { ResidentService } from './resident.service';
 import { lastValueFrom } from 'rxjs';
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 import { ApiQuery, ApiTags } from '@nestjs/swagger';
+import { AuthGuard } from '../../guards/auth.guard';
+import { RolesGuard } from '../../guards/role.guard';
+import { Roles } from '../../decorator/roles.decarator';
 
 @ApiTags('Resident')
 @Controller('resident')
@@ -15,24 +18,22 @@ export class ResidentController {
     @ApiQuery({ name: 'limit', required: false, type: Number })
     // @Roles(Role.Admin)
     async getAllResidents(
-        @Query('page') page?: string,
-        @Query('limit') limit?: string
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
     ) {
-        // Parse string query parameters to numbers and ensure they are valid
-        const parsedPage = page ? parseInt(page, 10) : 1;
-        const parsedLimit = limit ? parseInt(limit, 10) : 10;
+        const result = await this.residentService.getAllResidents({ page, limit });
 
-        console.log('Raw API Query Parameters - page:', page, 'limit:', limit);
-        console.log('Parsed API Query Parameters - page:', parsedPage, 'limit:', parsedLimit);
-
-        // Ensure we always pass valid numbers
-        const response = await this.residentService.getAllResidents({
-            page: parsedPage || 1,
-            limit: parsedLimit || 10
-        });
-
-        console.log('Response pagination:', response.pagination);
-        return response;
+        return {
+            success: result.success || true,
+            message: result.message || 'Danh sách cư dân',
+            data: result.data || [],
+            pagination: result.pagination || {
+                total: 0,
+                page: page,
+                limit: limit,
+                totalPages: 0
+            }
+        };
     }
 
     @Get(':residentId/apartments')

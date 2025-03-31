@@ -83,6 +83,8 @@ export class ResidentsService {
         }
       });
 
+      const totalPages = Math.ceil(totalCount / limit);
+
       // Get all users with Resident role with pagination
       const residents = await this.prisma.user.findMany({
         where: {
@@ -176,16 +178,19 @@ export class ResidentsService {
         })
       );
 
+      const paginationData = {
+        total: totalCount,
+        page: page,
+        limit: limit,
+        totalPages: totalPages
+      };
+
+
       return {
         isSuccess: true,
         message: 'Danh sách cư dân',
         data: residentsWithBuildingDetails,
-        pagination: {
-          total: totalCount,
-          page,
-          limit,
-          totalPages: Math.ceil(totalCount / limit)
-        }
+        pagination: paginationData
       };
     } catch (error) {
       console.error('Error in getAllResidents:', error);

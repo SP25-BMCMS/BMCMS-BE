@@ -26,9 +26,13 @@ export class ResidentService {
       limit: typeof limit === 'number' ? limit : 10
     };
 
-    return await lastValueFrom(
+    const response = await lastValueFrom(
       this.userService.getAllResidents(params),
     );
+
+    console.log('API Gateway Service - Received pagination response:', response.pagination);
+
+    return response;
   }
 
   async getResidentById(id: string) {
