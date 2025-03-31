@@ -23,7 +23,7 @@ export class BuildingsService {
 
   constructor(
     @Inject(BUILDINGS_CLIENT) private readonly buildingsClient: ClientProxy,
-  ) {}
+  ) { }
 
   // Add this method to forward apartment requests to the users service
   async getApartmentById(apartmentId: string) {
@@ -174,7 +174,12 @@ export class BuildingsService {
       const building = await this.prisma.building.findUnique({
         where: { buildingId },
         include: {
-          area: true, // Include related area information if needed
+          area: true,
+          buildingDetails: {
+            include: {
+              locationDetails: true
+            }
+          }
         },
       });
 

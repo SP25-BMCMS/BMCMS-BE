@@ -127,6 +127,27 @@ message BuildingInfo {
   string construction_date = 8;
   string completion_date = 9;
   AreaInfo area = 10;
+  repeated BuildingDetailInfo buildingDetails = 11;
+}
+
+message BuildingDetailInfo {
+  string buildingDetailId = 1;
+  string name = 2;
+  int32 total_apartments = 3;
+  repeated LocationDetailInfo locationDetails = 4;
+  string createdAt = 5;
+  string updatedAt = 6;
+}
+
+message LocationDetailInfo {
+  string locationDetailId = 1;
+  string roomNumber = 2;
+  int32 floorNumber = 3;
+  string positionSide = 4;
+  string areaType = 5;
+  string description = 6;
+  string createdAt = 7;
+  string updatedAt = 8;
 }
 
 message AreaInfo {

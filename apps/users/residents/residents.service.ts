@@ -3,8 +3,10 @@ import { PrismaService } from '../prisma/prisma.service'
 import { ResidentDto } from '../../../libs/contracts/src/residents/resident.dto';
 import { ClientProxy } from '@nestjs/microservices';
 import { BUILDINGS_PATTERN } from '../../../libs/contracts/src/buildings/buildings.patterns';
+import { BUILDINGDETAIL_PATTERN } from '../../../libs/contracts/src/BuildingDetails/buildingdetails.patterns';
 import { AREAS_PATTERN } from '../../../libs/contracts/src/Areas/Areas.patterns';
 import { firstValueFrom, catchError, timeout, of, retry, from } from 'rxjs';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class ResidentsService {
@@ -156,14 +158,29 @@ export class ResidentsService {
         };
       }
 
-      // Lấy thông tin building và area cho mỗi căn hộ
-      const apartmentsWithBuildings = await Promise.all(
+      // Process apartments with building and area details
+      const apartmentsWithDetails = await Promise.all(
         apartments.map(async (apartment) => {
           try {
             console.log('Processing apartment:', apartment.apartmentName);
-            // Lấy thông tin building từ building service
-            const buildingResponse = await this.getBuildingDetails(apartment.buildingId);
-            console.log('Building response:', buildingResponse);
+
+            // Get building details from building service
+            const buildingResponse = await firstValueFrom(
+              this.buildingClient.send(
+                BUILDINGS_PATTERN.GET_BY_ID,
+                { buildingId: apartment.buildingId }
+              ).pipe(
+                timeout(5000),
+                retry(2),
+                catchError(err => {
+                  console.error(`Error fetching building ${apartment.buildingId} after retries:`, err);
+                  return of({
+                    statusCode: 404,
+                    data: null
+                  });
+                })
+              )
+            );
 
             let areaInfo = null;
             if (buildingResponse?.statusCode === 200 && buildingResponse.data?.areaId) {
@@ -177,23 +194,57 @@ export class ResidentsService {
                 console.log('Failed to get area info, status:', areaResponse?.statusCode);
               }
             } else {
-              console.log('No areaId found in building response');
+              console.log('No areaId found in building');
             }
 
-            // Trả về căn hộ với thông tin building và area
-            const buildingData = buildingResponse?.statusCode === 200 ? buildingResponse.data : null;
-            const result = {
+            // Get building details
+            let buildingDetails = [];
+            if (buildingResponse?.statusCode === 200) {
+              console.log('Fetching building details for building:', apartment.buildingId);
+              const buildingDetailsResponse = await firstValueFrom(
+                this.buildingClient.send(
+                  BUILDINGDETAIL_PATTERN.GET_BY_ID,
+                  { buildingId: apartment.buildingId }
+                ).pipe(
+                  timeout(5000),
+                  retry(2),
+                  catchError(err => {
+                    console.error(`Error fetching building details for ${apartment.buildingId} after retries:`, err);
+                    return of({
+                      statusCode: 404,
+                      data: []
+                    });
+                  })
+                )
+              );
+
+              console.log('Raw building details response:', JSON.stringify(buildingDetailsResponse, null, 2));
+
+              if (buildingDetailsResponse?.statusCode === 200) {
+                // Handle both single object and array responses
+                buildingDetails = Array.isArray(buildingDetailsResponse.data)
+                  ? buildingDetailsResponse.data
+                  : [buildingDetailsResponse.data];
+                console.log('Successfully got building details:', JSON.stringify(buildingDetails, null, 2));
+              } else {
+                console.log('Failed to get building details, status:', buildingDetailsResponse?.statusCode);
+                console.log('Error message:', buildingDetailsResponse?.message);
+              }
+            }
+
+            const response = {
               apartmentName: apartment.apartmentName,
               apartmentId: apartment.apartmentId,
-              building: buildingData ? {
-                ...buildingData,
-                area: areaInfo
+              building: buildingResponse?.statusCode === 200 ? {
+                ...buildingResponse.data,
+                area: areaInfo,
+                buildingDetails: buildingDetails
               } : null
             };
-            console.log('Final result for apartment:', result);
-            return result;
+            console.log('Final apartment response:', JSON.stringify(response, null, 2));
+            return response;
           } catch (error) {
-            console.error(`Failed to get building for apartment ${apartment.apartmentName}:`, error);
+            console.error(`Failed to process apartment ${apartment.apartmentName}:`, error);
             return {
               apartmentName: apartment.apartmentName,
               apartmentId: apartment.apartmentId,
@@ -207,7 +258,7 @@ export class ResidentsService {
         isSuccess: true,
         message: "Success",
         statusCode: 200,
-        data: apartmentsWithBuildings
+        data: apartmentsWithDetails
       };
     } catch (error) {
       console.error('Error in getApartmentsByResidentId:', error);
