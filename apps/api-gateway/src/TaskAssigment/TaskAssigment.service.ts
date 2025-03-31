@@ -7,11 +7,11 @@ import { UpdateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/update
 import { AssignmentStatus } from '@prisma/client-Task';
 import { firstValueFrom } from 'rxjs';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
-import { ChangeTaskAssignmentStatusDto } from 'libs/contracts/src/taskAssigment/changeTaskStatusDto';
+import { ChangeTaskAssignmentStatusDto } from '@app/contracts/taskAssigment/changeTaskStatusDto ';
 
 @Injectable()
 export class TaskAssignmentService {
-  constructor(@Inject(TASK_CLIENT) private readonly taskClient: ClientProxy) {}
+  constructor(@Inject(TASK_CLIENT) private readonly taskClient: ClientProxy) { }
 
   // Create Task Assignment
   async createTaskAssignment(createTaskAssignmentDto: CreateTaskAssignmentDto) {
@@ -176,7 +176,7 @@ export class TaskAssignmentService {
     try {
       return await firstValueFrom(
         this.taskClient.send(
-          TASKASSIGNMENT_PATTERN.CHANGE_STATUS, 
+          TASKASSIGNMENT_PATTERN.CHANGE_STATUS,
           changeStatusDto
         ),
       );

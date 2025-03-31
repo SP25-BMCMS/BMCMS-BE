@@ -16,7 +16,7 @@ export interface UserInterface {
   validateUser(data: { username: string; password: string }): Promise<any>;
 
   // Resident
-  GetAllResidents(paginationParams: { page?: number; limit?: number }): Observable<any>;
+  getAllResidents(paginationParams: PaginationParams): Observable<any>;
   getResidentById(data: { id: string }): Observable<any>;
   createResident(data: { username: string; password: string }): Observable<any>;
   updateResident(data: {
