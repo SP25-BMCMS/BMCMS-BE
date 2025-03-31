@@ -24,6 +24,13 @@ services:
     networks:
       - my_network
 
+  redis:
+    image: redis:latest
+    container_name: my-redis
+    restart: always
+    ports:
+      - '6379:6379'
+
   api_gateway:
     build:
       context: .
@@ -126,6 +133,27 @@ services:
       - .env
     depends_on:
       - rabbitmq # ✅ Đảm bảo RabbitMQ chạy trước
+    environment:
+      NODE_ENV: production
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: admin
+      RABBITMQ_PASS: admin
+    restart: always
+    networks:
+      - my_network
+
+  notifications_service:
+    build:
+      context: .
+      dockerfile: ./apps/notifications/Dockerfile
+    container_name: notifications_service
+    ports:
+      - '3006:3006'
+    env_file:
+      - .env
+    depends_on:
+      - rabbitmq
+      - redis # ✅ Đảm bảo Redis chạy trước
     environment:
       NODE_ENV: production
       RABBITMQ_HOST: rabbitmq

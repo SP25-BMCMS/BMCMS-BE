@@ -1,11 +1,12 @@
-import { Module } from '@nestjs/common';
-import { UsersService } from './users.service';
-import { PrismaModule } from '../prisma/prisma.module';
-import { ClientsModule, Transport } from '@nestjs/microservices';
-import { UsersController } from './users.controller';
-import { ConfigService } from '@nestjs/config';
+import { Module } from '@nestjs/common'
+import { UsersService } from './users.service'
+import { PrismaModule } from '../prisma/prisma.module'
+import { ClientsModule, Transport } from '@nestjs/microservices'
+import { UsersController } from './users.controller'
+import { ConfigService } from '@nestjs/config'
 
-const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
+const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
+
 
 @Module({
   imports: [
@@ -14,10 +15,10 @@ const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
       {
         name: BUILDINGS_CLIENT,
         useFactory: (configService: ConfigService) => {
-          const user = configService.get('RABBITMQ_USER');
-          const password = configService.get('RABBITMQ_PASSWORD');
-          const host = configService.get('RABBITMQ_HOST');
-          const isLocal = process.env.NODE_ENV !== 'production';
+          const user = configService.get('RABBITMQ_USER')
+          const password = configService.get('RABBITMQ_PASSWORD')
+          const host = configService.get('RABBITMQ_HOST')
+          const isLocal = process.env.NODE_ENV !== 'production'
           return {
             transport: Transport.RMQ,
             options: {
@@ -30,14 +31,14 @@ const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
                 prefetchCount: 1,
               },
             },
-          };
+          }
         },
         inject: [ConfigService],
-      },
+      }
     ]),
   ],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService],
 })
-export class UsersModule {}
+export class UsersModule { }

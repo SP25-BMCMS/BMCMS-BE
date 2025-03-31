@@ -1,5 +1,6 @@
 import { Module, ValidationPipe } from '@nestjs/common';
 import { APP_PIPE } from '@nestjs/core';
+import { NotificationsModule } from './notifications/notifications.module';
 // ...other imports
 
 @Module({

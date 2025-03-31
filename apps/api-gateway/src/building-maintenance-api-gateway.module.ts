@@ -1,19 +1,20 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { UsersModule } from './users/users.module';
-import { BuildingsModule } from './buildings/buildings.module';
-import { AreasModule } from './Area/Areas.module';
-import { BuildingDetailModule } from './BuildingDetail/buildingDetail.module';
-import { LocationDetailModule } from './LocationDetail/locationDetail.module';
-import { CracksModule } from './cracks/cracks.module';
-import { TasksModule } from './Task/Tasks.module';
-import { TaskAssigmentModule } from './TaskAssigment/TaskAssigment.module';
-import { worklogModule } from './Worklogs/WorkLog.module';
-import { SchedulesModule } from './schedules/Schedules.module';
-import { ScheduleJobsController } from './schedulejobs/schedulejobs.controller';
-import { schedulejobsModule } from './schedulejobs/schedulejobs.module';
-import { InspectionModule } from './Inspection/Inspection.module';
-import { RepairMaterialModule } from './RepairMaterial/RepairMaterial.module';
+import { Module } from '@nestjs/common'
+import { ConfigModule } from '@nestjs/config'
+import { UsersModule } from './users/users.module'
+import { BuildingsModule } from './buildings/buildings.module'
+import { AreasModule } from './Area/Areas.module'
+import { BuildingDetailModule } from './BuildingDetail/buildingDetail.module'
+import { LocationDetailModule } from './LocationDetail/locationDetail.module'
+import { CracksModule } from './cracks/cracks.module'
+import { TasksModule } from './Task/Tasks.module'
+import { TaskAssigmentModule } from './TaskAssigment/TaskAssigment.module'
+import { worklogModule } from './Worklogs/WorkLog.module'
+import { SchedulesModule } from './schedules/Schedules.module'
+import { ScheduleJobsController } from './schedulejobs/schedulejobs.controller'
+import { schedulejobsModule } from './schedulejobs/schedulejobs.module'
+import { InspectionModule } from './Inspection/Inspection.module'
+import { RepairMaterialModule } from './RepairMaterial/RepairMaterial.module'
+import { NotificationsModule } from './notifications/notifications.module'
 
 @Module({
   imports: [
@@ -32,8 +33,7 @@ import { RepairMaterialModule } from './RepairMaterial/RepairMaterial.module';
     InspectionModule,
     RepairMaterialModule,
     InspectionModule,
+    NotificationsModule
   ],
-  // controllers: [BuildingMaintenanceApiGatewayController],
-  // providers: [BuildingMaintenanceApiGatewayService],
 })
-export class BuildingMaintenanceApiGatewayModule {}
+export class BuildingMaintenanceApiGatewayModule { }
