@@ -223,5 +223,46 @@ export class TaskAssignmentController {
       payload.description
     );
   }
-  
+
+  @Put(':assignment_id/change-status')
+  @ApiOperation({ summary: 'Change task assignment status' })
+  @ApiParam({
+    name: 'assignment_id',
+    description: 'ID of the task assignment',
+    type: 'string',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['Pending', 'Verified', 'Unverified', 'InFixing', 'Fixed', 'Confirmed', 'Reassigned'],
+          example: 'InFixing'
+        }
+      },
+      required: ['status'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Task assignment status changed successfully',
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Task assignment not found' 
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Invalid status value' 
+  })
+  async changeTaskAssignmentStatus(
+    @Param('assignment_id') assignment_id: string,
+    @Body() payload: { status: AssignmentStatus },
+  ) {
+    return this.taskAssignmentService.changeTaskAssignmentStatus({
+      assignment_id,
+      status: payload.status
+    });
+  }
 }

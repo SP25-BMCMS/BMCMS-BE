@@ -25,9 +25,9 @@ export class ChangeTaskAssignmentStatusDto {
   @ApiProperty({
     description: 'New status for the task assignment',
     enum: AssignmentStatus,
-    example: 'InFixing'
+    example: 'InFixing'+'Pending'+'Verified'+'Unverified'+'Fixed'+'Confirmed'+'Reassigned'
   })
   @IsEnum($Enums.AssignmentStatus)
   @IsNotEmpty()
-  status: $Enums.   AssignmentStatus;
+  status: $Enums.AssignmentStatus;
 }
