@@ -72,16 +72,13 @@ export class ResidentService {
   }
 
   getApartmentsByResidentId(residentId: string) {
-    console.log(`API Gateway - Getting apartments for resident ID: ${residentId}`);
     return this.userService
       .getApartmentsByResidentId({ residentId })
       .pipe(
         map((response) => {
-          console.log('Raw response from microservice:', JSON.stringify(response, null, 2));
 
           // Check if response is empty or invalid
           if (!response) {
-            console.error('Empty response from microservice');
             throw new NotFoundException('No apartment data found');
           }
 
@@ -89,24 +86,24 @@ export class ResidentService {
           const isSuccessful = response.success || response.isSuccess;
 
           if (!isSuccessful) {
-            console.error('Failed response from microservice:', response.message);
             throw new NotFoundException(response.message || 'Failed to retrieve apartments');
           }
 
           // Log data details for debugging
-          console.log(`Response data length: ${response.data?.length || 0}`);
 
           if (response.data?.length > 0) {
             const firstItem = response.data[0];
-            console.log(`First item keys: ${Object.keys(firstItem).join(', ')}`);
-            console.log(`First item has apartments: ${Array.isArray(firstItem.apartments)}, length: ${firstItem.apartments?.length || 0}`);
+            console.log(`First apartment data: ${JSON.stringify({
+              hasApartmentId: !!firstItem.apartmentId,
+              apartmentId: firstItem.apartmentId,
+              apartmentName: firstItem.apartmentName
+            })}`);
           }
 
           // Return exactly as received from the microservice
           return response;
         }),
         catchError((error) => {
-          console.error('Error in getApartmentsByResidentId:', error);
           throw new InternalServerErrorException('Error retrieving apartments');
         }),
       );

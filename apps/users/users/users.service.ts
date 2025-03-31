@@ -601,6 +601,7 @@ export class UsersService {
         );
 
         return {
+          apartmentId: apartment.apartmentId,
           apartmentName: apartment.apartmentName,
           buildingDetails:
             buildingResponse?.statusCode === 200 ? buildingResponse.data : null,
@@ -906,8 +907,8 @@ export class UsersService {
       );
 
       const formattedResponse = {
-        apartmentName: apartment.apartmentName,
         apartmentId: apartment.apartmentId,
+        apartmentName: apartment.apartmentName,
         buildingDetails: buildingResponse?.statusCode === 200 ? buildingResponse.data : null,
       };
 

@@ -38,53 +38,34 @@ export class ResidentsController {
     console.log(`GRPC Controller - getApartmentsByResidentId called with ID: ${data.residentId}`);
     try {
       const result = await this.residentsService.getApartmentsByResidentId(data.residentId);
-      console.log('GRPC Controller - Service result detail:', JSON.stringify(result, null, 2));
 
-      // Kiểm tra kỹ dữ liệu trước khi trả về
-      const filteredData = result.data?.filter(item => item && Object.keys(item).length > 0) || [];
-      console.log(`Filtered ${result.data?.length || 0} to ${filteredData.length} non-empty items`);
+      // Log chi tiết kết quả cho debugging
+      console.log('GRPC Controller - Service result structure:', {
+        isSuccess: result.isSuccess,
+        message: result.message,
+        dataLength: result.data?.length || 0,
+        dataType: result.data ? (Array.isArray(result.data) ? 'array' : typeof result.data) : 'undefined'
+      });
 
-      if (filteredData.length === 0 && result.isSuccess) {
-        console.log('No valid data found, creating placeholder response');
-        return {
-          success: true,
-          isSuccess: true,
-          message: 'No apartments found',
-          data: []
-        };
+      // Log mẫu dữ liệu đầu tiên nếu có
+      if (result.data?.length > 0) {
+        const firstItem = result.data[0];
+        console.log('First apartment data:', {
+          apartmentId: firstItem.apartmentId,
+          apartmentName: firstItem.apartmentName,
+          hasApartmentId: !!firstItem.apartmentId,
+          keys: Object.keys(firstItem)
+        });
       }
 
-      // Đảm bảo tất cả thuộc tính đều có giá trị
-      const response = {
+      // Trả về kết quả trực tiếp từ service, không cần xử lý thêm
+      // Service đã trả về đúng cấu trúc cho proto definition
+      return {
         success: true,
         isSuccess: true,
         message: result.message || 'Success',
-        data: filteredData.map(item => {
-          // Đảm bảo user data đầy đủ
-          if (!item.userId) console.warn('Missing userId in response item');
-          if (!item.apartments) console.warn('Missing apartments array in response item');
-
-          return {
-            userId: item.userId || '',
-            username: item.username || '',
-            email: item.email || '',
-            phone: item.phone || '',
-            role: item.role || 'Resident',
-            dateOfBirth: item.dateOfBirth || null,
-            gender: item.gender || null,
-            accountStatus: item.accountStatus || 'Active',
-            userDetails: item.userDetails || null,
-            apartments: Array.isArray(item.apartments) ? item.apartments : []
-          };
-        })
+        data: result.data || []
       };
-
-      console.log('GRPC Controller - Final response data:',
-        response.data.length > 0 ?
-          `${response.data.length} items, first item has ${response.data[0].apartments?.length || 0} apartments` :
-          'Empty array');
-
-      return response;
     } catch (error) {
       console.error('GRPC Controller - Error in getApartmentsByResidentId:', error);
       return {

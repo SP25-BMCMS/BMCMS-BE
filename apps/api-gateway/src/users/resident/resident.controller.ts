@@ -23,7 +23,6 @@ export class ResidentController {
         @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
         @Query('search') search?: string,
     ) {
-        console.log(`API Gateway Controller - Getting all residents with page: ${page}, limit: ${limit}, search: ${search || 'none'}`);
         const result = await this.residentService.getAllResidents({ page, limit, search });
 
         return {
@@ -46,7 +45,24 @@ export class ResidentController {
             console.log(`API Gateway Controller - Getting apartments for resident ID: ${residentId}`);
             const response = await lastValueFrom(this.residentService.getApartmentsByResidentId(residentId));
 
-            console.log(`API Gateway Controller - Response: success=${response.success || response.isSuccess}, data length=${response.data?.length || 0}`);
+            console.log('API Gateway Controller - Raw response structure:', {
+                success: response.success || response.isSuccess,
+                message: response.message,
+                dataLength: response.data?.length || 0,
+                dataType: response.data ? (Array.isArray(response.data) ? 'array' : typeof response.data) : 'undefined'
+            });
+
+            // Log chi tiết về dữ liệu và cấu trúc
+            if (response.data?.length > 0) {
+                const firstApartment = response.data[0];
+                console.log('First apartment object keys:', Object.keys(firstApartment));
+                console.log('First apartment data:', {
+                    apartmentId: firstApartment.apartmentId,
+                    apartmentName: firstApartment.apartmentName,
+                    hasApartmentId: !!firstApartment.apartmentId,
+                    hasBuildingDetails: !!firstApartment.buildingDetails
+                });
+            }
 
             if (!response.success && !response.isSuccess) {
                 throw new NotFoundException(response.message || 'No apartments found');
