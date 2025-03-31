@@ -45,23 +45,15 @@ export class ResidentController {
             console.log(`API Gateway Controller - Getting apartments for resident ID: ${residentId}`);
             const response = await lastValueFrom(this.residentService.getApartmentsByResidentId(residentId));
 
-            console.log('API Gateway Controller - Raw response structure:', {
-                success: response.success || response.isSuccess,
-                message: response.message,
-                dataLength: response.data?.length || 0,
-                dataType: response.data ? (Array.isArray(response.data) ? 'array' : typeof response.data) : 'undefined'
-            });
+            console.log(`API Gateway Controller - Response received: success=${response.success || response.isSuccess}, data length=${response.data?.length || 0}`);
 
-            // Log chi tiết về dữ liệu và cấu trúc
             if (response.data?.length > 0) {
                 const firstApartment = response.data[0];
-                console.log('First apartment object keys:', Object.keys(firstApartment));
-                console.log('First apartment data:', {
+                console.log(`First apartment in response: ${JSON.stringify({
                     apartmentId: firstApartment.apartmentId,
-                    apartmentName: firstApartment.apartmentName,
-                    hasApartmentId: !!firstApartment.apartmentId,
+                    name: firstApartment.apartmentName,
                     hasBuildingDetails: !!firstApartment.buildingDetails
-                });
+                })}`);
             }
 
             if (!response.success && !response.isSuccess) {

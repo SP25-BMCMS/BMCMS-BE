@@ -38,36 +38,61 @@ export class ResidentsController {
     console.log(`GRPC Controller - getApartmentsByResidentId called with ID: ${data.residentId}`);
     try {
       const result = await this.residentsService.getApartmentsByResidentId(data.residentId);
-
-      // Log chi tiết kết quả cho debugging
-      console.log('GRPC Controller - Service result structure:', {
+      console.log('GRPC Controller - Service result:', JSON.stringify({
         isSuccess: result.isSuccess,
         message: result.message,
-        dataLength: result.data?.length || 0,
-        dataType: result.data ? (Array.isArray(result.data) ? 'array' : typeof result.data) : 'undefined'
-      });
+        dataLength: result.data?.length || 0
+      }));
 
-      // Log mẫu dữ liệu đầu tiên nếu có
-      if (result.data?.length > 0) {
-        const firstItem = result.data[0];
-        console.log('First apartment data:', {
-          apartmentId: firstItem.apartmentId,
-          apartmentName: firstItem.apartmentName,
-          hasApartmentId: !!firstItem.apartmentId,
-          keys: Object.keys(firstItem)
-        });
+      // Kiểm tra và log thông tin apartment ID
+      if (result.data?.length > 0 && result.data[0].apartments?.length > 0) {
+        const firstApartment = result.data[0].apartments[0];
+        console.log('First apartment data:', JSON.stringify({
+          apartmentId: firstApartment.apartmentId,
+          apartmentName: firstApartment.apartmentName,
+          hasBuildingDetails: !!firstApartment.buildingDetails
+        }));
       }
 
-      // Trả về kết quả trực tiếp từ service, không cần xử lý thêm
-      // Service đã trả về đúng cấu trúc cho proto definition
-      return {
+      // Kiểm tra kỹ dữ liệu trước khi trả về
+      const filteredData = result.data?.filter(item => item && Object.keys(item).length > 0) || [];
+
+      if (filteredData.length === 0 && result.isSuccess) {
+        return {
+          success: true,
+          isSuccess: true,
+          message: 'No apartments found',
+          data: []
+        };
+      }
+
+      // Đảm bảo tất cả thuộc tính đều có giá trị
+      const response = {
         success: true,
         isSuccess: true,
         message: result.message || 'Success',
-        data: result.data || []
+        data: filteredData.map(item => {
+          // Đảm bảo user data đầy đủ
+          if (!item.userId) console.warn('Missing userId in response item');
+          if (!item.apartments) console.warn('Missing apartments array in response item');
+
+          return {
+            userId: item.userId || '',
+            username: item.username || '',
+            email: item.email || '',
+            phone: item.phone || '',
+            role: item.role || 'Resident',
+            dateOfBirth: item.dateOfBirth || null,
+            gender: item.gender || null,
+            accountStatus: item.accountStatus || 'Active',
+            userDetails: item.userDetails || null,
+            apartments: Array.isArray(item.apartments) ? item.apartments : []
+          };
+        })
       };
+
+      return response;
     } catch (error) {
-      console.error('GRPC Controller - Error in getApartmentsByResidentId:', error);
       return {
         success: false,
         isSuccess: false,

@@ -293,21 +293,60 @@ export class CrackReportsService {
   }
 
   async deleteCrackReport(crackReportId: string) {
-    const existingReport = await this.prismaService.crackReport.findUnique({
-      where: { crackReportId },
-    })
-    if (!existingReport) {
-      throw new RpcException(
-        new ApiResponse(false, 'Crack Report không tồn tại'),
-      )
-    }
+    try {
+      // Sử dụng transaction để đảm bảo tính toàn vẹn dữ liệu
+      return await this.prismaService.$transaction(async (prisma) => {
+        // Kiểm tra báo cáo tồn tại
+        const existingReport = await prisma.crackReport.findUnique({
+          where: { crackReportId },
+          include: { crackDetails: true }
+        })
 
-    await this.prismaService.crackReport.delete({ where: { crackReportId } })
-    return new ApiResponse(true, 'Crack Report đã được xóa thành công')
+        if (!existingReport) {
+          throw new RpcException(
+            new ApiResponse(false, 'Crack Report không tồn tại'),
+          )
+        }
+
+        // Lấy tất cả ID của CrackDetail
+        const crackDetailIds = existingReport.crackDetails.map(detail => detail.crackDetailsId);
+
+
+        // Xóa tất cả CrackSegment liên quan đến các CrackDetail của báo cáo này
+        if (crackDetailIds.length > 0) {
+          await prisma.crackSegment.deleteMany({
+            where: {
+              crackDetailsId: { in: crackDetailIds }
+            }
+          });
+        }
+
+        // Xóa tất cả CrackDetail của báo cáo
+        await prisma.crackDetail.deleteMany({
+          where: { crackReportId }
+        });
+
+        // Xóa CrackReport
+        await prisma.crackReport.delete({
+          where: { crackReportId }
+        });
+
+        return new ApiResponse(true, 'Crack Report và các dữ liệu liên quan đã được xóa thành công', {
+          crackReportId,
+          crackDetailIds,
+          deletedSegmentsCount: crackDetailIds.length > 0 ? crackDetailIds.length : 0,
+          deletedDetailsCount: existingReport.crackDetails.length
+        });
+      });
+    } catch (error) {
+      console.error('Lỗi khi xóa Crack Report:', error);
+      throw new RpcException(
+        new ApiResponse(false, 'Lỗi hệ thống khi xóa Crack Report. Vui lòng thử lại sau.')
+      );
+    }
   }
 
   async updateCrackReportStatus(crackReportId: string, managerId: string) {
-    console.log("🚀 Kha ne ~ crackReportId, managerId", crackReportId, managerId)
     try {
       return await this.prismaService.$transaction(async (prisma) => {
         const existingReport = await prisma.crackReport.findUnique({
