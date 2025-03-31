@@ -7,6 +7,7 @@ import { UpdateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/update
 import { AssignmentStatus } from '@prisma/client-Task';
 import { firstValueFrom } from 'rxjs';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
+import { ChangeTaskAssignmentStatusDto } from 'libs/contracts/src/taskAssigment/changeTaskStatusDto';
 
 @Injectable()
 export class TaskAssignmentService {
@@ -143,5 +144,54 @@ export class TaskAssignmentService {
         task_id: taskId,
       }),
     );
+  }
+
+  // Assign Task to Employee
+  async assignTaskToEmployee(taskId: string, employeeId: string, description: string) {
+    try {
+      return await firstValueFrom(
+        this.taskClient.send(TASKASSIGNMENT_PATTERN.ASSIGN_TO_EMPLOYEE, {
+          taskId,
+          employeeId,
+          description
+        }),
+      );
+    } catch (error) {
+      console.error('Error assigning task to employee:', error);
+      if (error.response) {
+        throw new HttpException(
+          error.response.message || 'Error assigning task to employee',
+          error.response.statusCode || HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+      throw new HttpException(
+        'Error assigning task to employee',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  // Change Task Assignment Status
+  async changeTaskAssignmentStatus(changeStatusDto: ChangeTaskAssignmentStatusDto) {
+    try {
+      return await firstValueFrom(
+        this.taskClient.send(
+          TASKASSIGNMENT_PATTERN.CHANGE_STATUS, 
+          changeStatusDto
+        ),
+      );
+    } catch (error) {
+      console.error('Error changing task assignment status:', error);
+      if (error.response) {
+        throw new HttpException(
+          error.response.message || 'Error changing task assignment status',
+          error.response.statusCode || HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+      throw new HttpException(
+        'Error changing task assignment status',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 }

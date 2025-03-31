@@ -72,4 +72,25 @@ export class TaskAssignmentsController {
   ) {
     return this.taskAssignmentService.getTaskAssignmentByStatus(payload.status);
   }
+
+  @MessagePattern(TASKASSIGNMENT_PATTERN.ASSIGN_TO_EMPLOYEE)
+  async assignTaskToEmployee(
+    @Payload() payload: { taskId: string; employeeId: string; description: string },
+  ) {
+    return this.taskAssignmentService.assignTaskToEmployee(
+      payload.taskId,
+      payload.employeeId,
+      payload.description
+    );
+  }
+
+  @MessagePattern(TASKASSIGNMENT_PATTERN.CHANGE_STATUS)
+  async changeTaskAssignmentStatus(
+    @Payload() payload: { assignment_id: string; status: AssignmentStatus },
+  ) {
+    return this.taskAssignmentService.changeTaskAssignmentStatus(
+      payload.assignment_id,
+      payload.status
+    );
+  }
 }

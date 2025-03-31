@@ -188,4 +188,40 @@ export class TaskAssignmentController {
   async getTaskAssignmentsByTaskId(@Param('taskId') taskId: string) {
     return this.taskAssignmentService.getTaskAssignmentsByTaskId(taskId);
   }
+
+  @Post('assign')
+  @ApiOperation({ summary: 'Assign a task to an employee' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        taskId: { type: 'string', example: '12345' },
+        employeeId: { type: 'string', example: '67890' },
+        description: { type: 'string', example: 'Fix the crack in building A, floor 3' }
+      },
+      required: ['taskId', 'employeeId', 'description'],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Task assigned to employee successfully',
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Employee has unconfirmed tasks or unable to assign task' 
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Task or employee not found' 
+  })
+  async assignTaskToEmployee(
+    @Body() payload: { taskId: string; employeeId: string; description: string },
+  ) {
+    return this.taskAssignmentService.assignTaskToEmployee(
+      payload.taskId,
+      payload.employeeId,
+      payload.description
+    );
+  }
+  
 }
