@@ -35,7 +35,7 @@ export class AddCrackReportDto {
     description: 'The unique identifier of the building detail.',
     example: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
   })
-  buildingId: string;
+  buildingDetailId: string;
 
   @IsString()
   @IsNotEmpty()

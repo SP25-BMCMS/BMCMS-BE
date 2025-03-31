@@ -132,17 +132,17 @@ export class CrackReportsService {
     try {
       return await this.prismaService.$transaction(async (prisma) => {
         // Check if buildingDetailId exists
-        if (dto.buildingId) {
+        if (dto.buildingDetailId) {
           try {
             const buildingDetail = await firstValueFrom(
               this.buildingClient
-                .send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: dto.buildingId })
+                .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId: dto.buildingDetailId })
                 .pipe(
                   catchError((error) => {
                     console.error('Error checking building detail:', error);
                     throw new RpcException({
                       status: 404,
-                      message: 'buildingId not found with id = ' + dto.buildingId
+                      message: 'buildingDetailId not found with id = ' + dto.buildingDetailId
                     });
                   }),
                 ),
@@ -151,7 +151,7 @@ export class CrackReportsService {
             if (buildingDetail.statusCode === 404) {
               throw new RpcException({
                 status: 404,
-                message: 'buildingId not found with id = ' + dto.buildingId
+                message: 'buildingDetailId not found with id = ' + dto.buildingDetailId
               });
             }
           } catch (error) {
@@ -160,7 +160,7 @@ export class CrackReportsService {
             }
             throw new RpcException({
               status: 404,
-              message: 'buildingId not found with id = ' + dto.buildingId
+              message: 'buildingDetailId not found with id = ' + dto.buildingDetailId
             });
           }
         }
@@ -184,7 +184,7 @@ export class CrackReportsService {
         // 🔹 1. Create CrackReport
         const newCrackReport = await prisma.crackReport.create({
           data: {
-            buildingId: dto.buildingId,
+            buildingDetailId: dto.buildingDetailId,
             description: dto.description,
             isPrivatesAsset: dto.isPrivatesAsset,
             position: dto.isPrivatesAsset ? null : dto.position,
