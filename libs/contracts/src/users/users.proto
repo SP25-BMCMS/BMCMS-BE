@@ -183,7 +183,7 @@ message ResidentResponse {
 }
 
 message ResidentsListResponse {
-  bool success = 1;
+  bool isSuccess = 1;
   string message = 2;
   repeated UserResponse data = 3;
   PaginationResponse pagination = 4;
@@ -366,3 +366,8 @@ message GetApartmentDetailsReponse {
   string message = 2;
   Apartment data = 3;
 }
+message PaginationRequest {
+  int32 page = 1;
+  int32 limit = 2;
+}
+

@@ -29,8 +29,7 @@ export class ResidentsController {
     return {
       success: true,
       message: result.message,
-      data: result.data,
-      pagination: result.pagination
+      data: result.data
     };
   }
 
