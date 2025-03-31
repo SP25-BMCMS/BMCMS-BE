@@ -55,7 +55,6 @@
         "tsConfigPath": "apps/cracks/tsconfig.app.json"
       }
     },
-
     "tasks": {
       "type": "application",
       "root": "apps/Tasks",
@@ -72,6 +71,15 @@
       "sourceRoot": "apps/schedules/src",
       "compilerOptions": {
         "tsConfigPath": "apps/schedules/tsconfig.app.json"
+      }
+    },
+    "notifications": {
+      "type": "application",
+      "root": "apps/notifications",
+      "entryFile": "main",
+      "sourceRoot": "apps/notifications/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/notifications/tsconfig.app.json"
       }
     }
   }
