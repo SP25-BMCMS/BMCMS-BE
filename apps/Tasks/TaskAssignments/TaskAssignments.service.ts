@@ -203,6 +203,45 @@ export class TaskAssignmentsService {
     }
   }
 
+  async changeTaskAssignmentStatus(assignment_id: string, status: AssignmentStatus) {
+    try {
+      // Kiểm tra xem assignment có tồn tại không
+      const existingAssignment = await this.prisma.taskAssignment.findUnique({
+        where: { assignment_id },
+      });
+
+      if (!existingAssignment) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Task assignment not found',
+        });
+      }
+
+      // Cập nhật trạng thái
+      const updatedAssignment = await this.prisma.taskAssignment.update({
+        where: { assignment_id },
+        data: { status },
+        include: {
+          task: true,
+        },
+      });
+
+      return {
+        statusCode: 200,
+        message: `Task assignment status changed to ${status} successfully`,
+        data: updatedAssignment,
+      };
+    } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      }
+      throw new RpcException({
+        statusCode: 500,
+        message: `Failed to change task assignment status: ${error.message}`,
+      });
+    }
+  }
+
   async getTaskAssignmentByStatus(status: AssignmentStatus) {
     try {
       const assignments = await this.prisma.taskAssignment.findMany({
@@ -217,6 +256,64 @@ export class TaskAssignmentsService {
       throw new RpcException({
         statusCode: 500,
         message: 'Error fetching task assignments by status',
+      });
+    }
+  }
+
+  async assignTaskToEmployee(taskId: string, employeeId: string, description: string) {
+    try {
+      // Check if the employee has any unconfirmed tasks
+      const unconfirmedTasks = await this.prisma.taskAssignment.findMany({
+        where: {
+          employee_id: employeeId,
+          status: {
+            notIn: [AssignmentStatus.Confirmed]
+          }
+        }
+      });
+
+      if (unconfirmedTasks.length > 0) {
+        return {
+          statusCode: 400,
+          message: 'Employee has unconfirmed tasks. Cannot assign new task.',
+          data: null
+        };
+      }
+
+      // Check if the task exists
+      const task = await this.prisma.task.findUnique({
+        where: { task_id: taskId }
+      });
+
+      if (!task) {
+        return {
+          statusCode: 404,
+          message: 'Task not found',
+          data: null
+        };
+      }
+
+      // Create new task assignment
+      const newAssignment = await this.prisma.taskAssignment.create({
+        data: {
+          task_id: taskId,
+          employee_id: employeeId,
+          description: description,
+          status: AssignmentStatus.Pending
+        }
+      });
+
+      return {
+        statusCode: 201,
+        message: 'Task assigned to employee successfully',
+        data: newAssignment
+      };
+    } catch (error) {
+      console.error('Error assigning task to employee:', error);
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Failed to assign task to employee',
+        error: error.message
       });
     }
   }

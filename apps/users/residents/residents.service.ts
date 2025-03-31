@@ -71,9 +71,19 @@ export class ResidentsService {
     }
   }
 
-  async getAllResidents() {
+  async getAllResidents(paginationParams?: { page?: number; limit?: number }) {
     try {
-      // Get all users with Resident role
+      const { page = 1, limit = 10 } = paginationParams || {};
+      const skip = (page - 1) * limit;
+
+      // Get total count for pagination
+      const totalCount = await this.prisma.user.count({
+        where: {
+          role: 'Resident'
+        }
+      });
+
+      // Get all users with Resident role with pagination
       const residents = await this.prisma.user.findMany({
         where: {
           role: 'Resident'
@@ -89,7 +99,9 @@ export class ResidentsService {
           apartments: true,
           accountStatus: true,
           role: true
-        }
+        },
+        skip,
+        take: limit
       });
 
       console.log('Found residents:', residents.length);
@@ -167,14 +179,26 @@ export class ResidentsService {
       return {
         isSuccess: true,
         message: 'Danh sách cư dân',
-        data: residentsWithBuildingDetails
+        data: residentsWithBuildingDetails,
+        pagination: {
+          total: totalCount,
+          page,
+          limit,
+          totalPages: Math.ceil(totalCount / limit)
+        }
       };
     } catch (error) {
       console.error('Error in getAllResidents:', error);
       return {
         isSuccess: false,
         message: error.message || 'Lỗi khi lấy danh sách cư dân',
-        data: []
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
       };
     }
   }

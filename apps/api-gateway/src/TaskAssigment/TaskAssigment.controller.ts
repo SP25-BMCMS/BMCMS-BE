@@ -188,4 +188,81 @@ export class TaskAssignmentController {
   async getTaskAssignmentsByTaskId(@Param('taskId') taskId: string) {
     return this.taskAssignmentService.getTaskAssignmentsByTaskId(taskId);
   }
+
+  @Post('assign')
+  @ApiOperation({ summary: 'Assign a task to an employee' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        taskId: { type: 'string', example: '12345' },
+        employeeId: { type: 'string', example: '67890' },
+        description: { type: 'string', example: 'Fix the crack in building A, floor 3' }
+      },
+      required: ['taskId', 'employeeId', 'description'],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Task assigned to employee successfully',
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Employee has unconfirmed tasks or unable to assign task' 
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Task or employee not found' 
+  })
+  async assignTaskToEmployee(
+    @Body() payload: { taskId: string; employeeId: string; description: string },
+  ) {
+    return this.taskAssignmentService.assignTaskToEmployee(
+      payload.taskId,
+      payload.employeeId,
+      payload.description
+    );
+  }
+
+  @Put(':assignment_id/change-status')
+  @ApiOperation({ summary: 'Change task assignment status' })
+  @ApiParam({
+    name: 'assignment_id',
+    description: 'ID of the task assignment',
+    type: 'string',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['Pending', 'Verified', 'Unverified', 'InFixing', 'Fixed', 'Confirmed', 'Reassigned'],
+          example: 'InFixing'
+        }
+      },
+      required: ['status'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Task assignment status changed successfully',
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Task assignment not found' 
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Invalid status value' 
+  })
+  async changeTaskAssignmentStatus(
+    @Param('assignment_id') assignment_id: string,
+    @Body() payload: { status: AssignmentStatus },
+  ) {
+    return this.taskAssignmentService.changeTaskAssignmentStatus({
+      assignment_id,
+      status: payload.status
+    });
+  }
 }
