@@ -4,7 +4,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
-import { Status } from '@prisma/client-Task';
+import { AssignmentStatus, Status } from '@prisma/client-Task';
 import { $Enums, Prisma, CrackReport } from '@prisma/client-cracks';
 import { ApiResponse } from 'libs/contracts/src/ApiReponse/api-response';
 import { TASKS_PATTERN } from 'libs/contracts/src/tasks/task.patterns';
@@ -369,6 +369,7 @@ export class CrackReportsService {
         let createTaskAssignmentResponse
 
         try {
+          // Create task first
           createTaskResponse = await firstValueFrom(
             this.taskClient
               .send(TASKS_PATTERN.CREATE, {
@@ -380,32 +381,42 @@ export class CrackReportsService {
               .pipe(
                 catchError((error) => {
                   console.error('Task creation error:', error)
-                  throw new ApiResponse(false, 'Không thể tạo task')
+                  throw new RpcException(
+                    new ApiResponse(false, 'Không thể tạo task')
+                  )
                 })
               )
           )
 
-          // Uncomment and modify task assignment if needed
+          // Check if task creation was successful and task_id exists
+          if (!createTaskResponse || !createTaskResponse.data || !createTaskResponse.data.task_id) {
+            throw new RpcException(
+              new ApiResponse(false, 'Task được tạo nhưng không trả về task_id hợp lệ')
+            )
+          }
+
+          // Then use the ASSIGN_TO_EMPLOYEE pattern instead of CREATE
           createTaskAssignmentResponse = await firstValueFrom(
             this.taskClient
-              .send(TASKASSIGNMENT_PATTERN.CREATE, {
-                task_id: createTaskResponse.task_id,
-                employee_id: managerId,
+              .send(TASKASSIGNMENT_PATTERN.ASSIGN_TO_EMPLOYEE, {
+                taskId: createTaskResponse.data.task_id,
+                employeeId: managerId,
                 description: `Phân công xử lý báo cáo nứt ${crackReportId}`,
-                status: Status.Assigned,
+                status: AssignmentStatus.Pending,
               })
               .pipe(
                 catchError((error) => {
                   console.error('Task assignment error:', error)
                   throw new RpcException(
-                    new ApiResponse(false, 'Không thể tạo phân công task'),
+                    new ApiResponse(false, 'Không thể tạo phân công task')
                   )
                 }),
               ),
           )
         } catch (taskError) {
           console.error('Task creation/assignment error:', taskError)
-          // Optionally, you can choose to continue or rollback
+          // We should throw the error to rollback the transaction
+          throw taskError
         }
 
         return new ApiResponse(
@@ -420,8 +431,13 @@ export class CrackReportsService {
       })
     } catch (error) {
       console.error('🔥 Lỗi trong updateCrackReportStatus:', error)
+
+      if (error instanceof RpcException) {
+        throw error
+      }
+
       throw new RpcException(
-        new ApiResponse(false, 'Lỗi hệ thống, vui lòng thử lại sau'),
+        new ApiResponse(false, 'Lỗi hệ thống, vui lòng thử lại sau')
       )
     }
   }

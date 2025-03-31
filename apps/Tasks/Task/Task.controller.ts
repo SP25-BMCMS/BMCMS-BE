@@ -10,7 +10,7 @@ import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 
 @Controller('task')
 export class TasksController {
-  constructor(private readonly taskService: TaskService) {}
+  constructor(private readonly taskService: TaskService) { }
 
   @MessagePattern(TASKS_PATTERN.CREATE)
   async createTask(@Payload() createTaskDto: CreateTaskDto) {
