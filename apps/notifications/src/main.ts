@@ -19,7 +19,6 @@ async function bootstrap() {
     retryAttempts: 5,
     retryDelay: 5000,
   }
-  console.log("🚀 Kha ne ~ redisOptions:", redisOptions)
 
 
 

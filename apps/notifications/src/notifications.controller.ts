@@ -9,14 +9,12 @@ export class NotificationsController {
 
   @EventPattern('send_otp')
   async handleSendOtp(data: { email: string }) {
-    console.log("🚀 Kha ne ~ email:", data)
     const otp = await this.otpService.createOTP(data.email)
     return this.emailService.sendOtp(data.email, otp)
   }
 
   @EventPattern('verify_otp')
   async handleVerifyOtp(data: { email: string; otp: string }) {
-    console.log("🚀 Kha ne ~ data:", data)
 
     return this.otpService.verifyOTP(data.email, data.otp)
   }
