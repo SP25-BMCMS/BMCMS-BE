@@ -4,7 +4,7 @@ import { IsNotEmpty, IsNumber, IsString, IsUUID, Max, Min } from 'class-validato
 /**
  * DTO để cập nhật trạng thái của feedback
  */
-export class UpdateFeedbackStatusDto {
+export class UpdateFeedbackRatingDto {
   @ApiProperty({
     description: 'ID của feedback cần thay đổi trạng thái',
     example: 'd1b0cd4c-1e76-4d7f-a0d4-81b32e5101cd',

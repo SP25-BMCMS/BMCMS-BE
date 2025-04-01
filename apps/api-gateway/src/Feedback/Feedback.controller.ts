@@ -22,7 +22,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
-import { UpdateFeedbackStatusDto } from '@app/contracts/feedback/update-feedback-status.dto';
+import { UpdateFeedbackRatingDto } from '@app/contracts/feedback/update-feedback-status.dto';
 
 @Controller('feedbacks')
 @ApiTags('feedbacks')
@@ -99,19 +99,36 @@ export class FeedbackController {
   @Put(':feedback_id/change-status')
   @ApiOperation({ summary: 'Update feedback status/rating' })
   @ApiParam({ name: 'feedback_id', description: 'Feedback ID' })
-  @ApiBody({ type: UpdateFeedbackStatusDto })
+  @ApiBody({ type: UpdateFeedbackRatingDto })
   @ApiResponse({ status: 200, description: 'Feedback status updated successfully' })
   @ApiResponse({ status: 404, description: 'Feedback not found' })
   @ApiResponse({ status: 400, description: 'Invalid rating value' })
   async updateFeedbackrating(
     @Param('feedback_id') feedback_id: string,
-    @Body() updateStatusDto: { rating: number },
+    @Body() updateRatingDto: { rating: number },
   ) {
-    const statusDto: UpdateFeedbackStatusDto = {
+    const ratingDto: UpdateFeedbackRatingDto = {
       feedback_id,
-      rating: updateStatusDto.rating,
+      rating: updateRatingDto.rating,
     };
-    return this.feedbackService.updateFeedbackrating(statusDto);
+    return this.feedbackService.updateFeedbackrating(ratingDto);
+  }
+
+  @Put(':feedback_id/status')
+  @ApiOperation({ summary: 'Update feedback status' })
+  @ApiParam({ name: 'feedback_id', description: 'Feedback ID' })
+  @ApiBody({ type: UpdateFeedbackRatingDto })
+  @ApiResponse({ status: 200, description: 'Feedback status updated successfully' })
+  @ApiResponse({ status: 404, description: 'Feedback not found' })
+  async updateFeedbackStatus(
+    @Param('feedback_id') feedback_id: string,
+    @Body() updateStatusDto: { status: string },
+  ) {
+    const statusDto: UpdateFeedbackRatingDto = {
+      feedback_id,
+      status: updateStatusDto.status,
+    };
+    return this.feedbackService.updateFeedbackStatus(statusDto);
   }
 
   @Delete(':feedback_id')

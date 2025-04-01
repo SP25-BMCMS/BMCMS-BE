@@ -134,7 +134,7 @@ model Feedback {
   task Task @relation(fields: [task_id], references: [task_id])
 }
 enum FeedbackStatus {
-   ACTIVE
+  ACTIVE
   INACTIVE
   DELETED
 }

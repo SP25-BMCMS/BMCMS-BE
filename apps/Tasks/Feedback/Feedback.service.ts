@@ -2,6 +2,7 @@ import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 import { CreateFeedbackDto } from '@app/contracts/feedback/create-feedback.dto';
 import { FeedbackResponseDto } from '@app/contracts/feedback/feedback.dto';
 import { UpdateFeedbackDto } from '@app/contracts/feedback/update-feedback.dto';
+import { FeedbackStatus, UpdateFeedbackStatusDto } from '@app/contracts/feedback/update-feedback-status.dto';
 import { Injectable } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { PrismaClient } from '@prisma/client-Task';
@@ -222,6 +223,49 @@ export class FeedbackService {
 
   // Update Feedback Status
   async updateFeedbackStatus(
+    updateStatusDto: UpdateFeedbackStatusDto,
+  ): Promise<ApiResponse<FeedbackResponseDto>> {
+    try {
+      const { feedback_id, status } = updateStatusDto;
+
+      // Kiểm tra xem feedback có tồn tại không
+      const feedbackExists = await this.prisma.feedback.findUnique({
+        where: { feedback_id },
+      });
+
+      if (!feedbackExists) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Feedback not found',
+        });
+      }
+
+      // Cập nhật trạng thái
+      const updatedFeedback = await this.prisma.feedback.update({
+        where: { feedback_id },
+        data: { 
+          status: status as any 
+        },
+      });
+
+      return new ApiResponse<FeedbackResponseDto>(
+        true,
+        `Feedback status updated to ${status} successfully`,
+        updatedFeedback,
+      );
+    } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      }
+      throw new RpcException({
+        statusCode: 500,
+        message: error.message || 'Failed to update feedback status',
+      });
+    }
+  }
+
+  // Update Feedback Rating
+  async updateFeedbackRating(
     feedback_id: string,
     rating: number,
   ): Promise<ApiResponse<FeedbackResponseDto>> {
