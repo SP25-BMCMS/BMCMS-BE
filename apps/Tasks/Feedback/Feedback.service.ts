@@ -2,12 +2,13 @@ import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 import { CreateFeedbackDto } from '@app/contracts/feedback/create-feedback.dto';
 import { FeedbackResponseDto } from '@app/contracts/feedback/feedback.dto';
 import { UpdateFeedbackDto } from '@app/contracts/feedback/update-feedback.dto';
-import { FeedbackStatus, UpdateFeedbackStatusDto } from '@app/contracts/feedback/update-feedback-status.dto';
+import { UpdateFeedbackRatingDto } from '@app/contracts/feedback/update-feedback-rating.dto';
 import { Injectable } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { PrismaClient } from '@prisma/client-Task';
 import { PrismaService } from '../../users/prisma/prisma.service';
 import { PaginationParams } from '../../../libs/contracts/src/Pagination/pagination.dto';
+import { UpdateFeedbackStatusDto } from '@app/contracts/feedback/update-feedback-status.dto';
 
 @Injectable()
 export class FeedbackService {

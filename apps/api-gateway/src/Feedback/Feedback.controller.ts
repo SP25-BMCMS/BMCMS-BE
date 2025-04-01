@@ -22,7 +22,9 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
-import { UpdateFeedbackRatingDto } from '@app/contracts/feedback/update-feedback-status.dto';
+import { UpdateFeedbackRatingDto } from '@app/contracts/feedback/update-feedback-rating.dto';
+import { UpdateFeedbackStatusDto } from '@app/contracts/feedback/update-feedback-status.dto';
+import { FeedbackStatus } from '@prisma/client-Task';
 
 @Controller('feedbacks')
 @ApiTags('feedbacks')
@@ -117,14 +119,14 @@ export class FeedbackController {
   @Put(':feedback_id/status')
   @ApiOperation({ summary: 'Update feedback status' })
   @ApiParam({ name: 'feedback_id', description: 'Feedback ID' })
-  @ApiBody({ type: UpdateFeedbackRatingDto })
+  @ApiBody({ type: UpdateFeedbackStatusDto })
   @ApiResponse({ status: 200, description: 'Feedback status updated successfully' })
   @ApiResponse({ status: 404, description: 'Feedback not found' })
   async updateFeedbackStatus(
     @Param('feedback_id') feedback_id: string,
-    @Body() updateStatusDto: { status: string },
+    @Body() updateStatusDto: { status: FeedbackStatus },
   ) {
-    const statusDto: UpdateFeedbackRatingDto = {
+    const statusDto: UpdateFeedbackStatusDto = {
       feedback_id,
       status: updateStatusDto.status,
     };

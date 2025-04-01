@@ -7,7 +7,8 @@ import { CreateFeedbackDto } from '@app/contracts/feedback/create-feedback.dto';
 import { UpdateFeedbackDto } from '@app/contracts/feedback/update-feedback.dto';
 import { firstValueFrom } from 'rxjs';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
-import { UpdateFeedbackRatingDto } from '@app/contracts/feedback/update-feedback-status.dto';
+import { UpdateFeedbackRatingDto } from '@app/contracts/feedback/update-feedback-rating.dto';
+import { UpdateFeedbackStatusDto } from '@app/contracts/feedback/update-feedback-status.dto';
 
 @Injectable()
 export class FeedbackService {
@@ -107,7 +108,7 @@ export class FeedbackService {
     }
   }
 
-  async updateFeedbackStatus(updateFeedbackStatusDto: UpdateFeedbackRatingDto): Promise<any> {
+  async updateFeedbackStatus(updateFeedbackStatusDto: UpdateFeedbackStatusDto): Promise<any> {
     try {
       const response = await firstValueFrom(
         this.taskClient.send(FEEDBACK_PATTERN.UPDATE_STATUS, updateFeedbackStatusDto),

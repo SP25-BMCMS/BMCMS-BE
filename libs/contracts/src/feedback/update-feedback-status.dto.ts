@@ -1,10 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsString, IsUUID, Max, Min } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+
+import { FeedbackStatus } from '@prisma/client-Task';
+/**
+ * Enum liệt kê các trạng thái có thể có của feedback
+ */
 
 /**
  * DTO để cập nhật trạng thái của feedback
  */
-export class UpdateFeedbackRatingDto {
+export class UpdateFeedbackStatusDto {
   @ApiProperty({
     description: 'ID của feedback cần thay đổi trạng thái',
     example: 'd1b0cd4c-1e76-4d7f-a0d4-81b32e5101cd',
@@ -14,15 +19,11 @@ export class UpdateFeedbackRatingDto {
   feedback_id: string;
 
   @ApiProperty({
-    description: 'Đánh giá mới cho feedback (1-5)',
-    type: Number,
-    minimum: 1,
-    maximum: 5,
-    example: 5,
+    description: 'Trạng thái mới của feedback',
+    enum: FeedbackStatus,
+    example: FeedbackStatus.ACTIVE  + FeedbackStatus.DELETED,
   })
   @IsNotEmpty()
-  @IsNumber()
-  @Min(1)
-  @Max(5)
-  rating: number;
+  @IsEnum(FeedbackStatus)
+  status: FeedbackStatus;
 } 

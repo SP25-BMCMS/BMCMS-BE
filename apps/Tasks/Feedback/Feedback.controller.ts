@@ -7,8 +7,8 @@ import { CreateFeedbackDto } from '@app/contracts/feedback/create-feedback.dto';
 import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 import { UpdateFeedbackDto } from '@app/contracts/feedback/update-feedback.dto';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
-import { UpdateFeedbackRatingDto } from '@app/contracts/feedback/update-feedback-status.dto';
-import { UpdateFeedbackStatusDto } from '@app/contracts/feedback/update-feedback-status.dto copy';
+import { UpdateFeedbackRatingDto } from '@app/contracts/feedback/update-feedback-rating.dto';
+import { UpdateFeedbackStatusDto } from '@app/contracts/feedback/update-feedback-status.dto';
 
 @Controller('feedback')
 export class FeedbackController {
