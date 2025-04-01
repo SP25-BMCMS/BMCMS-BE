@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   rabbitmq:
     image: rabbitmq:4.0.6-management
@@ -23,6 +21,16 @@ services:
       /bin/bash -c " rabbitmq-plugins enable --offline rabbitmq_management && rabbitmq-server"
     networks:
       - my_network
+
+  redis:
+    image: redis:latest
+    container_name: my-redis
+    restart: always
+    ports:
+      - '6379:6379'
+    networks:
+      - my_network
+    command: redis-server --protected-mode no
 
   api_gateway:
     build:
@@ -135,8 +143,30 @@ services:
     networks:
       - my_network
 
+  notifications_service:
+    build:
+      context: .
+      dockerfile: ./apps/notifications/Dockerfile
+    container_name: notifications_service
+    ports:
+      - '3006:3006'
+    env_file:
+      - .env
+    depends_on:
+      - rabbitmq
+      - redis # ✅ Đảm bảo Redis chạy trước
+    environment:
+      NODE_ENV: production
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: admin
+      RABBITMQ_PASS: admin
+    restart: always
+    networks:
+      - my_network
+
 networks:
   my_network:
     driver: bridge
 volumes:
   rabbitmq_data:
+  redis-data:

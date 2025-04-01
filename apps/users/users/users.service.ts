@@ -1,20 +1,13 @@
+import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
+import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto'
 import {
-  BadRequestException,
-  HttpException,
   HttpStatus,
   Inject,
-  Injectable,
-} from '@nestjs/common';
-import { ClientProxy, RpcException } from '@nestjs/microservices';
-import * as bcrypt from 'bcrypt';
-import { PrismaService } from '../prisma/prisma.service';
-import { UserDto } from '../../../libs/contracts/src/users/user.dto';
-import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto';
-import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response';
-import { Role, AccountStatus } from '@prisma/client-users';
-import { CreateWorkingPositionDto } from '../../../libs/contracts/src/users/create-working-position.dto';
-import { PositionName } from '@prisma/client-users';
-import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
+  Injectable
+} from '@nestjs/common'
+import { ClientProxy, RpcException } from '@nestjs/microservices'
+import { AccountStatus, PositionName, Role } from '@prisma/client-users'
+import * as bcrypt from 'bcrypt'
 import {
   catchError,
   firstValueFrom,
@@ -24,8 +17,12 @@ import {
   timeout,
 } from 'rxjs';
 import { BUILDINGS_PATTERN } from '../../../libs/contracts/src/buildings/buildings.patterns';
-import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns';
 import { AREAS_PATTERN } from '../../../libs/contracts/src/Areas/Areas.patterns';
+import { PrismaService } from '../prisma/prisma.service'
+import { UserDto } from '@app/contracts/users/user.dto'
+import { createUserDto } from '@app/contracts/users/create-user.dto'
+import { ApiResponse } from '@app/contracts/ApiReponse/api-response'
+import { CreateWorkingPositionDto } from '@app/contracts/users/create-working-position.dto'
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
 const CRACKS_CLIENT = 'CRACKS_CLIENT';
@@ -42,33 +39,33 @@ export class UsersService {
   ) { }
 
   async getUserByUsername(username: string): Promise<UserDto | null> {
-    const user = await this.prisma.user.findUnique({ where: { username } });
+    const user = await this.prisma.user.findUnique({ where: { username } })
     if (!user)
       throw new RpcException({
         statusCode: 401,
         message: 'Sai số điện thoại hoặc mật khẩu',
-      });
-    return user;
+      })
+    return user
   }
 
   async getUserByPhone(phone: string): Promise<UserDto | null> {
-    const user = await this.prisma.user.findUnique({ where: { phone } });
+    const user = await this.prisma.user.findUnique({ where: { phone } })
     if (!user)
       throw new RpcException({
         statusCode: 401,
         message: 'Sai số điện thoại hoặc mật khẩu',
-      });
-    return user;
+      })
+    return user
   }
 
   async getUserByEmail(email: string): Promise<UserDto | null> {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const user = await this.prisma.user.findUnique({ where: { email } })
     if (!user)
       throw new RpcException({
         statusCode: 401,
         message: 'Email không tồn tại',
-      });
-    return user;
+      })
+    return user
   }
 
   async getUserById(userId: string): Promise<UserDto | null> {
@@ -78,13 +75,13 @@ export class UsersService {
         userDetails: true,
         apartments: true,
       },
-    });
+    })
     if (!user)
       throw new RpcException({
         statusCode: 401,
         message: 'invalid credentials!',
-      });
-    return user;
+      })
+    return user
   }
 
   async signup(userData: createUserDto): Promise<ApiResponse<any>> {
@@ -95,11 +92,11 @@ export class UsersService {
         userData.apartments &&
         userData.apartments.length > 0
       ) {
-        console.log('Validating building IDs for resident apartments...');
+        console.log('Validating building IDs for resident apartments...')
 
         for (const apartment of userData.apartments) {
           try {
-            console.log(`Checking building ID: ${apartment.buildingDetailId}`);
+            console.log(`Checking building ID: ${apartment.buildingDetailId}`)
 
             const buildingResponse = await firstValueFrom(
               this.buildingClient
@@ -112,13 +109,13 @@ export class UsersService {
                     console.error(
                       'Error communicating with building service:',
                       err,
-                    );
-                    throw new Error('Building service unavailable');
+                    )
+                    throw new Error('Building service unavailable')
                   }),
                 ),
-            );
+            )
 
-            console.log('Building service response:', buildingResponse);
+            console.log('Building service response:', buildingResponse)
 
             if (
               buildingResponse.statusCode === 404 ||
@@ -128,15 +125,15 @@ export class UsersService {
                 false,
                 `Building with ID ${apartment.buildingDetailId} not found`,
                 null,
-              );
+              )
             }
           } catch (error) {
-            console.error('Error validating building:', error);
+            console.error('Error validating building:', error)
             return new ApiResponse(
               false,
               error.message || 'Error validating building',
               null,
-            );
+            )
           }
         }
       }
@@ -145,15 +142,15 @@ export class UsersService {
         where: {
           OR: [{ username: userData.username }, { email: userData.email }],
         },
-      });
+      })
 
       if (existingUser) {
-        return new ApiResponse(false, 'Username hoặc Email đã tồn tại', null);
+        return new ApiResponse(false, 'Username hoặc Email đã tồn tại', null)
       }
 
-      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      const hashedPassword = await bcrypt.hash(userData.password, 10)
 
-      let newUser;
+      let newUser
       if (userData.role === Role.Admin || userData.role === Role.Manager) {
         newUser = await this.prisma.user.create({
           data: {
@@ -171,7 +168,7 @@ export class UsersService {
                 ? AccountStatus.Inactive
                 : AccountStatus.Active, // Default to Active for Admin/Manager
           },
-        });
+        })
       } else {
         newUser = await this.prisma.user.create({
           data: {
@@ -211,7 +208,7 @@ export class UsersService {
                 }
                 : undefined,
           },
-        });
+        })
       }
 
       // ✅ Truy vấn lại để lấy đầy đủ thông tin
@@ -221,7 +218,7 @@ export class UsersService {
           apartments: true,
           userDetails: true,
         },
-      });
+      })
 
       return new ApiResponse(true, 'User đã được tạo thành công', {
         userId: fullUser?.userId,
@@ -247,10 +244,10 @@ export class UsersService {
             apartmentName: apartment.apartmentName,
             buildingDetailId: apartment.buildingDetailId,
           })) ?? [],
-      });
+      })
     } catch (error) {
-      console.error('🔥 Lỗi trong UsersService:', error);
-      return new ApiResponse(false, 'Lỗi không xác định khi tạo user', null);
+      console.error('🔥 Lỗi trong UsersService:', error)
+      return new ApiResponse(false, 'Lỗi không xác định khi tạo user', null)
     }
   }
 
@@ -258,17 +255,17 @@ export class UsersService {
     userId: string,
     data: Partial<createUserDto>,
   ): Promise<UserDto> {
-    const user = await this.getUserById(userId);
+    const user = await this.getUserById(userId)
     if (!user)
-      throw new RpcException({ statusCode: 404, message: 'User not found' });
+      throw new RpcException({ statusCode: 404, message: 'User not found' })
 
     // Validate building IDs if apartments are being updated
     if (data.apartments && data.apartments.length > 0) {
-      console.log('Validating building IDs for apartment updates...');
+      console.log('Validating building IDs for apartment updates...')
 
       for (const apartment of data.apartments) {
         try {
-          console.log(`Checking building ID: ${apartment.buildingDetailId}`);
+          console.log(`Checking building ID: ${apartment.buildingDetailId}`)
 
           const buildingResponse = await firstValueFrom(
             this.buildingClient
@@ -281,29 +278,29 @@ export class UsersService {
                   console.error(
                     'Error communicating with building service:',
                     err,
-                  );
+                  )
                   throw new RpcException({
                     statusCode: HttpStatus.SERVICE_UNAVAILABLE,
                     message: 'Building service unavailable',
-                  });
+                  })
                 }),
               ),
-          );
+          )
 
           if (buildingResponse.statusCode === 404 || !buildingResponse.exists) {
             throw new RpcException({
               statusCode: HttpStatus.NOT_FOUND,
               message: `Building with ID ${apartment.buildingDetailId} not found`,
-            });
+            })
           }
         } catch (error) {
           if (error instanceof RpcException) {
-            throw error;
+            throw error
           }
           throw new RpcException({
             statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
             message: error.message || 'Error validating building',
-          });
+          })
         }
       }
     }
@@ -316,11 +313,11 @@ export class UsersService {
           ? AccountStatus.Active
           : AccountStatus.Inactive
         : undefined,
-    };
+    }
 
     // Remove accountStatus from original data object to avoid type issues
     if (data.accountStatus) {
-      delete data.accountStatus;
+      delete data.accountStatus
     }
 
     return this.prisma.user.update({
@@ -338,28 +335,28 @@ export class UsersService {
           }
           : undefined, // ✅ Chỉ cập nhật nếu có apartments
       },
-    });
+    })
   }
 
   async deleteUser(userId: string): Promise<{ message: string }> {
-    await this.prisma.user.delete({ where: { userId } });
-    return { message: 'User deleted successfully' };
+    await this.prisma.user.delete({ where: { userId } })
+    return { message: 'User deleted successfully' }
   }
 
   async getAllUsers(): Promise<{ users: UserDto[] }> {
-    const users = await this.prisma.user.findMany();
-    return { users: users };
+    const users = await this.prisma.user.findMany()
+    return { users: users }
   }
 
   async createWorkingPosition(data: CreateWorkingPositionDto) {
     try {
-      console.log('Received data:', data); // Debug dữ liệu nhận từ gRPC
+      console.log('Received data:', data) // Debug dữ liệu nhận từ gRPC
 
       // Kiểm tra xem giá trị có hợp lệ hay không
       if (
         !Object.values(PositionName).includes(data.positionName as PositionName)
       ) {
-        throw new Error(`Invalid positionName: ${data.positionName}`);
+        throw new Error(`Invalid positionName: ${data.positionName}`)
       }
 
       const newPosition = await this.prisma.workingPosition.create({
@@ -367,7 +364,7 @@ export class UsersService {
           positionName: data.positionName as PositionName, // ✅ Chuyển string thành enum
           description: data.description,
         },
-      });
+      })
 
       return {
         isSuccess: true,
@@ -377,60 +374,60 @@ export class UsersService {
           positionName: newPosition.positionName.toString(), // ✅ Chuyển Enum thành chuỗi
           description: newPosition.description,
         },
-      };
+      }
     } catch (error) {
-      console.error('🔥 Error creating working position:', error);
+      console.error('🔥 Error creating working position:', error)
       throw new RpcException({
         statusCode: HttpStatus.BAD_REQUEST,
         message: 'Failed to create working position',
-      });
+      })
     }
   }
 
   async getAllWorkingPositions(): Promise<{
     workingPositions: {
-      positionId: string;
-      positionName: PositionName;
-      description?: string;
-    }[];
+      positionId: string
+      positionName: PositionName
+      description?: string
+    }[]
   }> {
     try {
-      const positions = await this.prisma.workingPosition.findMany();
+      const positions = await this.prisma.workingPosition.findMany()
       return {
         workingPositions: positions.map((position) => ({
           positionId: position.positionId,
           positionName: position.positionName,
           description: position.description,
         })),
-      };
+      }
     } catch (error) {
-      console.error('Error fetching working positions:', error);
+      console.error('Error fetching working positions:', error)
       throw new RpcException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Failed to fetch working positions',
-      });
+      })
     }
   }
 
   async getWorkingPositionById(data: { positionId: string }): Promise<{
-    isSuccess: boolean;
-    message: string;
+    isSuccess: boolean
+    message: string
     data: {
-      positionId: string;
-      positionName: PositionName;
-      description?: string;
-    } | null;
+      positionId: string
+      positionName: PositionName
+      description?: string
+    } | null
   }> {
     try {
       const position = await this.prisma.workingPosition.findUnique({
         where: { positionId: data.positionId },
-      });
+      })
 
       if (!position) {
         throw new RpcException({
           statusCode: HttpStatus.NOT_FOUND,
           message: 'Working Position not found',
-        });
+        })
       }
 
       return {
@@ -441,29 +438,29 @@ export class UsersService {
           positionName: position.positionName,
           description: position.description,
         },
-      };
+      }
     } catch (error) {
-      console.error('Error fetching working position:', error);
+      console.error('Error fetching working position:', error)
       throw new RpcException({
         statusCode: HttpStatus.BAD_REQUEST,
         message: 'Failed to retrieve working position',
-      });
+      })
     }
   }
 
   async deleteWorkingPosition(data: { positionId: string }): Promise<{
-    isSuccess: boolean;
-    message: string;
+    isSuccess: boolean
+    message: string
     data: {
-      positionId: string;
-      positionName: PositionName;
-      description?: string;
-    } | null;
+      positionId: string
+      positionName: PositionName
+      description?: string
+    } | null
   }> {
     try {
       const deletedPosition = await this.prisma.workingPosition.delete({
         where: { positionId: data.positionId },
-      });
+      })
 
       return {
         isSuccess: true,
@@ -473,13 +470,13 @@ export class UsersService {
           positionName: deletedPosition.positionName,
           description: deletedPosition.description,
         },
-      };
+      }
     } catch (error) {
-      console.error('Error deleting working position:', error);
+      console.error('Error deleting working position:', error)
       throw new RpcException({
         statusCode: HttpStatus.BAD_REQUEST,
         message: 'Failed to delete working position',
-      });
+      })
     }
   }
 
@@ -488,7 +485,7 @@ export class UsersService {
       console.log(
         '📥 Checking if area exists in Building Microservice:',
         data.area,
-      );
+      )
 
       const areaExistsResponse = await firstValueFrom(
         this.buildingClient
@@ -496,26 +493,26 @@ export class UsersService {
           .pipe(
             timeout(5000),
             catchError((err) => {
-              console.error('❌ Error contacting Building Microservice:', err);
+              console.error('❌ Error contacting Building Microservice:', err)
               throw new RpcException({
                 statusCode: HttpStatus.SERVICE_UNAVAILABLE,
                 message: 'Building Microservice is not responding',
-              });
+              })
             }),
           ),
-      );
+      )
 
       if (!areaExistsResponse.exists) {
         console.error(
           `❌ Area '${data.area}' does not exist in Building Microservice`,
-        );
+        )
         throw new RpcException({
           statusCode: HttpStatus.NOT_FOUND,
           message: `Area '${data.area}' does not exist in Building Microservice`,
-        });
+        })
       }
 
-      console.log('✅ Area exists, creating Department...');
+      console.log('✅ Area exists, creating Department...')
 
       const newDepartment = await this.prisma.department.create({
         data: {
@@ -523,7 +520,7 @@ export class UsersService {
           description: data.description,
           area: data.area,
         },
-      });
+      })
 
       return {
         isSuccess: true,
@@ -534,18 +531,18 @@ export class UsersService {
           description: newDepartment.description,
           area: newDepartment.area,
         },
-      };
+      }
     } catch (error) {
-      console.error('🔥 Error creating department:', error);
+      console.error('🔥 Error creating department:', error)
 
       if (error instanceof RpcException) {
-        throw error;
+        throw error
       }
 
       throw new RpcException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: error.message || 'Unexpected error creating department',
-      });
+      })
     }
   }
 
@@ -561,31 +558,31 @@ export class UsersService {
               console.error(
                 `Error fetching buildingDetail ${buildingDetailId} after retries:`,
                 err,
-              );
+              )
               return of({
                 statusCode: 404,
                 data: null,
-              });
+              })
             }),
           ),
-      );
-      return response;
+      )
+      return response
     } catch (error) {
-      console.error(`Failed to get buildingDetail ${buildingDetailId}:`, error);
+      console.error(`Failed to get buildingDetail ${buildingDetailId}:`, error)
       return {
         statusCode: 404,
         data: null,
-      };
+      }
     }
   }
 
   async getApartmentsByResidentId(residentId: string): Promise<{
-    isSuccess: boolean;
-    message: string;
+    isSuccess: boolean
+    message: string
     data: {
-      apartmentName: string;
-      buildingDetails: any; // Thay thế 'any' bằng kiểu dữ liệu chính xác của building
-    }[];
+      apartmentName: string
+      buildingDetails: any // Thay thế 'any' bằng kiểu dữ liệu chính xác của building
+    }[]
   }> {
     try {
       const user = await this.prisma.user.findUnique({
@@ -594,47 +591,47 @@ export class UsersService {
           role: Role.Resident,
         },
         include: { apartments: true },
-      });
+      })
 
       if (!user) {
-        return { isSuccess: false, message: 'Resident not found', data: [] };
+        return { isSuccess: false, message: 'Resident not found', data: [] }
       }
 
       // Xử lý các căn hộ của người dùng song song
       const apartmentPromises = user.apartments.map(async (apartment) => {
         const buildingResponse = await this.getBuildingDetails(
           apartment.buildingDetailId,
-        );
+        )
 
         return {
           apartmentId: apartment.apartmentId,
           apartmentName: apartment.apartmentName,
           buildingDetails:
             buildingResponse?.statusCode === 200 ? buildingResponse.data : null,
-        };
-      });
+        }
+      })
 
       // Chờ tất cả các chi tiết căn hộ được lấy
-      const apartmentsWithBuildings = await Promise.all(apartmentPromises);
+      const apartmentsWithBuildings = await Promise.all(apartmentPromises)
 
       return {
         isSuccess: true,
         message: 'Success',
         data: apartmentsWithBuildings,
-      };
+      }
     } catch (error) {
       return {
         isSuccess: false,
         message: 'Failed to retrieve apartments',
         data: [],
-      };
+      }
     }
   }
 
   async getAllStaff(): Promise<{
-    isSuccess: boolean;
-    message: string;
-    data: UserDto[];
+    isSuccess: boolean
+    message: string
+    data: UserDto[]
   }> {
     try {
       const staffMembers = await this.prisma.user.findMany({
@@ -651,15 +648,15 @@ export class UsersService {
             },
           },
         },
-      });
+      })
 
       if (!staffMembers || staffMembers.length === 0) {
-        return { isSuccess: true, message: 'No staff members found', data: [] };
+        return { isSuccess: true, message: 'No staff members found', data: [] }
       }
 
       // Convert to user response format without exposing sensitive fields
       const staffData = staffMembers.map((staff) => {
-        const { password, ...userWithoutPassword } = staff;
+        const { password, ...userWithoutPassword } = staff
         return {
           ...userWithoutPassword,
           dateOfBirth: staff.dateOfBirth
@@ -688,20 +685,20 @@ export class UsersService {
                 : null,
             }
             : null,
-        };
-      });
+        }
+      })
 
       return {
         isSuccess: true,
         message: 'Successfully retrieved all staff members',
         data: staffData as unknown as UserDto[],
-      };
+      }
     } catch (error) {
-      console.error('Error fetching staff members:', error);
+      console.error('Error fetching staff members:', error)
       throw new RpcException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Failed to fetch staff members',
-      });
+      })
     }
   }
 
@@ -719,35 +716,35 @@ export class UsersService {
         include: {
           apartments: true,
         },
-      });
+      })
 
       if (!user) {
         return {
           isSuccess: false,
           message: 'Không tìm thấy cư dân',
           data: null
-        };
+        }
       }
 
       // Check for duplicate apartments
-      const existingApartments = user.apartments;
+      const existingApartments = user.apartments
       const duplicateApartments = apartments.filter((newApt) =>
         existingApartments.some(
           (existingApt) =>
             existingApt.apartmentName === newApt.apartmentName &&
             existingApt.buildingDetailId === newApt.buildingDetailId,
         ),
-      );
+      )
 
       if (duplicateApartments.length > 0) {
         const duplicateNames = duplicateApartments
           .map((apt) => apt.apartmentName)
-          .join(', ');
+          .join(', ')
         return {
           isSuccess: false,
           message: `Cư dân đã sở hữu các căn hộ sau: ${duplicateNames}`,
           data: null
-        };
+        }
       }
 
       // Validate buildingDetail IDs
@@ -761,30 +758,30 @@ export class UsersService {
               .pipe(
                 timeout(5000),
                 catchError((err) => {
-                  console.error('Error checking building:', err);
+                  console.error('Error checking building:', err)
                   return of({
                     statusCode: 503,
                     message: 'Dịch vụ tòa nhà không phản hồi',
                     exists: false
-                  });
+                  })
                 }),
               ),
-          );
+          )
 
           if (!buildingResponse.exists) {
             return {
               isSuccess: false,
               message: `Không tìm thấy tòa nhà với ID ${apartment.buildingDetailId}`,
               data: null
-            };
+            }
           }
         } catch (error) {
-          console.error('Error validating building:', error);
+          console.error('Error validating building:', error)
           return {
             isSuccess: false,
             message: 'Lỗi khi kiểm tra thông tin tòa nhà',
             data: null
-          };
+          }
         }
       }
 
@@ -799,7 +796,7 @@ export class UsersService {
         include: {
           apartments: true,
         },
-      });
+      })
 
       return {
         isSuccess: true,
@@ -812,14 +809,14 @@ export class UsersService {
             buildingDetailId: apt.buildingDetailId,
           })),
         },
-      };
+      }
     } catch (error) {
-      console.error('Error updating resident apartments:', error);
+      console.error('Error updating resident apartments:', error)
       return {
         isSuccess: false,
         message: 'Lỗi khi thêm căn hộ',
         data: null
-      };
+      }
     }
   }
 
@@ -831,27 +828,27 @@ export class UsersService {
       // Kiểm tra xem user có tồn tại không
       const user = await this.prisma.user.findUnique({
         where: { userId },
-      });
+      })
 
       if (!user) {
         return {
           isSuccess: false,
           message: `Không tìm thấy người dùng với ID: ${userId}`,
           data: null,
-        };
+        }
       }
 
       // Chuyển đổi accountStatus string thành enum
       const status =
         accountStatus === 'Active'
           ? AccountStatus.Active
-          : AccountStatus.Inactive;
+          : AccountStatus.Inactive
 
       // Cập nhật trạng thái tài khoản
       const updatedUser = await this.prisma.user.update({
         where: { userId },
         data: { accountStatus: status },
-      });
+      })
 
       // Lấy thông tin đầy đủ của user sau khi cập nhật
       const fullUser = await this.prisma.user.findUnique({
@@ -865,31 +862,31 @@ export class UsersService {
           },
           apartments: true,
         },
-      });
+      })
 
       // Format dữ liệu trả về theo dạng JSON phù hợp
       const formattedResponse = {
         accountStatus: fullUser.accountStatus,
-      };
+      }
 
       return {
         isSuccess: true,
         message: `Cập nhật trạng thái tài khoản thành ${accountStatus}`,
         data: formattedResponse,
-      };
+      }
     } catch (error) {
-      console.error('Error updating account status:', error);
+      console.error('Error updating account status:', error)
       return {
         isSuccess: false,
         message: `Lỗi khi cập nhật trạng thái tài khoản: ${error.message}`,
         data: null,
-      };
+      }
     }
   }
 
   async getApartmentByResidentAndApartmentId(data: {
-    residentId: string;
-    apartmentId: string;
+    residentId: string
+    apartmentId: string
   }) {
     try {
       const apartment = await this.prisma.apartment.findFirst({
@@ -897,39 +894,39 @@ export class UsersService {
           apartmentId: data.apartmentId,
           ownerId: data.residentId,
         },
-      });
+      })
 
       if (!apartment) {
         return {
           isSuccess: false,
           message: 'Không tìm thấy căn hộ',
           data: null,
-        };
+        }
       }
 
       // Get building details for this apartment
       const buildingResponse = await this.getBuildingDetails(
         apartment.buildingDetailId,
-      );
+      )
 
       const formattedResponse = {
         apartmentId: apartment.apartmentId,
         apartmentName: apartment.apartmentName,
         buildingDetails: buildingResponse?.statusCode === 200 ? buildingResponse.data : null,
-      };
+      }
 
       return {
         isSuccess: true,
         message: 'Success',
         data: formattedResponse,
-      };
+      }
     } catch (error) {
-      console.error('Error fetching apartment:', error);
+      console.error('Error fetching apartment:', error)
       return {
         isSuccess: false,
         message: 'Failed to retrieve apartment',
         data: null,
-      };
+      }
     }
   }
 

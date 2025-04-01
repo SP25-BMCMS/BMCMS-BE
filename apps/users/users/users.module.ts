@@ -4,10 +4,11 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { ClientsModule, Transport, GrpcOptions } from '@nestjs/microservices';
 import { UsersController } from './users.controller';
 import { ConfigService } from '@nestjs/config';
-import { join } from 'path';
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
 const CRACKS_CLIENT = 'CRACKS_CLIENT';
+
+
 
 @Module({
   imports: [
@@ -16,10 +17,10 @@ const CRACKS_CLIENT = 'CRACKS_CLIENT';
       {
         name: BUILDINGS_CLIENT,
         useFactory: (configService: ConfigService) => {
-          const user = configService.get('RABBITMQ_USER');
-          const password = configService.get('RABBITMQ_PASSWORD');
-          const host = configService.get('RABBITMQ_HOST');
-          const isLocal = process.env.NODE_ENV !== 'production';
+          const user = configService.get('RABBITMQ_USER')
+          const password = configService.get('RABBITMQ_PASSWORD')
+          const host = configService.get('RABBITMQ_HOST')
+          const isLocal = process.env.NODE_ENV !== 'production'
           return {
             transport: Transport.RMQ,
             options: {
@@ -32,7 +33,7 @@ const CRACKS_CLIENT = 'CRACKS_CLIENT';
                 prefetchCount: 1,
               },
             },
-          };
+          }
         },
         inject: [ConfigService],
       },
