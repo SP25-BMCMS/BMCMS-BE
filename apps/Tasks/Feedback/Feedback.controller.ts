@@ -31,11 +31,17 @@ export class FeedbackController {
   ): Promise<ApiResponse<FeedbackResponseDto>> {
     return this.feedbackService.createFeedback(createFeedbackDto);
   }
-  
+
   @MessagePattern(FEEDBACK_PATTERN.GET_BY_TASK_ID)
   async getFeedbacksByTaskId(
     @Payload() payload: { task_id: string },
   ): Promise<ApiResponse<FeedbackResponseDto[]>> {
     return this.feedbackService.getFeedbacksByTaskId(payload.task_id);
+  }
+  @MessagePattern(FEEDBACK_PATTERN.GET_BY_USER_ID)
+  async getFeedbacksByUserId(
+    @Payload() payload: { feedback_by: string },
+  ): Promise<ApiResponse<FeedbackResponseDto[]>> {
+    return this.feedbackService.getFeedbacksByUserId(payload.feedback_by);
   }
 } 

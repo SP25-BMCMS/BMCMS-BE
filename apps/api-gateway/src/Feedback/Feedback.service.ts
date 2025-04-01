@@ -47,6 +47,16 @@ export class FeedbackService {
       throw error;
     }
   }
-
+  async getFeedbacksByUserId(feedback_by: string): Promise<any> {
+    try {
+      const response = await firstValueFrom(
+        this.taskClient.send(FEEDBACK_PATTERN.GET_BY_USER_ID, { feedback_by }),
+      );
+      return response;
+    } catch (error) {
+      console.error('Error getting feedbacks by user ID:', error);
+      throw error;
+    }
+  }
 
 } 

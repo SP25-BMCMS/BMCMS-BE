@@ -65,5 +65,13 @@ export class FeedbackController {
   async getFeedbacksByTaskId(@Param('task_id') task_id: string) {
     return this.feedbackService.getFeedbacksByTaskId(task_id);
   }
+  @Get('user/:feedback_by')
+  @ApiOperation({ summary: 'Get feedbacks by user ID' })
+  @ApiParam({ name: 'feedback_by', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'Returns feedbacks for the user' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async getFeedbacksByUserId(@Param('feedback_by') feedback_by: string) {
+    return this.feedbackService.getFeedbacksByUserId(feedback_by);
+  }
 
 } 
