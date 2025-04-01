@@ -25,14 +25,20 @@ import {
 } from 'rxjs';
 import { BUILDINGS_PATTERN } from '../../../libs/contracts/src/buildings/buildings.patterns';
 import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns';
+import { AREAS_PATTERN } from '../../../libs/contracts/src/Areas/Areas.patterns';
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
+const CRACKS_CLIENT = 'CRACKS_CLIENT';
+const CRACK_PATTERN = {
+  GET_CRACK_REPORT: { cmd: 'get-crack-report-by-id' }
+};
 
 @Injectable()
 export class UsersService {
   constructor(
     private prisma: PrismaService,
     @Inject(BUILDINGS_CLIENT) private readonly buildingClient: ClientProxy,
+    @Inject(CRACKS_CLIENT) private readonly crackClient: ClientProxy,
   ) { }
 
   async getUserByUsername(username: string): Promise<UserDto | null> {
@@ -923,6 +929,108 @@ export class UsersService {
         isSuccess: false,
         message: 'Failed to retrieve apartment',
         data: null,
+      };
+    }
+  }
+
+  async checkStaffAreaMatch(staffId: string, crackReportId: string): Promise<{ isSuccess: boolean; message: string; isMatch: boolean }> {
+    try {
+      // Get staff user with department info
+      const staff = await this.prisma.user.findUnique({
+        where: { userId: staffId },
+        include: {
+          userDetails: {
+            include: {
+              department: true
+            }
+          }
+        }
+      });
+
+      if (!staff || !staff.userDetails?.department) {
+        return {
+          isSuccess: false,
+          message: 'Staff not found or no department assigned',
+          isMatch: false
+        };
+      }
+
+      // Get crack report info from crack service
+      const crackReportResponse = await firstValueFrom(
+        this.crackClient.send(CRACK_PATTERN.GET_CRACK_REPORT, crackReportId)
+          .pipe(
+            timeout(5000),
+            catchError((err) => {
+              console.error('Error getting crack report:', err);
+              return of({ isSuccess: false, message: 'Error getting crack report', data: null });
+            })
+          )
+      );
+
+      if (!crackReportResponse || !crackReportResponse.isSuccess || !crackReportResponse.data || crackReportResponse.data.length === 0) {
+        return {
+          isSuccess: false,
+          message: 'Crack report not found',
+          isMatch: false
+        };
+      }
+
+      const crackReport = crackReportResponse.data[0];
+
+      // Get building details to get areaId
+      const buildingResponse = await firstValueFrom(
+        this.buildingClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId: crackReport.buildingDetailId })
+          .pipe(
+            timeout(5000),
+            catchError((err) => {
+              console.error('Error getting building details:', err);
+              return of({ statusCode: 404, data: null });
+            })
+          )
+      );
+
+      if (!buildingResponse || buildingResponse.statusCode !== 200) {
+        return {
+          isSuccess: false,
+          message: 'Building not found',
+          isMatch: false
+        };
+      }
+
+      // Get area details to get area name
+      const areaResponse = await firstValueFrom(
+        this.buildingClient.send(AREAS_PATTERN.GET_BY_ID, { areaId: buildingResponse.data.building.area.areaId })
+          .pipe(
+            timeout(5000),
+            catchError((err) => {
+              return of({ statusCode: 404, data: null });
+            })
+          )
+      );
+
+      if (!areaResponse || areaResponse.statusCode !== 200) {
+        return {
+          isSuccess: false,
+          message: 'Area not found',
+          isMatch: false
+        };
+      }
+
+      const buildingAreaName = areaResponse.data.name;
+
+      // Check if staff's department area matches building's area name
+      const isMatch = staff.userDetails.department.area === buildingAreaName;
+
+      return {
+        isSuccess: true,
+        message: isMatch ? 'Area match found' : 'Area mismatch',
+        isMatch
+      };
+    } catch (error) {
+      return {
+        isSuccess: false,
+        message: 'Error checking area match',
+        isMatch: false
       };
     }
   }

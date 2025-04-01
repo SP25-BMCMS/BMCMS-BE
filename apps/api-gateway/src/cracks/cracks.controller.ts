@@ -46,6 +46,20 @@ export class CracksController {
     @Inject(CRACK_CLIENT) private readonly crackService: ClientProxy,
   ) { }
 
+  @Get('test-users-connection')
+  @ApiOperation({ summary: 'Test connection with Users Service' })
+  @ApiResponse({ status: 200, description: 'Connection test successful' })
+  @ApiResponse({ status: 500, description: 'Connection test failed' })
+  async testUsersConnection() {
+    return firstValueFrom(
+      this.crackService.send('crack-reports.test-users-connection', {}).pipe(
+        catchError((err) => {
+          throw new InternalServerErrorException(err.message);
+        }),
+      ),
+    );
+  }
+
   @Get('crack-reports')
   @ApiOperation({
     summary: 'Get all crack reports with pagination, search, and filter',
@@ -273,9 +287,25 @@ export class CracksController {
   @Patch('crack-reports/:id/status')
   @ApiOperation({ summary: 'Update crack report status' })
   @ApiParam({ name: 'id', description: 'Crack report ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        staffId: {
+          type: 'string',
+          description: 'ID of the staff member to assign the task to'
+        }
+      },
+      required: ['staffId']
+    }
+  })
   @ApiResponse({ status: 200, description: 'Status updated successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  async updateCrackReportStatus(@Param('id') id: string, @Req() req) {
+  async updateCrackReportStatus(
+    @Param('id') id: string,
+    @Body('staffId') staffId: string,
+    @Req() req
+  ) {
     const managerId = req.user.userId; // Get manager ID from token
 
     return firstValueFrom(
@@ -285,6 +315,7 @@ export class CracksController {
           {
             crackReportId: id,
             managerId,
+            staffId
           },
         )
         .pipe(

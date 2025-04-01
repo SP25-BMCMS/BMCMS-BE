@@ -4,7 +4,7 @@ import { ClientOptions, Transport } from '@nestjs/microservices';
 
 @Injectable()
 export class ClientConfigService {
-  constructor(private config: ConfigService) {}
+  constructor(private config: ConfigService) { }
   private getRabbitMQConfig() {
     const user = this.config.get('RABBITMQ_USER'); // Get RabbitMQ user from config
     const password = this.config.get('RABBITMQ_PASSWORD'); // Get RabbitMQ password from config

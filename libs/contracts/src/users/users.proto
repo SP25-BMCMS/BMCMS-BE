@@ -25,6 +25,7 @@ service UserService {
   rpc VerifyOtpAndCompleteSignup (VerifyOtpAndCompleteSignupRequest) returns (ApiResponseUser);
   rpc GetApartmentById (GetApartmentByIdRequest) returns (ApiResponseApartment);
   rpc GetApartmentByResidentAndApartmentId(GetApartmentDetailRequest) returns (GetApartmentByResidentAndApartmentIdResponse);
+  rpc CheckStaffAreaMatch (CheckStaffAreaMatchRequest) returns (CheckStaffAreaMatchResponse);
 }
 message GetApartmentByIdRequest {
   string apartmentId = 1;
@@ -368,6 +369,17 @@ message GetApartmentDetailsReponse {
   bool isSuccess = 1;
   string message = 2;
   Apartment data = 3;
+}
+
+message CheckStaffAreaMatchRequest {
+  string staffId = 1;
+  string crackReportId = 2;
+}
+
+message CheckStaffAreaMatchResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  bool isMatch = 3;
 }
 
 
