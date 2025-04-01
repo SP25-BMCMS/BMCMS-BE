@@ -3,12 +3,8 @@ import {
   Post, 
   Get, 
   Body, 
+  Query,
   Param, 
-  Put, 
-  Query, 
-  Delete,
-  HttpCode,
-  HttpStatus 
 } from '@nestjs/common';
 import { FeedbackService } from './Feedback.service';
 import { CreateFeedbackDto } from '@app/contracts/feedback/create-feedback.dto';
@@ -61,6 +57,13 @@ export class FeedbackController {
     });
   }
 
-  
+  @Get('task/:task_id')
+  @ApiOperation({ summary: 'Get feedbacks by task ID' })
+  @ApiParam({ name: 'task_id', description: 'Task ID' })
+  @ApiResponse({ status: 200, description: 'Returns feedbacks for the task' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  async getFeedbacksByTaskId(@Param('task_id') task_id: string) {
+    return this.feedbackService.getFeedbacksByTaskId(task_id);
+  }
 
 } 

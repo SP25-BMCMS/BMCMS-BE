@@ -31,39 +31,11 @@ export class FeedbackController {
   ): Promise<ApiResponse<FeedbackResponseDto>> {
     return this.feedbackService.createFeedback(createFeedbackDto);
   }
-
-  @MessagePattern(FEEDBACK_PATTERN.UPDATE)
-  async updateFeedback(
-    @Payload() updateFeedbackDto: UpdateFeedbackDto,
-  ): Promise<ApiResponse<FeedbackResponseDto>> {
-    return this.feedbackService.updateFeedback(updateFeedbackDto);
-  }
-
-  @MessagePattern(FEEDBACK_PATTERN.DELETE)
-  async deleteFeedback(
-    @Payload() payload: { feedback_id: string },
-  ): Promise<ApiResponse<null>> {
-    return this.feedbackService.deleteFeedback(payload.feedback_id);
-  }
-
+  
   @MessagePattern(FEEDBACK_PATTERN.GET_BY_TASK_ID)
   async getFeedbacksByTaskId(
     @Payload() payload: { task_id: string },
   ): Promise<ApiResponse<FeedbackResponseDto[]>> {
     return this.feedbackService.getFeedbacksByTaskId(payload.task_id);
-  }
-
-  @MessagePattern(FEEDBACK_PATTERN.GET_BY_ID)
-  async getFeedbackById(
-    @Payload() payload: { feedback_id: string },
-  ): Promise<ApiResponse<FeedbackResponseDto>> {
-    return this.feedbackService.getFeedbackById(payload.feedback_id);
-  }
-
-  @MessagePattern(FEEDBACK_PATTERN.GET_BY_USER_ID)
-  async getFeedbacksByUserId(
-    @Payload() payload: { feedback_by: string },
-  ): Promise<ApiResponse<FeedbackResponseDto[]>> {
-    return this.feedbackService.getFeedbacksByUserId(payload.feedback_by);
   }
 } 

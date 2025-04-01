@@ -24,42 +24,18 @@ export class FeedbackService {
     }
   }
 
-  async updateFeedback(updateFeedbackDto: UpdateFeedbackDto): Promise<any> {
+  
+
+  async getAllFeedbacks(paginationParams: PaginationParams): Promise<any> {
     try {
-      const response = await firstValueFrom(
-        this.taskClient.send(FEEDBACK_PATTERN.UPDATE, updateFeedbackDto),
+      return await firstValueFrom(
+        this.taskClient.send(FEEDBACK_PATTERN.GET, paginationParams),
       );
-      return response;
     } catch (error) {
-      console.error('Error updating feedback:', error);
+      console.error('Error getting all feedbacks:', error);
       throw error;
     }
   }
-
-  async deleteFeedback(feedback_id: string): Promise<any> {
-    try {
-      const response = await firstValueFrom(
-        this.taskClient.send(FEEDBACK_PATTERN.DELETE, { feedback_id }),
-      );
-      return response;
-    } catch (error) {
-      console.error('Error deleting feedback:', error);
-      throw error;
-    }
-  }
-
-  async getFeedbackById(feedback_id: string): Promise<any> {
-    try {
-      const response = await firstValueFrom(
-        this.taskClient.send(FEEDBACK_PATTERN.GET_BY_ID, { feedback_id }),
-      );
-      return response;
-    } catch (error) {
-      console.error('Error getting feedback by ID:', error);
-      throw error;
-    }
-  }
-
   async getFeedbacksByTaskId(task_id: string): Promise<any> {
     try {
       const response = await firstValueFrom(
@@ -72,26 +48,5 @@ export class FeedbackService {
     }
   }
 
-  async getFeedbacksByUserId(feedback_by: string): Promise<any> {
-    try {
-      const response = await firstValueFrom(
-        this.taskClient.send(FEEDBACK_PATTERN.GET_BY_USER_ID, { feedback_by }),
-      );
-      return response;
-    } catch (error) {
-      console.error('Error getting feedbacks by user ID:', error);
-      throw error;
-    }
-  }
 
-  async getAllFeedbacks(paginationParams: PaginationParams): Promise<any> {
-    try {
-      return await firstValueFrom(
-        this.taskClient.send(FEEDBACK_PATTERN.GET, paginationParams),
-      );
-    } catch (error) {
-      console.error('Error getting all feedbacks:', error);
-      throw error;
-    }
-  }
 } 

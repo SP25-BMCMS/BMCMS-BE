@@ -112,4 +112,25 @@ export class FeedbackService {
       });
     }
   }
+
+  async getFeedbacksByTaskId(
+    task_id: string,
+  ): Promise<ApiResponse<FeedbackResponseDto[]>> {
+    try {
+      const feedbacks = await this.prisma.feedback.findMany({
+        where: { task_id },
+      });
+
+      return new ApiResponse<FeedbackResponseDto[]>(
+        true,
+        'Feedbacks retrieved successfully',
+        feedbacks,
+      );
+    } catch (error) {
+      throw new RpcException({
+        statusCode: 500,
+        message: error.message || 'Failed to retrieve feedbacks by task ID',
+      });
+    }
+  }
 } 
