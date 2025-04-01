@@ -13,6 +13,7 @@ import { InspectionsService } from '../Inspections/Inspections.service';
 import { InspectionsController } from '../Inspections/Inspections.controller';
 import { TaskAssignmentsModule } from '../TaskAssignments/TaskAssignments.module';
 import { WorkLogModule } from '../Worklog/Worklog.module';
+import { FeedbackModule } from '../Feedback/Feedback.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { WorkLogModule } from '../Worklog/Worklog.module';
     RepairMaterialsModule,
     TaskAssignmentsModule,
     WorkLogModule,
+    FeedbackModule,
   ],
   controllers: [
     TasksController,

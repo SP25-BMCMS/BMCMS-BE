@@ -15,6 +15,7 @@ import { schedulejobsModule } from './schedulejobs/schedulejobs.module'
 import { InspectionModule } from './Inspection/Inspection.module'
 import { RepairMaterialModule } from './RepairMaterial/RepairMaterial.module'
 import { NotificationsModule } from './notifications/notifications.module'
+import { FeedbackModule } from './Feedback/Feedback.module'
 
 @Module({
   imports: [
@@ -33,7 +34,8 @@ import { NotificationsModule } from './notifications/notifications.module'
     InspectionModule,
     RepairMaterialModule,
     InspectionModule,
-    NotificationsModule
+    NotificationsModule,
+    FeedbackModule
   ],
 })
 export class BuildingMaintenanceApiGatewayModule { }
