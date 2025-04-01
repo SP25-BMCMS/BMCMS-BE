@@ -219,4 +219,52 @@ export class FeedbackService {
           });
         }
       }
+
+  // Update Feedback Status
+  async updateFeedbackStatus(
+    feedback_id: string,
+    rating: number,
+  ): Promise<ApiResponse<FeedbackResponseDto>> {
+    try {
+      // Kiểm tra xem feedback có tồn tại không
+      const feedbackExists = await this.prisma.feedback.findUnique({
+        where: { feedback_id },
+      });
+
+      if (!feedbackExists) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Feedback not found',
+        });
+      }
+
+      // Kiểm tra rating hợp lệ không (1-5)
+      if (rating < 1 || rating > 5) {
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Rating must be between 1 and 5',
+        });
+      }
+
+      // Cập nhật rating của feedback
+      const updatedFeedback = await this.prisma.feedback.update({
+        where: { feedback_id },
+        data: { rating },
+      });
+
+      return new ApiResponse<FeedbackResponseDto>(
+        true,
+        'Feedback rating updated successfully',
+        updatedFeedback,
+      );
+    } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      }
+      throw new RpcException({
+        statusCode: 400,
+        message: error.message || 'Failed to update feedback rating',
+      });
+    }
+  }
 } 

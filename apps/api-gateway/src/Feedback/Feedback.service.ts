@@ -7,6 +7,7 @@ import { CreateFeedbackDto } from '@app/contracts/feedback/create-feedback.dto';
 import { UpdateFeedbackDto } from '@app/contracts/feedback/update-feedback.dto';
 import { firstValueFrom } from 'rxjs';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
+import { UpdateFeedbackStatusDto } from '@app/contracts/feedback/update-feedback-status.dto';
 
 @Injectable()
 export class FeedbackService {
@@ -78,6 +79,30 @@ export class FeedbackService {
       return response;
     } catch (error) {
       console.error('Error getting feedback by ID:', error);
+      throw error;
+    }
+  }
+
+  async updateFeedback(updateFeedbackDto: UpdateFeedbackDto): Promise<any> {
+    try {
+      const response = await firstValueFrom(
+        this.taskClient.send(FEEDBACK_PATTERN.UPDATE, updateFeedbackDto),
+      );
+      return response;
+    } catch (error) {
+      console.error('Error updating feedback:', error);
+      throw error;
+    }
+  }
+
+  async updateFeedbackrating(updateFeedbackStatusDto: UpdateFeedbackStatusDto): Promise<any> {
+    try {
+      const response = await firstValueFrom(
+        this.taskClient.send(FEEDBACK_PATTERN.UPDATE_RATING, updateFeedbackStatusDto),
+      );
+      return response;
+    } catch (error) {
+      console.error('Error updating feedback status:', error);
       throw error;
     }
   }

@@ -7,6 +7,7 @@ import { CreateFeedbackDto } from '@app/contracts/feedback/create-feedback.dto';
 import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 import { UpdateFeedbackDto } from '@app/contracts/feedback/update-feedback.dto';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
+import { UpdateFeedbackStatusDto } from '@app/contracts/feedback/update-feedback-status.dto';
 
 @Controller('feedback')
 export class FeedbackController {
@@ -60,5 +61,16 @@ export class FeedbackController {
     return this.feedbackService.getFeedbackById(payload.feedback_id);
   }
 
+  @MessagePattern(FEEDBACK_PATTERN.UPDATE_RATING)
+  async updateFeedbackStatus(
+    @Payload() updateFeedbackStatusDto: UpdateFeedbackStatusDto,
+  ): Promise<ApiResponse<FeedbackResponseDto>> {
+    console.log('Updating feedback status:', updateFeedbackStatusDto);
+    
+    return this.feedbackService.updateFeedbackStatus(
+      updateFeedbackStatusDto.feedback_id,
+      updateFeedbackStatusDto.rating,
+    );
+  }
 
 } 

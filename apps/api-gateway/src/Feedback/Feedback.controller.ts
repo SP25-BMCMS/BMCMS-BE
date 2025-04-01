@@ -22,6 +22,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
+import { UpdateFeedbackStatusDto } from '@app/contracts/feedback/update-feedback-status.dto';
 
 @Controller('feedbacks')
 @ApiTags('feedbacks')
@@ -83,7 +84,35 @@ export class FeedbackController {
   @ApiBody({ type: UpdateFeedbackDto })
   @ApiResponse({ status: 200, description: 'Feedback updated successfully' })
   @ApiResponse({ status: 404, description: 'Feedback not found' })
+  async updateFeedback(
+    @Param('feedback_id') feedback_id: string,
+    @Body() updateFeedbackDto: UpdateFeedbackDto,
+  ) {
+    // Ensure the path parameter and body ID match
+    const updatedDto = {
+      ...updateFeedbackDto,
+      feedback_id,
+    };
+    return this.feedbackService.updateFeedback(updatedDto);
+  }
 
+  @Put(':feedback_id/change-status')
+  @ApiOperation({ summary: 'Update feedback status/rating' })
+  @ApiParam({ name: 'feedback_id', description: 'Feedback ID' })
+  @ApiBody({ type: UpdateFeedbackStatusDto })
+  @ApiResponse({ status: 200, description: 'Feedback status updated successfully' })
+  @ApiResponse({ status: 404, description: 'Feedback not found' })
+  @ApiResponse({ status: 400, description: 'Invalid rating value' })
+  async updateFeedbackrating(
+    @Param('feedback_id') feedback_id: string,
+    @Body() updateStatusDto: { rating: number },
+  ) {
+    const statusDto: UpdateFeedbackStatusDto = {
+      feedback_id,
+      rating: updateStatusDto.rating,
+    };
+    return this.feedbackService.updateFeedbackrating(statusDto);
+  }
 
   @Delete(':feedback_id')
   @HttpCode(HttpStatus.NO_CONTENT)
