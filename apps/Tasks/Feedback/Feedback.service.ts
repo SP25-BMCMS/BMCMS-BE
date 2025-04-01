@@ -153,4 +153,70 @@ export class FeedbackService {
       });
     }
   }
+    // Delete Feedback
+    async deleteFeedback(feedback_id: string): Promise<ApiResponse<null>> {
+        try {
+          // Kiểm tra xem feedback có tồn tại không
+          const feedbackExists = await this.prisma.feedback.findUnique({
+            where: { feedback_id },
+          });
+    
+          if (!feedbackExists) {
+            throw new RpcException({
+              statusCode: 404,
+              message: 'Feedback not found',
+            });
+          }
+    
+          await this.prisma.feedback.delete({
+            where: { feedback_id },
+          });
+    
+          return new ApiResponse<null>(
+            true,
+            'Feedback deleted successfully',
+            null,
+          );
+        } catch (error) {
+          if (error instanceof RpcException) {
+            throw error;
+          }
+          throw new RpcException({
+            statusCode: 400,
+            message: error.message || 'Failed to delete feedback',
+          });
+        }
+      }
+    
+      // Get Feedback by ID
+      async getFeedbackById(
+        feedback_id: string,
+      ): Promise<ApiResponse<FeedbackResponseDto>> {
+        try {
+          const feedback = await this.prisma.feedback.findUnique({
+            where: { feedback_id },
+          });
+    
+          if (!feedback) {
+            throw new RpcException({
+              statusCode: 404,
+              message: 'Feedback not found',
+            });
+          }
+    
+          return new ApiResponse<FeedbackResponseDto>(
+            true,
+            'Feedback retrieved successfully',
+            feedback,
+          );
+        } catch (error) {
+          if (error instanceof RpcException) {
+            throw error;
+          }
+          throw new RpcException({
+            statusCode: 500,
+            message: error.message || 'Failed to retrieve feedback',
+          });
+        }
+      }
 } 

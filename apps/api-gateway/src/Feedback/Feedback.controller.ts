@@ -4,7 +4,11 @@ import {
   Get, 
   Body, 
   Query,
-  Param, 
+  Param,
+  HttpCode,
+  Delete,
+  HttpStatus,
+  Put, 
 } from '@nestjs/common';
 import { FeedbackService } from './Feedback.service';
 import { CreateFeedbackDto } from '@app/contracts/feedback/create-feedback.dto';
@@ -72,6 +76,31 @@ export class FeedbackController {
   @ApiResponse({ status: 404, description: 'User not found' })
   async getFeedbacksByUserId(@Param('feedback_by') feedback_by: string) {
     return this.feedbackService.getFeedbacksByUserId(feedback_by);
+  }
+   @Put(':feedback_id')
+  @ApiOperation({ summary: 'Update feedback' })
+  @ApiParam({ name: 'feedback_id', description: 'Feedback ID' })
+  @ApiBody({ type: UpdateFeedbackDto })
+  @ApiResponse({ status: 200, description: 'Feedback updated successfully' })
+  @ApiResponse({ status: 404, description: 'Feedback not found' })
+
+
+  @Delete(':feedback_id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete feedback' })
+  @ApiParam({ name: 'feedback_id', description: 'Feedback ID' })
+  @ApiResponse({ status: 204, description: 'Feedback deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Feedback not found' })
+  async deleteFeedback(@Param('feedback_id') feedback_id: string) {
+    return this.feedbackService.deleteFeedback(feedback_id);
+  }
+  @Get(':feedback_id')
+  @ApiOperation({ summary: 'Get feedback by ID' })
+  @ApiParam({ name: 'feedback_id', description: 'Feedback ID' })
+  @ApiResponse({ status: 200, description: 'Feedback found' })
+  @ApiResponse({ status: 404, description: 'Feedback not found' })
+  async getFeedbackById(@Param('feedback_id') feedback_id: string) {
+    return this.feedbackService.getFeedbackById(feedback_id);
   }
 
 } 

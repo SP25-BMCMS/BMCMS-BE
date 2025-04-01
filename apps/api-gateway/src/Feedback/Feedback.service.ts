@@ -58,5 +58,27 @@ export class FeedbackService {
       throw error;
     }
   }
+  async deleteFeedback(feedback_id: string): Promise<any> {
+    try {
+      const response = await firstValueFrom(
+        this.taskClient.send(FEEDBACK_PATTERN.DELETE, { feedback_id }),
+      );
+      return response;
+    } catch (error) {
+      console.error('Error deleting feedback:', error);
+      throw error;
+    }
+  }
 
+  async getFeedbackById(feedback_id: string): Promise<any> {
+    try {
+      const response = await firstValueFrom(
+        this.taskClient.send(FEEDBACK_PATTERN.GET_BY_ID, { feedback_id }),
+      );
+      return response;
+    } catch (error) {
+      console.error('Error getting feedback by ID:', error);
+      throw error;
+    }
+  }
 } 

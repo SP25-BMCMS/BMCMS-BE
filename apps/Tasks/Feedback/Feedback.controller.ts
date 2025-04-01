@@ -44,4 +44,21 @@ export class FeedbackController {
   ): Promise<ApiResponse<FeedbackResponseDto[]>> {
     return this.feedbackService.getFeedbacksByUserId(payload.feedback_by);
   }
+  @MessagePattern(FEEDBACK_PATTERN.DELETE)
+  async deleteFeedback(
+    @Payload() payload: { feedback_id: string },
+  ): Promise<ApiResponse<null>> {
+    return this.feedbackService.deleteFeedback(payload.feedback_id);
+  }
+
+
+
+  @MessagePattern(FEEDBACK_PATTERN.GET_BY_ID)
+  async getFeedbackById(
+    @Payload() payload: { feedback_id: string },
+  ): Promise<ApiResponse<FeedbackResponseDto>> {
+    return this.feedbackService.getFeedbackById(payload.feedback_id);
+  }
+
+
 } 
