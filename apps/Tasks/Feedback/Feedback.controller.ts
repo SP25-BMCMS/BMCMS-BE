@@ -82,4 +82,11 @@ export class FeedbackController {
     
     return this.feedbackService.updateFeedbackStatus(updateStatusDto);
   }
+  @MessagePattern(FEEDBACK_PATTERN.UPDATE)
+  async updateFeedback(
+    @Payload() updateFeedbackDto: UpdateFeedbackDto,
+  ): Promise<ApiResponse<FeedbackResponseDto>> {
+    return this.feedbackService.updateFeedback(updateFeedbackDto);
+  }
+
 } 
