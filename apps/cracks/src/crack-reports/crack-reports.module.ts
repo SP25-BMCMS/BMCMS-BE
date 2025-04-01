@@ -69,7 +69,7 @@ const USERS_CLIENT = 'USERS_CLIENT';
           const usersHost = isLocal
             ? configService.get('USERS_SERVICE_HOST', 'localhost')
             : 'users-service';
-          const usersPort = configService.get('USERS_SERVICE_PORT', '5000');
+          const usersPort = configService.get('USERS_SERVICE_PORT', '3001');
 
           return {
             transport: Transport.GRPC,

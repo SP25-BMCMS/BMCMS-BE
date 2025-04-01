@@ -9,7 +9,7 @@ import { $Enums, Prisma, CrackReport } from '@prisma/client-cracks';
 import { ApiResponse } from 'libs/contracts/src/ApiReponse/api-response';
 import { TASKS_PATTERN } from 'libs/contracts/src/tasks/task.patterns';
 import { BUILDINGDETAIL_PATTERN } from 'libs/contracts/src/BuildingDetails/buildingdetails.patterns';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Observable } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto';
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
@@ -21,8 +21,12 @@ const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
 const USERS_CLIENT = 'USERS_CLIENT';
 
 interface UserService {
-  Test(data: { message: string }): Promise<any>;
-  checkStaffAreaMatch(data: { staffId: string; crackReportId: string }): Promise<{ isSuccess: boolean; message: string; isMatch: boolean }>;
+  Test(data: { message: string }): Observable<any>;
+  checkStaffAreaMatch(data: { staffId: string; crackReportId: string }): Observable<{
+    isSuccess: boolean;
+    message: string;
+    isMatch: boolean;
+  }>;
 }
 
 @Injectable()
@@ -367,9 +371,11 @@ export class CrackReportsService {
         }
 
         // Check if staff's area matches the crack report's area
-        const areaMatchResponse = await this.userService.checkStaffAreaMatch({ staffId, crackReportId })
-
-        if (areaMatchResponse.isSuccess || areaMatchResponse.isMatch) {
+        const areaMatchResponse = await firstValueFrom(
+          this.userService.checkStaffAreaMatch({ staffId, crackReportId })
+        );
+        // Only throw when isMatch is false
+        if (!areaMatchResponse.isMatch) {
           throw new RpcException(
             new ApiResponse(false, 'Nhân viên không thuộc khu vực của báo cáo nứt này')
           )
