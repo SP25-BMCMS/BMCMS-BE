@@ -68,7 +68,7 @@ const USERS_CLIENT = 'USERS_CLIENT';
           const isLocal = process.env.NODE_ENV !== 'production';
           const usersHost = isLocal
             ? configService.get('USERS_SERVICE_HOST', 'localhost')
-            : 'users-service';
+            : 'users_service';
           const usersPort = configService.get('USERS_SERVICE_PORT', '3001');
 
           return {
