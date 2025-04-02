@@ -30,6 +30,11 @@ export interface UserInterface {
 
   // Staff/Employee Methods
   getAllStaff({ }): Observable<any>;
+  updateDepartmentAndWorkingPosition(data: {
+    staffId: string;
+    departmentId: string;
+    positionId: string;
+  }): Observable<any>;
 
   // Working Position Methods
   createWorkingPosition(data: CreateWorkingPositionDto): Observable<any>;

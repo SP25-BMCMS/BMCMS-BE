@@ -1258,4 +1258,131 @@ export class UsersService {
       };
     }
   }
+
+  async updateDepartmentAndWorkingPosition(
+    staffId: string,
+    departmentId: string,
+    positionId: string
+  ): Promise<{
+    isSuccess: boolean;
+    message: string;
+    data: any;
+  }> {
+    try {
+      // Check if the staff exists
+      const staff = await this.prisma.user.findUnique({
+        where: {
+          userId: staffId,
+          role: { in: ['Staff', 'Manager'] }  // Only staff or manager roles can be updated
+        },
+        include: {
+          userDetails: true
+        }
+      });
+
+
+      if (!staff) {
+        return {
+          isSuccess: false,
+          message: 'Nhân viên không tồn tại hoặc không phải là Staff/Manager',
+          data: null
+        };
+      }
+
+      // Check if department exists
+      const department = await this.prisma.department.findUnique({
+        where: { departmentId }
+      });
+
+      if (!department) {
+        return {
+          isSuccess: false,
+          message: 'Phòng ban không tồn tại',
+          data: null
+        };
+      }
+
+      // Check if position exists
+      const position = await this.prisma.workingPosition.findUnique({
+        where: { positionId }
+      });
+
+      if (!position) {
+        return {
+          isSuccess: false,
+          message: 'Vị trí công việc không tồn tại',
+          data: null
+        };
+      }
+
+      // Update or create userDetails
+      let userDetails;
+      try {
+        if (staff.userDetails) {
+
+          // The userId field is the primary key in UserDetails, not a relation field for querying
+          userDetails = await this.prisma.userDetails.update({
+            where: { userId: staffId }, // This is the primary key of UserDetails
+            data: {
+              departmentId,
+              positionId
+            },
+            include: {
+              department: true,
+              position: true
+            }
+          });
+        } else {
+
+          // Create new userDetails for this staff with the same userId
+          userDetails = await this.prisma.userDetails.create({
+            data: {
+              userId: staffId, // Use the staff's userId as the primary key for UserDetails
+              departmentId,
+              positionId
+            },
+            include: {
+              department: true,
+              position: true
+            }
+          });
+        }
+
+
+      } catch (dbError) {
+        throw dbError;
+      }
+
+      // Prepare response
+      return {
+        isSuccess: true,
+        message: 'Cập nhật phòng ban và vị trí công việc thành công',
+        data: {
+          staffId: staff.userId,
+          username: staff.username,
+          userDetails: {
+            departmentId: userDetails.departmentId,
+            positionId: userDetails.positionId,
+            department: {
+              departmentId: userDetails.department.departmentId,
+              departmentName: userDetails.department.departmentName,
+              description: userDetails.department.description || '',
+              area: userDetails.department.area || ''
+            },
+            position: {
+              positionId: userDetails.position.positionId,
+              positionName: userDetails.position.positionName.toString(),
+              description: userDetails.position.description || ''
+            }
+          }
+        }
+      };
+    } catch (error) {
+      return {
+        isSuccess: false,
+        message: `Lỗi khi cập nhật phòng ban và vị trí công việc: ${error.message}`,
+        data: null
+      };
+    }
+  }
 }

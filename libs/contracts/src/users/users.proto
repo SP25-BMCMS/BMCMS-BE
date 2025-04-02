@@ -28,6 +28,7 @@ service UserService {
   rpc GetApartmentByResidentAndApartmentId(GetApartmentDetailRequest) returns (GetApartmentByResidentAndApartmentIdResponse);
   rpc CheckStaffAreaMatch (CheckStaffAreaMatchRequest) returns (CheckStaffAreaMatchResponse);
   rpc CheckPositionAndDepartment (CheckPositionAndDepartmentRequest) returns (CheckPositionAndDepartmentResponse);
+  rpc UpdateDepartmentAndWorkingPosition (UpdateDepartmentAndWorkingPositionRequest) returns (UpdateDepartmentAndWorkingPositionResponse);
 }
 message GetApartmentByIdRequest {
   string apartmentId = 1;
@@ -397,6 +398,18 @@ message CheckPositionAndDepartmentResponse {
 
 message DepartmentByIdRequest {
   string departmentId = 1;
+}
+
+message UpdateDepartmentAndWorkingPositionRequest {
+  string staffId = 1;
+  string departmentId = 2;
+  string positionId = 3;
+}
+
+message UpdateDepartmentAndWorkingPositionResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  UserResponse data = 3;
 }
 
 

@@ -57,6 +57,60 @@ export class UsersController {
     }
   }
 
+  @GrpcMethod('UserService', 'UpdateDepartmentAndWorkingPosition')
+  async updateDepartmentAndWorkingPosition(data: {
+    staffId: string;
+    departmentId: string;
+    positionId: string;
+  }) {
+    try {
+
+      const result = await this.usersService.updateDepartmentAndWorkingPosition(
+        data.staffId,
+        data.departmentId,
+        data.positionId
+      );
+
+
+      // If the service method indicates a failure, throw an RPC exception
+      if (!result.isSuccess) {
+
+        // Check for specific "not found" error messages and return 404
+        const notFoundKeywords = ['không tìm thấy', 'not found', 'không tồn tại'];
+        const isNotFound = notFoundKeywords.some(keyword =>
+          result.message.toLowerCase().includes(keyword.toLowerCase())
+        );
+
+        throw new RpcException({
+          statusCode: isNotFound ? 404 : 500,
+          message: result.message || 'Unknown error occurred'
+        });
+      }
+
+      return result;
+    } catch (error) {
+
+      // If it's already an RpcException, rethrow it
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      // For other errors, check if it's a "not found" message
+      const errorMessage = error.message || 'Lỗi khi cập nhật phòng ban và vị trí công việc';
+      const notFoundKeywords = ['không tìm thấy', 'not found', 'không tồn tại'];
+      const isNotFound = notFoundKeywords.some(keyword =>
+        errorMessage.toLowerCase().includes(keyword.toLowerCase())
+      );
+
+      // Otherwise, wrap it in an RpcException
+      throw new RpcException({
+        statusCode: isNotFound ? 404 : 500,
+        message: errorMessage,
+        details: error.stack
+      });
+    }
+  }
+
   @GrpcMethod('UserService', 'GetDepartmentById')
   async getDepartmentById(data: { departmentId: string }) {
     try {

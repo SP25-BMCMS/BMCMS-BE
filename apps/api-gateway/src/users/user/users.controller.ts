@@ -610,6 +610,63 @@ export class UsersController {
       });
     }
   }
+
+  @UseGuards(PassportJwtAuthGuard, RolesGuard)
+  @Roles(Role.Manager, Role.Admin)
+  @Patch('staff/:staffId/update-department-position')
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Update staff department and working position (Manager only)' })
+  @ApiParam({ name: 'staffId', description: 'Staff user ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        departmentId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+        positionId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+      },
+      required: ['departmentId', 'positionId'],
+    },
+  })
+  @SwaggerResponse({
+    status: 200,
+    description: 'Department and working position updated successfully',
+  })
+  @SwaggerResponse({ status: 401, description: 'Unauthorized' })
+  @SwaggerResponse({
+    status: 403,
+    description: 'Forbidden - Manager/Admin role required',
+  })
+  @SwaggerResponse({ status: 404, description: 'Staff not found or department/position not found' })
+  async updateDepartmentAndWorkingPosition(
+    @Param('staffId') staffId: string,
+    @Body() data: { departmentId: string; positionId: string },
+    @Res() res: any,
+  ) {
+    try {
+      const response = await this.usersService.updateDepartmentAndWorkingPosition(
+        staffId,
+        data.departmentId,
+        data.positionId,
+      );
+
+      return res.status(HttpStatus.OK).json(response);
+    } catch (error) {
+      const status =
+        error instanceof HttpException
+          ? error.getStatus()
+          : HttpStatus.INTERNAL_SERVER_ERROR;
+
+      const message =
+        error instanceof HttpException
+          ? error.message
+          : 'Lỗi khi cập nhật phòng ban và vị trí công việc';
+
+      return res.status(status).json({
+        statusCode: status,
+        message: message,
+      });
+    }
+  }
 }
 
 // @Get('apartment/:apartmentId')

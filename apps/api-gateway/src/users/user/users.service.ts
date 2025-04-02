@@ -450,4 +450,113 @@ export class UsersService implements OnModuleInit {
       );
     }
   }
+
+  async updateDepartmentAndWorkingPosition(
+    staffId: string,
+    departmentId: string,
+    positionId: string,
+  ) {
+    try {
+
+      // First, verify that the department and position exist
+      const departmentResponse = await firstValueFrom(
+        this.userService.getDepartmentById({ departmentId }).pipe(
+          catchError((error) => {
+            return throwError(
+              () =>
+                new HttpException(
+                  'Phòng ban không tồn tại',
+                  HttpStatus.NOT_FOUND,
+                ),
+            );
+          }),
+        ),
+      );
+
+      const positionResponse = await firstValueFrom(
+        this.userService.getWorkingPositionById({ positionId }).pipe(
+          catchError((error) => {
+            return throwError(
+              () =>
+                new HttpException(
+                  'Vị trí công việc không tồn tại',
+                  HttpStatus.NOT_FOUND,
+                ),
+            );
+          }),
+        ),
+      );
+
+
+      if (!departmentResponse.isSuccess || !positionResponse.isSuccess) {
+        throw new HttpException(
+          'Phòng ban hoặc vị trí công việc không tồn tại',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // Update the staff's department and position
+      try {
+        const response = await lastValueFrom(
+          this.userService.updateDepartmentAndWorkingPosition({
+            staffId,
+            departmentId,
+            positionId
+          }).pipe(
+            catchError((error) => {
+
+              // Check if the error message contains "not found" keywords
+              const notFoundKeywords = ['không tìm thấy', 'not found', 'không tồn tại'];
+
+              // Determine if it's a "not found" type error
+              let isNotFound = false;
+              if (error.details) {
+                isNotFound = notFoundKeywords.some(keyword =>
+                  error.details.toLowerCase().includes(keyword.toLowerCase())
+                );
+              } else if (error.message) {
+                isNotFound = notFoundKeywords.some(keyword =>
+                  error.message.toLowerCase().includes(keyword.toLowerCase())
+                );
+              }
+
+              // Set appropriate status code based on error message
+              const statusCode = isNotFound ? HttpStatus.NOT_FOUND : HttpStatus.INTERNAL_SERVER_ERROR;
+
+              // Return the specific error message from the microservice
+              return throwError(
+                () => new HttpException(
+                  error.details || error.message || 'Lỗi không xác định',
+                  statusCode
+                ),
+              );
+            }),
+          ),
+        );
+
+        return response;
+      } catch (innerError) {
+        throw innerError; // Rethrow to be caught by outer catch
+      }
+    } catch (error) {
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // Provide more detailed error information
+      const errorMessage = error.message || 'Lỗi hệ thống không xác định';
+
+      // Check if the error message contains "not found" keywords
+      const notFoundKeywords = ['không tìm thấy', 'not found', 'không tồn tại'];
+      const isNotFound = notFoundKeywords.some(keyword =>
+        errorMessage.toLowerCase().includes(keyword.toLowerCase())
+      );
+
+      throw new HttpException(
+        `Lỗi khi cập nhật phòng ban và vị trí công việc: ${errorMessage}`,
+        isNotFound ? HttpStatus.NOT_FOUND : HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }
