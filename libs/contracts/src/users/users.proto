@@ -18,6 +18,7 @@ service UserService {
   rpc DeleteWorkingPosition (WorkingPositionByIdRequest) returns (WorkingPositionApiResponse);
   rpc CreateDepartment (CreateDepartmentRequest) returns (DepartmentApiResponse);
   rpc GetDepartmentById (DepartmentByIdRequest) returns (DepartmentApiResponse);
+  rpc GetAllDepartments (Empty) returns (DepartmentsListResponse);
   rpc GetAllStaff (Empty) returns (StaffListResponse);
   rpc GetApartmentsByResidentId (GetApartmentsRequest) returns (GetApartmentByResidentIdResponse);
   rpc ResidentLogin (ResidentLoginRequest) returns (LoginResponse);
@@ -410,6 +411,12 @@ message UpdateDepartmentAndWorkingPositionResponse {
   bool isSuccess = 1;
   string message = 2;
   UserResponse data = 3;
+}
+
+message DepartmentsListResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  repeated DepartmentResponse data = 3;
 }
 
 
