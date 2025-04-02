@@ -28,6 +28,9 @@ model Task {
   // Mối quan hệ 1:N với TaskAssignments
   taskAssignments TaskAssignment[]
 
+  // Mối quan hệ 1:N với Feedbacks
+  feedbacks       Feedback[]
+
   // Mối quan hệ 1:N với Inspections
 }
 
@@ -116,6 +119,26 @@ model Material {
   // Mối quan hệ 1:N với RepairMaterial
   repairMaterials RepairMaterial[]
 }
+
+model Feedback {
+  feedback_id String   @id @default(uuid())
+  task_id     String
+  feedback_by String
+  comments    String
+  rating      Int      @default(1) // Rating should be between 1 and 5
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  status      FeedbackStatus @default(ACTIVE)
+
+  // Mối quan hệ N:1 với Task
+  task Task @relation(fields: [task_id], references: [task_id])
+}
+enum FeedbackStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
+}
+
 
 enum Status {
   Assigned
