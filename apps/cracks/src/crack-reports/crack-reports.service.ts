@@ -9,7 +9,7 @@ import { $Enums, Prisma, CrackReport } from '@prisma/client-cracks';
 import { ApiResponse } from 'libs/contracts/src/ApiReponse/api-response';
 import { TASKS_PATTERN } from 'libs/contracts/src/tasks/task.patterns';
 import { BUILDINGDETAIL_PATTERN } from 'libs/contracts/src/BuildingDetails/buildingdetails.patterns';
-import { firstValueFrom, Observable } from 'rxjs';
+import { firstValueFrom, Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto';
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
@@ -27,6 +27,7 @@ interface UserService {
     message: string;
     isMatch: boolean;
   }>;
+  GetUserInfo(data: { userId: string }): Observable<any>;
 }
 
 @Injectable()
@@ -71,12 +72,12 @@ export class CrackReportsService {
     search: string = '',
     severityFilter?: $Enums.Severity,
   ): Promise<{
-    data: CrackReport[]
+    data: any[];
     pagination: {
-      total: number
-      page: number
-      limit: number
-      totalPages: number
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
     }
   }> {
     // Validate pagination parameters
@@ -123,8 +124,80 @@ export class CrackReportsService {
 
       const totalCount = await this.prismaService.crackReport.count({ where })
 
+      // Get usernames for all reporters
+      const reporterIds = [...new Set(crackReports.map(report => report.reportedBy))];
+      const verifierIds = [...new Set(crackReports.map(report => report.verifiedBy))];
+
+      const userMap = new Map();
+
+      await Promise.all(verifierIds.map(async (userId) => {
+        try {
+          if (userId) {
+            const userResponse = await firstValueFrom(
+              this.userService.GetUserInfo({ userId }).pipe(
+                catchError(error => {
+                  console.error(`Error fetching user data for ID ${userId}:`, error);
+                  return of(null);
+                })
+              )
+            );
+
+            if (userResponse) {
+              userMap.set(userId, {
+                userId: userResponse.userId,
+                username: userResponse.username
+              });
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to get user data for ID ${userId}:`, error);
+        }
+      }));
+      // Get user data for each reporter ID
+      await Promise.all(reporterIds.map(async (userId) => {
+        try {
+          if (userId) {
+            const userResponse = await firstValueFrom(
+              this.userService.GetUserInfo({ userId }).pipe(
+                catchError(error => {
+                  console.error(`Error fetching user data for ID ${userId}:`, error);
+                  return of(null);
+                })
+              )
+            );
+
+            if (userResponse) {
+              userMap.set(userId, {
+                userId: userResponse.userId,
+                username: userResponse.username
+              });
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to get user data for ID ${userId}:`, error);
+        }
+      }));
+
+      // Add username to each crack report
+      const enrichedReports = crackReports.map(report => {
+        const userData = userMap.get(report.reportedBy);
+        const verifierData = userMap.get(report.verifiedBy);
+
+        return {
+          ...report,
+          reportedBy: {
+            userId: report.reportedBy,
+            username: userData?.username || 'Unknown'
+          },
+          verifiedBy: {
+            userId: report.verifiedBy,
+            username: verifierData?.username || 'Unknown'
+          }
+        };
+      });
+
       return {
-        data: crackReports,
+        data: enrichedReports,
         pagination: {
           total: totalCount,
           page,
@@ -133,7 +206,10 @@ export class CrackReportsService {
         },
       }
     } catch (error) {
-      new ApiResponse(false, 'Error when getting crack report!', error)
+      console.error('Error getting crack reports:', error);
+      throw new RpcException(
+        new ApiResponse(false, 'Error when getting crack report!', error)
+      );
     }
   }
 
@@ -200,7 +276,7 @@ export class CrackReportsService {
             buildingDetailId: dto.buildingDetailId,
             description: dto.description,
             isPrivatesAsset: dto.isPrivatesAsset,
-            position: dto.isPrivatesAsset ? null : dto.position,
+            position: dto.isPrivatesAsset ? dto.position : dto.position,
             status: dto.status ?? $Enums.ReportStatus.Pending,
             reportedBy: userId,
             verifiedBy: '123123123',
