@@ -15,15 +15,30 @@ export class EmployeeService implements OnModuleInit {
     this.userService = this.client.getService<UserInterface>('UserService');
   }
 
-  async getAllStaff() {
+  async getAllStaff(paginationParams: { page?: number; limit?: number; search?: string; role?: string | string[] } = {}) {
     try {
-      const response = await lastValueFrom(this.userService.getAllStaff({}));
+      // Ensure role is passed as array if provided
+      const params = {
+        ...paginationParams,
+        role: paginationParams.role ?
+          (Array.isArray(paginationParams.role) ?
+            paginationParams.role : [paginationParams.role]) :
+          undefined
+      };
+
+      const response = await lastValueFrom(this.userService.getAllStaff(params));
 
       if (!response || !response.isSuccess) {
         return {
           isSuccess: false,
           message: response?.message || 'Failed to retrieve staff members',
           data: [],
+          pagination: {
+            total: 0,
+            page: paginationParams.page || 1,
+            limit: paginationParams.limit || 10,
+            totalPages: 0
+          }
         };
       }
 
@@ -34,6 +49,12 @@ export class EmployeeService implements OnModuleInit {
         isSuccess: false,
         message: 'Service unavailable',
         data: [],
+        pagination: {
+          total: 0,
+          page: paginationParams.page || 1,
+          limit: paginationParams.limit || 10,
+          totalPages: 0
+        }
       };
     }
   }

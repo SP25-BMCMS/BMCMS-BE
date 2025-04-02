@@ -2,14 +2,20 @@ import { Controller } from '@nestjs/common';
 import { GrpcMethod } from '@nestjs/microservices';
 import { UsersService } from './users.service';
 import { RpcException } from '@nestjs/microservices';
+import { PaginationParams } from '../../../libs/contracts/src/Pagination/pagination.dto';
 
 @Controller()
 export class UsersController {
   constructor(private readonly usersService: UsersService) { }
 
   @GrpcMethod('UserService', 'GetAllStaff')
-  async getAllStaff() {
-    return this.usersService.getAllStaff();
+  async getAllStaff(paginationParams: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    role?: string[];
+  } = {}) {
+    return this.usersService.getAllStaff(paginationParams);
   }
 
   @GrpcMethod('UserService', 'UpdateResidentApartments')

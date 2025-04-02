@@ -24,6 +24,7 @@ import { createUserDto } from '@app/contracts/users/create-user.dto'
 import { ApiResponse } from '@app/contracts/ApiReponse/api-response'
 import { CreateWorkingPositionDto } from '@app/contracts/users/create-working-position.dto'
 import { GrpcMethod } from '@nestjs/microservices'
+import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
 const CRACKS_CLIENT = 'CRACKS_CLIENT';
@@ -629,18 +630,69 @@ export class UsersService {
     }
   }
 
-  async getAllStaff(): Promise<{
+  async getAllStaff(paginationParams: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    role?: string | string[];
+  } = {}): Promise<{
     isSuccess: boolean
     message: string
     data: UserDto[]
+    pagination?: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    }
   }> {
     try {
+      const { page = 1, limit = 10, search, role } = paginationParams;
+
+      // Handle role filtering
+      let roleFilter: any = {
+        role: {
+          in: [Role.Staff, Role.Admin, Role.Manager]
+        }
+      };
+
+      if (role) {
+        const roleArray = Array.isArray(role) ? role : [role];
+        // Map string roles to Role enum
+        const mappedRoles = roleArray.map(r => {
+          switch (r) {
+            case 'Admin': return Role.Admin;
+            case 'Manager': return Role.Manager;
+            case 'Staff': return Role.Staff;
+            default: return r;
+          }
+        });
+
+        roleFilter = { role: { in: mappedRoles } };
+      }
+
+      // Apply filters
+      const whereClause: any = {
+        ...roleFilter
+      };
+
+      // Add search filter if provided
+      if (search) {
+        whereClause.OR = [
+          { username: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { phone: { contains: search, mode: 'insensitive' } }
+        ];
+      }
+
+      // Count total matching records
+      const totalCount = await this.prisma.user.count({
+        where: whereClause
+      });
+
+      // Fetch paginated results
       const staffMembers = await this.prisma.user.findMany({
-        where: {
-          role: {
-            in: [Role.Staff, Role.Admin, Role.Manager],
-          },
-        },
+        where: whereClause,
         include: {
           userDetails: {
             include: {
@@ -649,10 +701,22 @@ export class UsersService {
             },
           },
         },
+        skip: (page - 1) * limit,
+        take: limit,
       })
 
       if (!staffMembers || staffMembers.length === 0) {
-        return { isSuccess: true, message: 'No staff members found', data: [] }
+        return {
+          isSuccess: true,
+          message: 'No staff members found',
+          data: [],
+          pagination: {
+            total: 0,
+            page: page,
+            limit: limit,
+            totalPages: 0
+          }
+        }
       }
 
       // Convert to user response format without exposing sensitive fields
@@ -691,8 +755,14 @@ export class UsersService {
 
       return {
         isSuccess: true,
-        message: 'Successfully retrieved all staff members',
+        message: 'Successfully retrieved staff members',
         data: staffData as unknown as UserDto[],
+        pagination: {
+          total: totalCount,
+          page: page,
+          limit: limit,
+          totalPages: Math.max(1, Math.ceil(totalCount / limit))
+        }
       }
     } catch (error) {
       console.error('Error fetching staff members:', error)

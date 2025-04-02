@@ -29,7 +29,7 @@ export interface UserInterface {
   getResidentByPhone(data: { phone: string }): Observable<any>;
 
   // Staff/Employee Methods
-  getAllStaff({ }): Observable<any>;
+  getAllStaff(paginationParams?: { page?: number; limit?: number; search?: string; role?: string | string[] }): Observable<any>;
   updateDepartmentAndWorkingPosition(data: {
     staffId: string;
     departmentId: string;

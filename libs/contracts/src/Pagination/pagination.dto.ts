@@ -1,10 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-// Định nghĩa interface cho tham số đầu vào phân trang
-export interface PaginationParams {
+// Convert interface to class for Swagger compatibility
+export class PaginationParams {
   page?: number;
   limit?: number;
   search?: string;
+  role?: string | string[];
 }
 
 // Định nghĩa generic response type cho kết quả phân trang

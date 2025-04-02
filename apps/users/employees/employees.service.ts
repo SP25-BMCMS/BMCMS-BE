@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
-import { PaginationParams } from '../../../libs/contracts/src/Pagination/pagination.dto';
 
 @Injectable()
 export class EmployeesService {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
-  async getAllStaff(paginationParams: PaginationParams = {}) {
+  async getAllStaff(paginationParams: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    role?: string[];
+  } = {}) {
     return this.usersService.getAllStaff(paginationParams);
   }
 

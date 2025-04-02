@@ -13,10 +13,15 @@ import { PaginationParams } from '../../../libs/contracts/src/Pagination/paginat
 
 @Controller('employees')
 export class EmployeesController {
-  constructor(private readonly employeesService: EmployeesService) {}
+  constructor(private readonly employeesService: EmployeesService) { }
 
   @GrpcMethod('UserService', 'GetAllStaff')
-  async getAllStaff(@Payload() paginationParams: PaginationParams = {}) {
+  async getAllStaff(@Payload() paginationParams: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    role?: string[];
+  } = {}) {
     return this.employeesService.getAllStaff(paginationParams);
   }
 
