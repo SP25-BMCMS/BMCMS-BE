@@ -1,33 +1,33 @@
-import { TASKASSIGNMENT_PATTERN } from '@app/contracts/taskAssigment/taskAssigment.patterns';
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { Inject, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { ClientProxy, ClientGrpc, RpcException } from '@nestjs/microservices';
-import { AssignmentStatus, Status } from '@prisma/client-Task';
-import { $Enums, Prisma, CrackReport } from '@prisma/client-cracks';
-import { ApiResponse } from 'libs/contracts/src/ApiReponse/api-response';
-import { TASKS_PATTERN } from 'libs/contracts/src/tasks/task.patterns';
-import { BUILDINGDETAIL_PATTERN } from 'libs/contracts/src/BuildingDetails/buildingdetails.patterns';
-import { firstValueFrom, Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
-import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto';
-import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
-import { PrismaService } from '../../prisma/prisma.service';
-import { S3UploaderService, UploadResult } from '../crack-details/s3-uploader.service';
-import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns';
+import { TASKASSIGNMENT_PATTERN } from '@app/contracts/taskAssigment/taskAssigment.patterns'
+import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { Inject, Injectable } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
+import { ClientProxy, ClientGrpc, RpcException } from '@nestjs/microservices'
+import { AssignmentStatus, Status } from '@prisma/client-Task'
+import { $Enums, Prisma, CrackReport } from '@prisma/client-cracks'
+import { ApiResponse } from 'libs/contracts/src/ApiReponse/api-response'
+import { TASKS_PATTERN } from 'libs/contracts/src/tasks/task.patterns'
+import { BUILDINGDETAIL_PATTERN } from 'libs/contracts/src/BuildingDetails/buildingdetails.patterns'
+import { firstValueFrom, Observable, of } from 'rxjs'
+import { catchError } from 'rxjs/operators'
+import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto'
+import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto'
+import { PrismaService } from '../../prisma/prisma.service'
+import { S3UploaderService, UploadResult } from '../crack-details/s3-uploader.service'
+import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
 
-const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
-const USERS_CLIENT = 'USERS_CLIENT';
+const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
+const USERS_CLIENT = 'USERS_CLIENT'
 
 interface UserService {
-  Test(data: { message: string }): Observable<any>;
+  Test(data: { message: string }): Observable<any>
   checkStaffAreaMatch(data: { staffId: string; crackReportId: string }): Observable<{
-    isSuccess: boolean;
-    message: string;
-    isMatch: boolean;
-  }>;
-  GetUserInfo(data: { userId: string }): Observable<any>;
+    isSuccess: boolean
+    message: string
+    isMatch: boolean
+  }>
+  GetUserInfo(data: { userId: string }): Observable<any>
 }
 
 @Injectable()
@@ -72,12 +72,12 @@ export class CrackReportsService {
     search: string = '',
     severityFilter?: $Enums.Severity,
   ): Promise<{
-    data: any[];
+    data: any[]
     pagination: {
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
+      total: number
+      page: number
+      limit: number
+      totalPages: number
     }
   }> {
     // Validate pagination parameters
@@ -125,10 +125,10 @@ export class CrackReportsService {
       const totalCount = await this.prismaService.crackReport.count({ where })
 
       // Get usernames for all reporters
-      const reporterIds = [...new Set(crackReports.map(report => report.reportedBy))];
-      const verifierIds = [...new Set(crackReports.map(report => report.verifiedBy))];
+      const reporterIds = [...new Set(crackReports.map(report => report.reportedBy))]
+      const verifierIds = [...new Set(crackReports.map(report => report.verifiedBy))]
 
-      const userMap = new Map();
+      const userMap = new Map()
 
       await Promise.all(verifierIds.map(async (userId) => {
         try {
@@ -136,23 +136,23 @@ export class CrackReportsService {
             const userResponse = await firstValueFrom(
               this.userService.GetUserInfo({ userId }).pipe(
                 catchError(error => {
-                  console.error(`Error fetching user data for ID ${userId}:`, error);
-                  return of(null);
+                  console.error(`Error fetching user data for ID ${userId}:`, error)
+                  return of(null)
                 })
               )
-            );
+            )
 
             if (userResponse) {
               userMap.set(userId, {
                 userId: userResponse.userId,
                 username: userResponse.username
-              });
+              })
             }
           }
         } catch (error) {
-          console.error(`Failed to get user data for ID ${userId}:`, error);
+          console.error(`Failed to get user data for ID ${userId}:`, error)
         }
-      }));
+      }))
       // Get user data for each reporter ID
       await Promise.all(reporterIds.map(async (userId) => {
         try {
@@ -160,28 +160,28 @@ export class CrackReportsService {
             const userResponse = await firstValueFrom(
               this.userService.GetUserInfo({ userId }).pipe(
                 catchError(error => {
-                  console.error(`Error fetching user data for ID ${userId}:`, error);
-                  return of(null);
+                  console.error(`Error fetching user data for ID ${userId}:`, error)
+                  return of(null)
                 })
               )
-            );
+            )
 
             if (userResponse) {
               userMap.set(userId, {
                 userId: userResponse.userId,
                 username: userResponse.username
-              });
+              })
             }
           }
         } catch (error) {
-          console.error(`Failed to get user data for ID ${userId}:`, error);
+          console.error(`Failed to get user data for ID ${userId}:`, error)
         }
-      }));
+      }))
 
-      // Add username to each crack report
-      const enrichedReports = crackReports.map(report => {
-        const userData = userMap.get(report.reportedBy);
-        const verifierData = userMap.get(report.verifiedBy);
+      // Add username and presigned URLs to each crack report
+      const enrichedReports = await Promise.all(crackReports.map(async report => {
+        const userData = userMap.get(report.reportedBy)
+        const verifierData = userMap.get(report.verifiedBy)
 
         return {
           ...report,
@@ -192,9 +192,14 @@ export class CrackReportsService {
           verifiedBy: {
             userId: report.verifiedBy,
             username: verifierData?.username || 'Unknown'
-          }
-        };
-      });
+          },
+          crackDetails: await Promise.all(report.crackDetails.map(async detail => ({
+            ...detail,
+            photoUrl: detail.photoUrl ? await this.getPreSignedUrl(this.extractFileKey(detail.photoUrl)) : null,
+            aiDetectionUrl: detail.aiDetectionUrl ? await this.getPreSignedUrl(this.extractFileKey(detail.aiDetectionUrl)) : null,
+          })))
+        }
+      }))
 
       return {
         data: enrichedReports,
@@ -206,10 +211,24 @@ export class CrackReportsService {
         },
       }
     } catch (error) {
-      console.error('Error getting crack reports:', error);
+      console.error('Error getting crack reports:', error)
       throw new RpcException(
         new ApiResponse(false, 'Error when getting crack report!', error)
-      );
+      )
+    }
+  }
+
+  extractFileKey(urlString: string): string {
+    try {
+      // Extract the file key from the full URL
+      const url = new URL(urlString)
+
+      // Assuming the file key starts after the domain name in the path
+      return url.pathname.substring(1) // Remove leading "/"
+
+    } catch (error) {
+      console.error('Invalid URL format:', urlString)
+      throw new Error('Failed to extract file key from URL')
     }
   }
 
@@ -228,29 +247,29 @@ export class CrackReportsService {
                 .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId: dto.buildingDetailId })
                 .pipe(
                   catchError((error) => {
-                    console.error('Error checking building detail:', error);
+                    console.error('Error checking building detail:', error)
                     throw new RpcException({
                       status: 404,
                       message: 'buildingDetailId not found with id = ' + dto.buildingDetailId
-                    });
+                    })
                   }),
                 ),
-            );
+            )
 
             if (buildingDetail.statusCode === 404) {
               throw new RpcException({
                 status: 404,
                 message: 'buildingDetailId not found with id = ' + dto.buildingDetailId
-              });
+              })
             }
           } catch (error) {
             if (error instanceof RpcException) {
-              throw error;
+              throw error
             }
             throw new RpcException({
               status: 404,
               message: 'buildingDetailId not found with id = ' + dto.buildingDetailId
-            });
+            })
           }
         }
 
@@ -261,7 +280,7 @@ export class CrackReportsService {
             throw new RpcException({
               status: 400,
               message: `Invalid position format. Expected format: "area/building/floor/direction". Provided: ${dto.position}`
-            });
+            })
 
           }
           const [area, building, floor, direction] = positionParts
@@ -286,16 +305,16 @@ export class CrackReportsService {
         console.log('🚀 CrackReport created:', newCrackReport)
 
         // 🔹 2. Create CrackDetails if isPrivatesAsset is true
-        let newCrackDetails = [];
+        let newCrackDetails = []
         if (dto.files?.length > 0) {
           // Upload files to S3
-          const uploadResult = await this.s3UploaderService.uploadFiles(dto.files);
+          const uploadResult = await this.s3UploaderService.uploadFiles(dto.files)
 
           if (!uploadResult.isSuccess) {
             throw new RpcException({
               status: 400,
               message: uploadResult.message
-            });
+            })
           }
 
           // Create crack details with uploaded URLs
@@ -328,19 +347,19 @@ export class CrackReportsService {
           throw new RpcException({
             status: 400,
             message: 'Duplicate data error'
-          });
+          })
 
         }
       }
 
       if (error instanceof RpcException) {
-        throw error;
+        throw error
       }
 
       throw new RpcException({
         status: 500,
         message: 'System error, please try again later'
-      });
+      })
 
     }
   }
@@ -362,8 +381,8 @@ export class CrackReportsService {
 
     try {
       // Try to get user information for reportedBy and verifiedBy
-      let reporterInfo = null;
-      let verifierInfo = null;
+      let reporterInfo = null
+      let verifierInfo = null
 
       try {
         if (report.reportedBy) {
@@ -371,7 +390,7 @@ export class CrackReportsService {
             this.userService.GetUserInfo({ userId: report.reportedBy }).pipe(
               catchError(() => of(null))
             )
-          );
+          )
         }
 
         if (report.verifiedBy) {
@@ -379,13 +398,25 @@ export class CrackReportsService {
             this.userService.GetUserInfo({ userId: report.verifiedBy }).pipe(
               catchError(() => of(null))
             )
-          );
+          )
         }
       } catch (userError) {
         // Continue without user info if there's an error
       }
 
-      // Create enhanced report with user info but keep original URLs
+      // Thêm presigned URL cho từng crackDetail
+      const enhancedDetails = await Promise.all(
+        report.crackDetails.map(async (detail) => ({
+          ...detail,
+          photoUrl: detail.photoUrl
+            ? await this.getPreSignedUrl(this.extractFileKey(detail.photoUrl))
+            : null,
+          aiDetectionUrl: detail.aiDetectionUrl
+            ? await this.getPreSignedUrl(this.extractFileKey(detail.aiDetectionUrl))
+            : null
+        }))
+      )
+
       const enhancedReport = {
         ...report,
         reportedBy: reporterInfo ? {
@@ -402,14 +433,13 @@ export class CrackReportsService {
           userId: report.verifiedBy,
           username: 'Unknown'
         },
-        // Keep the original crackDetails without modifying the URLs
-        crackDetails: report.crackDetails
-      };
+        crackDetails: enhancedDetails // Sử dụng details đã xử lý
+      }
 
-      return new ApiResponse(true, 'Crack Report đã tìm thấy', [enhancedReport]);
+      return new ApiResponse(true, 'Crack Report đã tìm thấy', [enhancedReport])
     } catch (error) {
       // If we encounter an error while enhancing the data, return the original report
-      return new ApiResponse(true, 'Crack Report đã tìm thấy', [report]);
+      return new ApiResponse(true, 'Crack Report đã tìm thấy', [report])
     }
   }
 
@@ -453,7 +483,7 @@ export class CrackReportsService {
         }
 
         // Lấy tất cả ID của CrackDetail
-        const crackDetailIds = existingReport.crackDetails.map(detail => detail.crackDetailsId);
+        const crackDetailIds = existingReport.crackDetails.map(detail => detail.crackDetailsId)
 
 
         // Xóa tất cả CrackSegment liên quan đến các CrackDetail của báo cáo này
@@ -462,31 +492,31 @@ export class CrackReportsService {
             where: {
               crackDetailsId: { in: crackDetailIds }
             }
-          });
+          })
         }
 
         // Xóa tất cả CrackDetail của báo cáo
         await prisma.crackDetail.deleteMany({
           where: { crackReportId }
-        });
+        })
 
         // Xóa CrackReport
         await prisma.crackReport.delete({
           where: { crackReportId }
-        });
+        })
 
         return new ApiResponse(true, 'Crack Report và các dữ liệu liên quan đã được xóa thành công', {
           crackReportId,
           crackDetailIds,
           deletedSegmentsCount: crackDetailIds.length > 0 ? crackDetailIds.length : 0,
           deletedDetailsCount: existingReport.crackDetails.length
-        });
-      });
+        })
+      })
     } catch (error) {
-      console.error('Lỗi khi xóa Crack Report:', error);
+      console.error('Lỗi khi xóa Crack Report:', error)
       throw new RpcException(
         new ApiResponse(false, 'Lỗi hệ thống khi xóa Crack Report. Vui lòng thử lại sau.')
-      );
+      )
     }
   }
 
@@ -504,7 +534,7 @@ export class CrackReportsService {
         // Check if staff's area matches the crack report's area
         const areaMatchResponse = await firstValueFrom(
           this.userService.checkStaffAreaMatch({ staffId, crackReportId })
-        );
+        )
         // Only throw when isMatch is false
         if (!areaMatchResponse.isMatch) {
           throw new RpcException(
@@ -600,15 +630,15 @@ export class CrackReportsService {
   // Add test method to verify connection with UsersService
   async testUsersServiceConnection() {
     try {
-      console.log('Testing connection to UsersService...');
-      const response = await this.userService.Test({ message: 'Hello from CrackReportsService' });
-      console.log('UsersService connection successful:', response);
-      return new ApiResponse(true, 'Successfully connected to UsersService', response);
+      console.log('Testing connection to UsersService...')
+      const response = await this.userService.Test({ message: 'Hello from CrackReportsService' })
+      console.log('UsersService connection successful:', response)
+      return new ApiResponse(true, 'Successfully connected to UsersService', response)
     } catch (error) {
-      console.error('Failed to connect to UsersService:', error);
+      console.error('Failed to connect to UsersService:', error)
       throw new RpcException(
         new ApiResponse(false, 'Failed to connect to UsersService', error)
-      );
+      )
     }
   }
 }
