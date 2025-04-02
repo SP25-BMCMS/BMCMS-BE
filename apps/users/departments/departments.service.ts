@@ -1,16 +1,31 @@
 import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 
 @Injectable()
 export class DepartmentsService {
-  findAll() {
-    return `This action returns all departments`;
+  constructor(private prisma: PrismaService) { }
+
+  async findAll() {
+    try {
+      const departments = await this.prisma.department.findMany({
+        orderBy: {
+          departmentName: 'asc'
+        }
+      });
+
+      return new ApiResponse(
+        true,
+        'All departments retrieved successfully',
+        departments
+      );
+    } catch (error) {
+      return new ApiResponse(
+        false,
+        'Failed to retrieve departments',
+        null
+      );
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} department`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} department`;
-  }
 }

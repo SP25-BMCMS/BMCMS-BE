@@ -16,6 +16,8 @@ import { EmployeeController } from './employee/employee.controller';
 import { EmployeeService } from './employee/employee.service';
 import { ApartmentService } from './apartment/apartment.service';
 import { ApartmentController } from './apartment/apartment.controller';
+import { DepartmentController } from './department/department.controller';
+import { DepartmentService } from './department/department.service';
 
 @Module({
   imports: [
@@ -31,6 +33,7 @@ import { ApartmentController } from './apartment/apartment.controller';
     JwtStrategy,
     LocalStrategy,
     ApartmentService,
+    DepartmentService,
     {
       provide: USERS_CLIENT,
       useFactory: (configService: ClientConfigService) => {
@@ -45,6 +48,7 @@ import { ApartmentController } from './apartment/apartment.controller';
     ResidentController,
     EmployeeController,
     ApartmentController,
+    DepartmentController,
   ],
 })
-export class UsersModule {}
+export class UsersModule { }

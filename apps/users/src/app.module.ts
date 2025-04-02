@@ -8,6 +8,7 @@ import { ResidentsModule } from '../residents/residents.module';
 import { OtpModule } from '../otp/otp.module';
 import { ApartmentsModule } from '../Apartments/apartments.module';
 import { EmailModule } from '../email/email.module';
+import { DepartmentsModule } from '../departments/departments.module';
 
 @Module({
   imports: [
@@ -18,8 +19,9 @@ import { EmailModule } from '../email/email.module';
     OtpModule,
     ApartmentsModule,
     EmailModule,
+    DepartmentsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],
 })
-export class AppModule {}
+export class AppModule { }
