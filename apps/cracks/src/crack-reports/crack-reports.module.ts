@@ -7,8 +7,10 @@ import { ClientsModule } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
 import { Transport } from '@nestjs/microservices';
 import { S3UploaderModule } from '../crack-details/s3-uploader.module';
+import { join } from 'path';
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
+const USERS_CLIENT = 'USERS_CLIENT';
 
 @Module({
   imports: [
@@ -60,11 +62,41 @@ const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
         },
         inject: [ConfigService],
       },
+      {
+        name: USERS_CLIENT,
+        useFactory: (configService: ConfigService) => {
+          const isLocal = process.env.NODE_ENV !== 'production';
+          const usersHost = isLocal
+            ? configService.get('USERS_SERVICE_HOST', 'localhost')
+            : 'users_service';
+          const usersPort = configService.get('USERS_SERVICE_PORT', '3001');
+
+          return {
+            transport: Transport.GRPC,
+            options: {
+              url: `${usersHost}:${usersPort}`,
+              package: 'users',
+              protoPath: join(
+                process.cwd(),
+                'libs/contracts/src/users/users.proto',
+              ),
+              loader: {
+                keepCase: true,
+                longs: String,
+                enums: String,
+                defaults: true,
+                oneofs: true,
+              },
+            },
+          };
+        },
+        inject: [ConfigService],
+      },
     ]),
     S3UploaderModule,
   ],
   controllers: [CrackReportsController],
-  providers: [CrackReportsService, PrismaService], // Thêm TASK_SERVICE vào providers
-  exports: [CrackReportsService], // Xuất CrackReportsService để các module khác có thể sử dụng
+  providers: [CrackReportsService, PrismaService],
+  exports: [CrackReportsService],
 })
 export class CrackReportsModule { }

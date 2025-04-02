@@ -13,7 +13,7 @@ import {
 export class TaskAssignmentsService {
   private prisma = new PrismaClient();
 
-  constructor(private prismaService: PrismaService) {}
+  constructor(private prismaService: PrismaService) { }
 
   async createTaskAssignment(createTaskAssignmentDto: CreateTaskAssignmentDto) {
     try {
@@ -275,7 +275,7 @@ export class TaskAssignmentsService {
       if (unconfirmedTasks.length > 0) {
         return {
           statusCode: 400,
-          message: 'Employee has unconfirmed tasks. Cannot assign new task.',
+          message: 'Staff has unconfirmed tasks. Cannot assign new task.',
           data: null
         };
       }

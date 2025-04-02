@@ -72,4 +72,6 @@ export interface UserInterface {
     accountStatus: string;
   }): Observable<any>;
   getApartmentById(data: { apartmentId: string }): Observable<any>;
+
+  checkStaffAreaMatch(data: { staffId: string; crackReportId: string }): Observable<any>;
 }

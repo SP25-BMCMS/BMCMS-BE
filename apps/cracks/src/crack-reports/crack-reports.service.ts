@@ -3,13 +3,13 @@ import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ClientProxy, RpcException } from '@nestjs/microservices';
+import { ClientProxy, ClientGrpc, RpcException } from '@nestjs/microservices';
 import { AssignmentStatus, Status } from '@prisma/client-Task';
 import { $Enums, Prisma, CrackReport } from '@prisma/client-cracks';
 import { ApiResponse } from 'libs/contracts/src/ApiReponse/api-response';
 import { TASKS_PATTERN } from 'libs/contracts/src/tasks/task.patterns';
 import { BUILDINGDETAIL_PATTERN } from 'libs/contracts/src/BuildingDetails/buildingdetails.patterns';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Observable } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto';
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
@@ -18,16 +18,28 @@ import { S3UploaderService, UploadResult } from '../crack-details/s3-uploader.se
 import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns';
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
+const USERS_CLIENT = 'USERS_CLIENT';
 
+interface UserService {
+  Test(data: { message: string }): Observable<any>;
+  checkStaffAreaMatch(data: { staffId: string; crackReportId: string }): Observable<{
+    isSuccess: boolean;
+    message: string;
+    isMatch: boolean;
+  }>;
+}
 
 @Injectable()
 export class CrackReportsService {
   private s3: S3Client
   private bucketName: string
+  private userService: UserService
+
   constructor(
     private prismaService: PrismaService,
     @Inject('TASK_SERVICE') private readonly taskClient: ClientProxy,
     @Inject(BUILDINGS_CLIENT) private readonly buildingClient: ClientProxy,
+    @Inject(USERS_CLIENT) private readonly usersClient: ClientGrpc,
     private configService: ConfigService,
     private s3UploaderService: S3UploaderService,
   ) {
@@ -41,6 +53,7 @@ export class CrackReportsService {
       },
     })
     this.bucketName = this.configService.get<string>('AWS_S3_BUCKET')
+    this.userService = this.usersClient.getService<UserService>('UserService')
   }
 
   async getPreSignedUrl(fileKey: string): Promise<string> {
@@ -346,7 +359,7 @@ export class CrackReportsService {
     }
   }
 
-  async updateCrackReportStatus(crackReportId: string, managerId: string) {
+  async updateCrackReportStatus(crackReportId: string, managerId: string, staffId: string) {
     try {
       return await this.prismaService.$transaction(async (prisma) => {
         const existingReport = await prisma.crackReport.findUnique({
@@ -355,6 +368,17 @@ export class CrackReportsService {
 
         if (!existingReport) {
           return new ApiResponse(false, 'Crack Report không tồn tại')
+        }
+
+        // Check if staff's area matches the crack report's area
+        const areaMatchResponse = await firstValueFrom(
+          this.userService.checkStaffAreaMatch({ staffId, crackReportId })
+        );
+        // Only throw when isMatch is false
+        if (!areaMatchResponse.isMatch) {
+          throw new RpcException(
+            new ApiResponse(false, 'Nhân viên không thuộc khu vực của báo cáo nứt này')
+          )
         }
 
         const updatedReport = await prisma.crackReport.update({
@@ -400,7 +424,7 @@ export class CrackReportsService {
             this.taskClient
               .send(TASKASSIGNMENT_PATTERN.ASSIGN_TO_EMPLOYEE, {
                 taskId: createTaskResponse.data.task_id,
-                employeeId: managerId,
+                employeeId: staffId,
                 description: `Phân công xử lý báo cáo nứt ${crackReportId}`,
                 status: AssignmentStatus.Pending,
               })
@@ -439,6 +463,21 @@ export class CrackReportsService {
       throw new RpcException(
         new ApiResponse(false, 'Lỗi hệ thống, vui lòng thử lại sau')
       )
+    }
+  }
+
+  // Add test method to verify connection with UsersService
+  async testUsersServiceConnection() {
+    try {
+      console.log('Testing connection to UsersService...');
+      const response = await this.userService.Test({ message: 'Hello from CrackReportsService' });
+      console.log('UsersService connection successful:', response);
+      return new ApiResponse(true, 'Successfully connected to UsersService', response);
+    } catch (error) {
+      console.error('Failed to connect to UsersService:', error);
+      throw new RpcException(
+        new ApiResponse(false, 'Failed to connect to UsersService', error)
+      );
     }
   }
 }

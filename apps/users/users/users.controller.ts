@@ -41,4 +41,9 @@ export class UsersController {
       });
     }
   }
+
+  @GrpcMethod('UserService', 'CheckStaffAreaMatch')
+  async checkStaffAreaMatch(data: { staffId: string; crackReportId: string }) {
+    return this.usersService.checkStaffAreaMatch(data.staffId, data.crackReportId);
+  }
 }

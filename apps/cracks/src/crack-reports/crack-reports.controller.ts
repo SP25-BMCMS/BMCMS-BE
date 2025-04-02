@@ -18,7 +18,7 @@ export class CrackReportsController {
   constructor(
     private readonly crackReportsService: CrackReportsService,
     @Inject('TASK_SERVICE') private readonly taskClient: ClientProxy,
-  ) {}
+  ) { }
 
   @MessagePattern({ cmd: 'get-all-crack-report' })
   async getAllCrackReports(
@@ -78,11 +78,17 @@ export class CrackReportsController {
 
   @MessagePattern({ cmd: 'update-crack-report-status' })
   async updateCrackReportStatus(
-    @Payload() payload: { crackReportId: string; managerId: string },
+    @Payload() payload: { crackReportId: string; managerId: string; staffId: string },
   ) {
     return await this.crackReportsService.updateCrackReportStatus(
       payload.crackReportId,
       payload.managerId,
+      payload.staffId,
     );
+  }
+
+  @MessagePattern('crack-reports.test-users-connection')
+  async testUsersConnection() {
+    return this.crackReportsService.testUsersServiceConnection();
   }
 }
