@@ -98,9 +98,50 @@ export class CracksController {
   }
 
   @Get('crack-reports/:id')
-  @ApiOperation({ summary: 'Get crack report by ID' })
+  @ApiOperation({ summary: 'Get crack report by ID with all associated crack details' })
   @ApiParam({ name: 'id', description: 'Crack report ID' })
-  @ApiResponse({ status: 200, description: 'Returns the crack report' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns the crack report with all crack details',
+    schema: {
+      example: {
+        isSuccess: true,
+        message: 'Crack Report đã tìm thấy',
+        data: [{
+          crackReportId: "1234abcd-5678-efgh-9012-ijkl3456mnop",
+          buildingDetailId: "c5fa23cc-86d4-4514-b4e5-3f9bce511c29",
+          description: "Kiểm tra nứt tường",
+          isPrivatesAsset: false,
+          position: "rainbow/s106/15/left",
+          status: "Pending",
+          reportedBy: "user-id",
+          verifiedBy: "123123123",
+          createdAt: "2024-03-21T10:00:00Z",
+          updatedAt: "2024-03-21T10:00:00Z",
+          crackDetails: [
+            {
+              crackDetailsId: "uuid-1",
+              crackReportId: "1234abcd-5678-efgh-9012-ijkl3456mnop",
+              photoUrl: "https://bucket-name.s3.amazonaws.com/uploads/photo1.jpg",
+              severity: "Medium",
+              aiDetectionUrl: "https://bucket-name.s3.amazonaws.com/annotated/photo1.jpg",
+              createdAt: "2024-03-21T10:00:00Z",
+              updatedAt: "2024-03-21T10:00:00Z"
+            },
+            {
+              crackDetailsId: "uuid-2",
+              crackReportId: "1234abcd-5678-efgh-9012-ijkl3456mnop",
+              photoUrl: "https://bucket-name.s3.amazonaws.com/uploads/photo2.jpg",
+              severity: "Low",
+              aiDetectionUrl: "https://bucket-name.s3.amazonaws.com/annotated/photo2.jpg",
+              createdAt: "2024-03-21T10:00:00Z",
+              updatedAt: "2024-03-21T10:00:00Z"
+            }
+          ]
+        }]
+      }
+    }
+  })
   @ApiResponse({ status: 404, description: 'Crack report not found' })
   async getCrackReportById(@Param('id') id: string) {
     return firstValueFrom(

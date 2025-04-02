@@ -322,7 +322,6 @@ export class CrackReportsService {
         )
       })
     } catch (error) {
-      console.error('🔥 Error in CrackReportService:', error)
 
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
@@ -347,15 +346,71 @@ export class CrackReportsService {
   }
 
   async findById(crackReportId: string) {
+    // Find the crack report with its details
     const report = await this.prismaService.crackReport.findUnique({
       where: { crackReportId },
+      include: {
+        crackDetails: true // Include all crack details for this report
+      }
     })
+
     if (!report) {
       throw new RpcException(
         new ApiResponse(false, 'Crack Report không tồn tại'),
       )
     }
-    return new ApiResponse(true, 'Crack Report đã tìm thấy', [report])
+
+    try {
+      // Try to get user information for reportedBy and verifiedBy
+      let reporterInfo = null;
+      let verifierInfo = null;
+
+      try {
+        if (report.reportedBy) {
+          reporterInfo = await firstValueFrom(
+            this.userService.GetUserInfo({ userId: report.reportedBy }).pipe(
+              catchError(() => of(null))
+            )
+          );
+        }
+
+        if (report.verifiedBy) {
+          verifierInfo = await firstValueFrom(
+            this.userService.GetUserInfo({ userId: report.verifiedBy }).pipe(
+              catchError(() => of(null))
+            )
+          );
+        }
+      } catch (userError) {
+        // Continue without user info if there's an error
+      }
+
+      // Create enhanced report with user info but keep original URLs
+      const enhancedReport = {
+        ...report,
+        reportedBy: reporterInfo ? {
+          userId: reporterInfo.userId,
+          username: reporterInfo.username
+        } : {
+          userId: report.reportedBy,
+          username: 'Unknown'
+        },
+        verifiedBy: verifierInfo ? {
+          userId: verifierInfo.userId,
+          username: verifierInfo.username
+        } : {
+          userId: report.verifiedBy,
+          username: 'Unknown'
+        },
+        // Keep the original crackDetails without modifying the URLs
+        crackDetails: report.crackDetails
+      };
+
+      return new ApiResponse(true, 'Crack Report đã tìm thấy', [enhancedReport]);
+    } catch (error) {
+      // If we encounter an error while enhancing the data, return the original report
+      return new ApiResponse(true, 'Crack Report đã tìm thấy', [report]);
+    }
   }
 
   async updateCrackReport(crackReportId: string, dto: UpdateCrackReportDto) {
