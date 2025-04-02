@@ -46,4 +46,26 @@ export class UsersController {
   async checkStaffAreaMatch(data: { staffId: string; crackReportId: string }) {
     return this.usersService.checkStaffAreaMatch(data.staffId, data.crackReportId);
   }
+
+  @GrpcMethod('UserService', 'GetUserInfo')
+  async getUserInfo(data: { userId?: string; username?: string }) {
+    try {
+      const response = await this.usersService.getUserInfo(data);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @GrpcMethod('UserService', 'GetDepartmentById')
+  async getDepartmentById(data: { departmentId: string }) {
+    try {
+      const result = await this.usersService.getDepartmentById(data.departmentId);
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+
 }

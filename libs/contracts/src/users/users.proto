@@ -17,6 +17,7 @@ service UserService {
   rpc UpdateWorkingPosition (UpdateWorkingPositionRequest) returns (WorkingPositionApiResponse);
   rpc DeleteWorkingPosition (WorkingPositionByIdRequest) returns (WorkingPositionApiResponse);
   rpc CreateDepartment (CreateDepartmentRequest) returns (DepartmentApiResponse);
+  rpc GetDepartmentById (DepartmentByIdRequest) returns (DepartmentApiResponse);
   rpc GetAllStaff (Empty) returns (StaffListResponse);
   rpc GetApartmentsByResidentId (GetApartmentsRequest) returns (GetApartmentByResidentIdResponse);
   rpc ResidentLogin (ResidentLoginRequest) returns (LoginResponse);
@@ -26,6 +27,7 @@ service UserService {
   rpc GetApartmentById (GetApartmentByIdRequest) returns (ApiResponseApartment);
   rpc GetApartmentByResidentAndApartmentId(GetApartmentDetailRequest) returns (GetApartmentByResidentAndApartmentIdResponse);
   rpc CheckStaffAreaMatch (CheckStaffAreaMatchRequest) returns (CheckStaffAreaMatchResponse);
+  rpc CheckPositionAndDepartment (CheckPositionAndDepartmentRequest) returns (CheckPositionAndDepartmentResponse);
 }
 message GetApartmentByIdRequest {
   string apartmentId = 1;
@@ -380,6 +382,21 @@ message CheckStaffAreaMatchResponse {
   bool isSuccess = 1;
   string message = 2;
   bool isMatch = 3;
+}
+
+message CheckPositionAndDepartmentRequest {
+  string staffId = 1;
+  string departmentId = 2;
+}
+
+message CheckPositionAndDepartmentResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  bool isMatch = 3;
+}
+
+message DepartmentByIdRequest {
+  string departmentId = 1;
 }
 
 

@@ -23,6 +23,7 @@ import { UserDto } from '@app/contracts/users/user.dto'
 import { createUserDto } from '@app/contracts/users/create-user.dto'
 import { ApiResponse } from '@app/contracts/ApiReponse/api-response'
 import { CreateWorkingPositionDto } from '@app/contracts/users/create-working-position.dto'
+import { GrpcMethod } from '@nestjs/microservices'
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
 const CRACKS_CLIENT = 'CRACKS_CLIENT';
@@ -79,7 +80,7 @@ export class UsersService {
     if (!user)
       throw new RpcException({
         statusCode: 401,
-        message: 'invalid credentials!',
+        message: 'StaffId not found',
       })
     return user
   }
@@ -1028,6 +1029,232 @@ export class UsersService {
         isSuccess: false,
         message: 'Error checking area match',
         isMatch: false
+      };
+    }
+  }
+
+  async getUserInfo(data: { userId?: string; username?: string }): Promise<{
+    userId: string;
+    username: string;
+    email: string;
+    phone: string;
+    role: string;
+    dateOfBirth: string | null;
+    gender: string | null;
+    userDetails?: {
+      positionId: string | null;
+      departmentId: string | null;
+      staffStatus: string | null;
+      image: string | null;
+      position?: {
+        positionId: string;
+        positionName: string;
+        description: string | null;
+      } | null;
+      department?: {
+        departmentId: string;
+        departmentName: string;
+        description: string | null;
+        area: string | null;
+      } | null;
+    } | null;
+    accountStatus: string;
+  }> {
+    try {
+      const { userId, username } = data;
+      console.log(`GetUserInfo called with userId: ${userId}, username: ${username}`);
+      let user;
+
+      if (userId) {
+        user = await this.prisma.user.findUnique({
+          where: { userId },
+          include: {
+            userDetails: {
+              include: {
+                position: true,  // Include working position
+                department: true  // Include department
+              }
+            },
+          }
+        });
+      } else if (username) {
+        user = await this.prisma.user.findUnique({
+          where: { username },
+          include: {
+            userDetails: {
+              include: {
+                position: true,  // Include working position
+                department: true  // Include department
+              }
+            },
+          }
+        });
+      }
+
+      if (!user) {
+        console.log(`User not found for userId: ${userId} or username: ${username}`);
+        throw new RpcException({
+          statusCode: 404,
+          message: 'User not found',
+        });
+      }
+
+
+      // Log database values for debugging
+
+      if (user.userDetails) {
+
+        // If position exists, log its properties
+        if (user.userDetails.position) {
+        } else {
+          // Check if position exists as separate record
+          if (user.userDetails.positionId) {
+            const position = await this.prisma.workingPosition.findUnique({
+              where: { positionId: user.userDetails.positionId }
+            });
+          }
+        }
+
+        // If department exists, log its properties
+        if (user.userDetails.department) {
+        } else {
+          // Check if department exists as separate record
+          if (user.userDetails.departmentId) {
+            const department = await this.prisma.department.findUnique({
+              where: { departmentId: user.userDetails.departmentId }
+            });
+          }
+        }
+      }
+
+      // Do separate queries to ensure we get the data
+      let positionDetails = null;
+      let departmentDetails = null;
+
+      if (user.userDetails) {
+        // Get position details directly if needed
+        if (user.userDetails.positionId) {
+          try {
+            const position = user.userDetails.position ||
+              await this.prisma.workingPosition.findUnique({
+                where: { positionId: user.userDetails.positionId }
+              });
+
+            if (position) {
+              positionDetails = {
+                positionId: position.positionId,
+                positionName: position.positionName.toString(),
+                description: position.description
+              };
+            }
+          } catch (error) {
+          }
+        }
+
+        // Get department details directly if needed
+        if (user.userDetails.departmentId) {
+          try {
+            const department = user.userDetails.department ||
+              await this.prisma.department.findUnique({
+                where: { departmentId: user.userDetails.departmentId }
+              });
+
+            if (department) {
+              departmentDetails = {
+                departmentId: department.departmentId,
+                departmentName: department.departmentName,
+                description: department.description,
+                area: department.area
+              };
+            }
+          } catch (error) {
+          }
+        }
+      }
+
+      const response = {
+        userId: user.userId,
+        username: user.username,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString() : null,
+        gender: user.gender,
+        userDetails: user.userDetails ? {
+          positionId: user.userDetails.positionId,
+          departmentId: user.userDetails.departmentId,
+          staffStatus: user.userDetails.staffStatus,
+          image: user.userDetails.image,
+          position: positionDetails,
+          department: departmentDetails
+        } : null,
+        accountStatus: user.accountStatus
+      };
+
+      return response;
+    } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      }
+      throw new RpcException({
+        statusCode: 500,
+        message: error.message || 'Error retrieving user information',
+      });
+    }
+  }
+
+  async getDepartmentById(departmentId: string): Promise<{
+    isSuccess: boolean;
+    message: string;
+    data: {
+      departmentId: string;
+      departmentName: string;
+      description: string;
+      area: string;
+    } | null;
+  }> {
+    try {
+      // Kiểm tra schema đầu tiên
+      const departmentModel = this.prisma.department;
+      if (departmentModel) {
+        try {
+          // Thử lấy toàn bộ danh sách departments để kiểm tra kết nối
+          const allDepartments = await this.prisma.department.findMany({ take: 5 });
+        } catch (dbError) {
+          // Handle error silently
+        }
+      }
+
+      // Tiếp tục với truy vấn chính
+      const department = await this.prisma.department.findUnique({
+        where: { departmentId }
+      });
+
+      if (!department) {
+        return {
+          isSuccess: false,
+          message: 'Department not found',
+          data: null
+        };
+      }
+
+      const responseData = {
+        departmentId: department.departmentId,
+        departmentName: department.departmentName,
+        description: department.description || '',
+        area: department.area || ''
+      };
+
+      return {
+        isSuccess: true,
+        message: 'Department retrieved successfully',
+        data: responseData
+      };
+    } catch (error) {
+      return {
+        isSuccess: false,
+        message: error.message || 'Error retrieving department',
+        data: null
       };
     }
   }

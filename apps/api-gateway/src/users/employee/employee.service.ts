@@ -3,6 +3,7 @@ import { ClientGrpc } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
 import { USERS_CLIENT } from '../../constraints';
 import { UserInterface } from '../user/users.interface';
+import { catchError, of } from 'rxjs';
 
 @Injectable()
 export class EmployeeService implements OnModuleInit {
@@ -61,4 +62,164 @@ export class EmployeeService implements OnModuleInit {
       };
     }
   }
+
+  async getUserDetailByStaffId(staffId: string) {
+    try {
+      const response = await lastValueFrom(
+        this.userService.getUserInfo({ userId: staffId, username: '' })
+      );
+
+      if (!response) {
+        return {
+          isSuccess: false,
+          message: 'Failed to retrieve staff details',
+          data: null,
+        };
+      }
+
+      // Verify that this is a staff user
+      if (response.role !== 'Staff' && response.role !== 'Manager' && response.role !== 'Admin') {
+        return {
+          isSuccess: false,
+          message: 'User is not a staff member',
+          data: null,
+        };
+      }
+
+      // *** First get the department directly as a separate call ***
+      let departmentData = null;
+      if (response.userDetails && response.userDetails.departmentId) {
+
+      }
+
+      // Solve position and department data missing issue
+      if (response.userDetails) {
+        // Test gRPC response for position and department properties
+        if (!response.userDetails.position || Object.keys(response.userDetails.position).length <= 1) {
+          // Need to fetch position directly
+          try {
+            const positionResponse = await lastValueFrom(
+              this.userService.getWorkingPositionById({ positionId: response.userDetails.positionId })
+            );
+
+            if (positionResponse?.isSuccess && positionResponse?.data) {
+
+              // Apply position data
+              response.userDetails.position = {
+                positionId: positionResponse.data.positionId,
+                positionName: typeof positionResponse.data.positionName === 'number'
+                  ? this.mapPositionNameFromNumber(positionResponse.data.positionName)
+                  : positionResponse.data.positionName,
+                description: positionResponse.data.description || ''
+              };
+            }
+          } catch (error) {
+          }
+        } else if (response.userDetails.position && typeof response.userDetails.position.positionName === 'number') {
+          // Convert positionName from number to string if it's a number
+          response.userDetails.position.positionName = this.mapPositionNameFromNumber(response.userDetails.position.positionName);
+        }
+
+        // Test and fetch department data if needed
+        if (!response.userDetails.department ||
+          Object.keys(response.userDetails.department).length <= 1 ||
+          response.userDetails.department.departmentName === 'Unknown Department') {
+
+          if (departmentData) {
+            // Use the data we got from direct call
+            response.userDetails.department = departmentData;
+          } else {
+            try {
+              try {
+                // Attempt to fetch department data using the getDepartmentById method in UserInterface                
+                const departmentResponse = await lastValueFrom(
+                  this.userService.getDepartmentById({ departmentId: response.userDetails.departmentId })
+                    .pipe(
+                      catchError(error => {
+                        return of(null);
+                      })
+                    )
+                );
+
+                if (departmentResponse && departmentResponse.isSuccess && departmentResponse.data) {
+                  // Apply department data
+                  response.userDetails.department = {
+                    departmentId: departmentResponse.data.departmentId,
+                    departmentName: departmentResponse.data.departmentName,
+                    description: departmentResponse.data.description || '',
+                    area: departmentResponse.data.area || 'Unknown'
+                  };
+                }
+              } catch (error) {
+                // If the method is not implemented or fails, we'll use the fallback
+              }
+
+            } catch (error) {
+              // Error handling fallback
+            }
+          }
+        }
+      }
+
+      // Create complete data object
+      const data = {
+        ...response,
+        // Ensure the userDetails object has proper nested objects
+        userDetails: response.userDetails ? {
+          ...response.userDetails,
+          position: response.userDetails.position ? {
+            ...response.userDetails.position,
+            // Ensure positionName is a string
+            positionName: typeof response.userDetails.position.positionName === 'number'
+              ? this.mapPositionNameFromNumber(response.userDetails.position.positionName)
+              : response.userDetails.position.positionName || 'Unknown Position'
+          } : {
+            positionId: response.userDetails.positionId,
+            positionName: 'Unknown Position',
+            description: 'Position data unavailable'
+          },
+          department: response.userDetails.department || (departmentData || {
+            departmentId: response.userDetails.departmentId,
+            departmentName: 'Unknown Department',
+            description: 'Department data unavailable',
+            area: 'Unknown Area'
+          })
+        } : null
+      };
+
+      return {
+        isSuccess: true,
+        message: 'Staff details retrieved successfully',
+        data,
+      };
+    } catch (error) {
+      // Clean error message - remove gRPC error code prefix if present
+      let errorMessage = error.message || 'Service unavailable';
+
+      // Check if error message has format like "2 UNKNOWN: StaffId not found"
+      if (errorMessage.match(/^\d+\s+\w+:\s+/)) {
+        // Extract only the actual message part after the code and colon
+        errorMessage = errorMessage.replace(/^\d+\s+\w+:\s+/, '');
+      }
+
+      return {
+        isSuccess: false,
+        message: errorMessage,
+        data: null,
+      };
+    }
+  }
+
+  private mapPositionNameFromNumber(positionNumber: number): string {
+    const positionMap = {
+      0: 'Staff',
+      1: 'Leader',
+      2: 'Manager',
+      3: 'Admin'
+    };
+    return positionMap[positionNumber] || `Unknown Position (${positionNumber})`;
+  }
+
+  // Public method to test getDepartment directly
+
 }

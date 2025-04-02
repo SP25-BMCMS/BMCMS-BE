@@ -39,6 +39,7 @@ export interface UserInterface {
 
   // Department Methods
   createDepartment(data: CreateDepartmentDto): Observable<any>;
+  getDepartmentById(data: { departmentId: string }): Observable<any>;
 
   // Apartments Methods
   getApartmentsByResidentId(data: { residentId: string }): Observable<{
