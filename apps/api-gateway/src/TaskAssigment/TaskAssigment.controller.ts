@@ -105,6 +105,7 @@ export class TaskAssignmentController {
   async getTaskAssignmentById(
     @Param('taskAssignmentId') taskAssignmentId: string,
   ) {
+    console.log("🚀 ~ TaskAssignmentController ~ taskAssignmentId:", taskAssignmentId)
     return this.taskAssignmentService.getTaskAssignmentById(taskAssignmentId);
   }
 
@@ -195,6 +196,7 @@ export class TaskAssignmentController {
     description: 'Returns task assignments for the specified task',
   })
   async getTaskAssignmentsByTaskId(@Param('taskId') taskId: string) {
+    console.log("🚀 ~ TaskAssignmentController ~ getTaskAssignmentsByTaskId ~ taskId:", taskId)
     return this.taskAssignmentService.getTaskAssignmentsByTaskId(taskId);
   }
 

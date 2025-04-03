@@ -102,6 +102,7 @@ export class TaskAssignmentsService {
 
   async getTaskAssignmentById(taskAssignmentId: string) {
     try {
+      console.log('Finding task assignment with ID:', taskAssignmentId);
       const assignment = await this.prisma.taskAssignment.findUnique({
         where: { assignment_id: taskAssignmentId },
       });
@@ -117,6 +118,7 @@ export class TaskAssignmentsService {
         data: assignment,
       };
     } catch (error) {
+      console.error('Error in getTaskAssignmentById:', error);
       throw new RpcException({
         statusCode: 500,
         message: 'Error fetching task assignment',
@@ -324,4 +326,32 @@ export class TaskAssignmentsService {
       });
     }
   }
+
+  async getTaskAssignmentByTaskId(taskId: string) {
+    try {
+      const assignment = await this.prisma.task.findUnique({
+        where: { task_id: taskId },
+        include: {
+          taskAssignments: true,
+        },
+      });
+      if (!assignment) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Task assignment not found',
+        });
+      }
+      return {
+        statusCode: 200,
+        message: 'Task assignment fetched successfully',
+        data: assignment,
+      };
+    } catch (error) {
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error fetching task assignment',
+      });
+    }
+  }
+
 }

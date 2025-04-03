@@ -43,14 +43,25 @@ export class TaskAssignmentsController {
     return this.taskAssignmentService.getTaskAssignmentByUserId(payload.userId);
   }
 
-  @MessagePattern(TASKASSIGNMENT_PATTERN.GET_BY_TASKID)
+  @MessagePattern(TASKASSIGNMENT_PATTERN.GET_BY_ID)
   async getTaskAssignmentById(
-    @Payload() payload: { taskAssignmentId: string },
+    @Payload() payload: { assignment_id: string },
   ) {
+    console.log('Received assignment_id:', payload.assignment_id);
     return this.taskAssignmentService.getTaskAssignmentById(
-      payload.taskAssignmentId,
+      payload.assignment_id,
     );
   }
+
+  @MessagePattern(TASKASSIGNMENT_PATTERN.GET_BY_TASKID)
+  async getTaskAssignmentByTaskId(
+    @Payload() payload: { task_id: string },
+  ) {
+    return this.taskAssignmentService.getTaskAssignmentByTaskId(
+      payload.task_id,
+    );
+  }
+
 
   @MessagePattern(TASKASSIGNMENT_PATTERN.GET)
   async getAllTaskAssignments(@Payload() paginationParams: PaginationParams) {

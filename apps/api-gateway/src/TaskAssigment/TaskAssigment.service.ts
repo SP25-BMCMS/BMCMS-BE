@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { TASK_CLIENT } from '../constraints';
 import { TASKASSIGNMENT_PATTERN } from 'libs/contracts/src/taskAssigment/taskAssigment.patterns';
@@ -11,7 +11,7 @@ import { ChangeTaskAssignmentStatusDto } from '@app/contracts/taskAssigment/chan
 
 @Injectable()
 export class TaskAssignmentService {
-  constructor(@Inject(TASK_CLIENT) private readonly taskClient: ClientProxy) { }
+  constructor(@Inject(TASK_CLIENT) private readonly taskClient: ClientProxy) {}
 
   // Create Task Assignment
   async createTaskAssignment(createTaskAssignmentDto: CreateTaskAssignmentDto) {
@@ -81,17 +81,26 @@ export class TaskAssignmentService {
   // Get Task Assignment by ID
   async getTaskAssignmentById(taskAssignmentId: string) {
     try {
+      console.log('Sending taskAssignmentId to microservice:', taskAssignmentId);
       return await firstValueFrom(
-        this.taskClient.send(TASKASSIGNMENT_PATTERN.GET_BY_TASKID, {
+        this.taskClient.send(TASKASSIGNMENT_PATTERN.GET_BY_ID, {
           assignment_id: taskAssignmentId,
         }),
       );
     } catch (error) {
-      throw new RpcException({
-        statusCode: 500,
-        message: 'Error fetching task assignment by ID',
-      });
+      console.error('Error in getTaskAssignmentById:', error);
+      if (error.statusCode === 404) {
+        throw new NotFoundException(error.message || 'Task assignment not found');
+      }
+      throw new HttpException(
+        error.message || 'Error fetching task assignment by ID',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
+      console.log("🚀 ~ TaskAssignmentService ~ getTaskAssignmentById ~ taskAssignmentId:", taskAssignmentId)
+      console.log("🚀 ~ TaskAssignmentService ~ getTaskAssignmentById ~ taskAssignmentId:", taskAssignmentId)
+      console.log("🚀 ~ TaskAssignmentService ~ getTaskAssignmentById ~ taskAssignmentId:", taskAssignmentId)
+      console.log("🚀 ~ TaskAssignmentService ~ getTaskAssignmentById ~ taskAssignmentId:", taskAssignmentId)
   }
 
   // Get all Task Assignments
@@ -176,7 +185,7 @@ export class TaskAssignmentService {
     try {
       return await firstValueFrom(
         this.taskClient.send(
-          TASKASSIGNMENT_PATTERN.CHANGE_STATUS,
+          TASKASSIGNMENT_PATTERN.CHANGE_STATUS, 
           changeStatusDto
         ),
       );
