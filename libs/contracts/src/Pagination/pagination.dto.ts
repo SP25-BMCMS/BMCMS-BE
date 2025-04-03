@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { AssignmentStatus, Status } from '@prisma/client-Task';
 
 // Convert interface to class for Swagger compatibility
 export class PaginationParams {
@@ -6,6 +7,7 @@ export class PaginationParams {
   limit?: number;
   search?: string;
   role?: string | string[];
+  statusFilter?: string;
 }
 
 // Định nghĩa generic response type cho kết quả phân trang

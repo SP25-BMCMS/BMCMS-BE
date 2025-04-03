@@ -5,6 +5,7 @@ import { TaskAssignmentsService } from './TaskAssignments.service';
 import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create-taskAssigment.dto';
 import { UpdateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/update.taskAssigment';
 import { AssignmentStatus } from '@prisma/client-Task';
+import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 @Controller('task-assignments')
 export class TaskAssignmentsController {
   constructor(private readonly taskAssignmentService: TaskAssignmentsService) {}
@@ -52,8 +53,8 @@ export class TaskAssignmentsController {
   }
 
   @MessagePattern(TASKASSIGNMENT_PATTERN.GET)
-  async getAllTaskAssignments() {
-    return this.taskAssignmentService.getAllTaskAssignments();
+  async getAllTaskAssignments(@Payload() paginationParams: PaginationParams) {
+    return this.taskAssignmentService.getAllTaskAssignments(paginationParams);
   }
 
   @MessagePattern(TASKASSIGNMENT_PATTERN.REASSIGN)

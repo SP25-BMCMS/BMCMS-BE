@@ -110,7 +110,7 @@ export class TaskAssignmentController {
 
   // Get all Task Assignments
   @Get()
-  @ApiOperation({ summary: 'Get all task assignments with pagination' })
+  @ApiOperation({ summary: 'Get all task assignments with pagination and status filter' })
   @ApiQuery({
     name: 'page',
     required: false,
@@ -123,13 +123,22 @@ export class TaskAssignmentController {
     example: 10,
     description: 'Items per page',
   })
+  @ApiQuery({
+    name: 'statusFilter',
+    required: false,
+    example: 'pending',
+    description: 'Filter by assignment status',
+    enum: AssignmentStatus,
+  })
   async getAllTaskAssignments(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @Query('statusFilter') statusFilter?: AssignmentStatus,
   ) {
     return await this.taskAssignmentService.getAllTaskAssignments({
       page: Number(page) || 1,
       limit: Number(limit) || 10,
+      statusFilter,
     });
   }
 

@@ -131,12 +131,19 @@ export class TaskAssignmentsService {
       const page = Number(paginationParams.page) || 1;
       const limit = Number(paginationParams.limit) || 10;
       const skip = (page - 1) * limit;
+      const statusFilter = paginationParams.statusFilter;
 
-      // Get total count
-      const total = await this.prisma.taskAssignment.count();
+      // Build where clause for filtering
+      const whereClause = statusFilter ? { status: statusFilter as AssignmentStatus } : {};
 
-      // Get paginated task assignments
+      // Get total count with filter
+      const total = await this.prisma.taskAssignment.count({
+        where: whereClause,
+      });
+
+      // Get paginated task assignments with filter
       const taskAssignments = await this.prisma.taskAssignment.findMany({
+        where: whereClause,
         skip,
         take: limit,
         include: {

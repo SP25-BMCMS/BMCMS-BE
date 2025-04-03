@@ -177,18 +177,25 @@ export class TaskService {
       // Default values if not provided
       const page = Math.max(1, paginationParams?.page || 1);
       const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10));
+      const statusFilter = paginationParams?.statusFilter;
 
       // Calculate skip value for pagination
       const skip = (page - 1) * limit;
 
+      // Build where clause for filtering
+      const whereClause = statusFilter ? { status: statusFilter as Status } : {};
+
       // Get paginated data
       const [tasks, total] = await Promise.all([
         this.prisma.task.findMany({
+          where: whereClause,
           skip,
           take: limit,
           // orderBy: { createdAt: 'desc' }
         }),
-        this.prisma.task.count(),
+        this.prisma.task.count({
+          where: whereClause,
+        }),
       ]);
 
       // Use PaginationResponseDto for consistent response formatting
