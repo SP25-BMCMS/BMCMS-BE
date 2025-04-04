@@ -6,7 +6,8 @@ import {
     Post,
     Put,
     Query,
-    UseGuards
+    UseGuards,
+    Delete
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -22,6 +23,9 @@ import { UpdateMaterialStatusDto } from '@app/contracts/materials/update-materia
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 import { MaterialService } from './Material.service';
 import { MaterialStatus } from '@prisma/client-Task';
+import { CreateRepairMaterialDto } from '@app/contracts/repairmaterials/create-repair-material.dto';
+import { ApiResponse as ApiResponseDto } from '@app/contracts/ApiReponse/api-response';
+import { Inspection } from '@prisma/client-Task';
 
 @Controller('materials')
 @ApiTags('materials')
@@ -141,5 +145,17 @@ export class MaterialController {
         @Body() updateMaterialStatusDto: UpdateMaterialStatusDto
     ) {
         return this.materialService.updateStatus(material_id, updateMaterialStatusDto);
+    }
+
+    @Post(':inspection_id/materials')
+    @ApiOperation({ summary: 'Add materials to inspection' })
+    @ApiParam({ name: 'inspection_id', description: 'ID of the inspection' })
+    @ApiResponse({ status: 200, description: 'Materials added successfully', type: ApiResponseDto })
+    @ApiResponse({ status: 400, description: 'Bad request' })
+    async addMaterialsToInspection(
+        @Param('inspection_id') inspection_id: string,
+        @Body() materials: CreateRepairMaterialDto[]
+    ): Promise<ApiResponseDto<Inspection>> {
+        return this.materialService.addMaterialsToInspection(inspection_id, materials);
     }
 } 

@@ -6,8 +6,6 @@ import { MaterialModule } from './Material/Material.module';
 
 @Module({
     imports: [
-        // ...other imports
-        MaterialModule,
     ],
     controllers: [],
     providers: [

@@ -7,6 +7,10 @@ import { UpdateMaterialDto } from '@app/contracts/materials/update-material.dto'
 import { UpdateMaterialStatusDto } from '@app/contracts/materials/update-material-status.dto';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 import { firstValueFrom } from 'rxjs';
+import { CreateRepairMaterialDto } from '@app/contracts/repairmaterials/create-repair-material.dto';
+import { REPAIRMATERIAL_PATTERN } from '@app/contracts/repairmaterials/RepairMaterial.patterns';
+import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
+import { Inspection } from '@prisma/client-Task';
 
 @Injectable()
 export class MaterialService {
@@ -62,6 +66,15 @@ export class MaterialService {
             this.taskClient.send(MATERIAL_PATTERN.UPDATE_STATUS, {
                 material_id,
                 dto: updateMaterialStatusDto
+            })
+        );
+    }
+
+    async addMaterialsToInspection(inspection_id: string, materials: CreateRepairMaterialDto[]): Promise<ApiResponse<Inspection>> {
+        return firstValueFrom(
+            this.taskClient.send(REPAIRMATERIAL_PATTERN.ADD_MATERIALS_TO_INSPECTION, {
+                inspection_id,
+                materials
             })
         );
     }
