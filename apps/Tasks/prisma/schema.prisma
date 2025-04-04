@@ -132,9 +132,16 @@ model Material {
   stock_quantity Int
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
+  status         MaterialStatus @default(ACTIVE)
 
   // Mối quan hệ 1:N với RepairMaterial
   repairMaterials RepairMaterial[]
+}
+
+enum MaterialStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
 }
 
 model Feedback {
