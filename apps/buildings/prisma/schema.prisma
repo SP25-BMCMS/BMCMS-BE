@@ -59,6 +59,7 @@ model BuildingDetail {
   //floorNumber      Int
   locationDetails  LocationDetail[]
   // crackReports     CrackReport[]
+
   building         Building         @relation(fields: [buildingId], references: [buildingId])
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt

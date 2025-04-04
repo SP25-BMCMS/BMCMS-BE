@@ -31,7 +31,7 @@ export class RepairMaterialsService {
       // Tạo repair material
       const repairMaterial = await this.prisma.repairMaterial.create({
         data: {
-          task_id: dto.task_id,
+         // task_id: dto.task_id,
           material_id: dto.material_id,
           quantity: dto.quantity,
           unit_cost: dto.unit_cost,

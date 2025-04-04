@@ -15,7 +15,7 @@ model User {
   password      String
   email         String        @unique
   phone         String        @unique
-  role          Role
+  role          Role  
   dateOfBirth   DateTime?
   gender        Gender?
   accountStatus AccountStatus @default(Inactive)
