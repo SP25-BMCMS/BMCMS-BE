@@ -3,7 +3,6 @@ import { JwtConfigModule } from 'apps/configs/jwt-config.module'
 import { UsersModule } from '../users/users.module'
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
-import { OtpModule } from '../otp/otp.module'
 import { ClientsModule, Transport } from '@nestjs/microservices'
 import { ConfigService } from '@nestjs/config'
 
@@ -12,7 +11,7 @@ const NOTIFICATION_CLIENT = 'NOTIFICATION_CLIENT'
 @Module({
   providers: [AuthService],
   controllers: [AuthController],
-  imports: [UsersModule, JwtConfigModule, OtpModule,
+  imports: [UsersModule, JwtConfigModule,
     ClientsModule.registerAsync([
       {
         name: NOTIFICATION_CLIENT,
@@ -30,6 +29,6 @@ const NOTIFICATION_CLIENT = 'NOTIFICATION_CLIENT'
       },
     ]),
   ],
-  exports: [AuthService, ClientsModule], // 👈 Export ClientsModule để các module khác có thể sử dụng NOTIFICATION_CLIENT
+  exports: [AuthService, ClientsModule],
 })
 export class AuthModule { }
