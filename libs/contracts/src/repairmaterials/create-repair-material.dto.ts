@@ -11,15 +11,15 @@ import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class    CreateRepairMaterialDto {
-    @IsString()
-    @IsNotEmpty()
-    @ApiProperty({ 
-        description: 'ID of the task associated with ấdasdsadsadasdsadadsdsdthis repair material',
-        type: String,
-        required: true,
-        example: '123e4567-e89b-12d3-a456-426614ádasdsadsadasdsadadsdsd174000'
-    })
-    task_id: string;
+    // @IsString()
+    // @IsNotEmpty()
+    // @ApiProperty({ 
+    //     description: 'ID of the task associated with ấdasdsadsadasdsadadsdsdthis repair material',
+    //     type: String,
+    //     required: true,
+    //     example: '123e4567-e89b-12d3-a456-426614ádasdsadsadasdsadadsdsd174000'
+    // })
+    // task_id: string;
 
     @IsString()
     @IsNotEmpty()

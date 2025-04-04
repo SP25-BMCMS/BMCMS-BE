@@ -1,0 +1,119 @@
+import {
+    Body,
+    Controller,
+    Get,
+    Param,
+    Post,
+    Put,
+    Query,
+    UseGuards
+} from '@nestjs/common';
+import {
+    ApiTags,
+    ApiOperation,
+    ApiResponse,
+    ApiBody,
+    ApiParam,
+    ApiQuery
+} from '@nestjs/swagger';
+import { CreateMaterialDto } from '@app/contracts/materials/create-material.dto';
+import { UpdateMaterialDto } from '@app/contracts/materials/update-material.dto';
+import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
+import { MaterialService } from './Material.service';
+
+@Controller('materials')
+@ApiTags('materials')
+export class MaterialController {
+    constructor(private readonly materialService: MaterialService) {}
+
+    @Get()
+    @ApiOperation({ summary: 'Get all materials with pagination' })
+    @ApiQuery({ 
+        name: 'page', 
+        required: false, 
+        type: Number,
+        description: 'Page number (default: 1)'
+    })
+    @ApiQuery({ 
+        name: 'limit', 
+        required: false, 
+        type: Number,
+        description: 'Items per page (default: 10)'
+    })
+    @ApiQuery({ 
+        name: 'search', 
+        required: false, 
+        type: String,
+        description: 'Search by name or description'
+    })
+    @ApiResponse({ status: 200, description: 'Returns all materials' })
+    async getAllMaterials(
+        @Query('page') page?: number,
+        @Query('limit') limit?: number,
+        @Query('search') search?: string
+    ) {
+        const paginationParams: PaginationParams = {
+            page: page ? Number(page) : 1,
+            limit: limit ? Number(limit) : 10,
+            search: search || undefined
+        };
+        return this.materialService.getAllMaterials(paginationParams);
+    }
+
+    @Get(':material_id')
+    @ApiOperation({ summary: 'Get material by ID' })
+    @ApiParam({ name: 'material_id', description: 'Material ID' })
+    @ApiResponse({ status: 200, description: 'Returns the material' })
+    @ApiResponse({ status: 404, description: 'Material not found' })
+    async getMaterialById(@Param('material_id') material_id: string) {
+        return this.materialService.getMaterialById(material_id);
+    }
+
+    @Post()
+    @ApiOperation({ summary: 'Create a new material' })
+    @ApiBody({ type: CreateMaterialDto })
+    @ApiResponse({ status: 201, description: 'Material created successfully' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
+    async createMaterial(@Body() createMaterialDto: CreateMaterialDto) {
+        return this.materialService.createMaterial(createMaterialDto);
+    }
+
+    @Put(':material_id')
+    @ApiOperation({ summary: 'Update material' })
+    @ApiParam({ name: 'material_id', description: 'Material ID' })
+    @ApiBody({ type: UpdateMaterialDto })
+    @ApiResponse({ status: 200, description: 'Material updated successfully' })
+    @ApiResponse({ status: 404, description: 'Material not found' })
+    async updateMaterial(
+        @Param('material_id') material_id: string,
+        @Body() updateMaterialDto: UpdateMaterialDto
+    ) {
+        return this.materialService.updateMaterial(material_id, updateMaterialDto);
+    }
+
+    @Put(':material_id/unit-price')
+    @ApiOperation({ summary: 'Update material unit price' })
+    @ApiParam({ name: 'material_id', description: 'Material ID' })
+    @ApiBody({ schema: { type: 'object', properties: { unit_price: { type: 'number' } } } })
+    @ApiResponse({ status: 200, description: 'Unit price updated successfully' })
+    @ApiResponse({ status: 404, description: 'Material not found' })
+    async updateUnitPrice(
+        @Param('material_id') material_id: string,
+        @Body('unit_price') unit_price: number
+    ) {
+        return this.materialService.updateUnitPrice(material_id, unit_price);
+    }
+
+    @Put(':material_id/stock-quantity')
+    @ApiOperation({ summary: 'Update material stock quantity' })
+    @ApiParam({ name: 'material_id', description: 'Material ID' })
+    @ApiBody({ schema: { type: 'object', properties: { stock_quantity: { type: 'number' } } } })
+    @ApiResponse({ status: 200, description: 'Stock quantity updated successfully' })
+    @ApiResponse({ status: 404, description: 'Material not found' })
+    async updateStockQuantity(
+        @Param('material_id') material_id: string,
+        @Body('stock_quantity') stock_quantity: number
+    ) {
+        return this.materialService.updateStockQuantity(material_id, stock_quantity);
+    }
+} 

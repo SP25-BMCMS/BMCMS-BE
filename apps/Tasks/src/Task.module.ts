@@ -14,6 +14,7 @@ import { InspectionsController } from '../Inspections/Inspections.controller';
 import { TaskAssignmentsModule } from '../TaskAssignments/TaskAssignments.module';
 import { WorkLogModule } from '../Worklog/Worklog.module';
 import { FeedbackModule } from '../Feedback/Feedback.module';
+import { MaterialsModule } from '../Materials/Materials.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { FeedbackModule } from '../Feedback/Feedback.module';
     TaskAssignmentsModule,
     WorkLogModule,
     FeedbackModule,
+    MaterialsModule
   ],
   controllers: [
     TasksController,
