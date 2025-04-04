@@ -85,43 +85,6 @@ export class UsersController {
     }
   }
 
-  @Post('resident/verify-otp')
-  @ApiOperation({ summary: 'Verify OTP and complete resident login' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        phone: { type: 'string', example: '0123456789' },
-        otp: { type: 'string', example: '123456' },
-      },
-      required: ['phone', 'otp'],
-    },
-  })
-  @SwaggerResponse({ status: 200, description: 'Login successful' })
-  @SwaggerResponse({ status: 401, description: 'Invalid OTP' })
-  async verifyOtpAndLogin(
-    @Body() data: { phone: string; otp: string },
-    @Res() res: any,
-  ) {
-    try {
-      const response = await this.usersService.verifyOtpAndLogin(data);
-      return res.status(HttpStatus.OK).json(response);
-    } catch (error) {
-      const status =
-        error instanceof HttpException
-          ? error.getStatus()
-          : HttpStatus.UNAUTHORIZED;
-
-      const message =
-        error instanceof HttpException ? error.message : 'Mã OTP không hợp lệ';
-
-      return res.status(status).json({
-        statusCode: status,
-        message: message,
-      });
-    }
-  }
-
   @UseGuards(PassportJwtAuthGuard)
   @Get('me')
   @ApiBearerAuth('access-token')

@@ -24,7 +24,7 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-    @Inject(NOTIFICATION_CLIENT) private client: ClientProxy, // Inject ClientProxy
+    @Inject(NOTIFICATION_CLIENT) private client: ClientProxy,
   ) { }
 
   async signIn(user: SignInData): Promise<AuthResult> {
@@ -201,7 +201,6 @@ export class AuthService {
           email: data.email,
         })
       }
-
       // For other roles, proceed with normal signup
       return await this.usersService.signup(data)
 
@@ -231,7 +230,6 @@ export class AuthService {
       }
 
       // Verify OTP and mark as used
-      // const isValid = await this.otpService.verifyOTP(data.email, data.otp)
       const isValid = await this.client.send('verify_otp', { email: data.email, otp: data.otp }).toPromise()
       if (!isValid) {
         throw new RpcException({

@@ -66,7 +66,6 @@ export interface UserInterface {
     otp: string;
     userData: createUserDto;
   }): Observable<any>;
-  verifyOtpAndLogin(data: { phone: string; otp: string }): Observable<any>;
 
   updateResidentApartments(data: {
     residentId: string;
