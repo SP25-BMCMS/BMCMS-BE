@@ -1,4 +1,4 @@
-import { Controller, Param } from '@nestjs/common';
+import { Body, Controller, Param, Post, Get, Put, Delete } from '@nestjs/common';
 import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { TaskService } from '../Task/Task.service';
 import { TASKS_PATTERN } from '../../../libs/contracts/src/tasks/task.patterns';
@@ -6,8 +6,13 @@ import { INSPECTIONS_PATTERN } from '../../../libs/contracts/src/inspections/ins
 import { InspectionsService } from './Inspections.service';
 import { UpdateCrackReportDto } from '../../../libs/contracts/src/cracks/update-crack-report.dto';
 import { UpdateInspectionDto } from '../../../libs/contracts/src/inspections/update-inspection.dto';
+import { ApiOperation, ApiTags, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { CreateInspectionDto } from '@app/contracts/inspections/create-inspection.dto';
+import { ApiResponse as ApiResponseDto } from '@app/contracts/ApiReponse/api-response';
+import { Inspection } from '@prisma/client-Task';
 
 @Controller('inspections')
+@ApiTags('inspections')
 export class InspectionsController {
   constructor(private readonly inspectionService: InspectionsService) {}
 
@@ -42,5 +47,15 @@ export class InspectionsController {
   @MessagePattern(INSPECTIONS_PATTERN.GET)
   async GetAllInspections() {
     return this.inspectionService.GetAllInspections();
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Create a new inspection' })
+  @ApiBody({ type: CreateInspectionDto })
+  @ApiResponse({ status: 201, description: 'Inspection created successfully', type: ApiResponseDto })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @MessagePattern(INSPECTIONS_PATTERN.CREATE)
+  async createInspection(@Payload() dto: CreateInspectionDto): Promise<ApiResponseDto<Inspection>> {
+    return this.inspectionService.createInspection(dto);
   }
 }

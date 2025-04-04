@@ -29,6 +29,9 @@ import { ClientProxy } from '@nestjs/microservices';
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 import { UpdateInspectionDto } from 'libs/contracts/src/inspections/update-inspection.dto';
 import { CreateRepairMaterialDto } from '@app/contracts/repairmaterials/create-repair-material.dto';
+import { CreateInspectionDto } from '@app/contracts/inspections/create-inspection.dto';
+import { ApiResponse as ApiResponseDto } from '@app/contracts/ApiReponse/api-response';
+import { Inspection } from '@prisma/client-Task';
 
 @Controller('inspections')
 @ApiTags('inspections')
@@ -75,6 +78,15 @@ export class InspectionController {
   @ApiResponse({ status: 200, description: 'Returns all inspections' })
   async GetAllInspections() {
     return this.inspectionService.GetAllInspections();
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Create a new inspection' })
+  @ApiBody({ type: CreateInspectionDto })
+  @ApiResponse({ status: 201, description: 'Inspection created successfully', type: ApiResponseDto })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  async createInspection(@Body() dto: CreateInspectionDto): Promise<ApiResponseDto<Inspection>> {
+    return this.inspectionService.createInspection(dto);
   }
 
   // @Get('inspection/task_assignment/:task_assignment_id')

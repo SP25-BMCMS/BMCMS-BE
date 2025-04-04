@@ -83,7 +83,7 @@ model Inspection {
   updated_at         DateTime @updatedAt
   status             InspectionStatus
   total_cost         Decimal  @db.Decimal(10, 2)
-  locationDetailId   String   @unique    
+  locationDetailId   String   @unique    @default(uuid())
   // Mối quan hệ N:1 với TaskAssignment
   taskAssignment TaskAssignment @relation(fields: [task_assignment_id], references: [assignment_id])
 
@@ -108,7 +108,7 @@ model RepairMaterial {
   total_cost         Decimal  @db.Decimal(10, 2)
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
- status             RepairStatus     @default(Pending)
+  status             RepairStatus     @default(Pending)
   remaining_quantity Int?             // Chỉ có nếu Completed
 
   // Mối quan hệ N:1 với Inspection

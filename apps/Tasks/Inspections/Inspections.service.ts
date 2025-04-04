@@ -3,6 +3,8 @@ import { RpcException } from '@nestjs/microservices';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response';
 import { UpdateInspectionDto } from '../../../libs/contracts/src/inspections/update-inspection.dto';
+import { CreateInspectionDto } from '@app/contracts/inspections/create-inspection.dto';
+import { Inspection } from '@prisma/client-Task';
 
 @Injectable()
 export class InspectionsService {
@@ -117,6 +119,37 @@ export class InspectionsService {
         message: 'Error retrieving inspections',
         error: error.message,
       });
+    }
+  }
+
+  async createInspection(dto: CreateInspectionDto): Promise<ApiResponse<Inspection>> {
+    try {
+      // Check if task assignment exists
+      const taskAssignment = await this.prisma.taskAssignment.findUnique({
+        where: { assignment_id: dto.task_assignment_id },
+      });
+
+      if (!taskAssignment) {
+        return new ApiResponse(false, 'Task assignment not found', null);
+      }
+
+      const inspectionData = {
+        task_assignment_id: dto.task_assignment_id,
+        inspected_by: dto.inspected_by,
+        image_url: dto.image_url || null,
+        description: dto.description || '',
+        status: dto.status || 'Notyetverify',
+        total_cost: dto.total_cost || 0,
+        locationDetailId: dto.locationDetailId || "null",
+      };
+
+      const inspection = await this.prisma.inspection.create({
+        data: inspectionData,
+      });
+
+      return new ApiResponse(true, 'Inspection created successfully', inspection);
+    } catch (error) {
+      return new ApiResponse(false, 'Error creating inspection', error.message);
     }
   }
 }
