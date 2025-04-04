@@ -3,6 +3,7 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { MaterialsService } from './Materials.service';
 import { CreateMaterialDto } from '@app/contracts/materials/create-material.dto';
 import { UpdateMaterialDto } from '@app/contracts/materials/update-material.dto';
+import { UpdateMaterialStatusDto } from '@app/contracts/materials/update-material-status.dto';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 import { MATERIAL_PATTERN } from '@app/contracts/materials/material.patterns';
 
@@ -38,5 +39,10 @@ export class MaterialsController {
     @MessagePattern(MATERIAL_PATTERN.UPDATE_STOCK_QUANTITY)
     async updateStockQuantity(@Payload() data: { material_id: string; stock_quantity: number }) {
         return this.materialsService.updateStockQuantity(data.material_id, data.stock_quantity);
+    }
+
+    @MessagePattern(MATERIAL_PATTERN.UPDATE_STATUS)
+    async updateStatus(@Payload() data: { material_id: string; dto: UpdateMaterialStatusDto }) {
+        return this.materialsService.updateStatus(data.material_id, data.dto);
     }
 }

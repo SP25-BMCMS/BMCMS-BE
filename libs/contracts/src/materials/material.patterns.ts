@@ -4,5 +4,6 @@ export const MATERIAL_PATTERN = {
     CREATE_MATERIAL: 'create_material',
     UPDATE_MATERIAL: 'update_material',
     UPDATE_UNIT_PRICE: 'update_unit_price',
-    UPDATE_STOCK_QUANTITY: 'update_stock_quantity'
+    UPDATE_STOCK_QUANTITY: 'update_stock_quantity',
+    UPDATE_STATUS: 'update_status'
 }; 

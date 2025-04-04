@@ -18,8 +18,10 @@ import {
 } from '@nestjs/swagger';
 import { CreateMaterialDto } from '@app/contracts/materials/create-material.dto';
 import { UpdateMaterialDto } from '@app/contracts/materials/update-material.dto';
+import { UpdateMaterialStatusDto } from '@app/contracts/materials/update-material-status.dto';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 import { MaterialService } from './Material.service';
+import { MaterialStatus } from '@prisma/client-Task';
 
 @Controller('materials')
 @ApiTags('materials')
@@ -46,16 +48,27 @@ export class MaterialController {
         type: String,
         description: 'Search by name or description'
     })
+
+    @ApiQuery({
+        name: 'statusFilter',
+        required: false,
+        type: String,
+        description: 'Filter by task status',
+        enum: MaterialStatus,
+      })
     @ApiResponse({ status: 200, description: 'Returns all materials' })
     async getAllMaterials(
         @Query('page') page?: number,
         @Query('limit') limit?: number,
-        @Query('search') search?: string
+        @Query('search') search?: string,
+        @Query('statusFilter') statusFilter?: MaterialStatus,
+
     ) {
         const paginationParams: PaginationParams = {
             page: page ? Number(page) : 1,
             limit: limit ? Number(limit) : 10,
-            search: search || undefined
+            search: search || undefined,
+            statusFilter
         };
         return this.materialService.getAllMaterials(paginationParams);
     }
@@ -115,5 +128,18 @@ export class MaterialController {
         @Body('stock_quantity') stock_quantity: number
     ) {
         return this.materialService.updateStockQuantity(material_id, stock_quantity);
+    }
+
+    @Put(':material_id/status')
+    @ApiOperation({ summary: 'Update material status' })
+    @ApiParam({ name: 'material_id', description: 'Material ID' })
+    @ApiBody({ type: UpdateMaterialStatusDto })
+    @ApiResponse({ status: 200, description: 'Status updated successfully' })
+    @ApiResponse({ status: 404, description: 'Material not found' })
+    async updateStatus(
+        @Param('material_id') material_id: string,
+        @Body() updateMaterialStatusDto: UpdateMaterialStatusDto
+    ) {
+        return this.materialService.updateStatus(material_id, updateMaterialStatusDto);
     }
 } 

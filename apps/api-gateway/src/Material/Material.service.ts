@@ -4,6 +4,7 @@ import { TASK_CLIENT } from '../constraints';
 import { MATERIAL_PATTERN } from '@app/contracts/materials/material.patterns';
 import { CreateMaterialDto } from '@app/contracts/materials/create-material.dto';
 import { UpdateMaterialDto } from '@app/contracts/materials/update-material.dto';
+import { UpdateMaterialStatusDto } from '@app/contracts/materials/update-material-status.dto';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 import { firstValueFrom } from 'rxjs';
 
@@ -52,6 +53,15 @@ export class MaterialService {
             this.taskClient.send(MATERIAL_PATTERN.UPDATE_STOCK_QUANTITY, {
                 material_id,
                 stock_quantity
+            })
+        );
+    }
+
+    async updateStatus(material_id: string, updateMaterialStatusDto: UpdateMaterialStatusDto) {
+        return firstValueFrom(
+            this.taskClient.send(MATERIAL_PATTERN.UPDATE_STATUS, {
+                material_id,
+                dto: updateMaterialStatusDto
             })
         );
     }

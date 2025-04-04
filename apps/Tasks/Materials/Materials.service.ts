@@ -2,8 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMaterialDto } from '@app/contracts/materials/create-material.dto';
 import { UpdateMaterialDto } from '@app/contracts/materials/update-material.dto';
+import { UpdateMaterialStatusDto } from '@app/contracts/materials/update-material-status.dto';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
+import { MaterialStatus } from '@prisma/client-Task';
 
 @Injectable()
 export class MaterialsService {
@@ -12,8 +14,10 @@ export class MaterialsService {
     async getAllMaterials(paginationParams: PaginationParams) {
         const { page = 1, limit = 10, search } = paginationParams;
         const skip = (page - 1) * limit;
+        const statusFilter = paginationParams?.statusFilter;
+        const whereFilter = statusFilter ? { status: statusFilter as MaterialStatus } : {};
 
-        const where = search ? {
+        const whereSearch = search ? {
             OR: [
                 { name: { contains: search } },
                 { description: { contains: search } }
@@ -22,12 +26,12 @@ export class MaterialsService {
 
         const [materials, total] = await Promise.all([
             this.prisma.material.findMany({
-                where,
+                where: { ...whereSearch, ...whereFilter },
                 skip,
                 take: limit,
                 orderBy: { created_at: 'desc' }
             }),
-            this.prisma.material.count({ where })
+            this.prisma.material.count({ where: { ...whereSearch, ...whereFilter }   })
         ]);
 
         return new ApiResponse(true, 'Materials retrieved successfully', {
@@ -116,6 +120,18 @@ export class MaterialsService {
             return new ApiResponse(true, 'Stock quantity updated successfully', material);
         } catch (error) {
             return new ApiResponse(false, 'Error updating stock quantity', error.message);
+        }
+    }
+
+    async updateStatus(material_id: string, dto: UpdateMaterialStatusDto) {
+        try {
+            const material = await this.prisma.material.update({
+                where: { material_id },
+                data: { status: dto.status }
+            });
+            return new ApiResponse(true, 'Material status updated successfully', material);
+        } catch (error) {
+            return new ApiResponse(false, 'Error updating material status', error.message);
         }
     }
 }
