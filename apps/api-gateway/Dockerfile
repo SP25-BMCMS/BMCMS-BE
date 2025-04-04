@@ -1,34 +1,44 @@
-# Sử dụng hình ảnh Node.js nhẹ làm cơ sở
-FROM node:20-alpine
+# Build stage
+FROM node:20-alpine AS builder
 
-# Đặt thư mục làm việc bên trong container
 WORKDIR /usr/src/app
 
-# Sao chép tệp package.json và package-lock.json từ thư mục dịch vụ vào container
-COPY package.json package-lock.json ./
-
-# Cài đặt các phụ thuộc với --legacy-peer-deps để xử lý peer dependencies nếu cần
+# Copy package files
+COPY package*.json ./
 RUN npm install --legacy-peer-deps
 
-# Sao chép toàn bộ mã nguồn của API Gateway vào container
+# Copy source code
 COPY . .
 
-# Sao chép thư mục prisma từ dịch vụ vào container
-COPY ./apps/users/prisma ./apps/users/prisma
-COPY ./apps/Tasks/prisma ./apps/Tasks/prisma
-COPY ./apps/cracks/prisma ./apps/cracks/prisma
-COPY ./apps/buildings/prisma ./apps/buildings/prisma
-COPY ./apps/schedules/prisma ./apps/schedules/prisma
+# Generate Prisma Client cho tất cả services và đảm bảo output vào thư mục node_modules gốc
+RUN find ./apps -name schema.prisma -exec dirname {} \; | xargs -I{} sh -c 'npx prisma generate --schema={}/schema.prisma'
 
-# Tạo Prisma Client cho từng dịch vụ
-RUN npx prisma generate --schema=./apps/users/prisma/schema.prisma && \
-    npx prisma generate --schema=./apps/Tasks/prisma/schema.prisma && \
-    npx prisma generate --schema=./apps/cracks/prisma/schema.prisma && \
-    npx prisma generate --schema=./apps/buildings/prisma/schema.prisma && \
-    npx prisma generate --schema=./apps/schedules/prisma/schema.prisma
+# Build the application
+RUN npm run build api-gateway
 
-# Mở cổng 3000 để API Gateway lắng nghe yêu cầu
+# Production stage
+FROM node:20-alpine
+
+WORKDIR /usr/src/app
+
+# Copy package files and install production dependencies only
+COPY package*.json ./
+RUN npm install --omit=dev --only=production --legacy-peer-deps
+
+# Copy build artifacts
+COPY --from=builder /usr/src/app/dist ./dist
+
+# Copy ALL Prisma generated clients from root node_modules
+COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /usr/src/app/node_modules/@prisma ./node_modules/@prisma
+
+# Copy proto files and contracts
+COPY --from=builder /usr/src/app/libs/contracts ./libs/contracts
+
+# Copy .env file
+COPY --from=builder /usr/src/app/.env .env
+
 EXPOSE 3000
 
-# Lệnh khởi chạy ứng dụng khi container bắt đầu
-CMD ["npm", "start"]
+# Run the built application
+CMD ["node", "dist/apps/api-gateway/main"]

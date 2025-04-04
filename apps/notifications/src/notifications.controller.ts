@@ -9,8 +9,7 @@ export class NotificationsController {
 
   @EventPattern('send_otp')
   async handleSendOtp(data: { email: string }) {
-    const otp = await this.otpService.createOTP(data.email)
-    return this.emailService.sendOtp(data.email, otp)
+    return await this.otpService.createOTP(data.email)
   }
 
   @EventPattern('verify_otp')
