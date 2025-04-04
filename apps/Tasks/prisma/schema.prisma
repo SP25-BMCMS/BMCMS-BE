@@ -81,7 +81,9 @@ model Inspection {
   description        String
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
-
+  status             InspectionStatus
+  total_cost         Decimal  @db.Decimal(10, 2)
+  
   // Mối quan hệ N:1 với TaskAssignment
   taskAssignment TaskAssignment @relation(fields: [task_assignment_id], references: [assignment_id])
 
@@ -89,9 +91,17 @@ model Inspection {
   repairMaterials RepairMaterial[]
 }
 
+enum InspectionStatus {
+  Notyetverify
+  Verify
+  UnConfirm
+  Confirm
+  Completed
+  Other
+}
+
 model RepairMaterial {
   repair_material_id String   @id @default(uuid())
-  task_id            String
   material_id        String
   quantity           Int
   unit_cost          Decimal  @db.Decimal(10, 2)
