@@ -5,6 +5,7 @@ import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response
 import { UpdateInspectionDto } from '../../../libs/contracts/src/inspections/update-inspection.dto';
 import { CreateInspectionDto } from '@app/contracts/inspections/create-inspection.dto';
 import { Inspection } from '@prisma/client-Task';
+import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-inspection-status.dto';
 
 @Injectable()
 export class InspectionsService {
@@ -150,6 +151,27 @@ export class InspectionsService {
       return new ApiResponse(true, 'Inspection created successfully', inspection);
     } catch (error) {
       return new ApiResponse(false, 'Error creating inspection', error.message);
+    }
+  }
+
+  async changeStatus(dto: ChangeInspectionStatusDto): Promise<ApiResponse<Inspection>> {
+    try {
+      const inspection = await this.prisma.inspection.findUnique({
+        where: { inspection_id: dto.inspection_id },
+      });
+
+      if (!inspection) {
+        return new ApiResponse(false, 'Inspection not found', null);
+      }
+
+      const updatedInspection = await this.prisma.inspection.update({
+        where: { inspection_id: dto.inspection_id },
+        data: { status: dto.status },
+      });
+
+      return new ApiResponse(true, 'Inspection status updated successfully', updatedInspection);
+    } catch (error) {
+      return new ApiResponse(false, 'Error updating inspection status', error.message);
     }
   }
 }

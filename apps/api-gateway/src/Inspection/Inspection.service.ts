@@ -15,6 +15,7 @@ import { UpdateInspectionDto } from 'libs/contracts/src/inspections/update-inspe
 import { CreateInspectionDto } from '@app/contracts/inspections/create-inspection.dto';
 import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 import { Inspection } from '@prisma/client-Task';
+import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-inspection-status.dto';
 
 @Injectable()
 export class InspectionService {
@@ -85,6 +86,16 @@ export class InspectionService {
       );
     } catch (error) {
       return new ApiResponse(false, 'Error creating inspection', error.message);
+    }
+  }
+
+  async changeStatus(dto: ChangeInspectionStatusDto): Promise<ApiResponse<Inspection>> {
+    try {
+      return await firstValueFrom(
+        this.inspectionClient.send(INSPECTIONS_PATTERN.CHANGE_STATUS, dto)
+      );
+    } catch (error) {
+      return new ApiResponse(false, 'Error changing inspection status', error.message);
     }
   }
 }

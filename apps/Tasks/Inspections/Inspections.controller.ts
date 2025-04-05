@@ -10,6 +10,7 @@ import { ApiOperation, ApiTags, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { CreateInspectionDto } from '@app/contracts/inspections/create-inspection.dto';
 import { ApiResponse as ApiResponseDto } from '@app/contracts/ApiReponse/api-response';
 import { Inspection } from '@prisma/client-Task';
+import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-inspection-status.dto';
 
 @Controller('inspections')
 @ApiTags('inspections')
@@ -57,5 +58,10 @@ export class InspectionsController {
   @MessagePattern(INSPECTIONS_PATTERN.CREATE)
   async createInspection(@Payload() dto: CreateInspectionDto): Promise<ApiResponseDto<Inspection>> {
     return this.inspectionService.createInspection(dto);
+  }
+
+  @MessagePattern(INSPECTIONS_PATTERN.CHANGE_STATUS)
+  async changeStatus(@Payload() dto: ChangeInspectionStatusDto): Promise<ApiResponseDto<Inspection>> {
+    return this.inspectionService.changeStatus(dto);
   }
 }

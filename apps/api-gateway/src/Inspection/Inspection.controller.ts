@@ -32,6 +32,7 @@ import { CreateRepairMaterialDto } from '@app/contracts/repairmaterials/create-r
 import { CreateInspectionDto } from '@app/contracts/inspections/create-inspection.dto';
 import { ApiResponse as ApiResponseDto } from '@app/contracts/ApiReponse/api-response';
 import { Inspection } from '@prisma/client-Task';
+import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-inspection-status.dto';
 
 @Controller('inspections')
 @ApiTags('inspections')
@@ -87,6 +88,16 @@ export class InspectionController {
   @ApiResponse({ status: 400, description: 'Bad request' })
   async createInspection(@Body() dto: CreateInspectionDto): Promise<ApiResponseDto<Inspection>> {
     return this.inspectionService.createInspection(dto);
+  }
+
+  @Patch('status')
+  @ApiOperation({ summary: 'Change inspection status' })
+  @ApiBody({ type: ChangeInspectionStatusDto })
+  @ApiResponse({ status: 200, description: 'Inspection status updated successfully', type: ApiResponseDto })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 404, description: 'Inspection not found' })
+  async changeStatus(@Body() dto: ChangeInspectionStatusDto): Promise<ApiResponseDto<Inspection>> {
+    return this.inspectionService.changeStatus(dto);
   }
 
   // @Get('inspection/task_assignment/:task_assignment_id')

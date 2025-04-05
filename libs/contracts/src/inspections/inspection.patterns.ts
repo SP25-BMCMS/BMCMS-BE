@@ -4,5 +4,7 @@ export const INSPECTIONS_PATTERN = {
   UPDATE: 'update_inspection',
   DELELTE: 'delete_inspection',
   GET_BY_ID_Task_Assignment: 'get_by_task_assignment_id',
-  GET_BY_CRACK_ID: 'get_by_crack_id'
+  GET_BY_CRACK_ID: 'get_by_crack_id',
+  CHANGE_STATUS: 'inspections.change.status',
+
 };
