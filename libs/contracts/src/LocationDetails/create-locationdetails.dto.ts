@@ -20,13 +20,13 @@ export class CreateLocationDetailDto {
   @ApiProperty()
 
   floorNumber: number;
-  @IsNotEmpty()
-  @ApiProperty({
-    description: 'Type of area',
-    enum: $Enums.PositionSide,
-    example: 'Left | Right | Center'
-  })
-  positionSide: $Enums.PositionSide;
+  // @IsNotEmpty()
+  // @ApiProperty({
+  //   description: 'Type of area',
+  //   enum: $Enums.PositionSide,
+  //   example: 'Left | Right | Center'
+  // })
+  // positionSide: $Enums.PositionSide;
   @IsNotEmpty()
   @ApiProperty({
     description: 'Type of area',
