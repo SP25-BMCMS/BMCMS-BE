@@ -77,13 +77,13 @@ model Inspection {
   inspection_id      String   @id @default(uuid())
   task_assignment_id String
   inspected_by       String
-  image_url          String?
+  image_urls         String[] // Changed from image_url to image_urls array
   description        String
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
   status             InspectionStatus
   total_cost         Decimal  @db.Decimal(10, 2)
-  locationDetailId   String   @unique    @default(uuid())
+  locationDetailId   String   @unique    
   // Mối quan hệ N:1 với TaskAssignment
   taskAssignment TaskAssignment @relation(fields: [task_assignment_id], references: [assignment_id])
 
