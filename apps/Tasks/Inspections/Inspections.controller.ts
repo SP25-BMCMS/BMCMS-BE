@@ -11,6 +11,7 @@ import { CreateInspectionDto } from '@app/contracts/inspections/create-inspectio
 import { ApiResponse as ApiResponseDto } from '@app/contracts/ApiReponse/api-response';
 import { Inspection } from '@prisma/client-Task';
 import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-inspection-status.dto';
+import { AddImageToInspectionDto } from '@app/contracts/inspections/add-image.dto';
 
 @Controller('inspections')
 @ApiTags('inspections')
@@ -63,5 +64,10 @@ export class InspectionsController {
   @MessagePattern(INSPECTIONS_PATTERN.CHANGE_STATUS)
   async changeStatus(@Payload() dto: ChangeInspectionStatusDto): Promise<ApiResponseDto<Inspection>> {
     return this.inspectionService.changeStatus(dto);
+  }
+
+  @MessagePattern(INSPECTIONS_PATTERN.ADD_IMAGE)
+  async addImage(@Payload() dto: AddImageToInspectionDto): Promise<ApiResponseDto<Inspection>> {
+    return this.inspectionService.addImage(dto);
   }
 }

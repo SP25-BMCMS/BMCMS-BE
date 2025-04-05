@@ -16,6 +16,7 @@ import { CreateInspectionDto } from '@app/contracts/inspections/create-inspectio
 import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
 import { Inspection } from '@prisma/client-Task';
 import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-inspection-status.dto';
+import { AddImageToInspectionDto } from '@app/contracts/inspections/add-image.dto';
 
 @Injectable()
 export class InspectionService {
@@ -96,6 +97,16 @@ export class InspectionService {
       );
     } catch (error) {
       return new ApiResponse(false, 'Error changing inspection status', error.message);
+    }
+  }
+
+  async addImage(dto: AddImageToInspectionDto): Promise<ApiResponse<Inspection>> {
+    try {
+      return await firstValueFrom(
+        this.inspectionClient.send(INSPECTIONS_PATTERN.ADD_IMAGE, dto)
+      );
+    } catch (error) {
+      return new ApiResponse(false, 'Error adding image', error.message);
     }
   }
 }

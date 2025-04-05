@@ -33,6 +33,7 @@ import { CreateInspectionDto } from '@app/contracts/inspections/create-inspectio
 import { ApiResponse as ApiResponseDto } from '@app/contracts/ApiReponse/api-response';
 import { Inspection } from '@prisma/client-Task';
 import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-inspection-status.dto';
+import { AddImageToInspectionDto } from '@app/contracts/inspections/add-image.dto';
 
 @Controller('inspections')
 @ApiTags('inspections')
@@ -98,6 +99,15 @@ export class InspectionController {
   @ApiResponse({ status: 404, description: 'Inspection not found' })
   async changeStatus(@Body() dto: ChangeInspectionStatusDto): Promise<ApiResponseDto<Inspection>> {
     return this.inspectionService.changeStatus(dto);
+  }
+
+  @Post('add-image')
+  @ApiOperation({ summary: 'Add image to inspection' })
+  @ApiBody({ type: AddImageToInspectionDto })
+  @ApiResponse({ status: 200, description: 'Image added successfully', type: ApiResponseDto })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  async addImage(@Body() dto: AddImageToInspectionDto): Promise<ApiResponseDto<Inspection>> {
+    return this.inspectionService.addImage(dto);
   }
 
   // @Get('inspection/task_assignment/:task_assignment_id')

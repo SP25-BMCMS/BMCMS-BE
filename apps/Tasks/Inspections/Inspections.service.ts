@@ -6,6 +6,7 @@ import { UpdateInspectionDto } from '../../../libs/contracts/src/inspections/upd
 import { CreateInspectionDto } from '@app/contracts/inspections/create-inspection.dto';
 import { Inspection } from '@prisma/client-Task';
 import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-inspection-status.dto';
+import { AddImageToInspectionDto } from '@app/contracts/inspections/add-image.dto';
 
 @Injectable()
 export class InspectionsService {
@@ -172,6 +173,33 @@ export class InspectionsService {
       return new ApiResponse(true, 'Inspection status updated successfully', updatedInspection);
     } catch (error) {
       return new ApiResponse(false, 'Error updating inspection status', error.message);
+    }
+  }
+
+  async addImage(dto: AddImageToInspectionDto): Promise<ApiResponse<Inspection>> {
+    try {
+      const inspection = await this.prisma.inspection.findUnique({
+        where: { inspection_id: dto.inspection_id },
+      });
+
+      if (!inspection) {
+        return new ApiResponse(false, 'Inspection not found', null);
+      }
+
+      // Get current image_urls array or initialize as empty array
+      const currentImageUrls = inspection.image_urls || [];
+
+      // Add new images to the array
+      const updatedImageUrls = [...currentImageUrls, ...dto.image_urls];
+
+      const updatedInspection = await this.prisma.inspection.update({
+        where: { inspection_id: dto.inspection_id },
+        data: { image_urls: updatedImageUrls },
+      });
+
+      return new ApiResponse(true, 'Images added successfully', updatedInspection);
+    } catch (error) {
+      return new ApiResponse(false, 'Error adding images', error.message);
     }
   }
 }
