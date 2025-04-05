@@ -147,15 +147,15 @@ export class MaterialController {
         return this.materialService.updateStatus(material_id, updateMaterialStatusDto);
     }
 
-    @Post(':inspection_id/materials')
-    @ApiOperation({ summary: 'Add materials to inspection' })
-    @ApiParam({ name: 'inspection_id', description: 'ID of the inspection' })
-    @ApiResponse({ status: 200, description: 'Materials added successfully', type: ApiResponseDto })
-    @ApiResponse({ status: 400, description: 'Bad request' })
-    async addMaterialsToInspection(
-        @Param('inspection_id') inspection_id: string,
-        @Body() materials: CreateRepairMaterialDto[]
-    ): Promise<ApiResponseDto<Inspection>> {
-        return this.materialService.addMaterialsToInspection(inspection_id, materials);
-    }
+    // @Post(':inspection_id/materials')
+    // @ApiOperation({ summary: 'Add materials to inspection' })
+    // @ApiParam({ name: 'inspection_id', description: 'ID of the inspection' })
+    // @ApiResponse({ status: 200, description: 'Materials added successfully', type: ApiResponseDto })
+    // @ApiResponse({ status: 400, description: 'Bad request' })
+    // async addMaterialsToInspection(
+    //     @Param('inspection_id') inspection_id: string,
+    //     @Body() materials: CreateRepairMaterialDto[]
+    // ): Promise<ApiResponseDto<Inspection>> {
+    //     return this.materialService.addMaterialsToInspection(inspection_id, materials);
+    // }
 } 
