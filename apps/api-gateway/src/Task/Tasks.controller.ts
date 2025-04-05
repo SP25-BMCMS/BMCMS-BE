@@ -86,7 +86,7 @@ export class TaskController {
     return this.taskService.deleteTask(task_id);
   }
 
-  // @Put('task/:task_id/status')
+  @Put('task/:task_id/status')
   @ApiOperation({ summary: 'Change task status' })
   @ApiParam({ name: 'task_id', description: 'Task ID' })
   @ApiBody({ type: ChangeTaskStatusDto })

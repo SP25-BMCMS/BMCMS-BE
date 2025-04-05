@@ -1,8 +1,9 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { RepairMaterialsService } from './RepairMaterials.service';
-import { CreateRepairMaterialDto as AddMaterialsToInspectionDto } from '@app/contracts/repairmaterials/create-repair-material.dto';
+import { CreateRepairMaterialDto } from '@app/contracts/repairmaterials/create-repair-material.dto';
 import { REPAIRMATERIAL_PATTERN } from '@app/contracts/repairmaterials/RepairMaterial.patterns';
+import { AddMaterialsToInspectionDto } from '@app/contracts/repairmaterials/Add-Materials-Inspection';
 
 @Controller('repair-materials')
 export class RepairMaterialsController {
@@ -11,7 +12,7 @@ export class RepairMaterialsController {
   ) {}
 
   @MessagePattern(REPAIRMATERIAL_PATTERN.CREATE_REPAIR_MATERIAL)
-  async createRepairMaterial(@Payload() dto: AddMaterialsToInspectionDto) {
+  async createRepairMaterial(@Payload() dto: CreateRepairMaterialDto) {
     return this.repairMaterialsService.createRepairMaterial(dto);
   }
 
@@ -19,4 +20,6 @@ export class RepairMaterialsController {
   async addMaterialsToInspection(@Payload() payload: { inspection_id: string; materials: AddMaterialsToInspectionDto[] }) {
     return this.repairMaterialsService.addMaterialsToInspection(payload.inspection_id, payload.materials);
   }
+
+  
 }
