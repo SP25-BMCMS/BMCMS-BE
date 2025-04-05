@@ -38,7 +38,7 @@ export class LocationDetailService {
     try {
       const updatedLocationDetail = await this.prisma.locationDetail.update({
         where: { locationDetailId },
-        data: updateLocationDetailDto, // Ensure this aligns with the Prisma input type
+        data: updateLocationDetailDto, 
       });
       return {
         statusCode: 200,

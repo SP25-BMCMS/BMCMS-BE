@@ -77,11 +77,13 @@ model Inspection {
   inspection_id      String   @id @default(uuid())
   task_assignment_id String
   inspected_by       String
-  image_url          String?
+  image_urls         String[] // Changed from image_url to image_urls array
   description        String
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
-
+  status             InspectionStatus
+  total_cost         Decimal  @db.Decimal(10, 2)
+  locationDetailId   String   @unique    
   // Mối quan hệ N:1 với TaskAssignment
   taskAssignment TaskAssignment @relation(fields: [task_assignment_id], references: [assignment_id])
 
@@ -89,15 +91,25 @@ model Inspection {
   repairMaterials RepairMaterial[]
 }
 
+enum InspectionStatus {
+  Notyetverify
+  Verify
+  UnConfirm
+  Confirm
+  Completed
+  Other
+}
+
 model RepairMaterial {
   repair_material_id String   @id @default(uuid())
-  task_id            String
   material_id        String
   quantity           Int
   unit_cost          Decimal  @db.Decimal(10, 2)
   total_cost         Decimal  @db.Decimal(10, 2)
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
+  status             RepairStatus     @default(Pending)
+  remaining_quantity Int?             // Chỉ có nếu Completed
 
   // Mối quan hệ N:1 với Inspection
   inspection_id String
@@ -105,6 +117,11 @@ model RepairMaterial {
 
   // Mối quan hệ N:1 với Material
   material Material @relation(fields: [material_id], references: [material_id])
+}
+
+enum RepairStatus {
+  Pending
+  Completed
 }
 
 model Material {
@@ -115,9 +132,16 @@ model Material {
   stock_quantity Int
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
+  status         MaterialStatus @default(ACTIVE)
 
   // Mối quan hệ 1:N với RepairMaterial
   repairMaterials RepairMaterial[]
+}
+
+enum MaterialStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
 }
 
 model Feedback {

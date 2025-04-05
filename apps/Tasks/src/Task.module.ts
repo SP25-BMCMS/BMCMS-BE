@@ -9,15 +9,18 @@ import { TaskService } from '../Task/Task.service';
 import { RepairMaterialsModule } from '../RepairMaterials/RepairMaterials.module';
 import { RepairMaterialsController } from '../RepairMaterials/RepairMaterials.controller';
 import { RepairMaterialsService } from '../RepairMaterials/RepairMaterials.service';
-import { InspectionsService } from '../Inspections/Inspections.service';
 import { InspectionsController } from '../Inspections/Inspections.controller';
 import { TaskAssignmentsModule } from '../TaskAssignments/TaskAssignments.module';
 import { WorkLogModule } from '../Worklog/Worklog.module';
 import { FeedbackModule } from '../Feedback/Feedback.module';
+import { MaterialsModule } from '../Materials/Materials.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
     ClientConfigModule,
     InspectionsModule,
     PrismaModule,
@@ -26,12 +29,13 @@ import { FeedbackModule } from '../Feedback/Feedback.module';
     TaskAssignmentsModule,
     WorkLogModule,
     FeedbackModule,
+    MaterialsModule
   ],
   controllers: [
     TasksController,
     RepairMaterialsController,
     InspectionsController,
   ],
-  providers: [TaskService, RepairMaterialsService, InspectionsService],
+  providers: [TaskService, RepairMaterialsService],
 })
 export class TaskModule {}

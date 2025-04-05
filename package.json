@@ -19,7 +19,9 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "prisma:generate": "npx prisma generate --schema=apps/users/prisma/schema.prisma && npx prisma generate --schema=apps/tasks/prisma/schema.prisma && npx prisma generate --schema=apps/cracks/prisma/schema.prisma && npx prisma generate --schema=apps/buildings/prisma/schema.prisma && npx prisma generate --schema=apps/schedules/prisma/schema.prisma",
     "prisma:deploy": "npx prisma migrate dev --schema=apps/users/prisma/schema.prisma --name init && npx prisma migrate dev --schema=apps/tasks/prisma/schema.prisma --name init && npx prisma migrate dev --schema=apps/cracks/prisma/schema.prisma --name init && npx prisma migrate dev --schema=apps/buildings/prisma/schema.prisma --name init && npx prisma migrate dev --schema=apps/schedules/prisma/schema.prisma --name init",
-    "nest:start": "concurrently \"nest start buildings --watch\" \"nest start tasks --watch\" \"nest start schedules --watch\" \"nest start users --watch\" \"nest start cracks --watch\""
+    "prisma:seed": "ts-node apps/Tasks/prisma/seed.ts",
+    "nest:start": "concurrently \"nest start buildings --watch\" \"nest start tasks --watch\" \"nest start schedules --watch\" \"nest start users --watch\" \"nest start cracks --watch\"",
+    "rebuild": "rimraf dist && npm run prisma:generate && npm run build"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.758.0",
@@ -38,6 +40,7 @@
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/swagger": "^11.0.6",
     "@prisma/client": "^6.4.1",
+    "@types/decimal.js": "^0.0.32",
     "@types/nodemailer": "^6.4.17",
     "@types/twilio": "^3.19.2",
     "amqp-connection-manager": "^4.1.14",
@@ -46,6 +49,7 @@
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "decimal.js": "^10.5.0",
     "decode-uri-component": "^0.4.1",
     "ioredis": "^5.5.0",
     "joi": "^17.13.3",

@@ -1,5 +1,5 @@
-import { IsString, IsUUID, IsNumber, IsDate, IsOptional, Min, Max } from 'class-validator';
-
+import { IsString, IsUUID, IsNumber, IsDate, IsOptional, Min, Max, IsEnum } from 'class-validator';
+import { FeedbackStatus } from '@prisma/client-Task';
 export class FeedbackResponseDto {
   @IsUUID()
   feedback_id: string;
@@ -23,4 +23,9 @@ export class FeedbackResponseDto {
 
   @IsDate()
   updated_at: Date;
+
+  @IsEnum(FeedbackStatus)
+  status: FeedbackStatus;
+
+
 } 
