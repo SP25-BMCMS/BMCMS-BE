@@ -109,4 +109,14 @@ export class InspectionService {
       return new ApiResponse(false, 'Error adding image', error.message);
     }
   }
+
+  async getInspectionDetails(inspection_id: string): Promise<ApiResponse<any>> {
+    try {
+      return await firstValueFrom(
+        this.inspectionClient.send(INSPECTIONS_PATTERN.GET_DETAILS, inspection_id)
+      );
+    } catch (error) {
+      return new ApiResponse(false, 'Error getting inspection details', error.message);
+    }
+  }
 }

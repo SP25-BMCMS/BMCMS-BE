@@ -70,4 +70,9 @@ export class InspectionsController {
   async addImage(@Payload() dto: AddImageToInspectionDto): Promise<ApiResponseDto<Inspection>> {
     return this.inspectionService.addImage(dto);
   }
+
+  @MessagePattern(INSPECTIONS_PATTERN.GET_DETAILS)
+  async getInspectionDetails(@Payload() inspection_id: string): Promise<ApiResponseDto<any>> {
+    return this.inspectionService.getInspectionDetails(inspection_id);
+  }
 }

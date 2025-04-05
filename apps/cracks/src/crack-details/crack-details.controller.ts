@@ -13,6 +13,7 @@ export class CrackDetailsController {
 
   @MessagePattern({ cmd: 'get-all-crack-details' })
   async getAllCrackReports() {
+    console.log("🚀 ~ CrackDetailsController ~ getAllCrackReportádasdsdasds ~ getAllCrackReports:")
     return await this.crackDetailsService.getAllCrackDetails();
   }
 

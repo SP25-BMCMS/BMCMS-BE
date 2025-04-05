@@ -7,5 +7,6 @@ export const INSPECTIONS_PATTERN = {
   GET_BY_CRACK_ID: 'get_by_crack_id',
   CHANGE_STATUS: 'inspections.change.status',
   ADD_IMAGE: 'inspection.add.image',
+  GET_DETAILS: 'inspection.get.details'
 
 };
