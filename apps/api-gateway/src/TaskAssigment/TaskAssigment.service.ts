@@ -203,4 +203,17 @@ export class TaskAssignmentService {
       );
     }
   }
+  async getTaskAssignmentDetails(task_assignment_id: string): Promise<any> {
+    try {
+      return await firstValueFrom(
+        this.taskClient.send(TASKASSIGNMENT_PATTERN.GET_DETAILS, task_assignment_id)
+      );
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error getting inspection details',
+        data: error.message
+      };
+    }
+  }
 }

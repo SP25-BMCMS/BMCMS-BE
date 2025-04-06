@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices';
+import { Inject, Injectable } from '@nestjs/common';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { AssignmentStatus, PrismaClient } from '@prisma/client-Task';
 import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create-taskAssigment.dto';
 import { UpdateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/update.taskAssigment';
@@ -8,12 +8,21 @@ import {
   PaginationParams,
   PaginationResponseDto,
 } from '../../../libs/contracts/src/Pagination/pagination.dto';
+import { ApiResponse } from '@nestjs/swagger';
+import { firstValueFrom } from 'rxjs';
+const CRACK_PATTERNS = {
+  GET_DETAILS: { cmd: 'get-crack-report-by-id' }
+};
 
 @Injectable()
 export class TaskAssignmentsService {
   private prisma = new PrismaClient();
 
-  constructor(private prismaService: PrismaService) { }
+  constructor(private prismaService: PrismaService,
+    @Inject('CRACK_CLIENT') private readonly crackClient: ClientProxy
+
+
+  ) { }
 
   async createTaskAssignment(createTaskAssignmentDto: CreateTaskAssignmentDto) {
     try {
@@ -353,5 +362,54 @@ export class TaskAssignmentsService {
       });
     }
   }
+  async getDetails(taskAssignment_id: string) {
+    try {
+      // 1. Get inspection with task assignment
+      const taskAssignment = await this.prisma.taskAssignment.findUnique({
+        where: { assignment_id: taskAssignment_id },
+        include: {
+          task: true
+        }
+      });
+      if (!taskAssignment) {
+        return {
+          success: false,
+          message: 'taskAssignment not found',
+          data: null
+        };
+      }
 
+      const result: any = { ...taskAssignment };
+
+      // 2. Get task info
+      const task =taskAssignment.task;
+      console.log(task);
+      // 3. If crack_id exists, get crack info
+      if (task.crack_id) {
+        console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ task.crack_id:", task.crack_id)
+         const crackInfo = await firstValueFrom(
+            this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
+          );
+        result.crackInfo = crackInfo;
+        console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ crackInfo:", crackInfo)
+      }
+
+      // 4. If schedule_id exists, get schedule info (you can add this later)
+      if (task.schedule_job_id) {
+        // Add schedule info retrieval here
+      }
+
+      return {
+        success: true,
+        message: 'Inspection details retrieved successfully',
+        data: result
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error retrieving inspection details',
+        data: error.message
+      };
+    }
+  }
 }

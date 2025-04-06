@@ -9,7 +9,8 @@ export const TASKASSIGNMENT_PATTERN  = {
     REASSIGN : 'reassign_taskAssignment',
     GET_BY_STATUS :'get_by_status_taskAssignment',
     ASSIGN_TO_EMPLOYEE: 'assign_task_to_employee',
-    CHANGE_STATUS: 'change_status_taskAssignment'
+    CHANGE_STATUS: 'change_status_taskAssignment',
+    GET_DETAILS: 'get_details_taskAssignment'
 }
 
   

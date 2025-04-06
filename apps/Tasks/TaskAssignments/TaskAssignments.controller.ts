@@ -105,4 +105,10 @@ export class TaskAssignmentsController {
       payload.status
     );
   }
+
+  
+  @MessagePattern(TASKASSIGNMENT_PATTERN.GET_DETAILS)
+  async getCrackDetailsbyTaskAssignmentId (@Payload() taskAssignment_id: string) {
+    return this.taskAssignmentService.getDetails(taskAssignment_id);
+  }
 }

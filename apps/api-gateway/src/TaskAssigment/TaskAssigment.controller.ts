@@ -16,7 +16,7 @@ import {
 import { TaskAssignmentService } from './TaskAssigment.service';
 import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create-taskAssigment.dto';
 import { UpdateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/update.taskAssigment';
-import { AssignmentStatus } from '@prisma/client-Task';
+import { AssignmentStatus, Task } from '@prisma/client-Task';
 import {
   ApiBody,
   ApiOperation,
@@ -26,6 +26,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
+import { TaskAssignmentsController } from 'apps/Tasks/TaskAssignments/TaskAssignments.controller';
 
 @Controller('task-assignments')
 @ApiTags('task-assignments')
@@ -275,5 +276,11 @@ export class TaskAssignmentController {
       assignment_id,
       status: payload.status
     });
+  }
+  @Get(':id/details')
+  @ApiOperation({ summary: 'Get inspection details with crack information' })
+  @ApiParam({ name: 'id', description: 'Task Assignment ID' })
+  async getCrackDetailsbyTaskAssignmentId(@Param('id') id: string): Promise<any> {
+    return this.taskAssignmentService.getTaskAssignmentDetails(id);
   }
 }

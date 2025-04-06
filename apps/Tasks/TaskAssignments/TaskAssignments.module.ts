@@ -1,14 +1,16 @@
 import { Module } from '@nestjs/common';
-import { TaskAssignmentsService as TaskAssignmentsService } from './TaskAssignments.service';
+import { TaskAssignmentsService } from './TaskAssignments.service';
 import { TaskAssignmentsController } from './TaskAssignments.controller';
 import { PrismaModule } from '../prisma/prisma.module';
-import { ClientsModule } from '@nestjs/microservices';
+import { ClientsModule, ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { TASK_CLIENT } from 'apps/api-gateway/src/constraints';
-import { Transport } from '@nestjs/microservices';
+import { ClientConfigService } from 'apps/configs/client-config.service';
+import { ClientConfigModule } from 'apps/configs/client-config.module';
 
 @Module({
   imports: [
     PrismaModule,
+    ClientConfigModule,
     ClientsModule.register([
       {
         name: TASK_CLIENT,
@@ -23,7 +25,18 @@ import { Transport } from '@nestjs/microservices';
       },
     ]),
   ],
-  providers: [TaskAssignmentsService],
+  providers: [
+    TaskAssignmentsService,
+    {
+      provide: 'CRACK_CLIENT',
+      useFactory: (configService: ClientConfigService) => {
+        const clientOptions = configService.cracksClientOptions;
+        return ClientProxyFactory.create(clientOptions);
+      },
+      inject: [ClientConfigService],
+    },
+  ],
   controllers: [TaskAssignmentsController],
+  exports: [TaskAssignmentsService]
 })
 export class TaskAssignmentsModule { }
