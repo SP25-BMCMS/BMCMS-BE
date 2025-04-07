@@ -9,7 +9,7 @@ export class CrackDetailsController {
   constructor(
     private readonly s3UploaderService: S3UploaderService,
     private readonly crackDetailsService: CrackDetailsService,
-  ) {}
+  ) { }
 
   @MessagePattern({ cmd: 'get-all-crack-details' })
   async getAllCrackReports() {
@@ -50,5 +50,20 @@ export class CrackDetailsController {
     }));
 
     return await this.s3UploaderService.uploadFiles(filesWithBuffer);
+  }
+
+  @MessagePattern({ cmd: 'upload-inspection-images' })
+  async uploadInspectionImages(@Payload() payload: { files: any[] }) {
+    if (!payload || !payload.files || payload.files.length === 0) {
+      throw new BadRequestException('No files received');
+    }
+
+    // Chuyển Base64 về Buffer
+    const filesWithBuffer = payload.files.map((file) => ({
+      ...file,
+      buffer: Buffer.from(file.buffer, 'base64'), // Convert Base64 to Buffer
+    }));
+
+    return await this.s3UploaderService.uploadFilesInspection(filesWithBuffer);
   }
 }

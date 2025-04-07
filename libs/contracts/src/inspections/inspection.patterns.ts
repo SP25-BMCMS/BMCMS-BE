@@ -8,6 +8,6 @@ export const INSPECTIONS_PATTERN = {
   CHANGE_STATUS: 'inspections.change.status',
   ADD_IMAGE: 'inspection.add.image',
   GET_DETAILS: 'inspection.get.details',
-  GET_BY_ID: 'inspection.get.by.id'
-
+  GET_BY_ID: 'inspection.get.by.id',
+  VERIFY_LEADER: 'inspection.verify.leader'
 };

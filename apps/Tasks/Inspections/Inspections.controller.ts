@@ -16,7 +16,7 @@ import { AddImageToInspectionDto } from '@app/contracts/inspections/add-image.dt
 @Controller('inspections')
 @ApiTags('inspections')
 export class InspectionsController {
-  constructor(private readonly inspectionService: InspectionsService) {}
+  constructor(private readonly inspectionService: InspectionsService) { }
 
   @MessagePattern(INSPECTIONS_PATTERN.GET_BY_ID_Task_Assignment)
   async GetInspectionByTaskAssignmentId(
@@ -61,10 +61,10 @@ export class InspectionsController {
     return this.inspectionService.createInspection(dto);
   }
 
-  @MessagePattern(INSPECTIONS_PATTERN.CHANGE_STATUS)
-  async changeStatus(@Payload() dto: ChangeInspectionStatusDto): Promise<ApiResponseDto<Inspection>> {
-    return this.inspectionService.changeStatus(dto);
-  }
+  // @MessagePattern(INSPECTIONS_PATTERN.CHANGE_STATUS)
+  // async changeStatus(@Payload() dto: ChangeInspectionStatusDto): Promise<ApiResponseDto<Inspection>> {
+  //   return this.inspectionService.changeStatus(dto);
+  // }
 
   @MessagePattern(INSPECTIONS_PATTERN.ADD_IMAGE)
   async addImage(@Payload() dto: AddImageToInspectionDto): Promise<ApiResponseDto<Inspection>> {
@@ -80,4 +80,14 @@ export class InspectionsController {
   async getInspectionById(@Payload() payload: { inspection_id: string }) {
     return this.inspectionService.getInspectionById(payload.inspection_id);
   }
+
+  @MessagePattern({ cmd: 'get-building-detail-id-from-task-assignment' })
+  async getBuildingDetailIdFromTaskAssignment(@Payload() payload: { task_assignment_id: string }) {
+    return this.inspectionService.getBuildingDetailIdFromTaskAssignment(payload.task_assignment_id);
+  }
+
+  // @MessagePattern(INSPECTIONS_PATTERN.VERIFY_LEADER)
+  // async verifyLeader(@Payload() { userId }: { userId: string }): Promise<ApiResponseDto<boolean>> {
+  //   return this.inspectionService.verifyStaffRole(userId);
+  // }
 }

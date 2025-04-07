@@ -38,7 +38,7 @@ export class LocationDetailService {
     try {
       const updatedLocationDetail = await this.prisma.locationDetail.update({
         where: { locationDetailId },
-        data: updateLocationDetailDto, 
+        data: updateLocationDetailDto,
       });
       return {
         statusCode: 200,
@@ -136,6 +136,26 @@ export class LocationDetailService {
         statusCode: 400,
         message: 'LocationDetail deletion failed',
       });
+    }
+  }
+
+  /**
+   * Find LocationDetail by inspection_id and roomNumber
+   * Used to prevent duplicate records
+   */
+  async findByInspectionIdAndRoomNumber(inspection_id: string, roomNumber: string): Promise<any> {
+    try {
+      const locationDetail = await this.prisma.locationDetail.findFirst({
+        where: {
+          inspection_id,
+          roomNumber
+        }
+      });
+
+      return locationDetail;
+    } catch (error) {
+      console.error('Error finding LocationDetail by inspection_id and roomNumber:', error);
+      return null;
     }
   }
 }

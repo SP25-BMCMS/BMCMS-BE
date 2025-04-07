@@ -76,6 +76,11 @@ export class CrackReportsController {
     return await this.crackReportsService.deleteCrackReport(crackId);
   }
 
+  @MessagePattern({ cmd: 'get-buildingDetail-by-task-id' })
+  async getBuildingDetailByTaskId(@Payload() payload: { taskId: string }) {
+    return await this.crackReportsService.getBuildingDetailByTaskId(payload.taskId);
+  }
+
   @MessagePattern({ cmd: 'update-crack-report-status' })
   async updateCrackReportStatus(
     @Payload() payload: { crackReportId: string; managerId: string; staffId: string },

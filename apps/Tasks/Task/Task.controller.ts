@@ -59,4 +59,9 @@ export class TasksController {
   async getTasksByStatus(@Payload() payload: { status: Status }) {
     return this.taskService.getTasksByStatus(payload.status);
   }
+
+  @MessagePattern({ cmd: 'get-crack-id-by-task' })
+  async getCrackIdByTask(@Payload() payload: { taskId: string }) {
+    return this.taskService.getCrackIdByTask(payload.taskId);
+  }
 }

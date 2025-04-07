@@ -2,16 +2,53 @@ import { Module } from '@nestjs/common';
 import { InspectionsService } from './Inspections.service';
 import { InspectionsController } from './Inspections.controller';
 import { PrismaModule } from '../prisma/prisma.module';
-import { ClientProxyFactory } from '@nestjs/microservices';
-import { ConfigModule } from '@nestjs/config';
+import { ClientProxyFactory, ClientsModule, Transport } from '@nestjs/microservices';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientConfigService } from 'apps/configs/client-config.service';
 import { ClientConfigModule } from 'apps/configs/client-config.module';
+import { join } from 'path';
+
+const USERS_CLIENT = 'USERS_CLIENT';
 
 @Module({
   imports: [
     PrismaModule,
     ConfigModule,
     ClientConfigModule,
+    ClientsModule.registerAsync([
+      {
+        name: USERS_CLIENT,
+        useFactory: (configService: ConfigService) => {
+          const isLocal = process.env.NODE_ENV !== 'production';
+          const usersHost = isLocal
+            ? configService.get('USERS_SERVICE_HOST', 'localhost')
+            : 'users_service';
+          const usersPort = configService.get('USERS_SERVICE_PORT', '3001');
+
+          return {
+            transport: Transport.GRPC,
+            options: {
+              url: `${usersHost}:${usersPort}`,
+              package: 'users',
+              protoPath: join(
+                process.cwd(),
+                'libs/contracts/src/users/users.proto',
+              ),
+              loader: {
+                keepCase: true,
+                longs: String,
+                enums: String,
+                defaults: true,
+                oneofs: true,
+              },
+              maxSendMessageLength: 10 * 1024 * 1024, // 10MB
+              maxReceiveMessageLength: 10 * 1024 * 1024, // 10MB
+            },
+          };
+        },
+        inject: [ConfigService],
+      },
+    ]),
   ],
   providers: [
     InspectionsService,
@@ -27,7 +64,7 @@ import { ClientConfigModule } from 'apps/configs/client-config.module';
   controllers: [InspectionsController],
   exports: [InspectionsService],
 })
-export class InspectionsModule {}
+export class InspectionsModule { }
 // import { Module } from '@nestjs/common';
 // import { InspectionsService } from './Inspections.service';
 // import { InspectionsController } from './Inspections.controller';
