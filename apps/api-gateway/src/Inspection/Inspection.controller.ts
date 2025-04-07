@@ -13,7 +13,10 @@ import {
   Put,
   Query,
   Req,
+  UploadedFiles,
   UseGuards,
+  UseInterceptors,
+  ValidationPipe,
 } from '@nestjs/common';
 import { InspectionService } from './Inspection.service';
 import { catchError, firstValueFrom, NotFoundError } from 'rxjs';
@@ -24,6 +27,8 @@ import {
   ApiResponse,
   ApiBody,
   ApiQuery,
+  ApiBearerAuth,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { ClientProxy } from '@nestjs/microservices';
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
@@ -34,11 +39,13 @@ import { ApiResponse as ApiResponseDto } from '@app/contracts/ApiReponse/api-res
 import { Inspection } from '@prisma/client-Task';
 import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-inspection-status.dto';
 import { AddImageToInspectionDto } from '@app/contracts/inspections/add-image.dto';
+import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard';
+import { FilesInterceptor } from '@nestjs/platform-express';
 
 @Controller('inspections')
 @ApiTags('inspections')
 export class InspectionController {
-  constructor(private readonly inspectionService: InspectionService) {}
+  constructor(private readonly inspectionService: InspectionService) { }
 
   @Get('inspection/task_assignment/:task_assignment_id')
   @ApiOperation({ summary: 'Get inspection by task assignment ID' })
@@ -83,12 +90,67 @@ export class InspectionController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Create a new inspection' })
-  @ApiBody({ type: CreateInspectionDto })
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'Create a new inspection',
+    description: 'Creates a new inspection. The inspected_by field is automatically set to the authenticated user\'s ID. Only users with Staff role can create inspections.'
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    type: CreateInspectionDto,
+    description: 'Create a new inspection with optional images upload and location details',
+    examples: {
+      full_example: {
+        summary: 'Complete example with location details',
+        value: {
+          task_assignment_id: '123e4567-e89b-12d3-a456-426614174000',
+          description: 'This is a detailed inspection of the building',
+          roomNumber: 'Room 101',
+          floorNumber: 1,
+          areaType: 'Floor',
+          additionalLocationDetails: [
+            {
+              roomNumber: 'Room 102',
+              floorNumber: 1,
+              areaType: 'Wall',
+              description: 'Kitchen wall with water damage'
+            },
+            {
+              roomNumber: 'Room 103',
+              floorNumber: 2,
+              areaType: 'Ceiling',
+              description: 'Ceiling with cracks'
+            }
+          ]
+        }
+      }
+    }
+  })
   @ApiResponse({ status: 201, description: 'Inspection created successfully', type: ApiResponseDto })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  async createInspection(@Body() dto: CreateInspectionDto): Promise<ApiResponseDto<Inspection>> {
-    return this.inspectionService.createInspection(dto);
+  @ApiResponse({ status: 403, description: 'Forbidden - Only Staff can create inspections' })
+  @UseInterceptors(FilesInterceptor('files', 10))
+  async createInspection(
+    @Body(new ValidationPipe({
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+      forbidNonWhitelisted: false
+    })) dto: CreateInspectionDto,
+    @Req() req: any,
+    @UploadedFiles() files: Express.Multer.File[]
+  ): Promise<ApiResponseDto<Inspection>> {
+    // Get staff ID from token
+    console.log('Request user object:', JSON.stringify(req.user, null, 2));
+    console.log('Request body:', JSON.stringify(dto, null, 2));
+
+    const userId = req.user?.userId;
+    if (!userId) {
+      return new ApiResponseDto(false, 'User not authenticated or invalid token', null);
+    }
+
+    // The userId from the token will be used as inspected_by
+    return this.inspectionService.createInspection(dto, userId, files);
   }
 
   @Patch('status')
@@ -110,7 +172,7 @@ export class InspectionController {
     return this.inspectionService.addImage(dto);
   }
 
-   @Get(':id/details')
+  @Get(':id/details')
   @ApiOperation({ summary: 'Get inspection details with crack information' })
   @ApiParam({ name: 'id', description: 'Inspection ID' })
   async getInspectionDetails(@Param('id') id: string): Promise<ApiResponseDto<Inspection>> {

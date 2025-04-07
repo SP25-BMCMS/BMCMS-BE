@@ -1,17 +1,20 @@
 // task.service.ts
 import { Injectable } from '@nestjs/common';
-import { PrismaClient, Status } from '@prisma/client-Task';
+import { Status } from '@prisma/client-Task';
 import { RpcException } from '@nestjs/microservices';
-import { CreateTaskDto } from 'libs/contracts/src/tasks/create-Task.dto';
-import { UpdateTaskDto } from 'libs/contracts/src/tasks/update.Task';
+import { CreateTaskDto } from '../../../libs/contracts/src/tasks/create-Task.dto';
+import { UpdateTaskDto } from '../../../libs/contracts/src/tasks/update.Task';
+import { ChangeTaskStatusDto } from '../../../libs/contracts/src/tasks/ChangeTaskStatus.Dto ';
 import {
   PaginationParams,
   PaginationResponseDto,
 } from 'libs/contracts/src/Pagination/pagination.dto';
+import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class TaskService {
-  private prisma = new PrismaClient();
+  constructor(private prisma: PrismaService) { }
 
   async createTask(createTaskDto: CreateTaskDto) {
     try {
@@ -231,6 +234,35 @@ export class TaskService {
         statusCode: 500,
         message: 'Error retrieving tasks by status',
       });
+    }
+  }
+
+  /**
+   * Get crack_id from task_id
+   * Used by other microservices to resolve relationships
+   */
+  async getCrackIdByTask(taskId: string): Promise<ApiResponse<any>> {
+    try {
+      console.log(`Looking for task with ID: ${taskId}`);
+
+      const task = await this.prisma.task.findUnique({
+        where: { task_id: taskId }
+      });
+
+      if (!task) {
+        console.log(`No task found with ID ${taskId}`);
+        return new ApiResponse(false, 'Task not found', null);
+      }
+
+      console.log('Found task:', JSON.stringify(task, null, 2));
+      console.log('Task crack_id:', task.crack_id);
+
+      return new ApiResponse(true, 'Crack ID retrieved successfully', {
+        crackReportId: task.crack_id
+      });
+    } catch (error) {
+      console.error(`Error retrieving crack ID for task ${taskId}:`, error);
+      return new ApiResponse(false, 'Error retrieving crack ID', null);
     }
   }
 }

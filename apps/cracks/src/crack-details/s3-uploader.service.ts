@@ -12,6 +12,9 @@ export interface UploadResult {
   annotatedImage: string[];
 }
 
+export interface UploadResultInspection {
+  InspectionImage: string[];
+}
 @Injectable()
 export class S3UploaderService {
   private s3: S3Client;
@@ -74,6 +77,52 @@ export class S3UploaderService {
         uploadImage,
         annotatedImage,
       });
+    } catch (error) {
+      console.error('Error uploading files to S3:', error);
+      throw new RpcException(new ApiResponse(false, 'Failed to upload files: ' + error.message));
+    }
+  }
+
+  async uploadFilesInspection(files: ProcessedFile[]): Promise<ApiResponse<UploadResultInspection>> {
+    if (files.length === 0) {
+      throw new RpcException(new ApiResponse(false, 'Files not found!'));
+    }
+
+    try {
+      // Upload ảnh gốc lên S3
+      const uploadPromises = files.map(async (file) => {
+        const fileName = `${uuidv4()}${path.extname(file.originalname)}`;
+
+        // Convert base64 string back to buffer if necessary
+        const fileBuffer = typeof file.buffer === 'string'
+          ? Buffer.from(file.buffer, 'base64')
+          : file.buffer;
+
+        const uploadParams = {
+          Bucket: this.bucketName,
+          Key: `inspection/${fileName}`,
+          Body: fileBuffer,
+          ContentType: file.mimetype,
+        };
+
+        await this.s3.send(new PutObjectCommand(uploadParams));
+
+        return fileName; // Chỉ lưu tên file
+      });
+
+      // Chờ tất cả ảnh upload xong
+      const fileNames = await Promise.all(uploadPromises);
+
+      // Tạo URL cho ảnh gốc và ảnh đã annotate
+      const InspectionImage = fileNames.map(
+        (fileName) =>
+          `https://${this.bucketName}.s3.amazonaws.com/inspection/${fileName}`,
+      );
+
+
+      return new ApiResponse(true, 'Upload Image success!',
+        { InspectionImage }
+      );
     } catch (error) {
       console.error('Error uploading files to S3:', error);
       throw new RpcException(new ApiResponse(false, 'Failed to upload files: ' + error.message));

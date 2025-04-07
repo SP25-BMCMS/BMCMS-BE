@@ -512,4 +512,54 @@ export class CracksController {
         ),
     );
   }
+
+  @Post('crack-details/upload-images')
+  @ApiOperation({ summary: 'Upload crack images' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Upload up to 10 images',
+    type: 'multipart/form-data',
+    required: true,
+    schema: {
+      type: 'object',
+      properties: {
+        image: {
+          type: 'array',
+          items: {
+            type: 'string',
+            format: 'binary', // Hiển thị chọn file trong Swagger
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Images uploaded successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request - No files uploaded' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  @UseInterceptors(FilesInterceptor('image', 10))
+  async uploadInspectionImage(@UploadedFiles() files: Express.Multer.File[]) {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No files uploaded');
+    }
+
+    // Chuyển Buffer thành Base64
+    const filesWithBase64 = files.map((file) => ({
+      fieldname: file.fieldname,
+      originalname: file.originalname,
+      encoding: file.encoding,
+      mimetype: file.mimetype,
+      size: file.size,
+      buffer: file.buffer.toString('base64'), // Convert buffer to Base64
+    }));
+
+    return firstValueFrom(
+      this.crackService
+        .send({ cmd: 'upload-inspection-images' }, { files: filesWithBase64 })
+        .pipe(
+          catchError((err) => {
+            throw new InternalServerErrorException(err.message);
+          }),
+        ),
+    );
+  }
 }
