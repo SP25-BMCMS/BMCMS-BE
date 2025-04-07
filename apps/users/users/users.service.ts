@@ -354,26 +354,41 @@ export class UsersService {
     try {
       console.log('Received data:', data) // Debug dữ liệu nhận từ gRPC
 
-      // Kiểm tra xem giá trị có hợp lệ hay không
-      if (
-        !Object.values(PositionName).includes(data.positionName as PositionName)
-      ) {
-        throw new Error(`Invalid positionName: ${data.positionName}`)
+      // Map string position names to enum values
+      let positionNameEnum: PositionName;
+
+      // Convert string to enum based on Prisma schema
+      switch (data.positionName) {
+        case 'Leader':
+          positionNameEnum = PositionName.Leader;
+          break;
+        case 'Technician':
+          positionNameEnum = PositionName.Technician;
+          break;
+        case 'Janitor':
+          positionNameEnum = PositionName.Janitor;
+          break;
+        default:
+          // For unsupported position names, use Leader as default
+          positionNameEnum = PositionName.Leader;
+          break;
       }
 
+      // Create the position
       const newPosition = await this.prisma.workingPosition.create({
         data: {
-          positionName: data.positionName as PositionName, // ✅ Chuyển string thành enum
+          positionName: positionNameEnum,
           description: data.description,
         },
-      })
+      });
 
       return {
         isSuccess: true,
         message: 'Working Position created successfully',
         data: {
           positionId: newPosition.positionId,
-          positionName: newPosition.positionName.toString(), // ✅ Chuyển Enum thành chuỗi
+          // Return the string representation of the position name
+          positionName: data.positionName,
           description: newPosition.description,
         },
       }
@@ -389,7 +404,7 @@ export class UsersService {
   async getAllWorkingPositions(): Promise<{
     workingPositions: {
       positionId: string
-      positionName: PositionName
+      positionName: string
       description?: string
     }[]
   }> {
@@ -398,7 +413,7 @@ export class UsersService {
       return {
         workingPositions: positions.map((position) => ({
           positionId: position.positionId,
-          positionName: position.positionName,
+          positionName: position.positionName.toString(),
           description: position.description,
         })),
       }
@@ -416,7 +431,7 @@ export class UsersService {
     message: string
     data: {
       positionId: string
-      positionName: PositionName
+      positionName: string
       description?: string
     } | null
   }> {
@@ -437,7 +452,7 @@ export class UsersService {
         message: 'Working Position retrieved successfully',
         data: {
           positionId: position.positionId,
-          positionName: position.positionName,
+          positionName: position.positionName.toString(),
           description: position.description,
         },
       }
@@ -455,7 +470,7 @@ export class UsersService {
     message: string
     data: {
       positionId: string
-      positionName: PositionName
+      positionName: string
       description?: string
     } | null
   }> {
@@ -469,7 +484,7 @@ export class UsersService {
         message: 'Working Position deleted successfully',
         data: {
           positionId: deletedPosition.positionId,
-          positionName: deletedPosition.positionName,
+          positionName: deletedPosition.positionName.toString(),
           description: deletedPosition.description,
         },
       }

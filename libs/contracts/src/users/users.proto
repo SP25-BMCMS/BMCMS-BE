@@ -261,7 +261,7 @@ message WorkingPositionApiResponse {
 
 message WorkingPositionResponse {
   string positionId = 1;
-  PositionName positionName = 2;
+  string positionName = 2;
   string description = 3;
   PositionStatus status = 4;
 }
