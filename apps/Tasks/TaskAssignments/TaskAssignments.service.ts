@@ -78,7 +78,7 @@ export class TaskAssignmentsService {
     try {
       const updatedAssignment = await this.prisma.taskAssignment.update({
         where: { assignment_id: taskAssignmentId },
-        data: { status: AssignmentStatus.notcompleted }, // Change status to 'notcompleted'
+        data: { status: AssignmentStatus.Notcompleted }, // Change status to 'notcompleted'
       });
       return {
         statusCode: 200,
@@ -91,6 +91,7 @@ export class TaskAssignmentsService {
         message: 'Task assignment update failed',
       });
     }
+  }
   async getTaskAssignmentByUserId(userId: string) {
     try {
       const assignments = await this.prisma.taskAssignment.findMany({
