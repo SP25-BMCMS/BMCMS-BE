@@ -99,15 +99,13 @@ model Inspection {
 // }
 
 model RepairMaterial {
-  repair_material_id String       @id @default(uuid())
+  repair_material_id String   @id @default(uuid())
   material_id        String
   quantity           Int
-  unit_cost          Decimal      @db.Decimal(10, 2)
-  total_cost         Decimal      @db.Decimal(10, 2)
-  created_at         DateTime     @default(now())
-  updated_at         DateTime     @updatedAt
-  status             RepairStatus @default(Pending)
-  remaining_quantity Int? // Chỉ có nếu Completed
+  unit_cost          Decimal  @db.Decimal(10, 2)
+  total_cost         Decimal  @db.Decimal(10, 2)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
 
   // Mối quan hệ N:1 với Inspection
   inspection_id String
@@ -115,11 +113,6 @@ model RepairMaterial {
 
   // Mối quan hệ N:1 với Material
   material Material @relation(fields: [material_id], references: [material_id])
-}
-
-enum RepairStatus {
-  Pending
-  Completed
 }
 
 model Material {

@@ -56,6 +56,28 @@ export class LocationDetailDto {
   description?: string;
 }
 
+export class RepairMaterialDto {
+  @ApiProperty({
+    description: 'ID of the material',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    required: true,
+    type: String
+  })
+  @IsUUID()
+  @IsNotEmpty()
+  materialId: string;
+
+  @ApiProperty({
+    description: 'Quantity of the material',
+    example: 5,
+    required: true,
+    type: Number
+  })
+  @IsInt()
+  @IsNotEmpty()
+  quantity: number;
+}
+
 export class CreateInspectionDto {
   @ApiProperty({
     description: 'ID of the task assignment',
@@ -127,4 +149,23 @@ export class CreateInspectionDto {
   @IsOptional()
   @Type(() => LocationDetailDto)
   additionalLocationDetails?: LocationDetailDto[];
+
+  @ApiProperty({
+    description: 'List of repair materials',
+    example: [
+      {
+        materialId: '123e4567-e89b-12d3-a456-426614174000',
+        quantity: 5
+      },
+      {
+        materialId: '123e4567-e89b-12d3-a456-426614174001',
+        quantity: 3
+      }
+    ],
+    required: true,
+    type: [RepairMaterialDto]
+  })
+  @IsNotEmpty()
+  @Type(() => RepairMaterialDto)
+  repairMaterials: RepairMaterialDto[];
 } 
