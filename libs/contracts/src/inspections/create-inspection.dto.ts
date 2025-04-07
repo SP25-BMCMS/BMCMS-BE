@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsDecimal } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEnum, IsDecimal, IsArray } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { InspectionStatus } from '@prisma/client-Task';
 
@@ -22,21 +22,21 @@ export class CreateInspectionDto {
   inspected_by: string;
 
   
-  @IsString()
+  @IsArray()
   @IsOptional()
-  image_url?: string;
+  image_urls?: string[];
 
  
   @IsString()
   @IsOptional()
   description?: string;
 
-  @ApiProperty({
-    description: 'Status of the inspection',
-    enum: InspectionStatus,
-    example: InspectionStatus.Notyetverify,
-    required: false
-  })
+  // @ApiProperty({
+  //   description: 'Status of the inspection',
+  //   enum: InspectionStatus,
+  //   example: InspectionStatus.Notyetverify,
+  //   required: false
+  // })
   @IsEnum(InspectionStatus)
   @IsOptional()
   status?: InspectionStatus;

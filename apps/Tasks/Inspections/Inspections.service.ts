@@ -9,6 +9,7 @@ import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-ins
 import { AddImageToInspectionDto } from '@app/contracts/inspections/add-image.dto';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
+import { IsUUID } from 'class-validator';
 
 // Định nghĩa CRACK_PATTERNS cho pattern get-crack-detail-by-id
 const CRACK_PATTERNS = {
@@ -148,11 +149,11 @@ export class InspectionsService {
       const inspectionData = {
         task_assignment_id: dto.task_assignment_id,
         inspected_by: dto.inspected_by,
-        image_url: dto.image_url || null,
-        description: dto.description || '',
+        image_urls: dto.image_urls || [],
+        description: dto.description || "",
         status: dto.status || 'Notyetverify',
         total_cost: dto.total_cost || 0,
-        locationDetailId: dto.locationDetailId || "null",
+
       };
 
       const inspection = await this.prisma.inspection.create({
