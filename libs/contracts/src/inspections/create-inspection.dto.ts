@@ -162,10 +162,10 @@ export class CreateInspectionDto {
         quantity: 3
       }
     ],
-    required: true,
+    required: false,
     type: [RepairMaterialDto]
   })
-  @IsNotEmpty()
   @Type(() => RepairMaterialDto)
-  repairMaterials: RepairMaterialDto[];
+  @IsOptional()
+  repairMaterials?: RepairMaterialDto[];
 } 
