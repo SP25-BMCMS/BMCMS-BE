@@ -165,7 +165,7 @@ export class CreateInspectionDto {
     required: true,
     type: [RepairMaterialDto]
   })
-  @IsNotEmpty()
   @Type(() => RepairMaterialDto)
-  repairMaterials: RepairMaterialDto[];
+  @IsOptional()
+  repairMaterials?: RepairMaterialDto[];
 } 
