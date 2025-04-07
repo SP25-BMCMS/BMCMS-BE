@@ -8,7 +8,7 @@ import { AssignmentStatus } from '@prisma/client-Task';
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 @Controller('task-assignments')
 export class TaskAssignmentsController {
-  constructor(private readonly taskAssignmentService: TaskAssignmentsService) {}
+  constructor(private readonly taskAssignmentService: TaskAssignmentsService) { }
 
   @MessagePattern(TASKASSIGNMENT_PATTERN.CREATE)
   async createTaskAssignment(
@@ -106,9 +106,19 @@ export class TaskAssignmentsController {
     );
   }
 
-  
+
   @MessagePattern(TASKASSIGNMENT_PATTERN.GET_DETAILS)
-  async getCrackDetailsbyTaskAssignmentId (@Payload() taskAssignment_id: string) {
+  async getCrackDetailsbyTaskAssignmentId(@Payload() taskAssignment_id: string) {
     return this.taskAssignmentService.getDetails(taskAssignment_id);
+  }
+
+  @MessagePattern(TASKASSIGNMENT_PATTERN.UPDATE_STATUS_TO_REASSIGNED)
+  async updateStatusTaskAssignmentToReassigned(
+    @Payload() payload: { assignment_id: string; description: string },
+  ) {
+    return this.taskAssignmentService.updateStatusTaskAssignmentToReassigned(
+      payload.assignment_id,
+      payload.description
+    );
   }
 }

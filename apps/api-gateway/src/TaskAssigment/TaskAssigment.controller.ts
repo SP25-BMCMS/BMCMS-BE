@@ -12,6 +12,7 @@ import {
   Req,
   UseGuards,
   Query,
+  Patch,
 } from '@nestjs/common';
 import { TaskAssignmentService } from './TaskAssigment.service';
 import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create-taskAssigment.dto';
@@ -31,7 +32,7 @@ import { TaskAssignmentsController } from 'apps/Tasks/TaskAssignments/TaskAssign
 @Controller('task-assignments')
 @ApiTags('task-assignments')
 export class TaskAssignmentController {
-  constructor(private readonly taskAssignmentService: TaskAssignmentService) {}
+  constructor(private readonly taskAssignmentService: TaskAssignmentService) { }
 
   @Post()
   @ApiOperation({ summary: 'Create a new task assignment' })
@@ -218,13 +219,13 @@ export class TaskAssignmentController {
     status: 201,
     description: 'Task assigned to employee successfully',
   })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'Employee has unconfirmed tasks or unable to assign task' 
+  @ApiResponse({
+    status: 400,
+    description: 'Employee has unconfirmed tasks or unable to assign task'
   })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Task or employee not found' 
+  @ApiResponse({
+    status: 404,
+    description: 'Task or employee not found'
   })
   async assignTaskToEmployee(
     @Body() payload: { taskId: string; employeeId: string; description: string },
@@ -260,13 +261,13 @@ export class TaskAssignmentController {
     status: 200,
     description: 'Task assignment status changed successfully',
   })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Task assignment not found' 
+  @ApiResponse({
+    status: 404,
+    description: 'Task assignment not found'
   })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'Invalid status value' 
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid status value'
   })
   async changeTaskAssignmentStatus(
     @Param('assignment_id') assignment_id: string,
@@ -277,10 +278,48 @@ export class TaskAssignmentController {
       status: payload.status
     });
   }
+
   @Get(':id/details')
   @ApiOperation({ summary: 'Get inspection details with crack information' })
   @ApiParam({ name: 'id', description: 'Task Assignment ID' })
   async getCrackDetailsbyTaskAssignmentId(@Param('id') id: string): Promise<any> {
     return this.taskAssignmentService.getTaskAssignmentDetails(id);
+  }
+
+  @Patch(':assignment_id/reassign')
+  @ApiOperation({ summary: 'Update task assignment status to Reassigned' })
+  @ApiParam({ name: 'assignment_id', description: 'Task assignment ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        description: {
+          type: 'string',
+          example: 'The staff is unable to complete the task due to insufficient resources'
+        }
+      },
+      required: ['description'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Task assignment status updated to Reassigned successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Current status is not InFixing or Fixed'
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Task assignment not found'
+  })
+  async updateStatusTaskAssignmentToReassigned(
+    @Param('assignment_id') assignment_id: string,
+    @Body() payload: { description: string },
+  ) {
+    return this.taskAssignmentService.updateStatusTaskAssignmentToReassigned(
+      assignment_id,
+      payload.description
+    );
   }
 }
