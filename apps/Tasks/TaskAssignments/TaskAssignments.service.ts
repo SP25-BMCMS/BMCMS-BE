@@ -74,23 +74,23 @@ export class TaskAssignmentsService {
     }
   }
 
-  // async deleteTaskAssignment(taskAssignmentId: string) {
-  //   try {
-  //     const updatedAssignment = await this.prisma.taskAssignment.update({
-  //       where: { assignment_id: taskAssignmentId },
-  //       data: { status: AssignmentStatus.notcompleted }, // Change status to 'notcompleted'
-  //     });
-  //     return {
-  //       statusCode: 200,
-  //       message: 'Task assignment marked as not completed',
-  //       data: updatedAssignment,
-  //     };
-  //   } catch (error) {
-  //     throw new RpcException({
-  //       statusCode: 400,
-  //       message: 'Task assignment update failed',
-  //     });
-  //   }
+  async deleteTaskAssignment(taskAssignmentId: string) {
+    try {
+      const updatedAssignment = await this.prisma.taskAssignment.update({
+        where: { assignment_id: taskAssignmentId },
+        data: { status: AssignmentStatus.notcompleted }, // Change status to 'notcompleted'
+      });
+      return {
+        statusCode: 200,
+        message: 'Task assignment marked as not completed',
+        data: updatedAssignment,
+      };
+    } catch (error) {
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Task assignment update failed',
+      });
+    }
   async getTaskAssignmentByUserId(userId: string) {
     try {
       const assignments = await this.prisma.taskAssignment.findMany({

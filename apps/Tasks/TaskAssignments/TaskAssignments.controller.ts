@@ -33,10 +33,10 @@ export class TaskAssignmentsController {
     );
   }
 
-  // @MessagePattern(TASKASSIGNMENT_PATTERN.DELELTE)
-  // async deleteTaskAssignment(@Payload() payload: { taskAssignmentId: string }) {
-  //   return this.taskAssignmentService.deleteTaskAssignment(payload.taskAssignmentId);
-  // }
+  @MessagePattern(TASKASSIGNMENT_PATTERN.DELELTE)
+  async deleteTaskAssignment(@Payload() payload: { taskAssignmentId: string }) {
+    return this.taskAssignmentService.deleteTaskAssignment(payload.taskAssignmentId);
+  }
 
   @MessagePattern(TASKASSIGNMENT_PATTERN.GET_BY_USERID)
   async getTaskAssignmentByUserId(@Payload() payload: { userId: string }) {
