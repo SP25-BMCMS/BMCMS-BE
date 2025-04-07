@@ -116,4 +116,9 @@ export class InspectionController {
   async getInspectionDetails(@Param('id') id: string): Promise<ApiResponseDto<Inspection>> {
     return this.inspectionService.getInspectionDetails(id);
   }
+
+  @Get(':id')
+  async getInspectionById(@Param('id') id: string) {
+    return this.inspectionService.getInspectionById(id);
+  }
 }

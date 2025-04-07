@@ -257,4 +257,29 @@ export class InspectionsService {
       return new ApiResponse(false, 'Error retrieving inspection details', error.message);
     }
   }
+
+  async getInspectionById(inspection_id: string): Promise<ApiResponse<any>> {
+    try {
+      const inspection = await this.prisma.inspection.findUnique({
+        where: { inspection_id },
+        include: {
+          taskAssignment: {
+            include: {
+              task: true
+            }
+          },
+          repairMaterials: true
+        }
+      });
+
+      if (!inspection) {
+        return new ApiResponse(false, 'Inspection not found', null);
+      }
+
+      return new ApiResponse(true, 'Inspection retrieved successfully', inspection);
+    } catch (error) {
+      console.error('Error retrieving inspection:', error);
+      return new ApiResponse(false, 'Error retrieving inspection', error.message);
+    }
+  }
 }

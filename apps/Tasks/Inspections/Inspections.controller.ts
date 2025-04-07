@@ -75,4 +75,9 @@ export class InspectionsController {
   async getInspectionDetails(@Payload() inspection_id: string): Promise<ApiResponseDto<any>> {
     return this.inspectionService.getInspectionDetails(inspection_id);
   }
+
+  @MessagePattern(INSPECTIONS_PATTERN.GET_BY_ID)
+  async getInspectionById(@Payload() payload: { inspection_id: string }) {
+    return this.inspectionService.getInspectionById(payload.inspection_id);
+  }
 }

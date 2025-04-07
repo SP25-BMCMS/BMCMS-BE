@@ -10,7 +10,7 @@ import {
 import { ClientProxy } from '@nestjs/microservices';
 import { TASK_CLIENT } from '../constraints';
 import { catchError, firstValueFrom } from 'rxjs';
-import { INSPECTIONS_PATTERN } from 'libs/contracts/src/inspections/inspection.patterns';
+import { INSPECTIONS_PATTERN } from '@app/contracts/inspections/inspection.patterns';
 import { UpdateInspectionDto } from 'libs/contracts/src/inspections/update-inspection.dto';
 import { CreateInspectionDto } from '@app/contracts/inspections/create-inspection.dto';
 import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
@@ -117,6 +117,20 @@ export class InspectionService {
       );
     } catch (error) {
       return new ApiResponse(false, 'Error getting inspection details', error.message);
+    }
+  }
+
+  async getInspectionById(inspection_id: string): Promise<any> {
+    try {
+      return await firstValueFrom(
+        this.inspectionClient.send(INSPECTIONS_PATTERN.GET_BY_ID, { inspection_id })
+      );
+    } catch (error) {
+      return {
+        isSuccess: false,
+        message: 'Error getting inspection',
+        data: error.message
+      };
     }
   }
 }
