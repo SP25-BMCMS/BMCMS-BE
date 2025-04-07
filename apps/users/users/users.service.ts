@@ -70,20 +70,66 @@ export class UsersService {
     return user
   }
 
-  async getUserById(userId: string): Promise<UserDto | null> {
-    const user = await this.prisma.user.findUnique({
+  async getUserById(userId: string): Promise<any> {
+    const userRaw = await this.prisma.user.findUnique({
       where: { userId },
       include: {
-        userDetails: true,
+        userDetails: {
+          include: {
+            position: true,
+            department: true,
+          }
+        },
         apartments: true,
       },
     })
-    if (!user)
+
+    if (!userRaw)
       throw new RpcException({
         statusCode: 401,
         message: 'StaffId not found',
       })
-    return user
+
+    // Create a formatted response to avoid duplicate fields
+    const { password, ...userWithoutPassword } = userRaw;
+
+    // Base user response
+    const response = {
+      ...userWithoutPassword,
+      dateOfBirth: userWithoutPassword.dateOfBirth ? userWithoutPassword.dateOfBirth.toISOString() : null,
+    };
+
+    // Format userDetails to avoid duplicates
+    if (response.userDetails) {
+      const userDetails = response.userDetails;
+      let formattedUserDetails: any = {
+        staffStatus: userDetails.staffStatus,
+      };
+
+      // Add position if it exists
+      if (userDetails.position) {
+        formattedUserDetails.position = {
+          positionId: userDetails.position.positionId,
+          positionName: userDetails.position.positionName.toString(),
+          description: userDetails.position.description,
+        };
+      }
+
+      // Add department if it exists
+      if (userDetails.department) {
+        formattedUserDetails.department = {
+          departmentId: userDetails.department.departmentId,
+          departmentName: userDetails.department.departmentName,
+          description: userDetails.department.description || '',
+          area: userDetails.department.area || '',
+        };
+      }
+
+      // Replace userDetails with formatted version
+      response.userDetails = formattedUserDetails;
+    }
+
+    return response;
   }
 
   async signup(userData: createUserDto): Promise<ApiResponse<any>> {
