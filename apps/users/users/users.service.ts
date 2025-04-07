@@ -6,7 +6,7 @@ import {
   Injectable
 } from '@nestjs/common'
 import { ClientProxy, RpcException } from '@nestjs/microservices'
-import { AccountStatus, PositionName, Role } from '@prisma/client-users'
+import { AccountStatus, PositionName, Role, StaffStatus } from '@prisma/client-users'
 import * as bcrypt from 'bcrypt'
 import {
   catchError,
@@ -195,7 +195,7 @@ export class UsersService {
                   create: {
                     positionId: userData.positionId ?? null,
                     departmentId: userData.departmentId ?? null,
-                    staffStatus: userData.staffStatus ?? null,
+                    staffStatus: userData.staffStatus ?? StaffStatus.Active,
                     image: userData.image ?? null,
                   },
                 }

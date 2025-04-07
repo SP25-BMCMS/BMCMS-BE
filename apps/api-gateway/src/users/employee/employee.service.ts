@@ -241,6 +241,46 @@ export class EmployeeService implements OnModuleInit {
     return positionMap[positionNumber] || `Unknown Position (${positionNumber})`;
   }
 
+  async getAllStaffByStaffLeader(staffId: string) {
+    try {
+      console.log('Calling gRPC method GetAllStaffByStaffLeader with staffId:', staffId);
+      const response = await lastValueFrom(
+        this.userService.getAllStaffByStaffLeader({ staffId })
+      );
+
+      if (!response || !response.isSuccess) {
+        console.log('Received error response from gRPC:', response);
+        return {
+          isSuccess: false,
+          message: response?.message || 'Failed to retrieve staff members',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
+      console.log('Received successful response from gRPC:', response);
+      return response;
+    } catch (error) {
+      console.error('Error in getAllStaffByStaffLeader:', error);
+      return {
+        isSuccess: false,
+        message: 'Service unavailable',
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
+      };
+    }
+  }
+
   // Public method to test getDepartment directly
 
 }

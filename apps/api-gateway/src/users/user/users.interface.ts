@@ -4,7 +4,7 @@ import { ApiResponse } from '../../../../../libs/contracts/src/ApiReponse/api-re
 import { CreateWorkingPositionDto } from '../../../../../libs/contracts/src/users/create-working-position.dto';
 import { CreateDepartmentDto } from '@app/contracts/users/create-department.dto';
 import { UpdateAccountStatusDto } from '../../../../../libs/contracts/src/users/update-account-status.dto';
-import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
+import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 
 export interface UserInterface {
   login(data: { username: string; password: string }): Observable<any>;
@@ -80,4 +80,16 @@ export interface UserInterface {
   getApartmentById(data: { apartmentId: string }): Observable<any>;
 
   checkStaffAreaMatch(data: { staffId: string; crackReportId: string }): Observable<any>;
+
+  getAllStaffByStaffLeader(request: { staffId: string }): Observable<{
+    isSuccess: boolean;
+    message: string;
+    data: any[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }>;
 }

@@ -15,6 +15,29 @@ import { PaginationParams } from '../../../libs/contracts/src/Pagination/paginat
 export class EmployeesController {
   constructor(private readonly employeesService: EmployeesService) { }
 
+  @GrpcMethod('UserService', 'GetAllStaffByStaffLeader')
+  async getAllStaffByStaffLeader(@Payload() request: { staffId: string }) {
+    try {
+      console.log('Received gRPC request for GetAllStaffByStaffLeader:', request);
+      const result = await this.employeesService.getAllStaffByStaffLeader(request.staffId);
+      console.log('Sending gRPC response:', result);
+      return result;
+    } catch (error) {
+      console.error('Error in gRPC GetAllStaffByStaffLeader:', error);
+      return {
+        isSuccess: false,
+        message: error.message || 'Service unavailable',
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
+      };
+    }
+  }
+
   @GrpcMethod('UserService', 'GetAllStaff')
   async getAllStaff(@Payload() paginationParams: {
     page?: number;
