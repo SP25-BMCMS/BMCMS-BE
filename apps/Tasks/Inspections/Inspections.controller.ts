@@ -85,9 +85,4 @@ export class InspectionsController {
   async getBuildingDetailIdFromTaskAssignment(@Payload() payload: { task_assignment_id: string }) {
     return this.inspectionService.getBuildingDetailIdFromTaskAssignment(payload.task_assignment_id);
   }
-
-  // @MessagePattern(INSPECTIONS_PATTERN.VERIFY_LEADER)
-  // async verifyLeader(@Payload() { userId }: { userId: string }): Promise<ApiResponseDto<boolean>> {
-  //   return this.inspectionService.verifyStaffRole(userId);
-  // }
 }

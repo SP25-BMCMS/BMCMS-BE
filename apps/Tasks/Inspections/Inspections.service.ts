@@ -3,13 +3,15 @@ import { RpcException } from '@nestjs/microservices';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApiResponse } from '../../../libs/contracts/src/ApiReponse/api-response';
 import { UpdateInspectionDto } from '../../../libs/contracts/src/inspections/update-inspection.dto';
-import { CreateInspectionDto } from '@app/contracts/inspections/create-inspection.dto';
+import { CreateInspectionDto, RepairMaterialDto } from '@app/contracts/inspections/create-inspection.dto';
 import { Inspection } from '@prisma/client-Task';
 import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-inspection-status.dto';
 import { AddImageToInspectionDto } from '@app/contracts/inspections/add-image.dto';
 import { ClientGrpc, ClientProxy } from '@nestjs/microservices';
 import { catchError, firstValueFrom, Observable, of, timeout } from 'rxjs';
 import { IsUUID } from 'class-validator';
+import { MATERIAL_PATTERN } from '@app/contracts/materials/material.patterns';
+import { TASK_CLIENT } from 'apps/api-gateway/src/constraints';
 
 const USERS_CLIENT = 'USERS_CLIENT'
 // Define interface for the User service
@@ -40,7 +42,8 @@ export class InspectionsService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     @Inject('CRACK_CLIENT') private readonly crackClient: ClientProxy,
-    @Inject(USERS_CLIENT) private readonly userClient: ClientGrpc
+    @Inject(USERS_CLIENT) private readonly userClient: ClientGrpc,
+    @Inject(TASK_CLIENT) private readonly taskClient: ClientProxy
   ) {
 
   }
@@ -200,25 +203,126 @@ export class InspectionsService implements OnModuleInit {
         );
       }
 
-      // Create the inspection with the Staff's ID and uploaded image URLs
-      const inspectionData = {
-        task_assignment_id: dto.task_assignment_id,
-        inspected_by: dto.inspected_by, // This is the authenticated Staff's ID from the token
-        image_urls: dto.image_urls || [],
-        description: dto.description || "",
-        total_cost: dto.total_cost || 0,
-      };
+      // Parse repairMaterials if it's a string
+      let repairMaterialsArray: RepairMaterialDto[];
+      try {
+        const repairMaterials = dto.repairMaterials as string | RepairMaterialDto[];
+        if (typeof repairMaterials === 'string') {
+          // Handle case where multiple objects are sent as separate strings
+          const repairMaterialsStr = repairMaterials.trim();
+          if (repairMaterialsStr.startsWith('{') && repairMaterialsStr.includes('},{')) {
+            // Format: {obj1},{obj2}
+            repairMaterialsArray = JSON.parse('[' + repairMaterialsStr + ']');
+          } else {
+            // Single object or array
+            repairMaterialsArray = JSON.parse(repairMaterialsStr);
+          }
+        } else if (Array.isArray(repairMaterials)) {
+          repairMaterialsArray = repairMaterials;
+        } else {
+          throw new Error('Invalid repairMaterials format');
+        }
+      } catch (error) {
+        console.error('Error parsing repairMaterials:', error);
+        return new ApiResponse(false, 'Invalid repairMaterials format', null);
+      }
 
-      // Log image URLs for debugging
-      console.log('Creating inspection with image URLs:', dto.image_urls);
+      // Validate all materials and calculate total cost
+      let totalCost = 0;
+      const materialValidations = await Promise.all(
+        repairMaterialsArray.map(async (repairMaterial) => {
+          const materialResponse = await firstValueFrom(
+            this.taskClient.send(
+              MATERIAL_PATTERN.GET_MATERIAL_BY_ID,
+              repairMaterial.materialId
+            ).pipe(
+              timeout(10000),
+              catchError(err => {
+                console.error('Error getting material info:', err);
+                return of(new ApiResponse(false, 'Error getting material info', null));
+              })
+            )
+          );
 
-      const inspection = await this.prisma.inspection.create({
-        data: inspectionData,
+          if (!materialResponse || !materialResponse.isSuccess || !materialResponse.data) {
+            throw new Error(`Material not found or error retrieving material information for ID: ${repairMaterial.materialId}`);
+          }
+
+          const material = materialResponse.data;
+
+          // Check if there's enough stock
+          if (material.stock_quantity < repairMaterial.quantity) {
+            throw new Error(`Not enough stock for material ${material.name}. Current stock: ${material.stock_quantity}, Required: ${repairMaterial.quantity}`);
+          }
+
+          // Calculate cost for this material
+          const unitCost = Number(material.unit_price);
+          const materialTotalCost = unitCost * repairMaterial.quantity;
+          totalCost += materialTotalCost;
+
+          return {
+            material,
+            repairMaterial,
+            unitCost,
+            materialTotalCost
+          };
+        })
+      );
+
+      // Create inspection and repair materials in a transaction
+      const result = await this.prisma.$transaction(async (prisma) => {
+        // Create the inspection
+        const inspection = await prisma.inspection.create({
+          data: {
+            task_assignment_id: dto.task_assignment_id,
+            inspected_by: dto.inspected_by,
+            image_urls: dto.image_urls || [],
+            description: dto.description || "",
+            total_cost: totalCost,
+          },
+        });
+
+        // Create all repair materials
+        const repairMaterials = await Promise.all(
+          materialValidations.map(async (validation) => {
+            const repairMaterial = await prisma.repairMaterial.create({
+              data: {
+                inspection_id: inspection.inspection_id,
+                material_id: validation.repairMaterial.materialId,
+                quantity: validation.repairMaterial.quantity,
+                unit_cost: validation.unitCost,
+                total_cost: validation.materialTotalCost,
+              },
+            });
+
+            // Update material stock
+            await prisma.material.update({
+              where: { material_id: validation.repairMaterial.materialId },
+              data: {
+                stock_quantity: {
+                  decrement: validation.repairMaterial.quantity,
+                },
+              },
+            });
+
+            return repairMaterial;
+          })
+        );
+
+        return {
+          ...inspection,
+          repairMaterials,
+        };
       });
 
-      return new ApiResponse(true, 'Inspection created successfully', inspection);
+      return new ApiResponse(
+        true,
+        'Inspection and repair materials created successfully',
+        result
+      );
     } catch (error) {
-      return new ApiResponse(false, 'Error creating inspection', error.message);
+      console.error('Error in createInspection:', error);
+      return new ApiResponse(false, error.message || 'Error creating inspection and repair materials', null);
     }
   }
 
@@ -339,10 +443,6 @@ export class InspectionsService implements OnModuleInit {
     }
   }
 
-  /**
-   * Get buildingDetailId from task_assignment_id by traversing the relations:
-   * TaskAssignment -> Task -> call CrackService to get BuildingDetail
-   */
   async getBuildingDetailIdFromTaskAssignment(task_assignment_id: string): Promise<ApiResponse<any>> {
     try {
       console.log(`Finding task assignment with ID: ${task_assignment_id}`);
@@ -404,7 +504,6 @@ export class InspectionsService implements OnModuleInit {
       return new ApiResponse(false, 'Error retrieving BuildingDetailId', null);
     }
   }
-
   async verifyStaffRole(userId: string): Promise<ApiResponse<boolean>> {
     try {
       console.log(`Tasks microservice - Verifying if user ${userId} is a Staff...`);
