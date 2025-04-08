@@ -127,5 +127,19 @@ export class UsersController {
     }
   }
 
-
+  @GrpcMethod('UserService', 'CheckStaffAreaMatchWithScheduleJob')
+  async checkStaffAreaMatchWithScheduleJob(data: { staffId: string; scheduleJobId: string }) {
+    try {
+      console.log('Received CheckStaffAreaMatchWithScheduleJob request:', data);
+      const result = await this.usersService.checkStaffAreaMatchWithScheduleJob(data);
+      console.log('CheckStaffAreaMatchWithScheduleJob result:', result);
+      return result;
+    } catch (error) {
+      console.error('Error in CheckStaffAreaMatchWithScheduleJob:', error);
+      throw new RpcException({
+        statusCode: 500,
+        message: `Error checking staff area match with schedule job: ${error.message}`,
+      });
+    }
+  }
 }

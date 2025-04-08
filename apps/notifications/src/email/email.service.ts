@@ -1,53 +1,110 @@
 // email.service.ts
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import * as nodemailer from 'nodemailer'
+import { MailerService } from '@nestjs-modules/mailer'
 
 @Injectable()
 export class EmailService {
-  private readonly transporter: nodemailer.Transporter
+  private readonly logger = new Logger(EmailService.name)
 
-  constructor(private configService: ConfigService) {
-    this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>('EMAIL_HOST'),
-      port: this.configService.get<number>('EMAIL_PORT'),
-      secure: false,
-      auth: {
-        user: this.configService.get<string>('EMAIL_USER'),
-        pass: this.configService.get<string>('EMAIL_PASSWORD'),
-      },
-    })
-  }
+  constructor(
+    private configService: ConfigService,
+    private readonly mailerService: MailerService,
+  ) { }
 
   async sendOtp(email: string, otp: string): Promise<boolean> {
     try {
-      const mailOptions = {
-        from: this.configService.get<string>('EMAIL_FROM'),
+      this.logger.log(`Sending OTP email to: ${email}`)
+      this.logger.debug(`OTP: ${otp}`)
+
+      const result = await this.mailerService.sendMail({
         to: email,
         subject: 'Mã OTP xác thực',
-        html: `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #333;">Xác thực OTP</h2>
-                        <p>Xin chào,</p>
-                        <p>Mã OTP của bạn là: <strong style="font-size: 24px; color: #007bff;">${otp}</strong></p>
-                        <p>Mã này sẽ hết hạn sau 5 phút.</p>
-                        <p>Nếu bạn không yêu cầu mã OTP này, vui lòng bỏ qua email này.</p>
-                        <hr style="border: 1px solid #eee; margin: 20px 0;">
-                        <p style="color: #666; font-size: 12px;">Email này được gửi tự động, vui lòng không trả lời.</p>
-                    </div>
-                `,
-      }
-
-      console.log('Sending email with params:', {
-        to: email,
-        subject: mailOptions.subject,
+        template: 'otp',
+        context: {
+          otp,
+          expiryTime: 5,
+          email,
+          currentYear: new Date().getFullYear(),
+        },
       })
 
-      const info = await this.transporter.sendMail(mailOptions)
-      console.log('Email sent successfully:', info.messageId)
+      this.logger.log(`OTP email sent successfully to: ${email}`)
+      this.logger.debug(`Message ID: ${result.messageId}`)
       return true
     } catch (error) {
-      console.error('Error sending email:', error.message)
+      this.logger.error(`Failed to send OTP email to ${email}: ${error.message}`)
+      this.logger.error(error.stack)
+      return false
+    }
+  }
+
+  async sendMaintenanceEmail(data: {
+    to: string
+    residentName: string
+    buildingName: string
+    maintenanceDate: Date
+    startTime: string
+    endTime: string
+    maintenanceType: string
+    description: string
+    floor: string
+    area: string
+    unit: string
+  }): Promise<boolean> {
+    try {
+      this.logger.log(`Sending maintenance email to: ${data.to}`)
+      this.logger.debug(`Maintenance details:`, {
+        building: data.buildingName,
+        date: data.maintenanceDate,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        type: data.maintenanceType,
+        location: {
+          floor: data.floor,
+          area: data.area,
+          unit: data.unit,
+        },
+      })
+
+      const formattedDate = new Date(data.maintenanceDate).toLocaleDateString('vi-VN', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+
+      const result = await this.mailerService.sendMail({
+        to: data.to,
+        subject: `Thông báo lịch bảo trì - ${data.buildingName}`,
+        template: 'maintenance-schedule',
+        context: {
+          residentName: data.residentName,
+          buildingName: data.buildingName,
+          maintenanceDate: formattedDate,
+          startTime: data.startTime,
+          endTime: data.endTime,
+          maintenanceType: data.maintenanceType,
+          description: data.description || 'Không có mô tả chi tiết',
+          floor: data.floor || 'Không xác định',
+          area: data.area || 'Không xác định',
+          unit: data.unit || 'Không xác định',
+          currentYear: new Date().getFullYear(),
+          contactInfo: {
+            phone: this.configService.get('CONTACT_PHONE', '0123 456 789'),
+            email: this.configService.get('CONTACT_EMAIL', 'management@building.com'),
+            workingHours: '8:00 - 17:00 (Thứ 2 - Thứ 6)',
+            managerName: this.configService.get('CONTACT_MANAGER', 'Người quản lý tòa nhà'),
+          },
+        },
+      })
+
+      this.logger.log(`Maintenance email sent successfully to: ${data.to}`)
+      this.logger.debug(`Message ID: ${result.messageId}`)
+      return true
+    } catch (error) {
+      this.logger.error(`Failed to send maintenance email to ${data.to}: ${error.message}`)
+      this.logger.error(error.stack)
       return false
     }
   }

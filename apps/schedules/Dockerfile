@@ -28,6 +28,7 @@ RUN npm install --omit=dev --only=production --legacy-peer-deps
 # Copy build artifacts
 COPY --from=builder /usr/src/app/dist ./dist
 
+
 # Copy ALL Prisma generated clients from root node_modules
 COPY --from=builder /usr/src/app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /usr/src/app/node_modules/@prisma ./node_modules/@prisma

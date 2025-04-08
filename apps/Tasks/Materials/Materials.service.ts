@@ -1,28 +1,28 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateMaterialDto } from '@app/contracts/materials/create-material.dto';
-import { UpdateMaterialDto } from '@app/contracts/materials/update-material.dto';
-import { UpdateMaterialStatusDto } from '@app/contracts/materials/update-material-status.dto';
-import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
-import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
-import { MaterialStatus } from '@prisma/client-Task';
+import { Injectable } from '@nestjs/common'
+import { PrismaService } from '../prisma/prisma.service'
+import { CreateMaterialDto } from '@app/contracts/materials/create-material.dto'
+import { UpdateMaterialDto } from '@app/contracts/materials/update-material.dto'
+import { UpdateMaterialStatusDto } from '@app/contracts/materials/update-material-status.dto'
+import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
+import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
+import { MaterialStatus } from '@prisma/client-Task'
 
 @Injectable()
 export class MaterialsService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     async getAllMaterials(paginationParams: PaginationParams) {
-        const { page = 1, limit = 10, search } = paginationParams;
-        const skip = (page - 1) * limit;
-        const statusFilter = paginationParams?.statusFilter;
-        const whereFilter = statusFilter ? { status: statusFilter as MaterialStatus } : {};
+        const { page = 1, limit = 10, search } = paginationParams
+        const skip = (page - 1) * limit
+        const statusFilter = paginationParams?.statusFilter
+        const whereFilter = statusFilter ? { status: statusFilter as MaterialStatus } : {}
 
         const whereSearch = search ? {
             OR: [
                 { name: { contains: search } },
                 { description: { contains: search } }
             ]
-        } : {};
+        } : {}
 
         const [materials, total] = await Promise.all([
             this.prisma.material.findMany({
@@ -31,8 +31,8 @@ export class MaterialsService {
                 take: limit,
                 orderBy: { created_at: 'desc' }
             }),
-            this.prisma.material.count({ where: { ...whereSearch, ...whereFilter }   })
-        ]);
+            this.prisma.material.count({ where: { ...whereSearch, ...whereFilter } })
+        ])
 
         return new ApiResponse(true, 'Materials retrieved successfully', {
             data: materials,
@@ -42,29 +42,29 @@ export class MaterialsService {
                 limit,
                 totalPages: Math.ceil(total / limit)
             }
-        });
+        })
     }
 
     async getMaterialById(material_id: string) {
         const material = await this.prisma.material.findUnique({
             where: { material_id }
-        });
+        })
 
         if (!material) {
-            return new ApiResponse(false, 'Material not found');
+            return new ApiResponse(false, 'Material not found')
         }
 
-        return new ApiResponse(true, 'Material retrieved successfully', material);
+        return new ApiResponse(true, 'Material retrieved successfully', material)
     }
 
     async createMaterial(dto: CreateMaterialDto) {
         try {
             const material = await this.prisma.material.create({
                 data: dto
-            });
-            return new ApiResponse(true, 'Material created successfully', material);
+            })
+            return new ApiResponse(true, 'Material created successfully', material)
         } catch (error) {
-            return new ApiResponse(false, 'Error creating material', error.message);
+            return new ApiResponse(false, 'Error creating material', error.message)
         }
     }
 
@@ -73,10 +73,10 @@ export class MaterialsService {
             const material = await this.prisma.material.update({
                 where: { material_id },
                 data: dto
-            });
-            return new ApiResponse(true, 'Material updated successfully', material);
+            })
+            return new ApiResponse(true, 'Material updated successfully', material)
         } catch (error) {
-            return new ApiResponse(false, 'Error updating material', error.message);
+            return new ApiResponse(false, 'Error updating material', error.message)
         }
     }
 
@@ -85,10 +85,10 @@ export class MaterialsService {
             const material = await this.prisma.material.update({
                 where: { material_id },
                 data: { unit_price }
-            });
-            return new ApiResponse(true, 'Unit price updated successfully', material);
+            })
+            return new ApiResponse(true, 'Unit price updated successfully', material)
         } catch (error) {
-            return new ApiResponse(false, 'Error updating unit price', error.message);
+            return new ApiResponse(false, 'Error updating unit price', error.message)
         }
     }
 
@@ -97,29 +97,29 @@ export class MaterialsService {
             // Lấy thông tin material hiện tại
             const currentMaterial = await this.prisma.material.findUnique({
                 where: { material_id }
-            });
+            })
 
             if (!currentMaterial) {
-                return new ApiResponse(false, 'Material not found');
+                return new ApiResponse(false, 'Material not found')
             }
 
             // Tính toán số lượng mới
-            const newQuantity = currentMaterial.stock_quantity + quantity_change;
+            const newQuantity = currentMaterial.stock_quantity + quantity_change
 
             // Kiểm tra nếu số lượng mới âm
             if (newQuantity < 0) {
-                return new ApiResponse(false, 'Stock quantity cannot be negative');
+                return new ApiResponse(false, 'Stock quantity cannot be negative')
             }
 
             // Cập nhật số lượng mới
             const material = await this.prisma.material.update({
                 where: { material_id },
                 data: { stock_quantity: newQuantity }
-            });
+            })
 
-            return new ApiResponse(true, 'Stock quantity updated successfully', material);
+            return new ApiResponse(true, 'Stock quantity updated successfully', material)
         } catch (error) {
-            return new ApiResponse(false, 'Error updating stock quantity', error.message);
+            return new ApiResponse(false, 'Error updating stock quantity', error.message)
         }
     }
 
@@ -128,10 +128,10 @@ export class MaterialsService {
             const material = await this.prisma.material.update({
                 where: { material_id },
                 data: { status: dto.status }
-            });
-            return new ApiResponse(true, 'Material status updated successfully', material);
+            })
+            return new ApiResponse(true, 'Material status updated successfully', material)
         } catch (error) {
-            return new ApiResponse(false, 'Error updating material status', error.message);
+            return new ApiResponse(false, 'Error updating material status', error.message)
         }
     }
 }

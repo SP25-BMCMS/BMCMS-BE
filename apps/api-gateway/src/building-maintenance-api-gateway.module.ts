@@ -1,5 +1,9 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
+import { ClientsModule } from '@nestjs/microservices'
+import { ClientConfigModule } from 'apps/configs/client-config.module'
+import { ClientConfigService } from 'apps/configs/client-config.service'
+import { USERS_CLIENT, BUILDING_CLIENT, TASK_CLIENT, SCHEDULE_CLIENT, CRACK_CLIENT, NOTIFICATION_CLIENT } from './constraints'
 import { UsersModule } from './users/users.module'
 import { BuildingsModule } from './buildings/buildings.module'
 import { AreasModule } from './Area/Areas.module'
@@ -10,7 +14,6 @@ import { TasksModule } from './Task/Tasks.module'
 import { TaskAssigmentModule } from './TaskAssigment/TaskAssigment.module'
 import { worklogModule } from './Worklogs/WorkLog.module'
 import { SchedulesModule } from './schedules/Schedules.module'
-import { ScheduleJobsController } from './schedulejobs/schedulejobs.controller'
 import { schedulejobsModule } from './schedulejobs/schedulejobs.module'
 import { InspectionModule } from './Inspection/Inspection.module'
 import { RepairMaterialModule } from './RepairMaterial/RepairMaterial.module'
@@ -21,8 +24,59 @@ import { ChatbotModule } from './chatbot/chatbot.module'
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    ClientConfigModule,
+    ClientsModule.registerAsync([
+      {
+        name: USERS_CLIENT,
+        imports: [ClientConfigModule],
+        useFactory: (clientConfigService: ClientConfigService) => {
+          return clientConfigService.usersClientOptions
+        },
+        inject: [ClientConfigService],
+      },
+      {
+        name: BUILDING_CLIENT,
+        imports: [ClientConfigModule],
+        useFactory: (clientConfigService: ClientConfigService) => {
+          return clientConfigService.buildingsClientOptions
+        },
+        inject: [ClientConfigService],
+      },
+      {
+        name: TASK_CLIENT,
+        imports: [ClientConfigModule],
+        useFactory: (clientConfigService: ClientConfigService) => {
+          return clientConfigService.TasksClientOptions
+        },
+        inject: [ClientConfigService],
+      },
+      {
+        name: SCHEDULE_CLIENT,
+        imports: [ClientConfigModule],
+        useFactory: (clientConfigService: ClientConfigService) => {
+          return clientConfigService.SchedulesClientOptions
+        },
+        inject: [ClientConfigService],
+      },
+      {
+        name: CRACK_CLIENT,
+        imports: [ClientConfigModule],
+        useFactory: (clientConfigService: ClientConfigService) => {
+          return clientConfigService.cracksClientOptions
+        },
+        inject: [ClientConfigService],
+      },
+      {
+        name: NOTIFICATION_CLIENT,
+        imports: [ClientConfigModule],
+        useFactory: (clientConfigService: ClientConfigService) => {
+          return clientConfigService.NotificationsClientOptions
+        },
+        inject: [ClientConfigService],
+      },
+    ]),
     UsersModule,
-    ConfigModule.forRoot(),
     BuildingsModule,
     AreasModule,
     BuildingDetailModule,
@@ -35,7 +89,6 @@ import { ChatbotModule } from './chatbot/chatbot.module'
     schedulejobsModule,
     InspectionModule,
     RepairMaterialModule,
-    InspectionModule,
     NotificationsModule,
     FeedbackModule,
     MaterialModule,

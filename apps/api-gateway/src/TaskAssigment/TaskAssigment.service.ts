@@ -11,7 +11,7 @@ import { ChangeTaskAssignmentStatusDto } from '@app/contracts/taskAssigment/chan
 
 @Injectable()
 export class TaskAssignmentService {
-  constructor(@Inject(TASK_CLIENT) private readonly taskClient: ClientProxy) {}
+  constructor(@Inject(TASK_CLIENT) private readonly taskClient: ClientProxy) { }
 
   // Create Task Assignment
   async createTaskAssignment(createTaskAssignmentDto: CreateTaskAssignmentDto) {
@@ -97,10 +97,10 @@ export class TaskAssignmentService {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
-      console.log("🚀 ~ TaskAssignmentService ~ getTaskAssignmentById ~ taskAssignmentId:", taskAssignmentId)
-      console.log("🚀 ~ TaskAssignmentService ~ getTaskAssignmentById ~ taskAssignmentId:", taskAssignmentId)
-      console.log("🚀 ~ TaskAssignmentService ~ getTaskAssignmentById ~ taskAssignmentId:", taskAssignmentId)
-      console.log("🚀 ~ TaskAssignmentService ~ getTaskAssignmentById ~ taskAssignmentId:", taskAssignmentId)
+    console.log("🚀 ~ TaskAssignmentService ~ getTaskAssignmentById ~ taskAssignmentId:", taskAssignmentId)
+    console.log("🚀 ~ TaskAssignmentService ~ getTaskAssignmentById ~ taskAssignmentId:", taskAssignmentId)
+    console.log("🚀 ~ TaskAssignmentService ~ getTaskAssignmentById ~ taskAssignmentId:", taskAssignmentId)
+    console.log("🚀 ~ TaskAssignmentService ~ getTaskAssignmentById ~ taskAssignmentId:", taskAssignmentId)
   }
 
   // Get all Task Assignments
@@ -185,7 +185,7 @@ export class TaskAssignmentService {
     try {
       return await firstValueFrom(
         this.taskClient.send(
-          TASKASSIGNMENT_PATTERN.CHANGE_STATUS, 
+          TASKASSIGNMENT_PATTERN.CHANGE_STATUS,
           changeStatusDto
         ),
       );
@@ -214,6 +214,69 @@ export class TaskAssignmentService {
         message: 'Error getting inspection details',
         data: error.message
       };
+    }
+  }
+
+  // Get all tasks and task assignments by employee ID
+  async getAllTaskAndTaskAssignmentByEmployeeId(employeeId: string) {
+    try {
+      return await firstValueFrom(
+        this.taskClient.send(
+          TASKASSIGNMENT_PATTERN.GET_ALL_BY_EMPLOYEE_ID,
+          employeeId
+        ),
+      );
+    } catch (error) {
+      console.error('Error fetching tasks and assignments for employee:', error);
+      if (error?.response) {
+        throw new HttpException(
+          error.response.message || 'Error fetching employee tasks and assignments',
+          error.response.statusCode || HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+      throw new HttpException(
+        'Error fetching employee tasks and assignments',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  // Update Status to Reassigned
+  async updateStatusTaskAssignmentToReassigned(assignment_id: string, description: string) {
+    try {
+      return await firstValueFrom(
+        this.taskClient.send(
+          TASKASSIGNMENT_PATTERN.UPDATE_STATUS_TO_REASSIGNED,
+          { assignment_id, description }
+        ),
+      );
+    } catch (error) {
+      console.error('Error updating task assignment status to Reassigned:', error);
+
+      // Xử lý lỗi từ microservice
+      if (error?.response) {
+        // Lỗi đã được xử lý thành RpcException
+        const status = error.status || error.response.statusCode || 400;
+        const message = typeof error.response === 'string'
+          ? error.response
+          : error.response.message || 'Task assignment update failed';
+
+        throw new HttpException(message, status);
+      }
+
+      // Nếu lỗi có trực tiếp statusCode và message (từ RpcException)
+      if (error?.statusCode) {
+        throw new HttpException(
+          error.message || 'Task assignment update failed',
+          error.statusCode
+        );
+      }
+
+      // Mặc định trả về 400 thay vì 500
+      throw new HttpException(
+        'Task assignment status must be InFixing or Fixed to reassign',
+        HttpStatus.BAD_REQUEST
+      );
     }
   }
 }

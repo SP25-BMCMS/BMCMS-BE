@@ -30,6 +30,8 @@ service UserService {
   rpc CheckStaffAreaMatch (CheckStaffAreaMatchRequest) returns (CheckStaffAreaMatchResponse);
   rpc CheckPositionAndDepartment (CheckPositionAndDepartmentRequest) returns (CheckPositionAndDepartmentResponse);
   rpc UpdateDepartmentAndWorkingPosition (UpdateDepartmentAndWorkingPositionRequest) returns (UpdateDepartmentAndWorkingPositionResponse);
+  rpc GetAllStaffByStaffLeader (GetAllStaffByStaffLeaderRequest) returns (StaffListResponse);
+  rpc CheckStaffAreaMatchWithScheduleJob (CheckStaffAreaMatchWithScheduleJobRequest) returns (CheckStaffAreaMatchWithScheduleJobResponse);
 }
 message GetApartmentByIdRequest {
   string apartmentId = 1;
@@ -260,7 +262,7 @@ message WorkingPositionApiResponse {
 
 message WorkingPositionResponse {
   string positionId = 1;
-  PositionName positionName = 2;
+  string positionName = 2;
   string description = 3;
   PositionStatus status = 4;
 }
@@ -425,6 +427,21 @@ message StaffPaginationRequest {
   int32 limit = 2;
   string search = 3;
   repeated string role = 4;  // Can contain "Admin", "Manager", "Staff" values
+}
+
+message GetAllStaffByStaffLeaderRequest {
+  string staffId = 1;
+}
+
+message CheckStaffAreaMatchWithScheduleJobRequest {
+  string staffId = 1;
+  string scheduleJobId = 2;
+}
+
+message CheckStaffAreaMatchWithScheduleJobResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  bool isMatch = 3;
 }
 
 

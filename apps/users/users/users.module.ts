@@ -1,14 +1,13 @@
 import { Module } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { PrismaModule } from '../prisma/prisma.module';
-import { ClientsModule, Transport, GrpcOptions } from '@nestjs/microservices';
+import { ClientsModule, Transport } from '@nestjs/microservices';
 import { UsersController } from './users.controller';
 import { ConfigService } from '@nestjs/config';
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
 const CRACKS_CLIENT = 'CRACKS_CLIENT';
 const TASKS_CLIENT = 'TASKS_CLIENT';
-
 
 @Module({
   imports: [

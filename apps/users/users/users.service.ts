@@ -6,7 +6,7 @@ import {
   Injectable
 } from '@nestjs/common'
 import { ClientProxy, RpcException } from '@nestjs/microservices'
-import { AccountStatus, PositionName, Role } from '@prisma/client-users'
+import { AccountStatus, PositionName, Role, StaffStatus } from '@prisma/client-users'
 import * as bcrypt from 'bcrypt'
 import {
   catchError,
@@ -15,30 +15,40 @@ import {
   retry,
   throwError,
   timeout,
-} from 'rxjs';
-import { BUILDINGS_PATTERN } from '../../../libs/contracts/src/buildings/buildings.patterns';
-import { AREAS_PATTERN } from '../../../libs/contracts/src/Areas/Areas.patterns';
+} from 'rxjs'
+import { BUILDINGS_PATTERN } from '../../../libs/contracts/src/buildings/buildings.patterns'
+import { AREAS_PATTERN } from '../../../libs/contracts/src/Areas/Areas.patterns'
 import { PrismaService } from '../prisma/prisma.service'
 import { UserDto } from '@app/contracts/users/user.dto'
 import { createUserDto } from '@app/contracts/users/create-user.dto'
-import { ApiResponse } from '@app/contracts/ApiReponse/api-response'
+import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { CreateWorkingPositionDto } from '@app/contracts/users/create-working-position.dto'
 import { GrpcMethod } from '@nestjs/microservices'
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
+import { PrismaClient as TasksPrismaClient } from '@prisma/client-Task'
+import { PrismaClient as TasksPrismaClientSchedule } from '@prisma/client-Schedule'
 
-const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
-const CRACKS_CLIENT = 'CRACKS_CLIENT';
+const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
+const CRACKS_CLIENT = 'CRACKS_CLIENT'
+const TASKS_CLIENT = 'TASKS_CLIENT'
+
 const CRACK_PATTERN = {
   GET_CRACK_REPORT: { cmd: 'get-crack-report-by-id' }
-};
+}
 
 @Injectable()
 export class UsersService {
+  private tasksPrisma: TasksPrismaClient
+  private tasksPrismaSchedule: TasksPrismaClientSchedule
+
   constructor(
     private prisma: PrismaService,
     @Inject(BUILDINGS_CLIENT) private readonly buildingClient: ClientProxy,
     @Inject(CRACKS_CLIENT) private readonly crackClient: ClientProxy,
-  ) { }
+    @Inject(TASKS_CLIENT) private readonly taskClient: ClientProxy,
+  ) {
+    this.tasksPrisma = new TasksPrismaClient()
+  }
 
   async getUserByUsername(username: string): Promise<UserDto | null> {
     const user = await this.prisma.user.findUnique({ where: { username } })
@@ -70,20 +80,66 @@ export class UsersService {
     return user
   }
 
-  async getUserById(userId: string): Promise<UserDto | null> {
-    const user = await this.prisma.user.findUnique({
+  async getUserById(userId: string): Promise<any> {
+    const userRaw = await this.prisma.user.findUnique({
       where: { userId },
       include: {
-        userDetails: true,
+        userDetails: {
+          include: {
+            position: true,
+            department: true,
+          }
+        },
         apartments: true,
       },
     })
-    if (!user)
+
+    if (!userRaw)
       throw new RpcException({
         statusCode: 401,
         message: 'StaffId not found',
       })
-    return user
+
+    // Create a formatted response to avoid duplicate fields
+    const { password, ...userWithoutPassword } = userRaw;
+
+    // Base user response
+    const response = {
+      ...userWithoutPassword,
+      dateOfBirth: userWithoutPassword.dateOfBirth ? userWithoutPassword.dateOfBirth.toISOString() : null,
+    };
+
+    // Format userDetails to avoid duplicates
+    if (response.userDetails) {
+      const userDetails = response.userDetails;
+      let formattedUserDetails: any = {
+        staffStatus: userDetails.staffStatus,
+      };
+
+      // Add position if it exists
+      if (userDetails.position) {
+        formattedUserDetails.position = {
+          positionId: userDetails.position.positionId,
+          positionName: userDetails.position.positionName.toString(),
+          description: userDetails.position.description,
+        };
+      }
+
+      // Add department if it exists
+      if (userDetails.department) {
+        formattedUserDetails.department = {
+          departmentId: userDetails.department.departmentId,
+          departmentName: userDetails.department.departmentName,
+          description: userDetails.department.description || '',
+          area: userDetails.department.area || '',
+        };
+      }
+
+      // Replace userDetails with formatted version
+      response.userDetails = formattedUserDetails;
+    }
+
+    return response;
   }
 
   async signup(userData: createUserDto): Promise<ApiResponse<any>> {
@@ -195,7 +251,7 @@ export class UsersService {
                   create: {
                     positionId: userData.positionId ?? null,
                     departmentId: userData.departmentId ?? null,
-                    staffStatus: userData.staffStatus ?? null,
+                    staffStatus: userData.staffStatus ?? StaffStatus.Active,
                     image: userData.image ?? null,
                   },
                 }
@@ -354,26 +410,44 @@ export class UsersService {
     try {
       console.log('Received data:', data) // Debug dữ liệu nhận từ gRPC
 
-      // Kiểm tra xem giá trị có hợp lệ hay không
-      if (
-        !Object.values(PositionName).includes(data.positionName as PositionName)
-      ) {
-        throw new Error(`Invalid positionName: ${data.positionName}`)
+      // Map string position names to enum values
+      let positionNameEnum: PositionName;
+
+      // Convert string to enum based on Prisma schema
+      switch (data.positionName) {
+        case 'Leader':
+          positionNameEnum = PositionName.Leader;
+          break;
+        case 'Technician':
+          positionNameEnum = PositionName.Technician;
+          break;
+        case 'Janitor':
+          positionNameEnum = PositionName.Janitor;
+          break;
+        case 'Maintenance_Technician':
+          positionNameEnum = PositionName.Maintenance_Technician;
+          break;
+        default:
+          // For unsupported position names, use Leader as default
+          positionNameEnum = PositionName.Leader;
+          break;
       }
 
+      // Create the position
       const newPosition = await this.prisma.workingPosition.create({
         data: {
-          positionName: data.positionName as PositionName, // ✅ Chuyển string thành enum
+          positionName: positionNameEnum,
           description: data.description,
         },
-      })
+      });
 
       return {
         isSuccess: true,
         message: 'Working Position created successfully',
         data: {
           positionId: newPosition.positionId,
-          positionName: newPosition.positionName.toString(), // ✅ Chuyển Enum thành chuỗi
+          // Return the string representation of the position name
+          positionName: data.positionName,
           description: newPosition.description,
         },
       }
@@ -389,7 +463,7 @@ export class UsersService {
   async getAllWorkingPositions(): Promise<{
     workingPositions: {
       positionId: string
-      positionName: PositionName
+      positionName: string
       description?: string
     }[]
   }> {
@@ -398,7 +472,7 @@ export class UsersService {
       return {
         workingPositions: positions.map((position) => ({
           positionId: position.positionId,
-          positionName: position.positionName,
+          positionName: position.positionName.toString(),
           description: position.description,
         })),
       }
@@ -416,7 +490,7 @@ export class UsersService {
     message: string
     data: {
       positionId: string
-      positionName: PositionName
+      positionName: string
       description?: string
     } | null
   }> {
@@ -437,7 +511,7 @@ export class UsersService {
         message: 'Working Position retrieved successfully',
         data: {
           positionId: position.positionId,
-          positionName: position.positionName,
+          positionName: position.positionName.toString(),
           description: position.description,
         },
       }
@@ -455,7 +529,7 @@ export class UsersService {
     message: string
     data: {
       positionId: string
-      positionName: PositionName
+      positionName: string
       description?: string
     } | null
   }> {
@@ -469,7 +543,7 @@ export class UsersService {
         message: 'Working Position deleted successfully',
         data: {
           positionId: deletedPosition.positionId,
-          positionName: deletedPosition.positionName,
+          positionName: deletedPosition.positionName.toString(),
           description: deletedPosition.description,
         },
       }
@@ -631,50 +705,50 @@ export class UsersService {
   }
 
   async getAllStaff(paginationParams: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    role?: string | string[];
+    page?: number
+    limit?: number
+    search?: string
+    role?: string | string[]
   } = {}): Promise<{
     isSuccess: boolean
     message: string
     data: UserDto[]
     pagination?: {
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
+      total: number
+      page: number
+      limit: number
+      totalPages: number
     }
   }> {
     try {
-      const { page = 1, limit = 10, search, role } = paginationParams;
+      const { page = 1, limit = 10, search, role } = paginationParams
 
       // Handle role filtering
       let roleFilter: any = {
         role: {
           in: [Role.Staff, Role.Admin, Role.Manager]
         }
-      };
+      }
 
       if (role) {
-        const roleArray = Array.isArray(role) ? role : [role];
+        const roleArray = Array.isArray(role) ? role : [role]
         // Map string roles to Role enum
         const mappedRoles = roleArray.map(r => {
           switch (r) {
-            case 'Admin': return Role.Admin;
-            case 'Manager': return Role.Manager;
-            case 'Staff': return Role.Staff;
-            default: return r;
+            case 'Admin': return Role.Admin
+            case 'Manager': return Role.Manager
+            case 'Staff': return Role.Staff
+            default: return r
           }
-        });
+        })
 
-        roleFilter = { role: { in: mappedRoles } };
+        roleFilter = { role: { in: mappedRoles } }
       }
 
       // Apply filters
       const whereClause: any = {
         ...roleFilter
-      };
+      }
 
       // Add search filter if provided
       if (search) {
@@ -682,13 +756,13 @@ export class UsersService {
           { username: { contains: search, mode: 'insensitive' } },
           { email: { contains: search, mode: 'insensitive' } },
           { phone: { contains: search, mode: 'insensitive' } }
-        ];
+        ]
       }
 
       // Count total matching records
       const totalCount = await this.prisma.user.count({
         where: whereClause
-      });
+      })
 
       // Fetch paginated results
       const staffMembers = await this.prisma.user.findMany({
@@ -1013,14 +1087,14 @@ export class UsersService {
             }
           }
         }
-      });
+      })
 
       if (!staff || !staff.userDetails?.department) {
         return {
           isSuccess: false,
           message: 'Staff not found or no department assigned',
           isMatch: false
-        };
+        }
       }
 
       // Get crack report info from crack service
@@ -1029,21 +1103,21 @@ export class UsersService {
           .pipe(
             timeout(5000),
             catchError((err) => {
-              console.error('Error getting crack report:', err);
-              return of({ isSuccess: false, message: 'Error getting crack report', data: null });
+              console.error('Error getting crack report:', err)
+              return of({ isSuccess: false, message: 'Error getting crack report', data: null })
             })
           )
-      );
+      )
 
       if (!crackReportResponse || !crackReportResponse.isSuccess || !crackReportResponse.data || crackReportResponse.data.length === 0) {
         return {
           isSuccess: false,
           message: 'Crack report not found',
           isMatch: false
-        };
+        }
       }
 
-      const crackReport = crackReportResponse.data[0];
+      const crackReport = crackReportResponse.data[0]
 
       // Get building details to get areaId
       const buildingResponse = await firstValueFrom(
@@ -1051,18 +1125,18 @@ export class UsersService {
           .pipe(
             timeout(5000),
             catchError((err) => {
-              console.error('Error getting building details:', err);
-              return of({ statusCode: 404, data: null });
+              console.error('Error getting building details:', err)
+              return of({ statusCode: 404, data: null })
             })
           )
-      );
+      )
 
       if (!buildingResponse || buildingResponse.statusCode !== 200) {
         return {
           isSuccess: false,
           message: 'Building not found',
           isMatch: false
-        };
+        }
       }
 
       // Get area details to get area name
@@ -1071,27 +1145,36 @@ export class UsersService {
           .pipe(
             timeout(5000),
             catchError((err) => {
-              return of({ statusCode: 404, data: null });
+              return of({ statusCode: 404, data: null })
             })
           )
-      );
+      )
 
       if (!areaResponse || areaResponse.statusCode !== 200) {
         return {
           isSuccess: false,
           message: 'Area not found',
           isMatch: false
-        };
+        }
       }
 
-      const buildingAreaName = areaResponse.data.name;
+      const areaName = areaResponse.data.name
 
-      // Check if staff's department area matches building's area name
-      const isMatch = staff.userDetails.department.area === buildingAreaName;
+      // Lấy area của staff từ department
+      const staffAreaName = staff.userDetails.department.area;
+
+      // So sánh area của staff với area của building
+      // Đảm bảo so sánh không phân biệt hoa thường
+      console.log(`[users.service] Comparing areas: Staff area (${staffAreaName}) vs Building area (${areaName})`);
+      const isMatch = staffAreaName.toLowerCase() === areaName.toLowerCase();
+
+      console.log(`[users.service] Area match result: ${isMatch ? 'MATCH' : 'NO MATCH'}`);
 
       return {
         isSuccess: true,
-        message: isMatch ? 'Area match found' : 'Area mismatch',
+        message: isMatch
+          ? `Nhân viên thuộc khu vực ${staffAreaName} phù hợp với khu vực ${areaName} của công việc`
+          : `Nhân viên thuộc khu vực ${staffAreaName} không phù hợp với khu vực ${areaName} của công việc`,
         isMatch
       };
     } catch (error) {
@@ -1099,41 +1182,41 @@ export class UsersService {
         isSuccess: false,
         message: 'Error checking area match',
         isMatch: false
-      };
+      }
     }
   }
 
   async getUserInfo(data: { userId?: string; username?: string }): Promise<{
-    userId: string;
-    username: string;
-    email: string;
-    phone: string;
-    role: string;
-    dateOfBirth: string | null;
-    gender: string | null;
+    userId: string
+    username: string
+    email: string
+    phone: string
+    role: string
+    dateOfBirth: string | null
+    gender: string | null
     userDetails?: {
-      positionId: string | null;
-      departmentId: string | null;
-      staffStatus: string | null;
-      image: string | null;
+      positionId: string | null
+      departmentId: string | null
+      staffStatus: string | null
+      image: string | null
       position?: {
-        positionId: string;
-        positionName: string;
-        description: string | null;
-      } | null;
+        positionId: string
+        positionName: string
+        description: string | null
+      } | null
       department?: {
-        departmentId: string;
-        departmentName: string;
-        description: string | null;
-        area: string | null;
-      } | null;
-    } | null;
-    accountStatus: string;
+        departmentId: string
+        departmentName: string
+        description: string | null
+        area: string | null
+      } | null
+    } | null
+    accountStatus: string
   }> {
     try {
-      const { userId, username } = data;
-      console.log(`GetUserInfo called with userId: ${userId}, username: ${username}`);
-      let user;
+      const { userId, username } = data
+      console.log(`GetUserInfo called with userId: ${userId}, username: ${username}`)
+      let user
 
       if (userId) {
         user = await this.prisma.user.findUnique({
@@ -1146,7 +1229,7 @@ export class UsersService {
               }
             },
           }
-        });
+        })
       } else if (username) {
         user = await this.prisma.user.findUnique({
           where: { username },
@@ -1158,15 +1241,15 @@ export class UsersService {
               }
             },
           }
-        });
+        })
       }
 
       if (!user) {
-        console.log(`User not found for userId: ${userId} or username: ${username}`);
+        console.log(`User not found for userId: ${userId} or username: ${username}`)
         throw new RpcException({
           statusCode: 404,
           message: 'User not found',
-        });
+        })
       }
 
 
@@ -1181,7 +1264,7 @@ export class UsersService {
           if (user.userDetails.positionId) {
             const position = await this.prisma.workingPosition.findUnique({
               where: { positionId: user.userDetails.positionId }
-            });
+            })
           }
         }
 
@@ -1192,14 +1275,14 @@ export class UsersService {
           if (user.userDetails.departmentId) {
             const department = await this.prisma.department.findUnique({
               where: { departmentId: user.userDetails.departmentId }
-            });
+            })
           }
         }
       }
 
       // Do separate queries to ensure we get the data
-      let positionDetails = null;
-      let departmentDetails = null;
+      let positionDetails = null
+      let departmentDetails = null
 
       if (user.userDetails) {
         // Get position details directly if needed
@@ -1208,14 +1291,14 @@ export class UsersService {
             const position = user.userDetails.position ||
               await this.prisma.workingPosition.findUnique({
                 where: { positionId: user.userDetails.positionId }
-              });
+              })
 
             if (position) {
               positionDetails = {
                 positionId: position.positionId,
                 positionName: position.positionName.toString(),
                 description: position.description
-              };
+              }
             }
           } catch (error) {
           }
@@ -1227,7 +1310,7 @@ export class UsersService {
             const department = user.userDetails.department ||
               await this.prisma.department.findUnique({
                 where: { departmentId: user.userDetails.departmentId }
-              });
+              })
 
             if (department) {
               departmentDetails = {
@@ -1235,7 +1318,7 @@ export class UsersService {
                 departmentName: department.departmentName,
                 description: department.description,
                 area: department.area
-              };
+              }
             }
           } catch (error) {
           }
@@ -1259,37 +1342,37 @@ export class UsersService {
           department: departmentDetails
         } : null,
         accountStatus: user.accountStatus
-      };
+      }
 
-      return response;
+      return response
     } catch (error) {
       if (error instanceof RpcException) {
-        throw error;
+        throw error
       }
       throw new RpcException({
         statusCode: 500,
         message: error.message || 'Error retrieving user information',
-      });
+      })
     }
   }
 
   async getDepartmentById(departmentId: string): Promise<{
-    isSuccess: boolean;
-    message: string;
+    isSuccess: boolean
+    message: string
     data: {
-      departmentId: string;
-      departmentName: string;
-      description: string;
-      area: string;
-    } | null;
+      departmentId: string
+      departmentName: string
+      description: string
+      area: string
+    } | null
   }> {
     try {
       // Kiểm tra schema đầu tiên
-      const departmentModel = this.prisma.department;
+      const departmentModel = this.prisma.department
       if (departmentModel) {
         try {
           // Thử lấy toàn bộ danh sách departments để kiểm tra kết nối
-          const allDepartments = await this.prisma.department.findMany({ take: 5 });
+          const allDepartments = await this.prisma.department.findMany({ take: 5 })
         } catch (dbError) {
           // Handle error silently
         }
@@ -1298,14 +1381,14 @@ export class UsersService {
       // Tiếp tục với truy vấn chính
       const department = await this.prisma.department.findUnique({
         where: { departmentId }
-      });
+      })
 
       if (!department) {
         return {
           isSuccess: false,
           message: 'Department not found',
           data: null
-        };
+        }
       }
 
       const responseData = {
@@ -1313,19 +1396,19 @@ export class UsersService {
         departmentName: department.departmentName,
         description: department.description || '',
         area: department.area || ''
-      };
+      }
 
       return {
         isSuccess: true,
         message: 'Department retrieved successfully',
         data: responseData
-      };
+      }
     } catch (error) {
       return {
         isSuccess: false,
         message: error.message || 'Error retrieving department',
         data: null
-      };
+      }
     }
   }
 
@@ -1334,9 +1417,9 @@ export class UsersService {
     departmentId: string,
     positionId: string
   ): Promise<{
-    isSuccess: boolean;
-    message: string;
-    data: any;
+    isSuccess: boolean
+    message: string
+    data: any
   }> {
     try {
       // Check if the staff exists
@@ -1348,7 +1431,7 @@ export class UsersService {
         include: {
           userDetails: true
         }
-      });
+      })
 
 
       if (!staff) {
@@ -1356,37 +1439,37 @@ export class UsersService {
           isSuccess: false,
           message: 'Nhân viên không tồn tại hoặc không phải là Staff/Manager',
           data: null
-        };
+        }
       }
 
       // Check if department exists
       const department = await this.prisma.department.findUnique({
         where: { departmentId }
-      });
+      })
 
       if (!department) {
         return {
           isSuccess: false,
           message: 'Phòng ban không tồn tại',
           data: null
-        };
+        }
       }
 
       // Check if position exists
       const position = await this.prisma.workingPosition.findUnique({
         where: { positionId }
-      });
+      })
 
       if (!position) {
         return {
           isSuccess: false,
           message: 'Vị trí công việc không tồn tại',
           data: null
-        };
+        }
       }
 
       // Update or create userDetails
-      let userDetails;
+      let userDetails
       try {
         if (staff.userDetails) {
 
@@ -1401,7 +1484,7 @@ export class UsersService {
               department: true,
               position: true
             }
-          });
+          })
         } else {
 
           // Create new userDetails for this staff with the same userId
@@ -1415,12 +1498,12 @@ export class UsersService {
               department: true,
               position: true
             }
-          });
+          })
         }
 
 
       } catch (dbError) {
-        throw dbError;
+        throw dbError
       }
 
       // Prepare response
@@ -1446,12 +1529,262 @@ export class UsersService {
             }
           }
         }
-      };
+      }
     } catch (error) {
       return {
         isSuccess: false,
         message: `Lỗi khi cập nhật phòng ban và vị trí công việc: ${error.message}`,
         data: null
+      }
+    }
+  }
+
+  async checkStaffAreaMatchWithScheduleJob(data: { staffId: string; scheduleJobId: string }): Promise<{
+    isSuccess: boolean;
+    message: string;
+    isMatch: boolean;
+    statusCode?: number;
+  }> {
+    try {
+      console.log(`[users.service] Checking staff (${data.staffId}) area match with schedule job (${data.scheduleJobId})`);
+
+      // Get staff user with department and position info
+      const staff = await this.prisma.user.findUnique({
+        where: { userId: data.staffId },
+        include: {
+          userDetails: {
+            include: {
+              position: true,
+              department: true
+            }
+          }
+        }
+      });
+
+      console.log(`[users.service] Staff details:`, JSON.stringify({
+        userId: staff?.userId,
+        position: staff?.userDetails?.position?.positionName,
+        department: staff?.userDetails?.department?.departmentName,
+        area: staff?.userDetails?.department?.area
+      }));
+
+      if (!staff) {
+        return {
+          isSuccess: false,
+          message: `Không tìm thấy nhân viên (${data.staffId})`,
+          isMatch: false,
+          statusCode: 404
+        };
+      }
+
+      if (!staff.userDetails) {
+        return {
+          isSuccess: false,
+          message: 'Nhân viên chưa được phân công phòng ban và vị trí công việc',
+          isMatch: false
+        };
+      }
+
+      if (!staff.userDetails.position) {
+        return {
+          isSuccess: false,
+          message: 'Nhân viên chưa được phân công vị trí công việc',
+          isMatch: false
+        };
+      }
+
+      if (!staff.userDetails.department) {
+        return {
+          isSuccess: false,
+          message: 'Nhân viên chưa được phân công phòng ban',
+          isMatch: false
+        };
+      }
+
+      // Check if staff is a Maintenance Technician
+      if (staff.userDetails.position.positionName !== 'Maintenance_Technician') {
+        return {
+          isSuccess: false,
+          message: `Chỉ nhân viên kỹ thuật bảo trì (Maintenance Technician) mới có thể thực hiện công việc này. Vị trí hiện tại: ${staff.userDetails.position.positionName}`,
+          isMatch: false
+        };
+      }
+
+      // Initialize tasksPrismaSchedule if not already initialized
+      if (!this.tasksPrismaSchedule) {
+        this.tasksPrismaSchedule = new TasksPrismaClientSchedule();
+        console.log(`[users.service] Initialized Schedule PrismaClient`);
+      }
+
+      // Get schedule job info
+      const scheduleJob = await this.tasksPrismaSchedule.scheduleJob.findUnique({
+        where: { schedule_job_id: data.scheduleJobId }
+      });
+
+      console.log(`[users.service] Schedule job details:`, JSON.stringify(scheduleJob));
+
+      if (!scheduleJob) {
+        return {
+          isSuccess: false,
+          message: `Không tìm thấy lịch công việc với ID: ${data.scheduleJobId}`,
+          isMatch: false,
+          statusCode: 404
+        };
+      }
+
+      // Từ building_id trong scheduleJob, gọi đến building service để lấy thông tin building
+      console.log(`[users.service] Getting building info using building_id from scheduleJob: ${scheduleJob.building_id}`);
+
+      // Kiểm tra xem building_id có tồn tại không
+      if (!scheduleJob.building_id) {
+        return {
+          isSuccess: false,
+          message: 'Lịch công việc không có thông tin tòa nhà',
+          isMatch: false
+        };
+      }
+
+      // Gọi API để lấy thông tin building từ building_id
+      // Thử dùng BUILDINGS_PATTERN.GET_BY_ID trước (nơi đã confirm có dữ liệu)
+      const buildingResponse = await firstValueFrom(
+        this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: scheduleJob.building_id }).pipe(
+          timeout(5000),
+          catchError(err => {
+            console.error(`[users.service] Error fetching building:`, err);
+            throw new Error(`Lỗi khi lấy thông tin tòa nhà: ${err.message}`);
+          })
+        )
+      );
+
+      console.log(`[users.service] Building response:`, JSON.stringify(buildingResponse));
+
+      // Kiểm tra xem có lấy được thông tin building không
+      if (!buildingResponse) {
+        return {
+          isSuccess: false,
+          message: `Không nhận được phản hồi khi tìm tòa nhà với ID: ${scheduleJob.building_id}`,
+          isMatch: false
+        };
+      }
+
+      // Kiểm tra response success theo cả hai loại cấu trúc có thể nhận được
+      const responseSuccess =
+        (buildingResponse.statusCode === 200) ||
+        (buildingResponse.isSuccess === true);
+
+      if (!responseSuccess || !buildingResponse.data) {
+        return {
+          isSuccess: false,
+          message: `Không tìm thấy thông tin tòa nhà với ID: ${scheduleJob.building_id}`,
+          isMatch: false
+        };
+      }
+
+      // Lấy areaId từ thông tin building
+      console.log(`[users.service] Building data:`, JSON.stringify(buildingResponse.data));
+
+      // Truy cập areaId theo cả hai cấu trúc dữ liệu có thể có
+      let areaId;
+      let areaName;
+
+      // Trích xuất dữ liệu từ các cấu trúc response khác nhau
+      if (buildingResponse.data.areaId) {
+        // Cấu trúc từ BUILDINGS_PATTERN.GET_BY_ID
+        console.log('[users.service] Using direct building data structure');
+        areaId = buildingResponse.data.areaId;
+
+        // Từ area object - cấu trúc đầy đủ
+        if (buildingResponse.data.area && buildingResponse.data.area.name) {
+          areaName = buildingResponse.data.area.name;
+        }
+      }
+      else if (buildingResponse.data.building && buildingResponse.data.building.area) {
+        // Cấu trúc từ BUILDINGDETAIL_PATTERN.GET_BY_ID
+        console.log('[users.service] Using buildingDetail data structure');
+        areaId = buildingResponse.data.building.area.areaId;
+        areaName = buildingResponse.data.building.area.name;
+      }
+
+      console.log(`[users.service] Extracted area information: areaId=${areaId}, areaName=${areaName}`);
+
+      if (!areaId) {
+        return {
+          isSuccess: false,
+          message: 'Không thể xác định khu vực của tòa nhà',
+          isMatch: false
+        };
+      }
+
+      // Từ areaId, gọi đến area service để lấy thông tin area nếu không có areaName
+      if (!areaName) {
+        console.log(`[users.service] Getting area info using areaId: ${areaId}`);
+
+        try {
+          // Gọi API để lấy thông tin area từ areaId
+          const areaResponse = await firstValueFrom(
+            this.buildingClient.send(AREAS_PATTERN.GET_BY_ID, { areaId }).pipe(
+              timeout(5000),
+              catchError(err => {
+                console.error(`[users.service] Error fetching area:`, err);
+                throw new Error(`Lỗi khi lấy thông tin khu vực: ${err.message}`);
+              })
+            )
+          );
+
+          console.log(`[users.service] Area response:`, JSON.stringify(areaResponse));
+
+          // Kiểm tra xem có lấy được thông tin area không
+          if (!areaResponse || areaResponse.statusCode !== 200 || !areaResponse.data) {
+            return {
+              isSuccess: false,
+              message: `Không tìm thấy thông tin khu vực với ID: ${areaId}`,
+              isMatch: false
+            };
+          }
+
+          // Lấy areaName từ thông tin area
+          areaName = areaResponse.data.name;
+        } catch (error) {
+          console.error(`[users.service] Error getting area name:`, error);
+          return {
+            isSuccess: false,
+            message: `Lỗi khi lấy tên khu vực: ${error.message}`,
+            isMatch: false
+          };
+        }
+      }
+
+      if (!areaName) {
+        return {
+          isSuccess: false,
+          message: 'Khu vực không có tên',
+          isMatch: false
+        };
+      }
+
+      // Lấy area của staff từ department
+      const staffAreaName = staff.userDetails.department.area;
+
+      console.log(`[users.service] Comparing areas: Staff area (${staffAreaName}) vs Building area (${areaName})`);
+
+      // So sánh area của staff với area của building
+      const isMatch = staffAreaName.toLowerCase() === areaName.toLowerCase();
+
+      console.log(`[users.service] Area match result: ${isMatch ? 'MATCH' : 'NO MATCH'}`);
+
+      return {
+        isSuccess: true,
+        message: isMatch
+          ? `Nhân viên thuộc khu vực ${staffAreaName} phù hợp với khu vực ${areaName} của công việc`
+          : `Nhân viên thuộc khu vực ${staffAreaName} không phù hợp với khu vực ${areaName} của công việc`,
+        isMatch
+      };
+    } catch (error) {
+      console.error(`[users.service] Error in checkStaffAreaMatchWithScheduleJob:`, error);
+      return {
+        isSuccess: false,
+        message: `        Lỗi khi kiểm tra khu vực: ${error.message}`,
+        isMatch: false
       };
     }
   }

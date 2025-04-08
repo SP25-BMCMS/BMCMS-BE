@@ -7,6 +7,7 @@ import { UsersModule } from '../users/users.module';
 import { ResidentsModule } from '../residents/residents.module';
 import { ApartmentsModule } from '../Apartments/apartments.module';
 import { DepartmentsModule } from '../departments/departments.module';
+import { EmployeesModule } from '../employees/employees.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { DepartmentsModule } from '../departments/departments.module';
     PrismaModule,
     ApartmentsModule,
     DepartmentsModule,
+    EmployeesModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],

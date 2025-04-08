@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config'
 import { ClientProxy, ClientGrpc, RpcException } from '@nestjs/microservices'
 import { AssignmentStatus, Status } from '@prisma/client-Task'
 import { $Enums, Prisma, CrackReport } from '@prisma/client-cracks'
-import { ApiResponse } from 'libs/contracts/src/ApiReponse/api-response'
+import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { TASKS_PATTERN } from 'libs/contracts/src/tasks/task.patterns'
 import { BUILDINGDETAIL_PATTERN } from 'libs/contracts/src/BuildingDetails/buildingdetails.patterns'
 import { firstValueFrom, Observable, of } from 'rxjs'
@@ -16,6 +16,7 @@ import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/upda
 import { PrismaService } from '../../prisma/prisma.service'
 import { S3UploaderService, UploadResult } from '../crack-details/s3-uploader.service'
 import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
+import { PrismaClient } from '@prisma/client-Task';
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 const USERS_CLIENT = 'USERS_CLIENT'
@@ -35,7 +36,7 @@ export class CrackReportsService {
   private s3: S3Client
   private bucketName: string
   private userService: UserService
-
+  private prisma = new PrismaClient();
   constructor(
     private prismaService: PrismaService,
     @Inject('TASK_SERVICE') private readonly taskClient: ClientProxy,
@@ -522,88 +523,117 @@ export class CrackReportsService {
 
   async updateCrackReportStatus(crackReportId: string, managerId: string, staffId: string) {
     try {
+      // Define all variables outside the transaction to maintain scope
+      let existingReport;
+      let areaMatchResponse;
+      let updatedReport;
+      let createTaskResponse;
+      let createTaskAssignmentResponse;
+
+      // Start a real database transaction - all operations will be committed or rolled back together
       return await this.prismaService.$transaction(async (prisma) => {
-        const existingReport = await prisma.crackReport.findUnique({
+        // Step 1: Find the crack report and validate it exists
+        existingReport = await prisma.crackReport.findUnique({
           where: { crackReportId },
-        })
+        });
 
         if (!existingReport) {
-          return new ApiResponse(false, 'Crack Report không tồn tại')
+          throw new RpcException(
+            new ApiResponse(false, 'Crack Report không tồn tại')
+          );
         }
 
-        // Check if staff's area matches the crack report's area
-        const areaMatchResponse = await firstValueFrom(
+        // Step 2: Check if staff's area matches the crack report's area
+        areaMatchResponse = await firstValueFrom(
           this.userService.checkStaffAreaMatch({ staffId, crackReportId })
-        )
-        // Only throw when isMatch is false
+        );
+
         if (!areaMatchResponse.isMatch) {
           throw new RpcException(
             new ApiResponse(false, 'Nhân viên không thuộc khu vực của báo cáo nứt này')
-          )
+          );
+        }
+        const unconfirmedTasks = await this.prisma.taskAssignment.findMany({
+          where: {
+            employee_id: staffId,
+            status: {
+              notIn: [AssignmentStatus.Confirmed]
+            }
+          }
+        });
+
+        if (unconfirmedTasks.length > 0) {
+          return {
+            statusCode: 400,
+            message: 'Staff has unconfirmed tasks. Cannot assign new task.',
+            data: null
+          };
         }
 
-        const updatedReport = await prisma.crackReport.update({
+        // Step 3: Create task first - do this before updating report status
+        createTaskResponse = await firstValueFrom(
+          this.taskClient
+            .send(TASKS_PATTERN.CREATE, {
+              description: `Xử lý báo cáo vết nứt ${crackReportId}`,
+              status: Status.Assigned,
+              crack_id: crackReportId,
+              schedule_job_id: '',
+            })
+            .pipe(
+              timeout(10000), // Add timeout to prevent hanging
+              catchError((error) => {
+                console.error('Task creation error:', error);
+                throw new RpcException(
+                  new ApiResponse(false, 'Không thể tạo task')
+                );
+              })
+            )
+        );
+
+        // Check if task creation was successful and task_id exists
+        if (!createTaskResponse?.data?.task_id) {
+          throw new RpcException(
+            new ApiResponse(false, 'Task được tạo nhưng không trả về task_id hợp lệ')
+          );
+        }
+
+        // Step 4: Create task assignment
+        createTaskAssignmentResponse = await firstValueFrom(
+          this.taskClient
+            .send(TASKASSIGNMENT_PATTERN.ASSIGN_TO_EMPLOYEE, {
+              taskId: createTaskResponse.data.task_id,
+              employeeId: staffId,
+              description: `Phân công xử lý báo cáo nứt tại ${existingReport.position}`,
+              status: AssignmentStatus.Pending,
+            })
+            .pipe(
+              timeout(10000), // Add timeout to prevent hanging
+              catchError((error) => {
+                console.error('Task assignment error:', error);
+                throw new RpcException(
+                  new ApiResponse(false, error.message || 'Không thể tạo phân công task')
+                );
+              }),
+            ),
+        );
+
+        // Check task assignment response
+        if (createTaskAssignmentResponse?.statusCode === 400) {
+          throw new RpcException(
+            new ApiResponse(false, createTaskAssignmentResponse.message || 'Lỗi phân công task')
+          );
+        }
+
+        // Step 5: Only update the crack report status if everything else succeeded
+        updatedReport = await prisma.crackReport.update({
           where: { crackReportId },
           data: {
             status: $Enums.ReportStatus.InProgress,
             verifiedBy: managerId,
           },
-        })
+        });
 
-        let createTaskResponse
-        let createTaskAssignmentResponse
-
-        try {
-          // Create task first
-          createTaskResponse = await firstValueFrom(
-            this.taskClient
-              .send(TASKS_PATTERN.CREATE, {
-                description: `Xử lý báo cáo nứt ${crackReportId}`,
-                status: Status.Assigned,
-                crack_id: crackReportId,
-                schedule_job_id: '',
-              })
-              .pipe(
-                catchError((error) => {
-                  console.error('Task creation error:', error)
-                  throw new RpcException(
-                    new ApiResponse(false, 'Không thể tạo task')
-                  )
-                })
-              )
-          )
-
-          // Check if task creation was successful and task_id exists
-          if (!createTaskResponse || !createTaskResponse.data || !createTaskResponse.data.task_id) {
-            throw new RpcException(
-              new ApiResponse(false, 'Task được tạo nhưng không trả về task_id hợp lệ')
-            )
-          }
-
-          // Then use the ASSIGN_TO_EMPLOYEE pattern instead of CREATE
-          createTaskAssignmentResponse = await firstValueFrom(
-            this.taskClient
-              .send(TASKASSIGNMENT_PATTERN.ASSIGN_TO_EMPLOYEE, {
-                taskId: createTaskResponse.data.task_id,
-                employeeId: staffId,
-                description: `Phân công xử lý báo cáo nứt ${crackReportId}`,
-                status: AssignmentStatus.Pending,
-              })
-              .pipe(
-                catchError((error) => {
-                  console.error('Task assignment error:', error)
-                  throw new RpcException(
-                    new ApiResponse(false, 'Không thể tạo phân công task')
-                  )
-                }),
-              ),
-          )
-        } catch (taskError) {
-          console.error('Task creation/assignment error:', taskError)
-          // We should throw the error to rollback the transaction
-          throw taskError
-        }
-
+        // Return success response with all data
         return new ApiResponse(
           true,
           'Crack Report đã được cập nhật và Task đã được tạo',
@@ -612,18 +642,25 @@ export class CrackReportsService {
             task: createTaskResponse,
             taskAssignment: createTaskAssignmentResponse,
           },
-        )
-      })
+        );
+      }, {
+        // Set a long timeout for the transaction since we're making external calls
+        timeout: 30000,
+        // Use serializable isolation level for maximum consistency
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable
+      });
     } catch (error) {
-      console.error('🔥 Lỗi trong updateCrackReportStatus:', error)
+      console.error('🔥 Lỗi trong updateCrackReportStatus:', error);
 
+      // Pass through RpcExceptions
       if (error instanceof RpcException) {
-        throw error
+        throw error;
       }
 
+      // Wrap other errors
       throw new RpcException(
         new ApiResponse(false, 'Lỗi hệ thống, vui lòng thử lại sau')
-      )
+      );
     }
   }
 
@@ -649,11 +686,11 @@ export class CrackReportsService {
    */
   async getBuildingDetailByTaskId(taskId: string): Promise<ApiResponse<any>> {
     try {
-      console.log(`[CrackService] Getting buildingDetailId for taskId: ${taskId}`);
+      console.log(`[CrackService] Getting buildingDetailId for taskId: ${taskId}`)
 
       // Approach 1: If there's a task-to-crackReport relation in another service or table
       // Try to find the crack report ID first from the task service
-      console.log(`[CrackService] Calling task service to get crack_id for task: ${taskId}`);
+      console.log(`[CrackService] Calling task service to get crack_id for task: ${taskId}`)
       const crackReportResponse = await firstValueFrom(
         this.taskClient.send(
           { cmd: 'get-crack-id-by-task' },
@@ -661,85 +698,85 @@ export class CrackReportsService {
         ).pipe(
           timeout(10000),
           catchError(err => {
-            console.error(`[CrackService] Error getting crack ID from task service:`, err);
-            return of({ isSuccess: false, data: null });
+            console.error(`[CrackService] Error getting crack ID from task service:`, err)
+            return of({ isSuccess: false, data: null })
           })
         )
-      );
+      )
 
-      console.log(`[CrackService] Task service response:`, JSON.stringify(crackReportResponse, null, 2));
+      console.log(`[CrackService] Task service response:`, JSON.stringify(crackReportResponse, null, 2))
 
       // If we successfully got a crackReportId from the task service
       if (crackReportResponse && crackReportResponse.isSuccess && crackReportResponse.data) {
-        const crackReportId = crackReportResponse.data.crackReportId;
-        console.log(`[CrackService] Found crackReportId: ${crackReportId}`);
+        const crackReportId = crackReportResponse.data.crackReportId
+        console.log(`[CrackService] Found crackReportId: ${crackReportId}`)
 
         if (!crackReportId) {
-          console.log(`[CrackService] crackReportId is null or undefined`);
+          console.log(`[CrackService] crackReportId is null or undefined`)
           return new ApiResponse(true, 'Using default BuildingDetailId - No crackReportId', {
             buildingDetailId: '00000000-0000-0000-0000-000000000000',
             crackReportId: null
-          });
+          })
         }
 
         // Now get the crackReport with the crackReportId
-        console.log(`[CrackService] Looking up CrackReport with ID: ${crackReportId}`);
+        console.log(`[CrackService] Looking up CrackReport with ID: ${crackReportId}`)
         const crackReport = await this.prismaService.crackReport.findUnique({
           where: { crackReportId },
           select: {
             crackReportId: true,
             buildingDetailId: true
           }
-        });
+        })
 
-        console.log(`[CrackService] CrackReport lookup result:`, crackReport);
+        console.log(`[CrackService] CrackReport lookup result:`, crackReport)
 
         if (crackReport) {
-          console.log(`[CrackService] Found buildingDetailId: ${crackReport.buildingDetailId}`);
+          console.log(`[CrackService] Found buildingDetailId: ${crackReport.buildingDetailId}`)
           return new ApiResponse(true, 'BuildingDetailId retrieved successfully', {
             buildingDetailId: crackReport.buildingDetailId,
             crackReportId: crackReport.crackReportId
-          });
+          })
         } else {
-          console.log(`[CrackService] No CrackReport found with ID: ${crackReportId}`);
+          console.log(`[CrackService] No CrackReport found with ID: ${crackReportId}`)
         }
       } else {
-        console.log(`[CrackService] Failed to get crackReportId from task service`);
+        console.log(`[CrackService] Failed to get crackReportId from task service`)
       }
 
       // Try fallback approach - check if we have any CrackReport with this buildingDetailId
-      console.log(`[CrackService] Trying fallback approach - looking for any CrackReport`);
+      console.log(`[CrackService] Trying fallback approach - looking for any CrackReport`)
       const anyCrackReport = await this.prismaService.crackReport.findFirst({
         select: {
           buildingDetailId: true,
           crackReportId: true
         },
         orderBy: { createdAt: 'desc' }
-      });
+      })
 
       if (anyCrackReport) {
-        console.log(`[CrackService] Found a recent CrackReport with buildingDetailId: ${anyCrackReport.buildingDetailId}`);
+        console.log(`[CrackService] Found a recent CrackReport with buildingDetailId: ${anyCrackReport.buildingDetailId}`)
         return new ApiResponse(true, 'Using buildingDetailId from most recent CrackReport', {
           buildingDetailId: anyCrackReport.buildingDetailId,
           crackReportId: anyCrackReport.crackReportId,
           note: 'This is a fallback value, not directly related to the task'
-        });
+        })
       }
 
       // Approach 2: If no relation is found, return a hardcoded or default value for now
       // This is a temporary solution until the proper relation is established
-      console.log('[CrackService] No relation found, returning default UUID');
+      console.log('[CrackService] No relation found, returning default UUID')
       return new ApiResponse(true, 'Using default BuildingDetailId', {
         buildingDetailId: '00000000-0000-0000-0000-000000000000',
         crackReportId: null
-      });
+      })
     } catch (error) {
-      console.error(`[CrackService] Error retrieving BuildingDetailId for taskId ${taskId}:`, error);
+      console.error(`[CrackService] Error retrieving BuildingDetailId for taskId ${taskId}:`, error)
       // Return default UUID in case of error
       return new ApiResponse(true, 'Using default BuildingDetailId due to error', {
         buildingDetailId: '00000000-0000-0000-0000-000000000000',
         crackReportId: null
-      });
+      })
     }
   }
 }

@@ -34,7 +34,7 @@ export class BuildingsController {
   constructor(
     private buildingsService: BuildingsService,
     private apartmentService: ApartmentService,
-  ) {}
+  ) { }
 
   // @HttpCode(HttpStatus.OK)
   // @Post('login')
@@ -192,5 +192,12 @@ export class BuildingsController {
   @Delete(':id')
   async deleteBuilding(@Param('id') id: string) {
     return this.buildingsService.deleteBuilding(id);
+  }
+
+  @Get(':id/residents')
+  @ApiOperation({ summary: 'Get all residents by building ID' })
+  @ApiParam({ name: 'id', description: 'Building ID' })
+  async getAllResidentsByBuildingId(@Param('id') id: string) {
+    return this.buildingsService.getAllResidentsByBuildingId(id);
   }
 }

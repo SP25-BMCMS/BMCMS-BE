@@ -20,8 +20,6 @@ export class TaskAssignmentsService {
 
   constructor(private prismaService: PrismaService,
     @Inject('CRACK_CLIENT') private readonly crackClient: ClientProxy
-
-
   ) { }
 
   async createTaskAssignment(createTaskAssignmentDto: CreateTaskAssignmentDto) {
@@ -383,14 +381,14 @@ export class TaskAssignmentsService {
       const result: any = { ...taskAssignment };
 
       // 2. Get task info
-      const task =taskAssignment.task;
+      const task = taskAssignment.task;
       console.log(task);
       // 3. If crack_id exists, get crack info
       if (task.crack_id) {
         console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ task.crack_id:", task.crack_id)
-         const crackInfo = await firstValueFrom(
-            this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
-          );
+        const crackInfo = await firstValueFrom(
+          this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
+        );
         result.crackInfo = crackInfo;
         console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ crackInfo:", crackInfo)
       }
@@ -411,6 +409,100 @@ export class TaskAssignmentsService {
         message: 'Error retrieving inspection details',
         data: error.message
       };
+    }
+  }
+
+  async updateStatusTaskAssignmentToReassigned(assignment_id: string, description: string) {
+    try {
+      // Kiểm tra xem assignment có tồn tại không
+      const existingAssignment = await this.prisma.taskAssignment.findUnique({
+        where: { assignment_id },
+      });
+
+      if (!existingAssignment) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Task assignment not found',
+        });
+      }
+
+      // Kiểm tra xem status hiện tại có phải là InFixing hoặc Fixed không
+      if (existingAssignment.status !== AssignmentStatus.InFixing &&
+        existingAssignment.status !== AssignmentStatus.Fixed) {
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Task assignment status must be InFixing or Fixed to reassign',
+        });
+      }
+
+      // Nối chuỗi description mới với description hiện tại
+      const updatedDescription =
+        `${existingAssignment.description}\n---\nReassigned reason: ${description}`;
+
+      // Cập nhật trạng thái thành Reassigned và cập nhật description
+      const updatedAssignment = await this.prisma.taskAssignment.update({
+        where: { assignment_id },
+        data: {
+          status: AssignmentStatus.Reassigned,
+          description: updatedDescription
+        },
+        include: {
+          task: true,
+        },
+      });
+
+      return {
+        statusCode: 200,
+        message: 'Task assignment status changed to Reassigned successfully',
+        data: updatedAssignment,
+      };
+    } catch (error) {
+      // Nếu lỗi là RpcException, ném lại nguyên vẹn
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      // Xử lý các lỗi khác, trả về 400 thay vì 500
+      throw new RpcException({
+        statusCode: 400,
+        message: `Failed to change task assignment status: ${error.message}`,
+      });
+    }
+  }
+
+  async getAllTaskAndTaskAssignmentByEmployeeId(employeeId: string) {
+    try {
+      // Find all task assignments for the employee
+      const taskAssignments = await this.prisma.taskAssignment.findMany({
+        where: { employee_id: employeeId },
+        include: {
+          task: true, // Include the related task for each assignment
+        },
+        orderBy: {
+          created_at: 'desc', // Order by creation date, most recent first
+        },
+      });
+
+      if (taskAssignments.length === 0) {
+        return {
+          statusCode: 200,
+          message: 'No task assignments found for this employee',
+          data: [],
+        };
+      }
+
+      return {
+        statusCode: 200,
+        message: 'Tasks and assignments fetched successfully',
+        data: taskAssignments,
+      };
+    } catch (error) {
+      console.error('Error fetching tasks and assignments for employee:', error);
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Failed to fetch tasks and assignments for employee',
+        error: error.message,
+      });
     }
   }
 }

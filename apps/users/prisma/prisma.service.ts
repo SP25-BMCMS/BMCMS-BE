@@ -5,8 +5,7 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class PrismaService
   extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
-{
+  implements OnModuleInit, OnModuleDestroy {
   constructor(config: ConfigService) {
     console.log('User Initialized'); // Add a debug log to ensure service is being initialized
 

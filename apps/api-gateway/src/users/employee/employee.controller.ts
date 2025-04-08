@@ -273,5 +273,92 @@ export class EmployeeController {
     }
   }
 
+  @Get('staff-by-leader/:staffId')
+  @ApiOperation({ summary: 'Get all staff members under a specific staff leader' })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully retrieved staff members under leader',
+    schema: {
+      type: 'object',
+      properties: {
+        isSuccess: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Successfully retrieved staff members under leader' },
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              userId: { type: 'string' },
+              username: { type: 'string' },
+              email: { type: 'string' },
+              phone: { type: 'string' },
+              role: { type: 'string', enum: ['Admin', 'Manager', 'Staff'] },
+              dateOfBirth: { type: 'string', format: 'date-time', nullable: true },
+              gender: { type: 'string', nullable: true },
+              accountStatus: { type: 'string', enum: ['Active', 'Inactive'] },
+              userDetails: {
+                type: 'object',
+                properties: {
+                  position: {
+                    type: 'object',
+                    properties: {
+                      positionId: { type: 'string' },
+                      positionName: { type: 'string' },
+                      description: { type: 'string' }
+                    }
+                  },
+                  department: {
+                    type: 'object',
+                    properties: {
+                      departmentId: { type: 'string' },
+                      departmentName: { type: 'string' },
+                      description: { type: 'string' },
+                      area: { type: 'string' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        pagination: {
+          type: 'object',
+          properties: {
+            total: { type: 'number', example: 10 },
+            page: { type: 'number', example: 1 },
+            limit: { type: 'number', example: 10 },
+            totalPages: { type: 'number', example: 1 }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Staff leader not found or not a leader' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async getAllStaffByStaffLeader(
+    @Param('staffId') staffId: string,
+    @Res() res: any
+  ) {
+    try {
+      const response = await this.employeeService.getAllStaffByStaffLeader(staffId);
 
+      if (!response.isSuccess) {
+        return res.status(HttpStatus.NOT_FOUND).json(response);
+      }
+
+      return res.status(HttpStatus.OK).json(response);
+    } catch (error) {
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        isSuccess: false,
+        message: 'Failed to retrieve staff members',
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
+      });
+    }
+  }
 }
