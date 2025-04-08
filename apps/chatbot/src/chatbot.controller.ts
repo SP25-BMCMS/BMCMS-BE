@@ -13,11 +13,6 @@ export class ChatbotController {
     this.logger.log('ChatbotController initialized - ready to receive messages');
   }
 
-  @MessagePattern(CHATBOT_PATTERN.CHAT)
-  async chat(@Payload() message: ChatMessageDto) {
-    this.logger.log(`[chat] Received message: ${JSON.stringify(message)}`);
-    return this.chatbotService.createChat(message);
-  }
 
   // @MessagePattern(CHATBOT_PATTERN.SYSTEM_INFO)
   // async getSystemInfo() {

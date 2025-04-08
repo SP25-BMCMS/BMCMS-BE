@@ -34,7 +34,7 @@ export class ChatbotService {
         // Tạo prompt cho Gemini API
         const prompt = `Bạn là một trợ lý AI thông minh cho hệ thống Building Management & Crack Monitoring System (BMCMS).
 Khi trả lời:
-1. LUÔN viết đầy đủ "Building Management & Crack Monitoring System" thay vì viết tắt BMCMS trong câu trả lời đầu tiên của bạn.
+1. và lời nói đầu tiên phải chào hỏi và chúc một ngày tốt lành LUÔN viết đầy đủ "Building Management & Crack Monitoring System" thay vì viết tắt BMCMS trong câu trả lời đầu tiên của bạn.
 2. Giới thiệu ngắn gọn về Building Management & Crack Monitoring System là hệ thống quản lý tòa nhà và giám sát vết nứt.
 3. Cung cấp thông tin cụ thể về các chức năng chính: quản lý tòa nhà, theo dõi vết nứt, lập lịch bảo trì, và cảnh báo khi phát hiện vấn đề.
 4. Trả lời ngắn gọn nhưng đầy đủ thông tin.
@@ -79,81 +79,6 @@ Câu hỏi của người dùng: ${message}`;
     } catch (error) {
       this.logger.error('[testChat] Error processing message:', error);
       return 'Xin lỗi, có lỗi xảy ra khi xử lý tin nhắn của bạn.';
-    }
-  }
-
-  async createChat(command: ChatMessageDto) {
-    try {
-      this.logger.debug('Creating chat with data:', command);
-      
-      if (!command.userId) {
-        this.logger.error('UserId is required');
-        throw new Error('UserId is required');
-      }
-
-      if (!command.message) {
-        this.logger.error('Message is required');
-        throw new Error('Message is required');
-      }
-
-      const chat = await this.prisma.chat.create({
-        data: {
-          userId: command.userId,
-          message: command.message,
-          isUser: true,
-          type: 'user'
-        },
-      });
-
-      this.logger.debug('Chat created successfully:', chat);
-      return chat.id;
-    } catch (error) {
-      this.logger.error('Error creating chat:', error);
-      if (error instanceof Error) {
-        throw new Error(`Failed to create chat: ${error.message}`);
-      }
-      throw new Error('Failed to create chat');
-    }
-  }
-
-  async getUserChats(query: ChatListQueryDto) {
-    try {
-      this.logger.debug('Getting user chats with query:', query);
-      
-      if (!query.userId) {
-        this.logger.error('UserId is required');
-        throw new Error('UserId is required');
-      }
-
-      const page = query.page || 1;
-      const limit = query.limit || 10;
-      const skip = (page - 1) * limit;
-
-      const [chats, total] = await Promise.all([
-        this.prisma.chat.findMany({
-          where: { userId: query.userId },
-          skip,
-          take: limit,
-          orderBy: { createdAt: 'desc' },
-        }),
-        this.prisma.chat.count({
-          where: { userId: query.userId },
-        }),
-      ]);
-
-      this.logger.debug(`Found ${chats.length} chats for user ${query.userId}`);
-      return {
-        items: chats,
-        total,
-        page,
-        limit,
-      };
-    } catch (error) {
-      this.logger.error('Error getting user chats:', error);
-      if (error instanceof Error) {
-        throw new Error(`Failed to get user chats: ${error.message}`);
-      }
-      throw new Error('Failed to get user chats');
     }
   }
 

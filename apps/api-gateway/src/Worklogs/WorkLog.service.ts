@@ -1,10 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { TASK_CLIENT } from '../constraints';
 import { WORKLOG_PATTERN } from '@app/contracts/Worklog/Worklog.patterns';
 import { WorkLogResponseDto } from '@app/contracts/Worklog/Worklog.dto';
 import { firstValueFrom } from 'rxjs';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
+import { TASK_CLIENT } from '../constraints';
 @Injectable()
 export class WorklogService {
   constructor(@Inject(TASK_CLIENT) private readonly taskClient: ClientProxy) {}
