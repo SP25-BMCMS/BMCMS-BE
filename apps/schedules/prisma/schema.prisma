@@ -19,6 +19,7 @@ datasource db {
     schedule_name String    @db.VarChar(100)
     schedule_type ScheduleType
     description   String?
+    schedule_status ScheduleStatus @default(InProgress)
     start_date    DateTime? @db.Date
     end_date      DateTime? @db.Date
     created_at    DateTime  @default(now()) @db.Timestamp
@@ -51,3 +52,10 @@ enum ScheduleJobStatus {
   Completed
   Cancel
 }
+
+enum ScheduleStatus {
+  InProgress
+  Completed
+  Cancel
+}
+

@@ -72,4 +72,11 @@ export class ScheduleController {
     )
     return this.scheduleService.getScheduleById(schedule_id)
   }
+
+  @MessagePattern(SCHEDULES_PATTERN.DELELTE)
+  async deleteSchedule(
+    schedule_id: string,
+  ): Promise<ApiResponse<ScheduleResponseDto>> {
+    return this.scheduleService.deleteSchedule(schedule_id)
+  }
 }

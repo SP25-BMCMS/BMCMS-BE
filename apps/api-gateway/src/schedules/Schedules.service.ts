@@ -179,4 +179,38 @@ export class SchedulesService {
       )
     }
   }
+
+  // Delete Schedule (Soft Delete)
+  async deleteSchedule(schedule_id: string): Promise<any> {
+    try {
+      // Validate the schedule_id
+      if (!schedule_id) {
+        throw new HttpException(
+          'Schedule ID is required',
+          HttpStatus.BAD_REQUEST,
+        )
+      }
+
+      // Send request to microservice
+      const response = await firstValueFrom(
+        this.scheduleClient.send(SCHEDULES_PATTERN.DELELTE, schedule_id)
+      )
+
+      return response
+    } catch (error) {
+      console.error('Error deleting schedule:', error)
+
+      if (error.status === 404) {
+        throw new HttpException(
+          error.message || 'Schedule not found',
+          HttpStatus.NOT_FOUND,
+        )
+      } else {
+        throw new HttpException(
+          `Error occurred while deleting schedule: ${error.message || 'Unknown error'}`,
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        )
+      }
+    }
+  }
 }

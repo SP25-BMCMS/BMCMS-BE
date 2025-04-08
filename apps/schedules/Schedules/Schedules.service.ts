@@ -132,13 +132,16 @@ export class ScheduleService {
           // Xử lý các building mới
           const existingBuildingIds = existingSchedule.scheduleJobs.map(job => job.building_id)
 
-          // Tạo danh sách các building cần tạo mới (chưa tồn tại hoặc có status Cancel)
+          // Tạo danh sách các building cần tạo mới (chưa tồn tại hoặc có tất cả status là Cancel)
           const buildingsToCreate = buildingId.filter(id => {
             const existingJob = existingSchedule.scheduleJobs.find(job => job.building_id === id)
-            return !existingJob || existingJob.status === ScheduleJobStatus.Cancel
+            // Nếu không tồn tại hoặc tất cả các job của building đó đều có status Cancel
+            return !existingJob || existingSchedule.scheduleJobs
+              .filter(job => job.building_id === id)
+              .every(job => job.status === ScheduleJobStatus.Cancel)
           })
 
-          // Tạo schedule jobs mới cho các building chưa tồn tại hoặc có status Cancel
+          // Tạo schedule jobs mới cho các building chưa tồn tại hoặc có tất cả status là Cancel
           if (buildingsToCreate.length > 0) {
             const scheduleJobs = buildingsToCreate.map((id) => ({
               schedule_id: schedule.schedule_id,
@@ -354,6 +357,66 @@ export class ScheduleService {
         statusCode: 500,
         message: 'Error retrieving schedule',
       })
+    }
+  }
+
+  // Delete Schedule (Soft Delete)
+  async deleteSchedule(schedule_id: string): Promise<ApiResponse<ScheduleResponseDto>> {
+    try {
+      // First check if the schedule exists
+      const existingSchedule = await this.prisma.schedule.findUnique({
+        where: { schedule_id },
+        include: { scheduleJobs: true },
+      })
+
+      if (!existingSchedule) {
+        return new ApiResponse<ScheduleResponseDto>(
+          false,
+          `Schedule with ID ${schedule_id} not found`,
+          null
+        )
+      }
+
+      // Perform soft delete in a transaction
+      const deletedSchedule = await this.prisma.$transaction(async (prisma) => {
+        // Update schedule status to Cancel
+        const schedule = await prisma.schedule.update({
+          where: { schedule_id },
+          data: {
+            schedule_status: ScheduleJobStatus.Cancel,
+          },
+        })
+
+        // Update all related schedule jobs to Cancel
+        await prisma.scheduleJob.updateMany({
+          where: { schedule_id },
+          data: { status: ScheduleJobStatus.Cancel },
+        })
+
+        return schedule
+      })
+
+      // Convert to response DTO
+      const scheduleResponse: ScheduleResponseDto = {
+        ...deletedSchedule,
+        start_date: deletedSchedule.start_date ? deletedSchedule.start_date : null,
+        end_date: deletedSchedule.end_date ? deletedSchedule.end_date : null,
+        created_at: deletedSchedule.created_at,
+        updated_at: deletedSchedule.updated_at,
+      }
+
+      return new ApiResponse<ScheduleResponseDto>(
+        true,
+        'Schedule and all related jobs have been soft deleted (status set to Cancel)',
+        scheduleResponse
+      )
+    } catch (error) {
+      console.error('Error in deleteSchedule:', error)
+      return new ApiResponse<ScheduleResponseDto>(
+        false,
+        `Failed to soft delete schedule: ${error.message}`,
+        null
+      )
     }
   }
 }

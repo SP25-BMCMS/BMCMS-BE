@@ -126,11 +126,18 @@ export class SchedulesController {
   @Get(':schedule_id')
   @ApiOperation({ summary: 'Get schedule by ID' })
   @ApiParam({ name: 'schedule_id', description: 'Schedule ID' })
-  @SwaggerResponse({ status: 200, description: 'Schedule found' })
+  @SwaggerResponse({ status: 200, description: 'Schedule retrieved successfully' })
   @SwaggerResponse({ status: 404, description: 'Schedule not found' })
-  async getScheduleById(
-    @Param('schedule_id') schedule_id: string,
-  ): Promise<ApiResponse<ScheduleResponseDto>> {
+  async getScheduleById(@Param('schedule_id') schedule_id: string) {
     return this.schedulesService.getScheduleById(schedule_id)
+  }
+
+  @Delete(':schedule_id')
+  @ApiOperation({ summary: 'Delete schedule (soft delete)' })
+  @ApiParam({ name: 'schedule_id', description: 'Schedule ID' })
+  @SwaggerResponse({ status: 200, description: 'Schedule and related jobs have been soft deleted' })
+  @SwaggerResponse({ status: 404, description: 'Schedule not found' })
+  async deleteSchedule(@Param('schedule_id') schedule_id: string) {
+    return this.schedulesService.deleteSchedule(schedule_id)
   }
 }
