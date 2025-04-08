@@ -4,6 +4,7 @@ import { firstValueFrom, timeout, catchError, throwError, lastValueFrom } from '
 import { ChatMessageDto, ChatListQueryDto, ResultModel } from '@app/contracts/chatbot/chatbot.dto';
 import { CHATBOT_PATTERN } from '@app/contracts/chatbot/chatbot.patterns';
 import { SignalRService } from '../signalr/signalr.service';
+import { HttpException, HttpStatus } from '@nestjs/common';
 
 @Injectable()
 export class ChatbotService implements OnModuleInit {
@@ -15,6 +16,7 @@ export class ChatbotService implements OnModuleInit {
     private readonly signalRService: SignalRService,
   ) {
     this.logger.log('ChatbotService initialized');
+    this.logger.log(`TEST_CHAT pattern: ${CHATBOT_PATTERN.TEST_CHAT}`);
   }
 
   async onModuleInit() {
@@ -26,73 +28,78 @@ export class ChatbotService implements OnModuleInit {
     } catch (error) {
       this.isConnected = false;
       this.logger.error('Failed to connect to chatbot service:', error);
-    }
-  }
-
-  async testChat(message: string): Promise<string> {
-    this.logger.log(`[testChat] Starting with message: "${message}"`);
-    console.log("🚀 ~ ChatbotService ~ testChat ~ message:", message);
-
-    try {
-      // Kiểm tra client đã được khởi tạo hay chưa
-      if (!this.chatbotClient) {
-        this.logger.error('[testChat] Chatbot client is not initialized');
-        throw new Error('Chatbot client is not initialized');
-      }
-
-      // Thử kết nối lại nếu chưa kết nối
-      if (!this.isConnected) {
-        try {
-          this.logger.log('[testChat] Attempting to reconnect to chatbot service...');
-          await this.chatbotClient.connect();
-          this.isConnected = true;
-          this.logger.log('[testChat] Reconnected to chatbot service');
-        } catch (connError) {
-          this.logger.error('[testChat] Failed to reconnect:', connError);
-        }
-      }
-
-      // Tạo payload
-      const payload = { message };
-      this.logger.log(`[testChat] Sending payload: ${JSON.stringify(payload)}`);
-      this.logger.log(`[testChat] Using pattern: { cmd: 'test_chat' }`);
-      
-      // Gửi request với timeout và error handling
-      const response = await firstValueFrom(
-        this.chatbotClient
-          .send(CHATBOT_PATTERN.TEST_CHAT, payload)
-          .pipe(
-            timeout(150000), // Tăng timeout lên 15 giây
-            catchError(error => {
-              this.logger.error('[testChat] Error in request:', error);
-              return throwError(() => new Error(`Failed to get response from chatbot service: ${error.message}`));
-            })
-          )
-      );
-
-      // Kiểm tra response
-      if (!response) {
-        this.logger.error('[testChat] No response received from chatbot service');
-        throw new Error('No response received from chatbot service');
-      }
-
-      this.logger.log(`[testChat] Received response: "${response}"`);
-      return response;
-    } catch (error) {
-      this.logger.error('[testChat] Error:', error);
       throw error;
     }
   }
 
-  async getUserChats(query: ChatListQueryDto): Promise<any> {
-    try {
-      const response = await firstValueFrom(
-        this.chatbotClient.send(CHATBOT_PATTERN.GET_USER_CHATS, query)
+  async testChat(message: string, userId: string): Promise<string> {
+    if (!this.chatbotClient) {
+      this.logger.error('Chatbot client is not initialized');
+      throw new HttpException(
+        'Chatbot service is not available',
+        HttpStatus.SERVICE_UNAVAILABLE
       );
+    }
+
+    this.logger.log(`Sending message to chatbot service: ${message} from user ${userId}`);
+    
+    try {
+      const response = await this.chatbotClient
+        .send<string>(CHATBOT_PATTERN.TEST_CHAT, { message, userId })
+        .pipe(
+          timeout(15000),
+          catchError((error) => {
+            this.logger.error('Error in testChat:', error);
+            throw new HttpException(
+              error.message || 'Failed to get response from chatbot service',
+              HttpStatus.INTERNAL_SERVER_ERROR
+            );
+          })
+        )
+        .toPromise();
+
+      if (!response) {
+        throw new HttpException(
+          'No response from chatbot service',
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+
+      this.logger.log(`Received response from chatbot service: ${response}`);
+      return response;
+    } catch (error) {
+      this.logger.error('Error in testChat:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        error.message || 'Failed to test chat',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async getUserChats(userId: string, query: ChatListQueryDto): Promise<any> {
+    try {
+      if (!userId) {
+        throw new HttpException('User ID is required', HttpStatus.BAD_REQUEST);
+      }
+
+      this.logger.log(`Getting chat history for user ${userId}`);
+      const response = await firstValueFrom(
+        this.chatbotClient.send(CHATBOT_PATTERN.GET_USER_CHATS, { userId, ...query })
+      );
+      this.logger.log(`Found ${response?.length || 0} chat messages`);
       return response;
     } catch (error) {
       this.logger.error(`Error getting user chats: ${error.message}`);
-      throw error;
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        error.message || 'Failed to get chat history',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 

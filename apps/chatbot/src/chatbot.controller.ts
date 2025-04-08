@@ -49,8 +49,55 @@ export class ChatbotController {
   //   }
   // }
 
+  @MessagePattern(CHATBOT_PATTERN.GET_USER_CHATS)
+  async getUserChats(@Payload() data: { userId: string; page: number; limit: number }, @Ctx() context: RmqContext) {
+    const pattern = context.getPattern();
+
+    this.logger.log(`[getUserChats] Received message with pattern: ${pattern}`);
+    this.logger.log(`[getUserChats] Received data: ${JSON.stringify(data)}`);
+    
+    try {
+      // Validate input
+      if (!data) {
+        this.logger.error('[getUserChats] No data received');
+        throw new Error('No data received');
+      }
+
+      if (!data.userId) {
+        this.logger.error('[getUserChats] No userId provided');
+        throw new Error('No userId provided');
+      }
+
+      // Convert page and limit to numbers and set default values
+      const page = data.page ? Number(data.page) : 1;
+      const limit = data.limit ? Number(data.limit) : 10;
+
+      // Validate page and limit
+      if (isNaN(page) || page < 1) {
+        this.logger.error('[getUserChats] Invalid page number');
+        throw new Error('Invalid page number');
+      }
+
+      if (isNaN(limit) || limit < 1) {
+        this.logger.error('[getUserChats] Invalid limit number');
+        throw new Error('Invalid limit number');
+      }
+
+      // Get user chat history
+      this.logger.log(`[getUserChats] Getting chat history for user ${data.userId}, page ${page}, limit ${limit}`);
+      const chatHistory = await this.chatbotService.getUserChats(data.userId, page, limit);
+      
+      this.logger.log(`[getUserChats] Found ${chatHistory.length} chat messages`);
+      
+      return chatHistory;
+    } catch (error) {
+      this.logger.error(`[getUserChats] Error processing message:`, error);
+      throw error;
+    }
+  }
+
   @MessagePattern(CHATBOT_PATTERN.TEST_CHAT)
-  async testChat(@Payload() data: any, @Ctx() context: RmqContext) {
+  async testChat(@Payload() data: { message: string; userId: string }, @Ctx() context: RmqContext) {
     const pattern = context.getPattern();
 
     this.logger.log(`[testChat] Received message with pattern: ${pattern}`);
@@ -63,28 +110,19 @@ export class ChatbotController {
         throw new Error('No data received');
       }
 
-      let message: string;
-      
-      // Xử lý các trường hợp có thể có của dữ liệu đầu vào
-      if (typeof data === 'string') {
-        message = data;
-        this.logger.log(`[testChat] Received string message: ${message}`);
-      } else if (typeof data === 'object') {
-        if (data.message) {
-          message = data.message;
-          this.logger.log(`[testChat] Extracted message from object: ${message}`);
-        } else {
-          message = JSON.stringify(data);
-          this.logger.log(`[testChat] Converted object to string: ${message}`);
-        }
-      } else {
-        message = String(data);
-        this.logger.log(`[testChat] Converted data to string: ${message}`);
+      if (!data.message) {
+        this.logger.error('[testChat] No message provided');
+        throw new Error('No message provided');
+      }
+
+      if (!data.userId) {
+        this.logger.error('[testChat] No userId provided');
+        throw new Error('No userId provided');
       }
 
       // Gọi service để xử lý message
-      this.logger.log(`[testChat] Processing message: "${message}"`);
-      const response = await this.chatbotService.testChat(message);
+      this.logger.log(`[testChat] Processing message: "${data.message}" for user ${data.userId}`);
+      const response = await this.chatbotService.testChat(data.message, data.userId);
       
       this.logger.log(`[testChat] Response: "${response}"`);
       

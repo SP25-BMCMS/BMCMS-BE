@@ -5,12 +5,26 @@ import { ClientConfigModule } from 'apps/configs/client-config.module';
 import { ClientProxyFactory } from '@nestjs/microservices';
 import { ClientConfigService } from 'apps/configs/client-config.service';
 import { SignalRModule } from '../signalr/signalr.module';
+import { PassportModule } from '@nestjs/passport';
+import { JwtConfigModule } from 'apps/configs/jwt-config.module';
+import { JwtStrategy } from '../strategies/jwt.strategy';
+import { LocalStrategy } from '../strategies/local.strategy';
+import { UsersModule } from '../users/users.module';
+import { USERS_CLIENT } from '../constraints';
 
 @Module({
-  imports: [ClientConfigModule, SignalRModule],
+  imports: [
+    ClientConfigModule, 
+    SignalRModule,
+    JwtConfigModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    UsersModule
+  ],
   controllers: [ChatbotController],
   providers: [
     ChatbotService,
+    JwtStrategy,
+    LocalStrategy,
     {
       provide: 'CHATBOT_CLIENT',
       useFactory: (clientConfigService: ClientConfigService) => {
@@ -19,5 +33,6 @@ import { SignalRModule } from '../signalr/signalr.module';
       inject: [ClientConfigService],
     },
   ],
+  exports: ['CHATBOT_CLIENT'],
 })
 export class ChatbotModule {} 

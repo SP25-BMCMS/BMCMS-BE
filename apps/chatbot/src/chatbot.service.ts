@@ -14,14 +14,63 @@ export class ChatbotService {
     this.logger.log('ChatbotService initialized');
   }
 
-  async testChat(message: string): Promise<string> {
-    this.logger.log(`[testChat] Processing message: "${message}"`);
+  async getUserChats(userId: string, page: number = 1, limit: number = 10): Promise<any> {
+    this.logger.log(`[getUserChats] Getting chat history for user ${userId}, page ${page}, limit ${limit}`);
+
+    try {
+      if (!userId) {
+        this.logger.error('[getUserChats] No userId provided');
+        throw new Error('User ID is required');
+      }
+
+      // Calculate skip for pagination
+      const skip = (page - 1) * limit;
+
+      // Get total count for pagination metadata
+      const totalCount = await this.prisma.chat.count({
+        where: { userId }
+      });
+
+      // Get chat messages with pagination
+      const chats = await this.prisma.chat.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      });
+
+      this.logger.log(`[getUserChats] Found ${chats.length} chat messages for user ${userId}`);
+
+      // Calculate pagination metadata
+      const totalPages = Math.ceil(totalCount / limit);
+      const hasNext = page < totalPages;
+      const hasPrevious = page > 1;
+
+      return {
+        data: chats,
+        meta: {
+          page,
+          limit,
+          totalCount,
+          totalPages,
+          hasNext,
+          hasPrevious
+        }
+      };
+    } catch (error) {
+      this.logger.error(`[getUserChats] Error getting chat history:`, error);
+      throw error;
+    }
+  }
+
+  async testChat(message: string, userId: string): Promise<string> {
+    this.logger.log(`[testChat] Processing message from user ${userId}: "${message}"`);
 
     try {
       // Lưu message vào database để tracking
       await this.prisma.chat.create({
         data: {
-          userId: 'system_test',
+          userId: userId,
           message: message,
           isUser: true,
           type: 'test'
@@ -77,7 +126,7 @@ Câu hỏi của người dùng: ${message}`;
       // Lưu response vào database
       await this.prisma.chat.create({
         data: {
-          userId: 'system_test',
+          userId: userId,
           message: response,
           isUser: false,
           type: 'test'

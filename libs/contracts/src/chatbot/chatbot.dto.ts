@@ -33,14 +33,16 @@ export class ChatListQueryDto {
   @Transform(({ value }) => GuidConverter.toGuid(value))
   userId?: string;
 
-  @ApiProperty({ description: 'Page number', required: false })
+  @ApiProperty({ description: 'Page number', required: false, type: Number, default: 1 })
   @IsNumber()
   @IsOptional()
+  @Transform(({ value }) => value ? Number(value) : 1)
   page?: number;
 
-  @ApiProperty({ description: 'Items per page', required: false })
+  @ApiProperty({ description: 'Items per page', required: false, type: Number, default: 10 })
   @IsNumber()
   @IsOptional()
+  @Transform(({ value }) => value ? Number(value) : 10)
   limit?: number;
 }
 
