@@ -6,6 +6,7 @@ service UserService {
   rpc Login (LoginRequest) returns (LoginResponse);
   rpc Signup (CreateUserRequest) returns (ApiResponseUser);
   rpc GetUserInfo (UserRequest) returns (UserResponse);
+  rpc GetUserById (UserRequest) returns (UserResponse);
   rpc GetAllUsers (Empty) returns (UsersListResponse);
   rpc Logout (Empty) returns (LogoutResponse);
   rpc Test (TestRequest) returns (TestResponse);
@@ -32,6 +33,7 @@ service UserService {
   rpc UpdateDepartmentAndWorkingPosition (UpdateDepartmentAndWorkingPositionRequest) returns (UpdateDepartmentAndWorkingPositionResponse);
   rpc GetAllStaffByStaffLeader (GetAllStaffByStaffLeaderRequest) returns (StaffListResponse);
   rpc CheckStaffAreaMatchWithScheduleJob (CheckStaffAreaMatchWithScheduleJobRequest) returns (CheckStaffAreaMatchWithScheduleJobResponse);
+  rpc GetUserByIdForTaskAssignmentDetail (UserRequest) returns (UserForTaskAssignmentResponse);
 }
 message GetApartmentByIdRequest {
   string apartmentId = 1;
@@ -442,6 +444,17 @@ message CheckStaffAreaMatchWithScheduleJobResponse {
   bool isSuccess = 1;
   string message = 2;
   bool isMatch = 3;
+}
+
+message UserForTaskAssignmentResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  UserForTaskAssignment data = 3;
+}
+
+message UserForTaskAssignment {
+  string userId = 1;
+  string username = 2;
 }
 
 

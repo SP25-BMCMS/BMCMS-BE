@@ -1788,4 +1788,38 @@ export class UsersService {
       };
     }
   }
+
+  async getUserByIdForTaskAssignmentDetail(userId: string) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { userId },
+        select: {
+          userId: true,
+          username: true,
+        },
+      });
+
+      if (!user) {
+        return {
+          isSuccess: false,
+          message: 'User not found',
+          data: null,
+        };
+      }
+
+      return {
+        isSuccess: true,
+        message: 'User retrieved successfully',
+        data: {
+          userId: user.userId,
+          username: user.username,
+        },
+      };
+    } catch (error) {
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error retrieving user details',
+      });
+    }
+  }
 }

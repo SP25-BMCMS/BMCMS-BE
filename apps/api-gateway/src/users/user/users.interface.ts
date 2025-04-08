@@ -11,6 +11,21 @@ export interface UserInterface {
   signup(userData: createUserDto): Observable<ApiResponse<any>> // ✅ Sửa kiểu trả về
   logout({ }): Observable<any>
   getUserInfo(data: { userId: string; username: string }): Observable<any>
+  getUserById(data: { userId: string }): Observable<{
+    isSuccess: boolean
+    message: string
+    data: {
+      username: string
+    }
+  }>
+  GetUserByIdForTaskAssignmentDetail(data: { userId: string }): Observable<{
+    isSuccess: boolean;
+    message: string;
+    data: {
+      userId: string;
+      username: string;
+    };
+  }>;
   getAllUsers({ }): Observable<any>
   test(data: { username: string; password: string }): Observable<any>
   validateUser(data: { username: string; password: string }): Promise<any>

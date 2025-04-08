@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ClientProxy, RpcException } from '@nestjs/microservices';
+import { ClientGrpc, ClientProxy, RpcException } from '@nestjs/microservices';
 import { AssignmentStatus, PrismaClient } from '@prisma/client-Task';
 import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create-taskAssigment.dto';
 import { UpdateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/update.taskAssigment';
@@ -9,18 +9,31 @@ import {
   PaginationResponseDto,
 } from '../../../libs/contracts/src/Pagination/pagination.dto';
 import { ApiResponse } from '@nestjs/swagger';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Observable } from 'rxjs';
 const CRACK_PATTERNS = {
   GET_DETAILS: { cmd: 'get-crack-report-by-id' }
 };
 
+interface UserService {
+  GetUserByIdForTaskAssignmentDetail(data: { userId: string }): Observable<{
+    isSuccess: boolean
+    message: string
+    data: {
+      userId: string
+      username: string
+    }
+  }>
+}
+
 @Injectable()
 export class TaskAssignmentsService {
   private prisma = new PrismaClient();
+  private userService: UserService
 
-  constructor(private prismaService: PrismaService,
-    @Inject('CRACK_CLIENT') private readonly crackClient: ClientProxy
-  ) { }
+  constructor(
+    @Inject('USERS_CLIENT') private readonly usersClient: ClientGrpc,
+    @Inject('CRACK_CLIENT') private readonly crackClient: ClientProxy,
+  ) { this.userService = this.usersClient.getService<UserService>('UserService') }
 
   async createTaskAssignment(createTaskAssignmentDto: CreateTaskAssignmentDto) {
     try {
@@ -361,6 +374,7 @@ export class TaskAssignmentsService {
       });
     }
   }
+
   async getDetails(taskAssignment_id: string) {
     try {
       // 1. Get inspection with task assignment
@@ -378,11 +392,21 @@ export class TaskAssignmentsService {
         };
       }
 
-      const result: any = { ...taskAssignment };
+      const result: any = {
+        assignment_id: taskAssignment.assignment_id,
+        task_id: taskAssignment.task_id,
+        description: taskAssignment.description,
+        employee: null, // Placeholder for employee info
+        status: taskAssignment.status,
+        created_at: taskAssignment.created_at,
+        updated_at: taskAssignment.updated_at,
+        task: taskAssignment.task
+      };
 
       // 2. Get task info
       const task = taskAssignment.task;
       console.log(task);
+
       // 3. If crack_id exists, get crack info
       if (task.crack_id) {
         console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ task.crack_id:", task.crack_id)
@@ -390,10 +414,29 @@ export class TaskAssignmentsService {
           this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
         );
         result.crackInfo = crackInfo;
-        console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ crackInfo:", crackInfo)
       }
 
-      // 4. If schedule_id exists, get schedule info (you can add this later)
+      // 4. Get employee info from User service
+      try {
+        const employeeInfo = await firstValueFrom(
+          this.userService.GetUserByIdForTaskAssignmentDetail({ userId: taskAssignment.employee_id })
+        );
+
+        if (employeeInfo && employeeInfo.isSuccess && employeeInfo.data) {
+          result.employee = {
+            employee_id: employeeInfo.data.userId,
+            username: employeeInfo.data.username
+          };
+        }
+      } catch (error) {
+        console.error('Error getting employee details:', error.message);
+        result.employee = {
+          employee_id: taskAssignment.employee_id,
+          username: 'Unknown'
+        };
+      }
+
+      // 5. If schedule_id exists, get schedule info (you can add this later)
       if (task.schedule_job_id) {
         // Add schedule info retrieval here
       }
