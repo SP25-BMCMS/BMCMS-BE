@@ -1,25 +1,27 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { Payload, RpcException, ClientProxy } from '@nestjs/microservices';
-import { PrismaClient } from '@prisma/client-building';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { UUID } from 'crypto';
-import { date } from 'joi';
-import { buildingsDto } from 'libs/contracts/src/buildings/buildings.dto';
-import { CreateBuildingDto } from 'libs/contracts/src/buildings/create-buildings.dto';
-import { UpdateBuildingDto } from 'libs/contracts/src/buildings/update-buildings.dto';
-import { Observable } from 'rxjs';
-import { firstValueFrom, lastValueFrom } from 'rxjs';
+import { Injectable, Inject } from '@nestjs/common'
+import { Payload, RpcException, ClientProxy } from '@nestjs/microservices'
+import { PrismaClient } from '@prisma/client-building'
+import { PrismaClient as PrismaClientUsers } from '@prisma/client-users'
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library'
+import { UUID } from 'crypto'
+import { date } from 'joi'
+import { buildingsDto } from 'libs/contracts/src/buildings/buildings.dto'
+import { CreateBuildingDto } from 'libs/contracts/src/buildings/create-buildings.dto'
+import { UpdateBuildingDto } from 'libs/contracts/src/buildings/update-buildings.dto'
+import { Observable } from 'rxjs'
+import { firstValueFrom, lastValueFrom } from 'rxjs'
 
-const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
+const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 
 // Interface for UserService
 interface UserService {
-  getApartmentById(data: { apartmentId: string }): Observable<any>;
+  getApartmentById(data: { apartmentId: string }): Observable<any>
 }
 
 @Injectable()
 export class BuildingsService {
   private prisma = new PrismaClient();
+  private prismaUsers = new PrismaClientUsers();
 
   constructor(
     @Inject(BUILDINGS_CLIENT) private readonly buildingsClient: ClientProxy,
@@ -31,20 +33,20 @@ export class BuildingsService {
       console.log(
         '🚀 ~ BuildingsService ~ getApartmentById ~ apartmentId:',
         apartmentId,
-      );
+      )
 
       // Forward the request to the Users service
       const apartmentResponse = await firstValueFrom(
         this.buildingsClient.send('get_apartment_by_id', { apartmentId }),
-      );
+      )
 
-      return apartmentResponse;
+      return apartmentResponse
     } catch (error) {
-      console.error('Error getting apartment from users service:', error);
+      console.error('Error getting apartment from users service:', error)
       throw new RpcException({
         statusCode: 500,
         message: `Error fetching apartment data: ${error.message}`,
-      });
+      })
     }
   }
 
@@ -62,7 +64,7 @@ export class BuildingsService {
           construction_date: CreateBuildingDto.construction_date,
           completion_date: CreateBuildingDto.completion_date,
         },
-      });
+      })
 
       // if(!newBuilding){
       //   return {
@@ -76,39 +78,39 @@ export class BuildingsService {
         statusCode: 201,
         message: 'Building created successfully',
         data: newBuilding,
-      };
+      }
     } catch (error) {
-      console.error('Error during building creation:', error);
+      console.error('Error during building creation:', error)
 
       throw new RpcException({
         statusCode: 400,
         message: 'Building creation failed',
-      });
+      })
     }
   }
 
   // Update readBuilding to support pagination
   async readBuilding(paginationParams?: {
-    page?: number;
-    limit?: number;
-    search?: string;
+    page?: number
+    limit?: number
+    search?: string
   }) {
     try {
       // Default values if not provided
-      const page = paginationParams?.page || 1;
-      const limit = paginationParams?.limit || 10;
-      const search = paginationParams?.search || '';
+      const page = paginationParams?.page || 1
+      const limit = paginationParams?.limit || 10
+      const search = paginationParams?.search || ''
 
       // Calculate skip value for pagination
-      const skip = (page - 1) * limit;
+      const skip = (page - 1) * limit
 
       // Create where condition for search
-      const where: any = {};
+      const where: any = {}
       if (search) {
         where.OR = [
           { name: { contains: search, mode: 'insensitive' } },
           { description: { contains: search, mode: 'insensitive' } },
-        ];
+        ]
       }
 
       // Get paginated data
@@ -120,7 +122,7 @@ export class BuildingsService {
           orderBy: { createdAt: 'desc' },
         }),
         this.prisma.building.count({ where }),
-      ]);
+      ])
 
       if (buildings.length === 0) {
         return {
@@ -133,7 +135,7 @@ export class BuildingsService {
             limit,
             totalPages: Math.max(1, Math.ceil(total / limit)),
           },
-        };
+        }
       }
 
       return {
@@ -146,13 +148,13 @@ export class BuildingsService {
           limit,
           totalPages: Math.max(1, Math.ceil(total / limit)),
         },
-      };
+      }
     } catch (error) {
-      console.error('Error retrieving buildings:', error);
+      console.error('Error retrieving buildings:', error)
       throw new RpcException({
         statusCode: 500,
         message: 'Error retrieving buildings!',
-      });
+      })
     }
   }
 
@@ -161,14 +163,14 @@ export class BuildingsService {
     try {
       console.log(
         `[BuildingsService] Fetching building with ID: ${buildingId}`,
-      );
+      )
 
       if (!buildingId) {
-        console.error('[BuildingsService] Building ID is null or undefined');
+        console.error('[BuildingsService] Building ID is null or undefined')
         return {
           statusCode: 400,
           message: 'Invalid building ID provided',
-        };
+        }
       }
 
       const building = await this.prisma.building.findUnique({
@@ -181,46 +183,46 @@ export class BuildingsService {
             }
           }
         },
-      });
+      })
 
       if (!building) {
         console.log(
           `[BuildingsService] Building not found for ID: ${buildingId}`,
-        );
+        )
         return {
           statusCode: 404,
           message: 'Building not found',
-        };
+        }
       }
 
       console.log(
         `[BuildingsService] Successfully retrieved building: ${buildingId}`,
-      );
+      )
       return {
         statusCode: 200,
         message: 'Building retrieved successfully',
         data: building,
-      };
+      }
     } catch (error) {
-      console.error('[BuildingsService] Error in getBuildingById:', error);
+      console.error('[BuildingsService] Error in getBuildingById:', error)
 
       if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === 'P2023') {
           return {
             statusCode: 400,
             message: 'Invalid UUID format for building ID',
-          };
+          }
         }
         return {
           statusCode: 404,
           message: 'Building not found or database error',
-        };
+        }
       }
 
       return {
         statusCode: 500,
         message: 'Internal server error while retrieving building',
-      };
+      }
     }
   }
 
@@ -241,18 +243,18 @@ export class BuildingsService {
           construction_date: UpdateBuildingDto.construction_date,
           completion_date: UpdateBuildingDto.completion_date,
         },
-      });
+      })
 
       return {
         statusCode: 200,
         message: 'Building updated successfully',
         data: updatedBuilding,
-      };
+      }
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
         message: 'Building update failed',
-      });
+      })
     }
   }
 
@@ -261,54 +263,157 @@ export class BuildingsService {
     try {
       const deletedBuilding = await this.prisma.building.delete({
         where: { buildingId },
-      });
+      })
 
       return {
         statusCode: 200,
         message: 'Building deleted successfully',
         data: deletedBuilding,
-      };
+      }
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
         message: 'Building deletion failed' + error.message,
-      });
+      })
     }
   }
 
   async checkAreaExists(areaName: string) {
-    console.log(`Checking area existence for: ${areaName}`);
+    console.log(`Checking area existence for: ${areaName}`)
     const area = await this.prisma.area.findFirst({
       where: { name: areaName },
-    });
+    })
 
-    console.log(`Area check result: ${area ? 'Found' : 'Not Found'}`);
-    return area;
+    console.log(`Area check result: ${area ? 'Found' : 'Not Found'}`)
+    return area
   }
 
   async checkBuildingExists(buildingId: string) {
     try {
-      console.log(`Checking building existence for ID: ${buildingId}`);
+      console.log(`Checking building existence for ID: ${buildingId}`)
 
       if (!buildingId) {
-        console.error('Building ID is required');
-        return null;
+        console.error('Building ID is required')
+        return null
       }
 
       const building = await this.prisma.building.findUnique({
         where: { buildingId },
-      });
+      })
 
       if (!building) {
-        console.log(`Building with ID ${buildingId} not found`);
-        return null;
+        console.log(`Building with ID ${buildingId} not found`)
+        return null
       }
 
-      console.log(`Building with ID ${buildingId} exists`);
-      return building;
+      console.log(`Building with ID ${buildingId} exists`)
+      return building
     } catch (error) {
-      console.error('Error checking building existence:', error);
-      throw error;
+      console.error('Error checking building existence:', error)
+      throw error
+    }
+  }
+
+  async getAllResidentsByBuildingId(buildingId: string) {
+    console.log(`[BuildingsService] Getting residents for building ID: ${buildingId}`)
+    try {
+      if (!buildingId) {
+        console.error('[BuildingsService] Building ID is null or undefined')
+        return {
+          statusCode: 400,
+          message: 'Building ID is required',
+          data: []
+        }
+      }
+
+      // First get the building with its details
+      console.log(`[BuildingsService] Fetching building details for ID: ${buildingId}`)
+      const building = await this.prisma.building.findUnique({
+        where: { buildingId },
+        include: {
+          buildingDetails: true
+        }
+      })
+
+      if (!building) {
+        console.error(`[BuildingsService] Building not found for ID: ${buildingId}`)
+        return {
+          statusCode: 404,
+          message: 'Building not found',
+          data: []
+        }
+      }
+
+      console.log(`[BuildingsService] Found building with ${building.buildingDetails.length} details`)
+
+      if (building.buildingDetails.length === 0) {
+        console.log(`[BuildingsService] No building details found for building ID: ${buildingId}`)
+        return {
+          statusCode: 200,
+          message: 'No building details found',
+          data: []
+        }
+      }
+
+      // Get all apartments in this building's details
+      const buildingDetailIds = building.buildingDetails.map(detail => detail.buildingDetailId)
+      console.log(`[BuildingsService] Fetching apartments for building detail IDs:`, buildingDetailIds)
+
+      try {
+        const apartments = await this.prismaUsers.apartment.findMany({
+          where: {
+            buildingDetailId: {
+              in: buildingDetailIds
+            }
+          },
+          include: {
+            owner: true
+          }
+        })
+
+        console.log(`[BuildingsService] Found ${apartments.length} apartments`)
+
+        if (apartments.length === 0) {
+          console.log(`[BuildingsService] No apartments found for building ID: ${buildingId}`)
+          return {
+            statusCode: 200,
+            message: 'No apartments found',
+            data: []
+          }
+        }
+
+        // Extract unique owners and remove the password field
+        const residents = new Map()
+        apartments.forEach(apartment => {
+          if (apartment.owner) {
+            const { password, ...ownerWithoutPassword } = apartment.owner
+            residents.set(ownerWithoutPassword.userId, ownerWithoutPassword)
+          }
+        })
+
+        const uniqueResidents = Array.from(residents.values())
+        console.log(`[BuildingsService] Found ${uniqueResidents.length} unique residents`)
+
+        return {
+          statusCode: 200,
+          message: 'Residents retrieved successfully',
+          data: uniqueResidents
+        }
+      } catch (error) {
+        console.error('[BuildingsService] Error fetching apartments:', error)
+        return {
+          statusCode: 500,
+          message: 'Error retrieving apartments',
+          data: []
+        }
+      }
+    } catch (error) {
+      console.error('[BuildingsService] Error getting residents:', error)
+      return {
+        statusCode: 500,
+        message: 'Error retrieving residents',
+        data: []
+      }
     }
   }
 }

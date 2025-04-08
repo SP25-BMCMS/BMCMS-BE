@@ -12,15 +12,15 @@ import {
   Req,
   UseGuards,
   Query,
-} from '@nestjs/common';
-import { SchedulesService } from './Schedules.service';
-import { catchError, firstValueFrom, NotFoundError } from 'rxjs';
-import { CreateScheduleDto } from '@app/contracts/schedules/create-Schedules.dto';
-import { ScheduleResponseDto } from '@app/contracts/schedules/Schedule.dto';
-import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
-import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules';
-import { $Enums } from '@prisma/client-Schedule';
-import { ChangeScheduleTypeDto } from '@app/contracts/schedules/changeScheduleStatusDto ';
+} from '@nestjs/common'
+import { SchedulesService } from './Schedules.service'
+import { catchError, firstValueFrom, NotFoundError } from 'rxjs'
+import { CreateScheduleDto } from '@app/contracts/schedules/create-Schedules.dto'
+import { ScheduleResponseDto } from '@app/contracts/schedules/Schedule.dto'
+import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
+import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules'
+import { $Enums } from '@prisma/client-Schedule'
+import { ChangeScheduleTypeDto } from '@app/contracts/schedules/changeScheduleStatusDto '
 import {
   ApiTags,
   ApiOperation,
@@ -28,13 +28,13 @@ import {
   ApiParam,
   ApiBody,
   ApiQuery,
-} from '@nestjs/swagger';
-import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
+} from '@nestjs/swagger'
+import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
 
 @Controller('schedules')
 @ApiTags('schedules')
 export class SchedulesController {
-  constructor(private readonly schedulesService: SchedulesService) {}
+  constructor(private readonly schedulesService: SchedulesService) { }
 
   // Create schedule
   @Post()
@@ -48,7 +48,7 @@ export class SchedulesController {
   async createSchedule(
     @Body() createScheduleDto: CreateScheduleDto,
   ): Promise<ApiResponse<ScheduleResponseDto>> {
-    return this.schedulesService.createSchedule(createScheduleDto);
+    return this.schedulesService.createSchedule(createScheduleDto)
   }
 
   // Update schedule
@@ -65,7 +65,7 @@ export class SchedulesController {
     @Param('schedule_id') schedule_id: string,
     @Body() updateScheduleDto: UpdateScheduleDto,
   ): Promise<ApiResponse<ScheduleResponseDto>> {
-    return this.schedulesService.updateSchedule(schedule_id, updateScheduleDto);
+    return this.schedulesService.updateSchedule(schedule_id, updateScheduleDto)
   }
 
   // Change schedule type
@@ -85,7 +85,7 @@ export class SchedulesController {
     return this.schedulesService.changeScheduleType(
       schedule_id,
       changeScheduleTypeDto.schedule_type,
-    );
+    )
   }
 
   // Get all schedules
@@ -113,12 +113,12 @@ export class SchedulesController {
       const paginationParams: PaginationParams = {
         page: page ? parseInt(page.toString()) : 1,
         limit: limit ? parseInt(limit.toString()) : 10,
-      };
+      }
 
-      return this.schedulesService.getAllSchedules(paginationParams);
+      return this.schedulesService.getAllSchedules(paginationParams)
     } catch (error) {
-      console.error('Error in getAllSchedules controller:', error);
-      throw new Error(`Failed to get schedules: ${error.message}`);
+      console.error('Error in getAllSchedules controller:', error)
+      throw new Error(`Failed to get schedules: ${error.message}`)
     }
   }
 
@@ -126,11 +126,18 @@ export class SchedulesController {
   @Get(':schedule_id')
   @ApiOperation({ summary: 'Get schedule by ID' })
   @ApiParam({ name: 'schedule_id', description: 'Schedule ID' })
-  @SwaggerResponse({ status: 200, description: 'Schedule found' })
+  @SwaggerResponse({ status: 200, description: 'Schedule retrieved successfully' })
   @SwaggerResponse({ status: 404, description: 'Schedule not found' })
-  async getScheduleById(
-    @Param('schedule_id') schedule_id: string,
-  ): Promise<ApiResponse<ScheduleResponseDto>> {
-    return this.schedulesService.getScheduleById(schedule_id);
+  async getScheduleById(@Param('schedule_id') schedule_id: string) {
+    return this.schedulesService.getScheduleById(schedule_id)
+  }
+
+  @Delete(':schedule_id')
+  @ApiOperation({ summary: 'Delete schedule (soft delete)' })
+  @ApiParam({ name: 'schedule_id', description: 'Schedule ID' })
+  @SwaggerResponse({ status: 200, description: 'Schedule and related jobs have been soft deleted' })
+  @SwaggerResponse({ status: 404, description: 'Schedule not found' })
+  async deleteSchedule(@Param('schedule_id') schedule_id: string) {
+    return this.schedulesService.deleteSchedule(schedule_id)
   }
 }

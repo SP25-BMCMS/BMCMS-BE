@@ -7,23 +7,16 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
+import { GrpcMethod } from '@nestjs/microservices';
 import { DepartmentsService } from './departments.service';
+
 @Controller('departments')
 export class DepartmentsController {
-  constructor(private readonly departmentsService: DepartmentsService) {}
+  constructor(private readonly departmentsService: DepartmentsService) { }
 
-  @Get()
-  findAll() {
+  @GrpcMethod('UserService', 'GetAllDepartments')
+  async getAllDepartments() {
     return this.departmentsService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.departmentsService.findOne(+id);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.departmentsService.remove(+id);
-  }
 }

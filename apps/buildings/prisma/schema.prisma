@@ -15,30 +15,28 @@ datasource db {
 }
 
 model Building {
-  buildingId      String           @id @default(uuid())
-  name            String
-  description     String?
-  numberFloor     Int
-  imageCover      String?
-  area            Area?            @relation(fields: [areaId], references: [areaId])
+  buildingId        String           @id @default(uuid())
+  name              String
+  description       String?
+  numberFloor       Int
+  imageCover        String?
+  area              Area?            @relation(fields: [areaId], references: [areaId])
   //Trong trường hợp của Building và Area, mối quan hệ này là 1:N, tức là mỗi Building có thể thuộc về một Area, nhưng một Area có thể có nhiều Building.
-  buildingDetails BuildingDetail[]
+  buildingDetails   BuildingDetail[]
   // scheduleJobs    ScheduleJob[]
-  areaId          String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  Status   BuildingStatus? 
-  construction_date String  
-  completion_date String
-
+  areaId            String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  Status            BuildingStatus?
+  construction_date String
+  completion_date   String
 }
+
 enum BuildingStatus {
   under_construction
   operational
   completion_date
-
 }
-
 
 model Area {
   areaId      String     @id @default(uuid())
@@ -59,17 +57,18 @@ model BuildingDetail {
   //floorNumber      Int
   locationDetails  LocationDetail[]
   // crackReports     CrackReport[]
-  building         Building         @relation(fields: [buildingId], references: [buildingId])
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+
+  building  Building @relation(fields: [buildingId], references: [buildingId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model LocationDetail {
   locationDetailId String          @id @default(uuid())
   buildingDetailId String
+  inspection_id    String
   roomNumber       String?
   floorNumber      Int
-  positionSide     PositionSide
   areaType         AreaDetailsType
   description      String?
   buildingDetail   BuildingDetail  @relation(fields: [buildingDetailId], references: [buildingDetailId])
@@ -106,11 +105,11 @@ enum AreaDetailsType {
   Other
 }
 
-enum PositionSide {
-  Left
-  Right
-  Center
-}
+// enum PositionSide {
+//   Left
+//   Right
+//   Center
+// }
 
 // enum JobStatus {
 //   Pending

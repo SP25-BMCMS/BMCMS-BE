@@ -5,9 +5,10 @@ import { TaskAssignmentsService } from './TaskAssignments.service';
 import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create-taskAssigment.dto';
 import { UpdateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/update.taskAssigment';
 import { AssignmentStatus } from '@prisma/client-Task';
+import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 @Controller('task-assignments')
 export class TaskAssignmentsController {
-  constructor(private readonly taskAssignmentService: TaskAssignmentsService) {}
+  constructor(private readonly taskAssignmentService: TaskAssignmentsService) { }
 
   @MessagePattern(TASKASSIGNMENT_PATTERN.CREATE)
   async createTaskAssignment(
@@ -42,18 +43,29 @@ export class TaskAssignmentsController {
     return this.taskAssignmentService.getTaskAssignmentByUserId(payload.userId);
   }
 
-  @MessagePattern(TASKASSIGNMENT_PATTERN.GET_BY_TASKID)
+  @MessagePattern(TASKASSIGNMENT_PATTERN.GET_BY_ID)
   async getTaskAssignmentById(
-    @Payload() payload: { taskAssignmentId: string },
+    @Payload() payload: { assignment_id: string },
   ) {
+    console.log('Received assignment_id:', payload.assignment_id);
     return this.taskAssignmentService.getTaskAssignmentById(
-      payload.taskAssignmentId,
+      payload.assignment_id,
     );
   }
 
+  @MessagePattern(TASKASSIGNMENT_PATTERN.GET_BY_TASKID)
+  async getTaskAssignmentByTaskId(
+    @Payload() payload: { task_id: string },
+  ) {
+    return this.taskAssignmentService.getTaskAssignmentByTaskId(
+      payload.task_id,
+    );
+  }
+
+
   @MessagePattern(TASKASSIGNMENT_PATTERN.GET)
-  async getAllTaskAssignments() {
-    return this.taskAssignmentService.getAllTaskAssignments();
+  async getAllTaskAssignments(@Payload() paginationParams: PaginationParams) {
+    return this.taskAssignmentService.getAllTaskAssignments(paginationParams);
   }
 
   @MessagePattern(TASKASSIGNMENT_PATTERN.REASSIGN)
@@ -92,5 +104,26 @@ export class TaskAssignmentsController {
       payload.assignment_id,
       payload.status
     );
+  }
+
+
+  @MessagePattern(TASKASSIGNMENT_PATTERN.GET_DETAILS)
+  async getCrackDetailsbyTaskAssignmentId(@Payload() taskAssignment_id: string) {
+    return this.taskAssignmentService.getDetails(taskAssignment_id);
+  }
+
+  @MessagePattern(TASKASSIGNMENT_PATTERN.UPDATE_STATUS_TO_REASSIGNED)
+  async updateStatusTaskAssignmentToReassigned(
+    @Payload() payload: { assignment_id: string; description: string },
+  ) {
+    return this.taskAssignmentService.updateStatusTaskAssignmentToReassigned(
+      payload.assignment_id,
+      payload.description
+    );
+  }
+
+  @MessagePattern(TASKASSIGNMENT_PATTERN.GET_ALL_BY_EMPLOYEE_ID)
+  async getAllTaskAndTaskAssignmentByEmployeeId(@Payload() employeeId: string) {
+    return this.taskAssignmentService.getAllTaskAndTaskAssignmentByEmployeeId(employeeId);
   }
 }

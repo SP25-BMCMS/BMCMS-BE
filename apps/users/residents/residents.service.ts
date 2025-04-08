@@ -4,9 +4,9 @@ import { ResidentDto } from '../../../libs/contracts/src/residents/resident.dto'
 import { ClientProxy } from '@nestjs/microservices';
 import { BUILDINGS_PATTERN } from '../../../libs/contracts/src/buildings/buildings.patterns';
 import { BUILDINGDETAIL_PATTERN } from '../../../libs/contracts/src/BuildingDetails/buildingdetails.patterns';
-import { AREAS_PATTERN } from '../../../libs/contracts/src/Areas/Areas.patterns';
 import { firstValueFrom, catchError, timeout, of, retry, from } from 'rxjs';
 import { Prisma } from '@prisma/client';
+import { AREAS_PATTERN } from '../../../libs/contracts/src/Areas/Areas.patterns';
 
 @Injectable()
 export class ResidentsService {

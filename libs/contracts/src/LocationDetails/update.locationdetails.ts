@@ -47,17 +47,17 @@ export class UpdateLocationDetailDto {
   @ApiProperty({ description: 'Floor number of the location detail', required: false, type: Number })
   floorNumber?: number;
 
-  @IsOptional()
-  @IsString()
-  @IsEnum($Enums.PositionSide)
-  @ApiProperty({
-    description: 'Position side of the location detail',
-    required: false,
-    enum: $Enums.PositionSide,  // Enum for position side
-    example: $Enums.PositionSide +"Left ,Right;Center",
+  // @IsOptional()
+  // @IsString()
+  // @IsEnum($Enums.PositionSide)
+  // @ApiProperty({
+  //   description: 'Position side of the location detail',
+  //   required: false,
+  //   enum: $Enums.PositionSide,  // Enum for position side
+  //   example: $Enums.PositionSide +"Left ,Right;Center",
 
-  })
-  positionSide?: $Enums.PositionSide;
+  // })
+  // positionSide?: $Enums.PositionSide;
 
   @IsOptional()
   @IsString()

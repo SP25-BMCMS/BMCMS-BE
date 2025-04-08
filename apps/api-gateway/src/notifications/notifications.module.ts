@@ -15,16 +15,18 @@ import { NOTIFICATION_CLIENT } from '../constraints'
         name: NOTIFICATION_CLIENT,
         imports: [ConfigModule],
         inject: [ConfigService],
-        useFactory: async (configService: ConfigService) => ({
-          transport: Transport.REDIS,
-          options: {
-            host: configService.get<string>('REDIS_HOST') || 'redis',
-            port: configService.get<number>('REDIS_PORT') || 6379,
-            password: configService.get<string>('REDIS_PASSWORD') || '',
-            retryAttempts: 5,
-            retryDelay: 3000,
-          },
-        }),
+        useFactory: async (configService: ConfigService) => {
+          return {
+            transport: Transport.REDIS,
+            options: {
+              host: configService.get<string>('REDIS_HOST', 'redis'),
+              port: configService.get<number>('REDIS_PORT', 6379),
+              password: configService.get<string>('REDIS_PASSWORD', ''),
+              retryAttempts: 5,
+              retryDelay: 3000,
+            },
+          }
+        },
       },
     ]),
   ],

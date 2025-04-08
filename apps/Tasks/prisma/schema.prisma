@@ -28,6 +28,9 @@ model Task {
   // Mối quan hệ 1:N với TaskAssignments
   taskAssignments TaskAssignment[]
 
+  // Mối quan hệ 1:N với Feedbacks
+  feedbacks Feedback[]
+
   // Mối quan hệ 1:N với Inspections
 }
 
@@ -71,24 +74,32 @@ model TaskAssignment {
 }
 
 model Inspection {
-  inspection_id      String   @id @default(uuid())
+  inspection_id      String         @id @default(uuid())
   task_assignment_id String
   inspected_by       String
-  image_url          String?
+  image_urls         String[] // Đã sử dụng array cho hình ảnh
   description        String
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
-
+  created_at         DateTime       @default(now())
+  updated_at         DateTime       @updatedAt
+  total_cost         Decimal        @db.Decimal(10, 2)
   // Mối quan hệ N:1 với TaskAssignment
-  taskAssignment TaskAssignment @relation(fields: [task_assignment_id], references: [assignment_id])
+  taskAssignment     TaskAssignment @relation(fields: [task_assignment_id], references: [assignment_id])
 
   // Mối quan hệ 1:N với RepairMaterial
   repairMaterials RepairMaterial[]
 }
 
+// enum InspectionStatus {
+//   Notyetverify
+//   Verify
+//   UnConfirm
+//   Confirm
+//   Completed
+//   Other
+// }
+
 model RepairMaterial {
   repair_material_id String   @id @default(uuid())
-  task_id            String
   material_id        String
   quantity           Int
   unit_cost          Decimal  @db.Decimal(10, 2)
@@ -105,16 +116,43 @@ model RepairMaterial {
 }
 
 model Material {
-  material_id    String   @id @default(uuid())
+  material_id    String         @id @default(uuid())
   name           String
   description    String?
-  unit_price     Decimal  @db.Decimal(10, 2)
+  unit_price     Decimal        @db.Decimal(10, 2)
   stock_quantity Int
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @updatedAt
+  status         MaterialStatus @default(ACTIVE)
 
   // Mối quan hệ 1:N với RepairMaterial
   repairMaterials RepairMaterial[]
+}
+
+enum MaterialStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
+}
+
+model Feedback {
+  feedback_id String         @id @default(uuid())
+  task_id     String
+  feedback_by String
+  comments    String
+  rating      Int            @default(1) // Rating should be between 1 and 5
+  created_at  DateTime       @default(now())
+  updated_at  DateTime       @updatedAt
+  status      FeedbackStatus @default(ACTIVE)
+
+  // Mối quan hệ N:1 với Task
+  task Task @relation(fields: [task_id], references: [task_id])
+}
+
+enum FeedbackStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
 }
 
 enum Status {

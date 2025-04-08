@@ -46,6 +46,20 @@ export class CracksController {
     @Inject(CRACK_CLIENT) private readonly crackService: ClientProxy,
   ) { }
 
+  @Get('test-users-connection')
+  @ApiOperation({ summary: 'Test connection with Users Service' })
+  @ApiResponse({ status: 200, description: 'Connection test successful' })
+  @ApiResponse({ status: 500, description: 'Connection test failed' })
+  async testUsersConnection() {
+    return firstValueFrom(
+      this.crackService.send('crack-reports.test-users-connection', {}).pipe(
+        catchError((err) => {
+          throw new InternalServerErrorException(err.message);
+        }),
+      ),
+    );
+  }
+
   @Get('crack-reports')
   @ApiOperation({
     summary: 'Get all crack reports with pagination, search, and filter',
@@ -84,9 +98,50 @@ export class CracksController {
   }
 
   @Get('crack-reports/:id')
-  @ApiOperation({ summary: 'Get crack report by ID' })
+  @ApiOperation({ summary: 'Get crack report by ID with all associated crack details' })
   @ApiParam({ name: 'id', description: 'Crack report ID' })
-  @ApiResponse({ status: 200, description: 'Returns the crack report' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns the crack report with all crack details',
+    schema: {
+      example: {
+        isSuccess: true,
+        message: 'Crack Report đã tìm thấy',
+        data: [{
+          crackReportId: "1234abcd-5678-efgh-9012-ijkl3456mnop",
+          buildingDetailId: "c5fa23cc-86d4-4514-b4e5-3f9bce511c29",
+          description: "Kiểm tra nứt tường",
+          isPrivatesAsset: false,
+          position: "rainbow/s106/15/left",
+          status: "Pending",
+          reportedBy: "user-id",
+          verifiedBy: "123123123",
+          createdAt: "2024-03-21T10:00:00Z",
+          updatedAt: "2024-03-21T10:00:00Z",
+          crackDetails: [
+            {
+              crackDetailsId: "uuid-1",
+              crackReportId: "1234abcd-5678-efgh-9012-ijkl3456mnop",
+              photoUrl: "https://bucket-name.s3.amazonaws.com/uploads/photo1.jpg",
+              severity: "Medium",
+              aiDetectionUrl: "https://bucket-name.s3.amazonaws.com/annotated/photo1.jpg",
+              createdAt: "2024-03-21T10:00:00Z",
+              updatedAt: "2024-03-21T10:00:00Z"
+            },
+            {
+              crackDetailsId: "uuid-2",
+              crackReportId: "1234abcd-5678-efgh-9012-ijkl3456mnop",
+              photoUrl: "https://bucket-name.s3.amazonaws.com/uploads/photo2.jpg",
+              severity: "Low",
+              aiDetectionUrl: "https://bucket-name.s3.amazonaws.com/annotated/photo2.jpg",
+              createdAt: "2024-03-21T10:00:00Z",
+              updatedAt: "2024-03-21T10:00:00Z"
+            }
+          ]
+        }]
+      }
+    }
+  })
   @ApiResponse({ status: 404, description: 'Crack report not found' })
   async getCrackReportById(@Param('id') id: string) {
     return firstValueFrom(
@@ -273,9 +328,25 @@ export class CracksController {
   @Patch('crack-reports/:id/status')
   @ApiOperation({ summary: 'Update crack report status' })
   @ApiParam({ name: 'id', description: 'Crack report ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        staffId: {
+          type: 'string',
+          description: 'ID of the staff member to assign the task to'
+        }
+      },
+      required: ['staffId']
+    }
+  })
   @ApiResponse({ status: 200, description: 'Status updated successfully' })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  async updateCrackReportStatus(@Param('id') id: string, @Req() req) {
+  async updateCrackReportStatus(
+    @Param('id') id: string,
+    @Body('staffId') staffId: string,
+    @Req() req
+  ) {
     const managerId = req.user.userId; // Get manager ID from token
 
     return firstValueFrom(
@@ -285,6 +356,7 @@ export class CracksController {
           {
             crackReportId: id,
             managerId,
+            staffId
           },
         )
         .pipe(
@@ -433,6 +505,56 @@ export class CracksController {
     return firstValueFrom(
       this.crackService
         .send({ cmd: 'upload-crack-images' }, { files: filesWithBase64 })
+        .pipe(
+          catchError((err) => {
+            throw new InternalServerErrorException(err.message);
+          }),
+        ),
+    );
+  }
+
+  @Post('crack-details/upload-images')
+  @ApiOperation({ summary: 'Upload crack images' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Upload up to 10 images',
+    type: 'multipart/form-data',
+    required: true,
+    schema: {
+      type: 'object',
+      properties: {
+        image: {
+          type: 'array',
+          items: {
+            type: 'string',
+            format: 'binary', // Hiển thị chọn file trong Swagger
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Images uploaded successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request - No files uploaded' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  @UseInterceptors(FilesInterceptor('image', 10))
+  async uploadInspectionImage(@UploadedFiles() files: Express.Multer.File[]) {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No files uploaded');
+    }
+
+    // Chuyển Buffer thành Base64
+    const filesWithBase64 = files.map((file) => ({
+      fieldname: file.fieldname,
+      originalname: file.originalname,
+      encoding: file.encoding,
+      mimetype: file.mimetype,
+      size: file.size,
+      buffer: file.buffer.toString('base64'), // Convert buffer to Base64
+    }));
+
+    return firstValueFrom(
+      this.crackService
+        .send({ cmd: 'upload-inspection-images' }, { files: filesWithBase64 })
         .pipe(
           catchError((err) => {
             throw new InternalServerErrorException(err.message);

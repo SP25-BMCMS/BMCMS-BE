@@ -55,6 +55,7 @@ async function bootstrap() {
     .addTag('tasks', 'Task management endpoints')
     .addTag('schedules', 'Schedule management endpoints')
     .addTag('notifications', 'Notification management endpoints')
+    .addTag('Employee', 'Employee and staff management endpoints')
     .build()
 
   const document = SwaggerModule.createDocument(app, config)

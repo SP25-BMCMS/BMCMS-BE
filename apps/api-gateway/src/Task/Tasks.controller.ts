@@ -34,6 +34,7 @@ import { TASK_CLIENT } from '../constraints';
 import { UpdateInspectionDto } from '../../../../libs/contracts/src/inspections/update-inspection.dto';
 import { CreateRepairMaterialDto } from '@app/contracts/repairmaterials/create-repair-material.dto';
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
+import { Status } from '@prisma/client-Task';
 
 @Controller('tasks')
 @ApiTags('tasks')
@@ -85,7 +86,7 @@ export class TaskController {
     return this.taskService.deleteTask(task_id);
   }
 
-  // @Put('task/:task_id/status')
+  @Put('task/:task_id/status')
   @ApiOperation({ summary: 'Change task status' })
   @ApiParam({ name: 'task_id', description: 'Task ID' })
   @ApiBody({ type: ChangeTaskStatusDto })
@@ -104,7 +105,7 @@ export class TaskController {
   }
 
   @Get('tasks')
-  @ApiOperation({ summary: 'Get all tasks' })
+  @ApiOperation({ summary: 'Get all tasks with pagination and status filter' })
   @ApiResponse({ status: 200, description: 'Returns all tasks' })
   @ApiQuery({
     name: 'page',
@@ -118,15 +119,24 @@ export class TaskController {
     type: Number,
     description: 'Items per page',
   })
+  @ApiQuery({
+    name: 'statusFilter',
+    required: false,
+    type: String,
+    description: 'Filter by task status',
+    enum: Status,
+  })
   async getAllTasks(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @Query('statusFilter') statusFilter?: Status,
   ) {
     try {
       // Create pagination params object
       const paginationParams: PaginationParams = {
         page: page ? parseInt(page.toString()) : 1,
         limit: limit ? parseInt(limit.toString()) : 10,
+        statusFilter,
       };
 
       return this.taskService.getAllTasks(paginationParams);

@@ -28,7 +28,7 @@ export class CreateTaskDto {
   status: $Enums.Status;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @ApiProperty({ 
     description: 'The crack ID associated with the task', 
     type: String,
@@ -38,7 +38,7 @@ export class CreateTaskDto {
   crack_id: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @ApiProperty({ 
     description: 'The schedule job ID associated with the task', 
     type: String,

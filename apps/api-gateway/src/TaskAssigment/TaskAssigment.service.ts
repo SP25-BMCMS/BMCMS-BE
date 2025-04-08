@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { TASK_CLIENT } from '../constraints';
 import { TASKASSIGNMENT_PATTERN } from 'libs/contracts/src/taskAssigment/taskAssigment.patterns';
@@ -81,17 +81,26 @@ export class TaskAssignmentService {
   // Get Task Assignment by ID
   async getTaskAssignmentById(taskAssignmentId: string) {
     try {
+      console.log('Sending taskAssignmentId to microservice:', taskAssignmentId);
       return await firstValueFrom(
-        this.taskClient.send(TASKASSIGNMENT_PATTERN.GET_BY_TASKID, {
+        this.taskClient.send(TASKASSIGNMENT_PATTERN.GET_BY_ID, {
           assignment_id: taskAssignmentId,
         }),
       );
     } catch (error) {
-      throw new RpcException({
-        statusCode: 500,
-        message: 'Error fetching task assignment by ID',
-      });
+      console.error('Error in getTaskAssignmentById:', error);
+      if (error.statusCode === 404) {
+        throw new NotFoundException(error.message || 'Task assignment not found');
+      }
+      throw new HttpException(
+        error.message || 'Error fetching task assignment by ID',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
+    console.log("🚀 ~ TaskAssignmentService ~ getTaskAssignmentById ~ taskAssignmentId:", taskAssignmentId)
+    console.log("🚀 ~ TaskAssignmentService ~ getTaskAssignmentById ~ taskAssignmentId:", taskAssignmentId)
+    console.log("🚀 ~ TaskAssignmentService ~ getTaskAssignmentById ~ taskAssignmentId:", taskAssignmentId)
+    console.log("🚀 ~ TaskAssignmentService ~ getTaskAssignmentById ~ taskAssignmentId:", taskAssignmentId)
   }
 
   // Get all Task Assignments
@@ -191,6 +200,82 @@ export class TaskAssignmentService {
       throw new HttpException(
         'Error changing task assignment status',
         HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+  async getTaskAssignmentDetails(task_assignment_id: string): Promise<any> {
+    try {
+      return await firstValueFrom(
+        this.taskClient.send(TASKASSIGNMENT_PATTERN.GET_DETAILS, task_assignment_id)
+      );
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error getting inspection details',
+        data: error.message
+      };
+    }
+  }
+
+  // Get all tasks and task assignments by employee ID
+  async getAllTaskAndTaskAssignmentByEmployeeId(employeeId: string) {
+    try {
+      return await firstValueFrom(
+        this.taskClient.send(
+          TASKASSIGNMENT_PATTERN.GET_ALL_BY_EMPLOYEE_ID,
+          employeeId
+        ),
+      );
+    } catch (error) {
+      console.error('Error fetching tasks and assignments for employee:', error);
+      if (error?.response) {
+        throw new HttpException(
+          error.response.message || 'Error fetching employee tasks and assignments',
+          error.response.statusCode || HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+      throw new HttpException(
+        'Error fetching employee tasks and assignments',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  // Update Status to Reassigned
+  async updateStatusTaskAssignmentToReassigned(assignment_id: string, description: string) {
+    try {
+      return await firstValueFrom(
+        this.taskClient.send(
+          TASKASSIGNMENT_PATTERN.UPDATE_STATUS_TO_REASSIGNED,
+          { assignment_id, description }
+        ),
+      );
+    } catch (error) {
+      console.error('Error updating task assignment status to Reassigned:', error);
+
+      // Xử lý lỗi từ microservice
+      if (error?.response) {
+        // Lỗi đã được xử lý thành RpcException
+        const status = error.status || error.response.statusCode || 400;
+        const message = typeof error.response === 'string'
+          ? error.response
+          : error.response.message || 'Task assignment update failed';
+
+        throw new HttpException(message, status);
+      }
+
+      // Nếu lỗi có trực tiếp statusCode và message (từ RpcException)
+      if (error?.statusCode) {
+        throw new HttpException(
+          error.message || 'Task assignment update failed',
+          error.statusCode
+        );
+      }
+
+      // Mặc định trả về 400 thay vì 500
+      throw new HttpException(
+        'Task assignment status must be InFixing or Fixed to reassign',
+        HttpStatus.BAD_REQUEST
       );
     }
   }

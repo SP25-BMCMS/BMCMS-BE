@@ -43,11 +43,5 @@ export class CreateBuildingDetailDto {
   @IsInt()
   floorNumber: number;
 
-  @ApiProperty({
-    description: 'Location details associated with this building detail',
-    type: [LocationDetailDto],
-    required: false
-  })
-  @IsOptional()
-  locationDetails?: LocationDetailDto[];  // If you want to include LocationDetails in the same request
+    // If you want to include LocationDetails in the same request
 }

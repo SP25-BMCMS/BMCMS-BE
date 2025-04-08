@@ -17,7 +17,9 @@ service UserService {
   rpc UpdateWorkingPosition (UpdateWorkingPositionRequest) returns (WorkingPositionApiResponse);
   rpc DeleteWorkingPosition (WorkingPositionByIdRequest) returns (WorkingPositionApiResponse);
   rpc CreateDepartment (CreateDepartmentRequest) returns (DepartmentApiResponse);
-  rpc GetAllStaff (Empty) returns (StaffListResponse);
+  rpc GetDepartmentById (DepartmentByIdRequest) returns (DepartmentApiResponse);
+  rpc GetAllDepartments (Empty) returns (DepartmentsListResponse);
+  rpc GetAllStaff (StaffPaginationRequest) returns (StaffListResponse);
   rpc GetApartmentsByResidentId (GetApartmentsRequest) returns (GetApartmentByResidentIdResponse);
   rpc ResidentLogin (ResidentLoginRequest) returns (LoginResponse);
   rpc UpdateResidentApartments (UpdateResidentApartmentsRequest) returns (UpdateResidentApartmentsResponse);
@@ -25,6 +27,10 @@ service UserService {
   rpc VerifyOtpAndCompleteSignup (VerifyOtpAndCompleteSignupRequest) returns (ApiResponseUser);
   rpc GetApartmentById (GetApartmentByIdRequest) returns (ApiResponseApartment);
   rpc GetApartmentByResidentAndApartmentId(GetApartmentDetailRequest) returns (GetApartmentByResidentAndApartmentIdResponse);
+  rpc CheckStaffAreaMatch (CheckStaffAreaMatchRequest) returns (CheckStaffAreaMatchResponse);
+  rpc CheckPositionAndDepartment (CheckPositionAndDepartmentRequest) returns (CheckPositionAndDepartmentResponse);
+  rpc UpdateDepartmentAndWorkingPosition (UpdateDepartmentAndWorkingPositionRequest) returns (UpdateDepartmentAndWorkingPositionResponse);
+  rpc GetAllStaffByStaffLeader (GetAllStaffByStaffLeaderRequest) returns (StaffListResponse);
 }
 message GetApartmentByIdRequest {
   string apartmentId = 1;
@@ -255,7 +261,7 @@ message WorkingPositionApiResponse {
 
 message WorkingPositionResponse {
   string positionId = 1;
-  PositionName positionName = 2;
+  string positionName = 2;
   string description = 3;
   PositionStatus status = 4;
 }
@@ -324,6 +330,7 @@ message StaffListResponse {
   bool isSuccess = 1;
   string message = 2;
   repeated UserResponse data = 3;
+  PaginationResponse pagination = 4;
 }
 
 message ResidentLoginRequest {
@@ -368,6 +375,61 @@ message GetApartmentDetailsReponse {
   bool isSuccess = 1;
   string message = 2;
   Apartment data = 3;
+}
+
+message CheckStaffAreaMatchRequest {
+  string staffId = 1;
+  string crackReportId = 2;
+}
+
+message CheckStaffAreaMatchResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  bool isMatch = 3;
+}
+
+message CheckPositionAndDepartmentRequest {
+  string staffId = 1;
+  string departmentId = 2;
+}
+
+message CheckPositionAndDepartmentResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  bool isMatch = 3;
+}
+
+message DepartmentByIdRequest {
+  string departmentId = 1;
+}
+
+message UpdateDepartmentAndWorkingPositionRequest {
+  string staffId = 1;
+  string departmentId = 2;
+  string positionId = 3;
+}
+
+message UpdateDepartmentAndWorkingPositionResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  UserResponse data = 3;
+}
+
+message DepartmentsListResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  repeated DepartmentResponse data = 3;
+}
+
+message StaffPaginationRequest {
+  int32 page = 1;
+  int32 limit = 2;
+  string search = 3;
+  repeated string role = 4;  // Can contain "Admin", "Manager", "Staff" values
+}
+
+message GetAllStaffByStaffLeaderRequest {
+  string staffId = 1;
 }
 
 
