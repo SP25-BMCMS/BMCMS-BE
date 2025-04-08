@@ -9,7 +9,7 @@ import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 export class BuildingsService {
   constructor(
     @Inject(BUILDING_CLIENT) private readonly buildingsClient: ClientProxy,
-  ) {}
+  ) { }
 
   // Get all buildings with pagination support
   async getBuildings(paginationParams?: PaginationParams) {
@@ -181,6 +181,24 @@ export class BuildingsService {
       throw new HttpException(
         'Error occurred while deleting building.',
         HttpStatus.NOT_FOUND,
+      );
+    }
+  }
+
+  // Get all residents by building ID
+  async getAllResidentsByBuildingId(buildingId: string) {
+    try {
+      const residentsObservable = this.buildingsClient.send(
+        BUILDINGS_PATTERN.GET_RESIDENTS_BY_BUILDING_ID,
+        buildingId
+      );
+      const residents = await firstValueFrom(residentsObservable);
+      return residents;
+    } catch (error) {
+      console.error('Error in getAllResidentsByBuildingId:', error);
+      throw new HttpException(
+        'Error occurred while fetching residents.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

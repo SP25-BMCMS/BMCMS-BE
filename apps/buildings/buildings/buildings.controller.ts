@@ -5,22 +5,22 @@ import { BUILDINGS_PATTERN } from 'libs/contracts/src/buildings/buildings.patter
 import { BuildingsService } from './buildings.service';
 @Controller('buildings')
 export class BuildingsController {
-  constructor(private BuildingsService: BuildingsService) {}
+  constructor(private buildingsService: BuildingsService) { }
 
   @MessagePattern(BUILDINGS_PATTERN.CREATE)
   async createBuilding(@Payload() data: any) {
-    return await this.BuildingsService.createBuilding(data);
+    return await this.buildingsService.createBuilding(data);
   }
 
   // @MessagePattern(BUILDINGS_PATTERN.GET)
   // async getAllBuildings(@Payload() data: any) {
   //   console.log('Getting all buildings...');
-  //   return await this.BuildingsService.readBuilding();
+  //   return await this.buildingsService.readBuilding();
   // }
   @MessagePattern(BUILDINGS_PATTERN.GET)
   async getAllBuildings(@Payload() paginationParams: PaginationParams) {
     try {
-      return await this.BuildingsService.readBuilding(paginationParams);
+      return await this.buildingsService.readBuilding(paginationParams);
     } catch (error) {
       console.error('Error in getAllBuildings:', error);
       throw new RpcException({
@@ -32,12 +32,12 @@ export class BuildingsController {
 
   @MessagePattern(BUILDINGS_PATTERN.UPDATE)
   updateBuilding(@Payload() data: any) {
-    return this.BuildingsService.updateBuilding(data);
+    return this.buildingsService.updateBuilding(data);
   }
 
   @MessagePattern(BUILDINGS_PATTERN.DELELTE)
   deleteBuilding(@Payload() payload: { buildingId: string }) {
-    return this.BuildingsService.deleteBuilding(payload.buildingId);
+    return this.buildingsService.deleteBuilding(payload.buildingId);
   }
   @MessagePattern(BUILDINGS_PATTERN.GET_BY_ID)
   async getBuildingById(@Payload() payload: { buildingId: string }) {
@@ -46,17 +46,17 @@ export class BuildingsController {
       payload.buildingId,
     );
 
-    return this.BuildingsService.getBuildingById(payload.buildingId);
+    return this.buildingsService.getBuildingById(payload.buildingId);
   }
 
   // @MessagePattern('get_apartment_by_id')
   // async getApartmentById(@Payload() payload: { apartmentId: string }) {
-  //   return this.BuildingsService.getApartmentById(payload.apartmentId);
+  //   return this.buildingsService.getApartmentById(payload.apartmentId);
   // }
 
   @MessagePattern('check_area_exists') // 🟢 Đảm bảo có handler này
   async checkAreaExists(@Payload() data: { areaName: string }) {
-    const area = await this.BuildingsService.checkAreaExists(data.areaName);
+    const area = await this.buildingsService.checkAreaExists(data.areaName);
     return {
       exists: !!area,
       message: area ? 'Area exists' : 'Area does not exist',
@@ -76,7 +76,7 @@ export class BuildingsController {
         };
       }
 
-      const building = await this.BuildingsService.checkBuildingExists(
+      const building = await this.buildingsService.checkBuildingExists(
         data.buildingId,
       );
 
@@ -102,5 +102,10 @@ export class BuildingsController {
         exists: false,
       };
     }
+  }
+
+  @MessagePattern(BUILDINGS_PATTERN.GET_RESIDENTS_BY_BUILDING_ID)
+  async getAllResidentsByBuildingId(@Payload() buildingId: string) {
+    return this.buildingsService.getAllResidentsByBuildingId(buildingId);
   }
 }

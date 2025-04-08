@@ -1,6 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { Payload, RpcException, ClientProxy } from '@nestjs/microservices';
 import { PrismaClient } from '@prisma/client-building';
+import { PrismaClient as PrismaClientUsers } from '@prisma/client-users';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { UUID } from 'crypto';
 import { date } from 'joi';
@@ -20,6 +21,7 @@ interface UserService {
 @Injectable()
 export class BuildingsService {
   private prisma = new PrismaClient();
+  private prismaUsers = new PrismaClientUsers();
 
   constructor(
     @Inject(BUILDINGS_CLIENT) private readonly buildingsClient: ClientProxy,
@@ -309,6 +311,60 @@ export class BuildingsService {
     } catch (error) {
       console.error('Error checking building existence:', error);
       throw error;
+    }
+  }
+
+  async getAllResidentsByBuildingId(buildingId: string) {
+    try {
+      // First get the building with its details
+      const building = await this.prisma.building.findUnique({
+        where: { buildingId },
+        include: {
+          buildingDetails: true
+        }
+      });
+
+      if (!building) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Building not found',
+        });
+      }
+
+      // Get all apartments in this building's details
+      const apartments = await this.prismaUsers.apartment.findMany({
+        where: {
+          buildingDetailId: {
+            in: building.buildingDetails.map(detail => detail.buildingDetailId)
+          }
+        },
+        include: {
+          owner: true
+        }
+      });
+
+      // Extract unique owners and remove the password field
+      const residents = new Map();
+      apartments.forEach(apartment => {
+        if (apartment.owner) {
+          const { password, ...ownerWithoutPassword } = apartment.owner;
+          residents.set(apartment.owner.userId, ownerWithoutPassword);
+        }
+      });
+
+      return {
+        statusCode: 200,
+        message: 'Residents retrieved successfully',
+        data: Array.from(residents.values())
+      };
+    } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      }
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error retrieving residents',
+      });
     }
   }
 }
