@@ -126,4 +126,9 @@ export class TaskAssignmentsController {
   async getAllTaskAndTaskAssignmentByEmployeeId(@Payload() employeeId: string) {
     return this.taskAssignmentService.getAllTaskAndTaskAssignmentByEmployeeId(employeeId);
   }
+
+  @MessagePattern(TASKASSIGNMENT_PATTERN.EXPORT_COST_PDF)
+  async exportCostPdf(@Payload() payload: { taskId: string }) {
+    return this.taskAssignmentService.exportCostPdf(payload.taskId);
+  }
 }

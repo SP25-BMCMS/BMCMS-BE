@@ -10,6 +10,7 @@ import {
 } from '../../../libs/contracts/src/Pagination/pagination.dto';
 import { ApiResponse } from '@nestjs/swagger';
 import { firstValueFrom, Observable } from 'rxjs';
+const PDFDocument = require('pdfkit');
 const CRACK_PATTERNS = {
   GET_DETAILS: { cmd: 'get-crack-report-by-id' }
 };
@@ -548,4 +549,241 @@ export class TaskAssignmentsService {
       });
     }
   }
+
+  /**
+   * Export cost PDF report comparing estimated vs. actual costs
+   * @param taskId The ID of the task
+   * @returns PDF file as base64 string
+   */
+  async exportCostPdf(taskId: string) {
+    try {
+      console.log('Starting exportCostPdf for task ID:', taskId);
+
+      // 1. Get the task
+      const task = await this.prisma.task.findUnique({
+        where: { task_id: taskId },
+        include: {
+          taskAssignments: {
+            include: {
+              inspections: {
+                include: {
+                  repairMaterials: {
+                    include: {
+                      material: true // Join với bảng material để lấy thông tin chi tiết về vật liệu
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!task) {
+        console.log('Task not found:', taskId);
+        return {
+          success: false,
+          message: 'Task not found',
+          data: null
+        };
+      }
+
+      console.log('Task found:', task.task_id);
+
+      // 3. Calculate estimated cost - tổng total_cost những taskAssignment có status === Verified
+      let estimatedCost = 0;
+
+      for (const assignment of task.taskAssignments) {
+        if (assignment.status === AssignmentStatus.Verified) {
+          for (const inspection of assignment.inspections) {
+            estimatedCost += Number(inspection.total_cost) || 0;
+          }
+        }
+      }
+
+      console.log('Calculated estimated cost (Verified):', estimatedCost);
+
+      // 4. Calculate actual cost - tổng total_cost những taskAssignment có status === Confirmed
+      let actualCost = 0;
+      let costDetails = [];
+
+      for (const assignment of task.taskAssignments) {
+        if (assignment.status === AssignmentStatus.Confirmed) {
+          for (const inspection of assignment.inspections) {
+            actualCost += Number(inspection.total_cost) || 0;
+
+            // Get material details for the report
+            if (inspection.repairMaterials && inspection.repairMaterials.length > 0) {
+              inspection.repairMaterials.forEach(material => {
+                // Lấy tên vật liệu từ bảng material nếu có
+                const materialName = material.material?.name || 'Unknown Material';
+
+                costDetails.push({
+                  name: `Material Name: ${materialName}`,
+                  quantity: material.quantity,
+                  unitCost: Number(material.unit_cost),
+                  totalCost: Number(material.total_cost)
+                });
+              });
+            }
+          }
+        }
+      }
+
+      console.log('Calculated actual cost (Confirmed):', actualCost);
+      console.log('Cost details count:', costDetails.length);
+
+      // 5. Generate PDF
+      try {
+        console.log('Generating PDF...');
+        const pdfBuffer = await this.generateCostPdf(task, estimatedCost, actualCost, true, costDetails);
+        console.log('PDF generated successfully, buffer size:', pdfBuffer.length);
+
+        // 6. Return base64 encoded PDF
+        return {
+          success: true,
+          message: 'Cost PDF report generated successfully',
+          data: pdfBuffer.toString('base64')
+        };
+      } catch (pdfError) {
+        console.error('Error in PDF generation:', pdfError);
+        return {
+          success: false,
+          message: 'Error generating PDF',
+          error: pdfError.message
+        };
+      }
+    } catch (error) {
+      console.error('Error in exportCostPdf:', error);
+      return {
+        success: false,
+        message: 'Error generating cost PDF report',
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Generate PDF document with cost information
+   */
+  private async generateCostPdf(
+    task,
+    estimatedCost: number,
+    actualCost: number,
+    isCompleted: boolean,
+    costDetails: any[] = []
+  ) {
+    return new Promise<Buffer>((resolve, reject) => {
+      try {
+        console.log('Initializing PDFDocument...');
+        // Import path module nếu chưa có
+        const path = require('path');
+
+        // Create a document with minimal options
+        const doc = new PDFDocument({
+          autoFirstPage: true,
+          size: 'A4',
+          margin: 50,
+          info: {
+            Title: 'Task Cost Report',
+            Author: 'BMCMS',
+            Subject: 'Cost Report',
+            Keywords: 'cost, report, task',
+            CreationDate: new Date()
+          }
+        });
+
+        // Đường dẫn tới font hỗ trợ tiếng Việt (bạn cần tạo thư mục fonts và thêm file font vào)
+        // Ví dụ: Arial.ttf, Roboto.ttf, NotoSans-Regular.ttf
+        const fontPath = path.join('C:', 'CapStone', 'New folder', 'BMCMS-BE', 'apps', 'Tasks', 'fonts', 'Arial.ttf');
+
+        // Đăng ký và sử dụng font hỗ trợ tiếng Việt
+        doc.registerFont('VietnameseFont', fontPath);
+        doc.font('VietnameseFont');
+
+        console.log('PDFDocument created, setting up data collection...');
+        // Collect PDF data chunks to a buffer
+        const chunks = [];
+        doc.on('data', (chunk) => chunks.push(chunk));
+        doc.on('end', () => {
+          console.log('PDF document ended, resolving promise...');
+          const buffer = Buffer.concat(chunks);
+          resolve(buffer);
+        });
+        doc.on('error', (err) => {
+          console.error('PDF document error:', err);
+          reject(err);
+        });
+
+        console.log('Adding content to PDF...');
+
+        // Add content to PDF in try-catch blocks to isolate errors
+        try {
+          // Header
+          doc.fontSize(20).text('Task Cost Report', { align: 'center' });
+          doc.moveDown();
+        } catch (err) {
+          console.error('Error adding header:', err);
+        }
+
+        try {
+          // Task Information
+          doc.fontSize(14).text('Task Information');
+          doc.fontSize(12);
+          doc.text(`Task ID: ${task.task_id}`);
+
+          // Extract UUID from string if exists
+          const uuidPattern = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
+          const uuidMatch = task.description.match(uuidPattern);
+
+          // Sử dụng cách viết đơn giản với font hỗ trợ tiếng Việt
+          doc.text('Description: Xử lý báo cáo vết nứt' + (uuidMatch ? ` ${uuidMatch[0]}` : ''));
+
+          doc.moveDown();
+          doc.text(`Status: ${task.status}`);
+          doc.text(`Created At: ${new Date(task.created_at).toLocaleString()}`);
+          doc.moveDown();
+        } catch (err) {
+          console.error('Error adding task information:', err);
+        }
+
+        // Cost Information
+        doc.fontSize(14).text('Cost Information');
+        doc.fontSize(12);
+        doc.text(`Estimated Cost (Verified): ${estimatedCost.toFixed(2)} VND`);
+        doc.text(`Actual Cost (Confirmed): ${actualCost.toFixed(2)} VND`);
+        doc.moveDown();
+
+        // Cost Details if available
+        if (costDetails.length > 0) {
+          doc.fontSize(14).text('Cost Breakdown (Confirmed Tasks)');
+          doc.fontSize(12);
+
+          // Simple list instead of complex table
+          costDetails.forEach((detail, index) => {
+            doc.text(`Item ${index + 1}: ${detail.name}`);
+            doc.text(`   Quantity: ${detail.quantity}`);
+            doc.text(`   Unit Cost: ${detail.unitCost.toFixed(2)} VND`);
+            doc.text(`   Total: ${detail.totalCost.toFixed(2)} VND`);
+            doc.moveDown(0.5);
+          });
+        }
+
+        // Footer
+        doc.fontSize(10).text(`Report generated on ${new Date().toLocaleString()}`, {
+          align: 'center'
+        });
+
+        console.log('Finalizing PDF...');
+        // Finalize the PDF
+        doc.end();
+
+      } catch (err) {
+        console.error('Fatal error in PDF generation:', err);
+        reject(err);
+      }
+    });
+  }
 }
+
+

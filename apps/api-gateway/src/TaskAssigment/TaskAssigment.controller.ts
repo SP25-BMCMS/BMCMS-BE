@@ -13,6 +13,7 @@ import {
   UseGuards,
   Query,
   Patch,
+  Res
 } from '@nestjs/common';
 import { TaskAssignmentService } from './TaskAssigment.service';
 import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create-taskAssigment.dto';
@@ -28,6 +29,7 @@ import {
 } from '@nestjs/swagger';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 import { TaskAssignmentsController } from 'apps/Tasks/TaskAssignments/TaskAssignments.controller';
+import { ExportCostPdfDto } from 'libs/contracts/src/taskAssigment/export-cost-pdf.dto';
 
 @Controller('task-assignments')
 @ApiTags('task-assignments')
@@ -336,5 +338,38 @@ export class TaskAssignmentController {
     @Param('employeeId') employeeId: string,
   ) {
     return this.taskAssignmentService.getAllTaskAndTaskAssignmentByEmployeeId(employeeId);
+  }
+
+  @Post('export-cost-pdf')
+  @ApiOperation({ summary: 'Export PDF with estimated and actual costs' })
+  @ApiBody({ type: ExportCostPdfDto })
+  @ApiResponse({
+    status: 200,
+    description: 'PDF file generated successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  @ApiResponse({ status: 400, description: 'Error generating PDF' })
+  async exportCostPdf(@Body() dto: ExportCostPdfDto, @Res() res) {
+    try {
+      const result = await this.taskAssignmentService.exportCostPdf(dto.task_id);
+
+      if (!result.success) {
+        return res.status(HttpStatus.BAD_REQUEST).json(result);
+      }
+
+      // Send PDF file as a response
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename=cost-report-${dto.task_id}.pdf`,
+      });
+
+      return res.send(Buffer.from(result.data, 'base64'));
+    } catch (error) {
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: 'Error generating PDF',
+        error: error.message
+      });
+    }
   }
 }
