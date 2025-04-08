@@ -26,6 +26,7 @@ import {
   ApiTags,
   ApiResponse,
   ApiQuery,
+  ApiProduces
 } from '@nestjs/swagger';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 import { TaskAssignmentsController } from 'apps/Tasks/TaskAssignments/TaskAssignments.controller';
@@ -341,14 +342,35 @@ export class TaskAssignmentController {
   }
 
   @Post('export-cost-pdf')
-  @ApiOperation({ summary: 'Export PDF with estimated and actual costs' })
+  @ApiOperation({
+    summary: 'Export PDF with estimated and actual costs',
+    description: 'Generate and download a PDF report with cost details. The response is a PDF file stream that will be automatically downloaded.'
+  })
   @ApiBody({ type: ExportCostPdfDto })
   @ApiResponse({
     status: 200,
     description: 'PDF file generated successfully',
+    content: {
+      'application/pdf': {
+        schema: {
+          type: 'string',
+          format: 'binary'
+        }
+      }
+    },
+    headers: {
+      'Content-Disposition': {
+        description: 'Attachment header with filename',
+        schema: {
+          type: 'string',
+          example: 'attachment; filename="cost-report.pdf"'
+        }
+      }
+    }
   })
   @ApiResponse({ status: 404, description: 'Task not found' })
   @ApiResponse({ status: 400, description: 'Error generating PDF' })
+  @ApiProduces('application/pdf')
   async exportCostPdf(@Body() dto: ExportCostPdfDto, @Res() res) {
     try {
       const result = await this.taskAssignmentService.exportCostPdf(dto.task_id);
@@ -357,10 +379,13 @@ export class TaskAssignmentController {
         return res.status(HttpStatus.BAD_REQUEST).json(result);
       }
 
-      // Send PDF file as a response
+      // Send PDF file as a response with proper headers for automatic download
       res.set({
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename=cost-report-${dto.task_id}.pdf`,
+        'Content-Disposition': `attachment; filename="cost-report-${dto.task_id}.pdf"`,
+        'Content-Length': Buffer.from(result.data, 'base64').length,
+        // Thêm header để ngăn trình duyệt mở file trong tab mới
+        'X-Content-Type-Options': 'nosniff'
       });
 
       return res.send(Buffer.from(result.data, 'base64'));

@@ -283,12 +283,23 @@ export class TaskAssignmentService {
   // Export Cost PDF
   async exportCostPdf(taskId: string) {
     try {
-      return await firstValueFrom(
+      const response = await firstValueFrom(
         this.taskClient.send(
           TASKASSIGNMENT_PATTERN.EXPORT_COST_PDF,
           { taskId }
         ),
       );
+
+      // Make sure the response is properly formatted for PDF download
+      if (response && response.success) {
+        return response;
+      } else {
+        return {
+          success: false,
+          message: response?.message || 'Error generating cost PDF report',
+          error: response?.error || 'Unknown error'
+        };
+      }
     } catch (error) {
       console.error('Error generating cost PDF:', error);
       return {
