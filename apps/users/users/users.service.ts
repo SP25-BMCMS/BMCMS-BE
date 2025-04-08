@@ -6,7 +6,7 @@ import {
   Injectable
 } from '@nestjs/common'
 import { ClientProxy, RpcException } from '@nestjs/microservices'
-import { AccountStatus, PositionName, Role } from '@prisma/client-users'
+import { AccountStatus, PositionName, Role, StaffStatus } from '@prisma/client-users'
 import * as bcrypt from 'bcrypt'
 import {
   catchError,
@@ -70,20 +70,66 @@ export class UsersService {
     return user
   }
 
-  async getUserById(userId: string): Promise<UserDto | null> {
-    const user = await this.prisma.user.findUnique({
+  async getUserById(userId: string): Promise<any> {
+    const userRaw = await this.prisma.user.findUnique({
       where: { userId },
       include: {
-        userDetails: true,
+        userDetails: {
+          include: {
+            position: true,
+            department: true,
+          }
+        },
         apartments: true,
       },
     })
-    if (!user)
+
+    if (!userRaw)
       throw new RpcException({
         statusCode: 401,
         message: 'StaffId not found',
       })
-    return user
+
+    // Create a formatted response to avoid duplicate fields
+    const { password, ...userWithoutPassword } = userRaw;
+
+    // Base user response
+    const response = {
+      ...userWithoutPassword,
+      dateOfBirth: userWithoutPassword.dateOfBirth ? userWithoutPassword.dateOfBirth.toISOString() : null,
+    };
+
+    // Format userDetails to avoid duplicates
+    if (response.userDetails) {
+      const userDetails = response.userDetails;
+      let formattedUserDetails: any = {
+        staffStatus: userDetails.staffStatus,
+      };
+
+      // Add position if it exists
+      if (userDetails.position) {
+        formattedUserDetails.position = {
+          positionId: userDetails.position.positionId,
+          positionName: userDetails.position.positionName.toString(),
+          description: userDetails.position.description,
+        };
+      }
+
+      // Add department if it exists
+      if (userDetails.department) {
+        formattedUserDetails.department = {
+          departmentId: userDetails.department.departmentId,
+          departmentName: userDetails.department.departmentName,
+          description: userDetails.department.description || '',
+          area: userDetails.department.area || '',
+        };
+      }
+
+      // Replace userDetails with formatted version
+      response.userDetails = formattedUserDetails;
+    }
+
+    return response;
   }
 
   async signup(userData: createUserDto): Promise<ApiResponse<any>> {
@@ -195,7 +241,7 @@ export class UsersService {
                   create: {
                     positionId: userData.positionId ?? null,
                     departmentId: userData.departmentId ?? null,
-                    staffStatus: userData.staffStatus ?? null,
+                    staffStatus: userData.staffStatus ?? StaffStatus.Active,
                     image: userData.image ?? null,
                   },
                 }
@@ -354,26 +400,41 @@ export class UsersService {
     try {
       console.log('Received data:', data) // Debug dữ liệu nhận từ gRPC
 
-      // Kiểm tra xem giá trị có hợp lệ hay không
-      if (
-        !Object.values(PositionName).includes(data.positionName as PositionName)
-      ) {
-        throw new Error(`Invalid positionName: ${data.positionName}`)
+      // Map string position names to enum values
+      let positionNameEnum: PositionName;
+
+      // Convert string to enum based on Prisma schema
+      switch (data.positionName) {
+        case 'Leader':
+          positionNameEnum = PositionName.Leader;
+          break;
+        case 'Technician':
+          positionNameEnum = PositionName.Technician;
+          break;
+        case 'Janitor':
+          positionNameEnum = PositionName.Janitor;
+          break;
+        default:
+          // For unsupported position names, use Leader as default
+          positionNameEnum = PositionName.Leader;
+          break;
       }
 
+      // Create the position
       const newPosition = await this.prisma.workingPosition.create({
         data: {
-          positionName: data.positionName as PositionName, // ✅ Chuyển string thành enum
+          positionName: positionNameEnum,
           description: data.description,
         },
-      })
+      });
 
       return {
         isSuccess: true,
         message: 'Working Position created successfully',
         data: {
           positionId: newPosition.positionId,
-          positionName: newPosition.positionName.toString(), // ✅ Chuyển Enum thành chuỗi
+          // Return the string representation of the position name
+          positionName: data.positionName,
           description: newPosition.description,
         },
       }
@@ -389,7 +450,7 @@ export class UsersService {
   async getAllWorkingPositions(): Promise<{
     workingPositions: {
       positionId: string
-      positionName: PositionName
+      positionName: string
       description?: string
     }[]
   }> {
@@ -398,7 +459,7 @@ export class UsersService {
       return {
         workingPositions: positions.map((position) => ({
           positionId: position.positionId,
-          positionName: position.positionName,
+          positionName: position.positionName.toString(),
           description: position.description,
         })),
       }
@@ -416,7 +477,7 @@ export class UsersService {
     message: string
     data: {
       positionId: string
-      positionName: PositionName
+      positionName: string
       description?: string
     } | null
   }> {
@@ -437,7 +498,7 @@ export class UsersService {
         message: 'Working Position retrieved successfully',
         data: {
           positionId: position.positionId,
-          positionName: position.positionName,
+          positionName: position.positionName.toString(),
           description: position.description,
         },
       }
@@ -455,7 +516,7 @@ export class UsersService {
     message: string
     data: {
       positionId: string
-      positionName: PositionName
+      positionName: string
       description?: string
     } | null
   }> {
@@ -469,7 +530,7 @@ export class UsersService {
         message: 'Working Position deleted successfully',
         data: {
           positionId: deletedPosition.positionId,
-          positionName: deletedPosition.positionName,
+          positionName: deletedPosition.positionName.toString(),
           description: deletedPosition.description,
         },
       }

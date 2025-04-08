@@ -16,6 +16,7 @@ import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/upda
 import { PrismaService } from '../../prisma/prisma.service'
 import { S3UploaderService, UploadResult } from '../crack-details/s3-uploader.service'
 import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
+import { PrismaClient } from '@prisma/client-Task';
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 const USERS_CLIENT = 'USERS_CLIENT'
@@ -35,7 +36,7 @@ export class CrackReportsService {
   private s3: S3Client
   private bucketName: string
   private userService: UserService
-
+  private prisma = new PrismaClient();
   constructor(
     private prismaService: PrismaService,
     @Inject('TASK_SERVICE') private readonly taskClient: ClientProxy,
@@ -522,88 +523,117 @@ export class CrackReportsService {
 
   async updateCrackReportStatus(crackReportId: string, managerId: string, staffId: string) {
     try {
+      // Define all variables outside the transaction to maintain scope
+      let existingReport;
+      let areaMatchResponse;
+      let updatedReport;
+      let createTaskResponse;
+      let createTaskAssignmentResponse;
+
+      // Start a real database transaction - all operations will be committed or rolled back together
       return await this.prismaService.$transaction(async (prisma) => {
-        const existingReport = await prisma.crackReport.findUnique({
+        // Step 1: Find the crack report and validate it exists
+        existingReport = await prisma.crackReport.findUnique({
           where: { crackReportId },
-        })
+        });
 
         if (!existingReport) {
-          return new ApiResponse(false, 'Crack Report không tồn tại')
+          throw new RpcException(
+            new ApiResponse(false, 'Crack Report không tồn tại')
+          );
         }
 
-        // Check if staff's area matches the crack report's area
-        const areaMatchResponse = await firstValueFrom(
+        // Step 2: Check if staff's area matches the crack report's area
+        areaMatchResponse = await firstValueFrom(
           this.userService.checkStaffAreaMatch({ staffId, crackReportId })
-        )
-        // Only throw when isMatch is false
+        );
+
         if (!areaMatchResponse.isMatch) {
           throw new RpcException(
             new ApiResponse(false, 'Nhân viên không thuộc khu vực của báo cáo nứt này')
-          )
+          );
+        }
+        const unconfirmedTasks = await this.prisma.taskAssignment.findMany({
+          where: {
+            employee_id: staffId,
+            status: {
+              notIn: [AssignmentStatus.Confirmed]
+            }
+          }
+        });
+
+        if (unconfirmedTasks.length > 0) {
+          return {
+            statusCode: 400,
+            message: 'Staff has unconfirmed tasks. Cannot assign new task.',
+            data: null
+          };
         }
 
-        const updatedReport = await prisma.crackReport.update({
+        // Step 3: Create task first - do this before updating report status
+        createTaskResponse = await firstValueFrom(
+          this.taskClient
+            .send(TASKS_PATTERN.CREATE, {
+              description: `Xử lý báo cáo vết nứt ${crackReportId}`,
+              status: Status.Assigned,
+              crack_id: crackReportId,
+              schedule_job_id: '',
+            })
+            .pipe(
+              timeout(10000), // Add timeout to prevent hanging
+              catchError((error) => {
+                console.error('Task creation error:', error);
+                throw new RpcException(
+                  new ApiResponse(false, 'Không thể tạo task')
+                );
+              })
+            )
+        );
+
+        // Check if task creation was successful and task_id exists
+        if (!createTaskResponse?.data?.task_id) {
+          throw new RpcException(
+            new ApiResponse(false, 'Task được tạo nhưng không trả về task_id hợp lệ')
+          );
+        }
+
+        // Step 4: Create task assignment
+        createTaskAssignmentResponse = await firstValueFrom(
+          this.taskClient
+            .send(TASKASSIGNMENT_PATTERN.ASSIGN_TO_EMPLOYEE, {
+              taskId: createTaskResponse.data.task_id,
+              employeeId: staffId,
+              description: `Phân công xử lý báo cáo nứt tại ${existingReport.position}`,
+              status: AssignmentStatus.Pending,
+            })
+            .pipe(
+              timeout(10000), // Add timeout to prevent hanging
+              catchError((error) => {
+                console.error('Task assignment error:', error);
+                throw new RpcException(
+                  new ApiResponse(false, error.message || 'Không thể tạo phân công task')
+                );
+              }),
+            ),
+        );
+
+        // Check task assignment response
+        if (createTaskAssignmentResponse?.statusCode === 400) {
+          throw new RpcException(
+            new ApiResponse(false, createTaskAssignmentResponse.message || 'Lỗi phân công task')
+          );
+        }
+
+        // Step 5: Only update the crack report status if everything else succeeded
+        updatedReport = await prisma.crackReport.update({
           where: { crackReportId },
           data: {
             status: $Enums.ReportStatus.InProgress,
             verifiedBy: managerId,
           },
-        })
+        });
 
-        let createTaskResponse
-        let createTaskAssignmentResponse
-
-        try {
-          // Create task first
-          createTaskResponse = await firstValueFrom(
-            this.taskClient
-              .send(TASKS_PATTERN.CREATE, {
-                description: `Xử lý báo cáo nứt ${crackReportId}`,
-                status: Status.Assigned,
-                crack_id: crackReportId,
-                schedule_job_id: '',
-              })
-              .pipe(
-                catchError((error) => {
-                  console.error('Task creation error:', error)
-                  throw new RpcException(
-                    new ApiResponse(false, 'Không thể tạo task')
-                  )
-                })
-              )
-          )
-
-          // Check if task creation was successful and task_id exists
-          if (!createTaskResponse || !createTaskResponse.data || !createTaskResponse.data.task_id) {
-            throw new RpcException(
-              new ApiResponse(false, 'Task được tạo nhưng không trả về task_id hợp lệ')
-            )
-          }
-
-          // Then use the ASSIGN_TO_EMPLOYEE pattern instead of CREATE
-          createTaskAssignmentResponse = await firstValueFrom(
-            this.taskClient
-              .send(TASKASSIGNMENT_PATTERN.ASSIGN_TO_EMPLOYEE, {
-                taskId: createTaskResponse.data.task_id,
-                employeeId: staffId,
-                description: `Phân công xử lý báo cáo nứt ${crackReportId}`,
-                status: AssignmentStatus.Pending,
-              })
-              .pipe(
-                catchError((error) => {
-                  console.error('Task assignment error:', error)
-                  throw new RpcException(
-                    new ApiResponse(false, 'Không thể tạo phân công task')
-                  )
-                }),
-              ),
-          )
-        } catch (taskError) {
-          console.error('Task creation/assignment error:', taskError)
-          // We should throw the error to rollback the transaction
-          throw taskError
-        }
-
+        // Return success response with all data
         return new ApiResponse(
           true,
           'Crack Report đã được cập nhật và Task đã được tạo',
@@ -612,18 +642,25 @@ export class CrackReportsService {
             task: createTaskResponse,
             taskAssignment: createTaskAssignmentResponse,
           },
-        )
-      })
+        );
+      }, {
+        // Set a long timeout for the transaction since we're making external calls
+        timeout: 30000,
+        // Use serializable isolation level for maximum consistency
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable
+      });
     } catch (error) {
-      console.error('🔥 Lỗi trong updateCrackReportStatus:', error)
+      console.error('🔥 Lỗi trong updateCrackReportStatus:', error);
 
+      // Pass through RpcExceptions
       if (error instanceof RpcException) {
-        throw error
+        throw error;
       }
 
+      // Wrap other errors
       throw new RpcException(
         new ApiResponse(false, 'Lỗi hệ thống, vui lòng thử lại sau')
-      )
+      );
     }
   }
 
