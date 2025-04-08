@@ -121,4 +121,9 @@ export class TaskAssignmentsController {
       payload.description
     );
   }
+
+  @MessagePattern(TASKASSIGNMENT_PATTERN.GET_ALL_BY_EMPLOYEE_ID)
+  async getAllTaskAndTaskAssignmentByEmployeeId(@Payload() employeeId: string) {
+    return this.taskAssignmentService.getAllTaskAndTaskAssignmentByEmployeeId(employeeId);
+  }
 }

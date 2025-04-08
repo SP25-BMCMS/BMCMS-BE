@@ -217,6 +217,30 @@ export class TaskAssignmentService {
     }
   }
 
+  // Get all tasks and task assignments by employee ID
+  async getAllTaskAndTaskAssignmentByEmployeeId(employeeId: string) {
+    try {
+      return await firstValueFrom(
+        this.taskClient.send(
+          TASKASSIGNMENT_PATTERN.GET_ALL_BY_EMPLOYEE_ID,
+          employeeId
+        ),
+      );
+    } catch (error) {
+      console.error('Error fetching tasks and assignments for employee:', error);
+      if (error?.response) {
+        throw new HttpException(
+          error.response.message || 'Error fetching employee tasks and assignments',
+          error.response.statusCode || HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+      throw new HttpException(
+        'Error fetching employee tasks and assignments',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   // Update Status to Reassigned
   async updateStatusTaskAssignmentToReassigned(assignment_id: string, description: string) {
     try {

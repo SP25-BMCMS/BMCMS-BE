@@ -11,6 +11,7 @@ export const TASKASSIGNMENT_PATTERN = {
     ASSIGN_TO_EMPLOYEE: 'assign_task_to_employee',
     CHANGE_STATUS: 'change_status_taskAssignment',
     GET_DETAILS: 'get_details_taskAssignment',
-    UPDATE_STATUS_TO_REASSIGNED: 'update_status_to_reassigned'
+    UPDATE_STATUS_TO_REASSIGNED: 'update_status_to_reassigned',
+    GET_ALL_BY_EMPLOYEE_ID: 'get_all_by_employee_id'
 }
 

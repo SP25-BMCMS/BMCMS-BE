@@ -470,4 +470,40 @@ export class TaskAssignmentsService {
       });
     }
   }
+
+  async getAllTaskAndTaskAssignmentByEmployeeId(employeeId: string) {
+    try {
+      // Find all task assignments for the employee
+      const taskAssignments = await this.prisma.taskAssignment.findMany({
+        where: { employee_id: employeeId },
+        include: {
+          task: true, // Include the related task for each assignment
+        },
+        orderBy: {
+          created_at: 'desc', // Order by creation date, most recent first
+        },
+      });
+
+      if (taskAssignments.length === 0) {
+        return {
+          statusCode: 200,
+          message: 'No task assignments found for this employee',
+          data: [],
+        };
+      }
+
+      return {
+        statusCode: 200,
+        message: 'Tasks and assignments fetched successfully',
+        data: taskAssignments,
+      };
+    } catch (error) {
+      console.error('Error fetching tasks and assignments for employee:', error);
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Failed to fetch tasks and assignments for employee',
+        error: error.message,
+      });
+    }
+  }
 }

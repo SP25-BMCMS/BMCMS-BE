@@ -322,4 +322,19 @@ export class TaskAssignmentController {
       payload.description
     );
   }
+
+  @Get('employee/:employeeId/tasks')
+  @ApiOperation({ summary: 'Get all tasks and task assignments by employee ID' })
+  @ApiParam({ name: 'employeeId', description: 'ID of the employee' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns all tasks and task assignments for the employee',
+  })
+  @ApiResponse({ status: 404, description: 'Employee not found' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async getAllTaskAndTaskAssignmentByEmployeeId(
+    @Param('employeeId') employeeId: string,
+  ) {
+    return this.taskAssignmentService.getAllTaskAndTaskAssignmentByEmployeeId(employeeId);
+  }
 }
