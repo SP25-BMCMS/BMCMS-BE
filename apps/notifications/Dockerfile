@@ -35,6 +35,9 @@ COPY --from=builder /usr/src/app/node_modules/@prisma ./node_modules/@prisma
 # Copy proto files and contracts
 COPY --from=builder /usr/src/app/libs/contracts ./libs/contracts
 
+# Copy email templates from contracts
+COPY --from=builder /usr/src/app/libs/contracts/src/notifications/templates ./libs/contracts/src/notifications/templates
+
 # Copy .env file
 COPY --from=builder /usr/src/app/.env .env
 

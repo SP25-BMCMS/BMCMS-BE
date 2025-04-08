@@ -138,4 +138,11 @@ export class ScheduleJobsController {
     }
     return this.scheduleJobsService.getScheduleJobsByScheduleId(scheduleId, paginationParams)
   }
+
+  @Post(':id/send-maintenance-email')
+  @ApiOperation({ summary: 'Send maintenance schedule email to residents' })
+  @ApiParam({ name: 'id', description: 'Schedule job ID' })
+  async sendMaintenanceEmail(@Param('id') scheduleJobId: string) {
+    return this.scheduleJobsService.sendMaintenanceEmail(scheduleJobId)
+  }
 }

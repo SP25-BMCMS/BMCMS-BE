@@ -1,19 +1,19 @@
-import { Controller, Param } from '@nestjs/common'
-import { MessagePattern, Payload, RpcException } from '@nestjs/microservices'
-import { TASKS_PATTERN } from '../../../libs/contracts/src/tasks/task.patterns'
-import { INSPECTIONS_PATTERN } from '../../../libs/contracts/src/inspections/inspection.patterns'
-import { ScheduleJobsService } from './schedulejob.service'
+import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { CreateScheduleJobDto } from '@app/contracts/schedulesjob/create-schedule-job.dto'
 import { ScheduleJobResponseDto } from '@app/contracts/schedulesjob/schedule-job.dto'
-import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
-import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status'
 import { SCHEDULEJOB_PATTERN } from '@app/contracts/schedulesjob/ScheduleJob.patterns'
+import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status'
 import { UpdateScheduleJobDto } from '@app/contracts/schedulesjob/UpdateScheduleJobDto'
+import { Controller, Param } from '@nestjs/common'
+import { MessagePattern, Payload } from '@nestjs/microservices'
+import { ApiTags } from '@nestjs/swagger'
 import {
   PaginationParams,
   PaginationResponseDto,
 } from '../../../libs/contracts/src/Pagination/pagination.dto'
+import { ScheduleJobsService } from './schedulejob.service'
 
+@ApiTags('Schedule Jobs')
 @Controller('schedule-jobs')
 export class ScheduleJobController {
   constructor(private readonly ScheduleJobsService: ScheduleJobsService) { }
@@ -64,5 +64,10 @@ export class ScheduleJobController {
   @MessagePattern(SCHEDULEJOB_PATTERN.GET_BY_SCHEDULE_ID)
   async getScheduleJobsByScheduleId(data: { scheduleId: string; paginationParams: PaginationParams }) {
     return this.ScheduleJobsService.getScheduleJobsByScheduleId(data.scheduleId, data.paginationParams)
+  }
+
+  @MessagePattern(SCHEDULEJOB_PATTERN.SEND_MAINTENANCE_EMAIL)
+  async sendMaintenanceEmail(data: { scheduleJobId: string }) {
+    return this.ScheduleJobsService.sendMaintenanceEmail(data.scheduleJobId)
   }
 }
