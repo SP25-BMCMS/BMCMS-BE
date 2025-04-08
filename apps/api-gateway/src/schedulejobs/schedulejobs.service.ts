@@ -5,19 +5,21 @@ import {
   Injectable,
   NotFoundException,
   Param,
-} from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { SCHEDULE_CLIENT } from '../constraints';
-import { CreateScheduleDto } from '@app/contracts/schedules/create-Schedules.dto';
-import { SCHEDULES_PATTERN } from '@app/contracts/schedules/Schedule.patterns';
-import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules';
-import { $Enums } from '@prisma/client-Schedule';
-import { CreateScheduleJobDto } from '@app/contracts/schedulesjob/create-schedule-job.dto';
-import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
-import { SCHEDULEJOB_PATTERN } from '@app/contracts/schedulesjob/ScheduleJob.patterns';
-import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status';
-import { UpdateScheduleJobDto } from '@app/contracts/schedulesjob/UpdateScheduleJobDto';
-import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
+} from '@nestjs/common'
+import { ClientProxy } from '@nestjs/microservices'
+import { SCHEDULE_CLIENT } from '../constraints'
+import { CreateScheduleDto } from '@app/contracts/schedules/create-Schedules.dto'
+import { SCHEDULES_PATTERN } from '@app/contracts/schedules/Schedule.patterns'
+import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules'
+import { $Enums } from '@prisma/client-Schedule'
+import { CreateScheduleJobDto } from '@app/contracts/schedulesjob/create-schedule-job.dto'
+import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
+import { SCHEDULEJOB_PATTERN } from '@app/contracts/schedulesjob/ScheduleJob.patterns'
+import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status'
+import { UpdateScheduleJobDto } from '@app/contracts/schedulesjob/UpdateScheduleJobDto'
+import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto'
+import { firstValueFrom } from 'rxjs'
+import { ScheduleJobResponseDto } from '@app/contracts/schedulesjob/schedule-job.dto'
 
 // import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto'
 // import { buildingsDto } from '@app/contracts/buildings/buildings.dto'
@@ -26,7 +28,7 @@ import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 export class schedulejobsService {
   constructor(
     @Inject(SCHEDULE_CLIENT) private readonly scheduleJobClient: ClientProxy,
-  ) {}
+  ) { }
   async createScheduleJob(
     createScheduleJobDto: CreateScheduleJobDto,
   ): Promise<any> {
@@ -34,12 +36,12 @@ export class schedulejobsService {
       return await this.scheduleJobClient.send(
         SCHEDULEJOB_PATTERN.CREATE,
         createScheduleJobDto,
-      );
+      )
     } catch (error) {
       throw new HttpException(
         'Error occurred while creating schedule job',
         HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      )
     }
   }
 
@@ -49,12 +51,12 @@ export class schedulejobsService {
       return await this.scheduleJobClient.send(
         SCHEDULEJOB_PATTERN.GET,
         paginationParams || {},
-      );
+      )
     } catch (error) {
       throw new HttpException(
         'Error occurred while fetching all schedule jobs',
         HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      )
     }
   }
 
@@ -63,12 +65,12 @@ export class schedulejobsService {
     try {
       return await this.scheduleJobClient.send(SCHEDULEJOB_PATTERN.GET_BY_ID, {
         schedule_job_id,
-      });
+      })
     } catch (error) {
       throw new HttpException(
         'Error occurred while fetching schedule job by ID',
         HttpStatus.NOT_FOUND,
-      );
+      )
     }
   }
 
@@ -84,12 +86,12 @@ export class schedulejobsService {
           schedulejobs_id,
           ...updateScheduleJobStatusDto,
         },
-      );
+      )
     } catch (error) {
       throw new HttpException(
         'Error occurred while updating schedule job status',
         HttpStatus.BAD_REQUEST,
-      );
+      )
     }
   }
   async updateScheduleJob(
@@ -101,9 +103,26 @@ export class schedulejobsService {
       return await this.scheduleJobClient.send(SCHEDULEJOB_PATTERN.UPDATE, {
         schedule_job_id,
         updateData: updateScheduleJobDto,
-      });
+      })
     } catch (error) {
-      throw new Error('Failed to update schedule job in microservice');
+      throw new Error('Failed to update schedule job in microservice')
+    }
+  }
+
+  async getScheduleJobsByScheduleId(scheduleId: string, paginationParams: PaginationParams) {
+    try {
+      console.log('Getting schedule jobs by schedule ID:', scheduleId, 'with params:', paginationParams)
+      const response = await firstValueFrom(
+        this.scheduleJobClient.send(SCHEDULEJOB_PATTERN.GET_BY_SCHEDULE_ID, {
+          scheduleId,
+          paginationParams,
+        })
+      )
+      console.log('Response from microservice:', response)
+      return response
+    } catch (error) {
+      console.error('Error getting schedule jobs by schedule ID:', error)
+      throw error
     }
   }
 }

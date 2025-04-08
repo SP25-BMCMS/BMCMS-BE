@@ -1,27 +1,34 @@
-import { Injectable } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateScheduleJobDto } from '@app/contracts/schedulesjob/create-schedule-job.dto';
-import { ScheduleJobResponseDto } from '@app/contracts/schedulesjob/schedule-job.dto';
-import { $Enums, PrismaClient } from '@prisma/client-Schedule';
-import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
-import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status';
-import { UpdateScheduleJobDto } from '@app/contracts/schedulesjob/UpdateScheduleJobDto';
+import { Injectable, Inject } from '@nestjs/common'
+import { RpcException } from '@nestjs/microservices'
+import { PrismaService } from '../prisma/prisma.service'
+import { CreateScheduleJobDto } from '@app/contracts/schedulesjob/create-schedule-job.dto'
+import { ScheduleJobResponseDto } from '@app/contracts/schedulesjob/schedule-job.dto'
+import { $Enums } from '@prisma/client-Schedule'
+import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
+import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status'
+import { UpdateScheduleJobDto } from '@app/contracts/schedulesjob/UpdateScheduleJobDto'
 import {
   PaginationParams,
   PaginationResponseDto,
-} from '../../../libs/contracts/src/Pagination/pagination.dto';
+} from '../../../libs/contracts/src/Pagination/pagination.dto'
+import { ClientProxy } from '@nestjs/microservices'
+import { BUILDING_CLIENT } from '../../api-gateway/src/constraints'
+import { BUILDINGS_PATTERN } from '../../../libs/contracts/src/buildings/buildings.patterns'
+import { firstValueFrom } from 'rxjs'
 
 @Injectable()
 export class ScheduleJobsService {
-  private prisma = new PrismaClient();
+  constructor(
+    private readonly prismaService: PrismaService,
+    @Inject(BUILDING_CLIENT) private readonly buildingClient: ClientProxy,
+  ) { }
 
   // Create a new Schedule Job
   async createScheduleJob(
     createScheduleJobDto: CreateScheduleJobDto,
   ): Promise<ApiResponse<ScheduleJobResponseDto>> {
     try {
-      const newScheduleJob = await this.prisma.scheduleJob.create({
+      const newScheduleJob = await this.prismaService.scheduleJob.create({
         data: {
           schedule_id: createScheduleJobDto.schedule_id,
           run_date: createScheduleJobDto.run_date,
@@ -29,17 +36,17 @@ export class ScheduleJobsService {
           status: createScheduleJobDto.status,
           building_id: createScheduleJobDto.building_id,
         },
-      });
+      })
       return new ApiResponse<ScheduleJobResponseDto>(
         true,
         'Schedule job created successfully',
         newScheduleJob,
-      );
+      )
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
         message: error.message,
-      });
+      })
     }
   }
 
@@ -49,14 +56,14 @@ export class ScheduleJobsService {
   ): Promise<PaginationResponseDto<ScheduleJobResponseDto>> {
     try {
       // Default values if not provided
-      const page = Math.max(1, paginationParams?.page || 1);
-      const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10));
+      const page = Math.max(1, paginationParams?.page || 1)
+      const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10))
 
       // Calculate skip value for pagination
-      const skip = (page - 1) * limit;
+      const skip = (page - 1) * limit
 
       // Get total count for pagination metadata
-      const total = await this.prisma.scheduleJob.count();
+      const total = await this.prismaService.scheduleJob.count()
 
       // If no schedule jobs found at all
       if (total === 0) {
@@ -67,15 +74,15 @@ export class ScheduleJobsService {
           limit,
           404,
           'No schedule jobs found',
-        );
+        )
       }
 
       // Get paginated data
-      const scheduleJobs = await this.prisma.scheduleJob.findMany({
+      const scheduleJobs = await this.prismaService.scheduleJob.findMany({
         skip,
         take: limit,
         orderBy: { created_at: 'desc' },
-      });
+      })
 
       // Use PaginationResponseDto for consistent response formatting
       return new PaginationResponseDto(
@@ -87,13 +94,13 @@ export class ScheduleJobsService {
         scheduleJobs.length > 0
           ? 'Schedule jobs fetched successfully'
           : 'No schedule jobs found for this page',
-      );
+      )
     } catch (error) {
-      console.error('Error retrieving schedule jobs:', error);
+      console.error('Error retrieving schedule jobs:', error)
       throw new RpcException({
         statusCode: 500,
         message: `Error retrieving schedule jobs: ${error.message}`,
-      });
+      })
     }
   }
 
@@ -105,36 +112,32 @@ export class ScheduleJobsService {
       console.log(
         '🚀 ~ InspectionsService ~ getScheduleJobById ~ scheduleJob:',
         schedule_job_id,
-      );
+      )
 
-      const scheduleJob = await this.prisma.scheduleJob.findUnique({
+      const scheduleJob = await this.prismaService.scheduleJob.findUnique({
         where: { schedule_job_id },
-      });
+      })
       if (!scheduleJob) {
         throw new RpcException({
           statusCode: 404,
           mescsage: 'Shedule job not found',
-        });
-        console.log(
-          '🚀 ~ InspectionsService!!!!!!!!!1 ~ getScheduleJobById ~ scheduleJob:',
-          scheduleJob,
-        );
+        })
       }
       console.log(
         '🚀 ~ InspectionsServiceduoi ~ getScheduleJobById ~ scheduleJob:',
         scheduleJob,
-      );
+      )
 
       return new ApiResponse<ScheduleJobResponseDto>(
         true,
         'Schedule job fetched successfully',
         scheduleJob,
-      );
+      )
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
         message: 'Error retrieving schedule job by IDD',
-      });
+      })
     }
   }
 
@@ -143,24 +146,24 @@ export class ScheduleJobsService {
     updateScheduleJobStatusDto: UpdateScheduleJobStatusDto,
   ): Promise<ApiResponse<ScheduleJobResponseDto>> {
     try {
-      const { schedule_job_id, status } = updateScheduleJobStatusDto;
+      const { schedule_job_id, status } = updateScheduleJobStatusDto
 
-      const updatedScheduleJob = await this.prisma.scheduleJob.update({
+      const updatedScheduleJob = await this.prismaService.scheduleJob.update({
         where: { schedule_job_id },
         data: {
           status,
         },
-      });
+      })
       return new ApiResponse<ScheduleJobResponseDto>(
         true,
         'Schedule job status updated successfully',
         updatedScheduleJob,
-      );
+      )
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
         message: 'Schedule job status update failed',
-      });
+      })
     }
   }
   async updateScheduleJob(
@@ -169,7 +172,7 @@ export class ScheduleJobsService {
   ): Promise<ApiResponse<ScheduleJobResponseDto>> {
     try {
       // Try to update the schedule job with the given data
-      const updatedScheduleJob = await this.prisma.scheduleJob.update({
+      const updatedScheduleJob = await this.prismaService.scheduleJob.update({
         where: { schedule_job_id },
         data: {
           schedule_id: updateData.schedule_id, // Nếu có, cập nhật schedule_id
@@ -177,18 +180,91 @@ export class ScheduleJobsService {
           status: updateData.status, // Nếu có, cập nhật status
           building_id: updateData.building_id, // Nếu có, cập nhật building_id        },
         },
-      });
+      })
 
       return new ApiResponse<ScheduleJobResponseDto>(
         true,
         'Schedule job updated successfully',
         updatedScheduleJob,
-      );
+      )
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
         message: 'Schedule job update failed' + error.message,
-      });
+      })
+    }
+  }
+
+  async getScheduleJobsByScheduleId(scheduleId: string, paginationParams: PaginationParams) {
+    const { page = 1, limit = 10 } = paginationParams
+    const skip = (page - 1) * limit
+
+    try {
+      // Get schedule jobs with pagination
+      const [scheduleJobs, total] = await Promise.all([
+        this.prismaService.scheduleJob.findMany({
+          where: { schedule_id: scheduleId },
+          skip,
+          take: limit,
+          orderBy: { created_at: 'desc' },
+          include: {
+            schedule: true, // Include schedule information
+          },
+        }),
+        this.prismaService.scheduleJob.count({
+          where: { schedule_id: scheduleId },
+        }),
+      ])
+
+      // Get building information for each schedule job
+      const scheduleJobsWithBuildings = await Promise.all(
+        scheduleJobs.map(async (job) => {
+          try {
+            // Kiểm tra xem building_id có tồn tại không
+            if (!job.building_id) {
+              console.warn(`Schedule job ${job.schedule_job_id} has no building_id`)
+              return {
+                ...job,
+                building: null,
+              }
+            }
+
+            console.log(`Fetching building with ID: ${job.building_id}`)
+            const building = await firstValueFrom(
+              this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: job.building_id })
+            )
+            console.log(`Building response:`, building)
+            return {
+              ...job,
+              building: building.data,
+            }
+          } catch (error) {
+            console.error(`Error fetching building for job ${job.schedule_job_id}:`, error)
+            return {
+              ...job,
+              building: null,
+            }
+          }
+        })
+      )
+
+      return {
+        statusCode: 200,
+        message: 'Schedule jobs retrieved successfully',
+        data: scheduleJobsWithBuildings,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      }
+    } catch (error) {
+      console.error('Error getting schedule jobs by schedule ID:', error)
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Failed to get schedule jobs: ' + error.message,
+      })
     }
   }
 }
