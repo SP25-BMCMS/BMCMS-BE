@@ -1,0 +1,153 @@
+<html>
+  <head>
+    <meta charset='utf-8' />
+    <title>Thông báo lịch bảo trì</title>
+    <style>
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .email-container {
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+      .header {
+        background-color: #007bff;
+        color: white;
+        padding: 25px;
+        text-align: center;
+      }
+      .header h2 {
+        margin: 0;
+        font-size: 24px;
+      }
+      .content {
+        padding: 25px;
+      }
+      .greeting {
+        font-size: 18px;
+        margin-bottom: 20px;
+        color: #2c3e50;
+      }
+      .maintenance-details {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 6px;
+        margin: 20px 0;
+        border-left: 4px solid #007bff;
+      }
+      .maintenance-details h3 {
+        color: #007bff;
+        margin-top: 0;
+        margin-bottom: 15px;
+        font-size: 18px;
+      }
+      .maintenance-details ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .maintenance-details li {
+        margin-bottom: 12px;
+        padding-left: 20px;
+        position: relative;
+      }
+      .maintenance-details li:before {
+        content: '•';
+        color: #007bff;
+        position: absolute;
+        left: 0;
+      }
+      .maintenance-details strong {
+        color: #2c3e50;
+        display: inline-block;
+        width: 120px;
+      }
+      .note {
+        background-color: #fff3cd;
+        color: #856404;
+        padding: 15px;
+        border-radius: 6px;
+        margin: 20px 0;
+        border-left: 4px solid #ffc107;
+      }
+      .footer {
+        text-align: center;
+        padding: 20px;
+        background-color: #f8f9fa;
+        color: #6c757d;
+        font-size: 12px;
+        border-top: 1px solid #e9ecef;
+      }
+      .contact-info {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #e9ecef;
+        border-radius: 6px;
+      }
+      .contact-info p {
+        margin: 5px 0;
+      }
+      .date-badge {
+        display: inline-block;
+        background-color: #28a745;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-weight: bold;
+        margin-left: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class='email-container'>
+      <div class='header'>
+        <h2>Thông báo lịch bảo trì</h2>
+      </div>
+      <div class='content'>
+        <p class='greeting'>Xin chào <strong>{{residentName}}</strong>,</p>
+        <p>Đây là thông báo về lịch bảo trì sắp tới tại
+          <strong>{{buildingName}}</strong>.</p>
+
+        <div class='maintenance-details'>
+          <h3>Chi tiết bảo trì</h3>
+          <ul>
+            <li><strong>Loại bảo trì:</strong> {{maintenanceType}}</li>
+            <li><strong>Ngày thực hiện:</strong>
+              <span class='date-badge'>{{maintenanceDate}}</span></li>
+            <li><strong>Mô tả:</strong> {{description}}</li>
+          </ul>
+        </div>
+
+        <div class='note'>
+          <p><strong>Lưu ý quan trọng:</strong></p>
+          <ul>
+            <li>Vui lòng sắp xếp thời gian và đảm bảo cho phép đội ngũ bảo trì
+              tiếp cận nếu cần thiết.</li>
+            <li>Nếu bạn không thể có mặt vào thời gian trên, vui lòng thông báo
+              trước cho ban quản lý.</li>
+            <li>Đội ngũ bảo trì sẽ mang theo thẻ nhân viên và giấy tờ xác nhận.</li>
+          </ul>
+        </div>
+
+        <div class='contact-info'>
+          <p><strong>Thông tin liên hệ:</strong></p>
+          <p>Ban quản lý tòa nhà: 0123 456 789</p>
+          <p>Email: management@building.com</p>
+          <p>Giờ làm việc: 8:00 - 17:00 (Thứ 2 - Thứ 6)</p>
+        </div>
+      </div>
+      <div class='footer'>
+        <p>Đây là email tự động, vui lòng không trả lời.</p>
+        <p>© 2024 Building Management System. All rights reserved.</p>
+      </div>
+    </div>
+  </body>
+</html>
