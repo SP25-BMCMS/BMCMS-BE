@@ -98,7 +98,7 @@ export class InspectionService implements OnModuleInit {
     } catch (error) {
       throw new HttpException(
         'Inspection not found with the given task assignment ID = ' +
-        task_assignment_id,
+          task_assignment_id,
         HttpStatus.NOT_FOUND,
       );
     }

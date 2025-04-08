@@ -1,33 +1,23 @@
 import { Module } from '@nestjs/common';
 import { ChatbotController } from './chatbot.controller';
 import { ChatbotService } from './chatbot.service';
-import { ClientsModule, Transport } from '@nestjs/microservices';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ClientConfigModule } from 'apps/configs/client-config.module';
+import { ClientProxyFactory } from '@nestjs/microservices';
+import { ClientConfigService } from 'apps/configs/client-config.service';
 import { SignalRModule } from '../signalr/signalr.module';
 
 @Module({
-  imports: [
-    SignalRModule,
-    ClientsModule.registerAsync([
-      {
-        name: 'CHATBOT_CLIENT',
-        imports: [ConfigModule],
-        useFactory: (configService: ConfigService) => ({
-          transport: Transport.RMQ,
-          options: {
-            urls: [configService.get<string>('RABBITMQ_URL')],
-            queue: 'chatbot_queue',
-            queueOptions: {
-              durable: true,
-            },
-          },
-        }),
-        inject: [ConfigService],
-      },
-    ]),
-  ],
+  imports: [ClientConfigModule, SignalRModule],
   controllers: [ChatbotController],
-  providers: [ChatbotService],
-  exports: [ChatbotService],
+  providers: [
+    ChatbotService,
+    {
+      provide: 'CHATBOT_CLIENT',
+      useFactory: (clientConfigService: ClientConfigService) => {
+        return ClientProxyFactory.create(clientConfigService.chatbotClientOptions);
+      },
+      inject: [ClientConfigService],
+    },
+  ],
 })
 export class ChatbotModule {} 

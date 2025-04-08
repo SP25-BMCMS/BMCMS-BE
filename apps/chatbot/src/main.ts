@@ -1,35 +1,33 @@
 import { NestFactory } from '@nestjs/core';
-import { Transport } from '@nestjs/microservices';
-import { ChatbotModule } from './chatbot.module';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from './prisma/prisma.service';
+import { ChatbotModule } from './chatbot.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(ChatbotModule);
   const configService = app.get(ConfigService);
-  const prismaService = app.get(PrismaService);
+  // const microservicePort = configService.get<number>('BUILDINGS_SERVICE_PORT') || 3002  // Đổi cổng Microservice Buildings
 
-  app.connectMicroservice({
+  const user = configService.get('RABBITMQ_USER');
+  const password = configService.get('RABBITMQ_PASSWORD');
+  const host = configService.get('RABBITMQ_HOST');
+  const queueName = configService.get('RABBITMQ_QUEUE_NAME');
+  const isLocal = process.env.NODE_ENV !== 'production';
+
+  app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,
     options: {
-      urls: [configService.get<string>('RABBITMQ_URL')],
+      urls: isLocal
+        ? [`amqp://${user}:${password}@${host}`]
+        : [`amqp://${user}:${password}@rabbitmq:5672`],
       queue: 'chatbot_queue',
       queueOptions: {
         durable: true,
       },
     },
   });
+  // await app.listen(microservicePort) // Đảm bảo ứng dụng NestJS lắng nghe đúng cổng HTTP
 
   await app.startAllMicroservices();
-  await app.listen(3004);
-
-  // Ensure Prisma disconnects on shutdown
-  const shutdown = async () => {
-    await prismaService.onModuleDestroy();
-    await app.close();
-  };
-
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT', shutdown);
 }
-bootstrap(); 
+bootstrap();

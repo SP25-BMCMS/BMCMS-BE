@@ -119,4 +119,23 @@ export class ClientConfigService {
       },
     }
   }
+
+  get chatbotClientOptions(): ClientOptions {
+    const { user, password, host, queueName } = this.getRabbitMQConfig() // Get RabbitMQ config
+    const url = this.config.get<string>('RABBIT_LOCAL_URL')
+    const isLocal = process.env.NODE_ENV !== 'production'
+    return {
+      transport: Transport.RMQ,
+      options: {
+        urls: isLocal
+          ? [`amqp://${user}:${password}@${host}`]
+          : [`amqp://${user}:${password}@rabbitmq:5672`],
+        queue: 'chatbot_queue',
+        queueOptions: {
+          durable: true,
+        },
+      },
+    }
+  }
+  
 }
