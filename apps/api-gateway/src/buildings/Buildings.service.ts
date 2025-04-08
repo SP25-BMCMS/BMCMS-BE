@@ -1,9 +1,9 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { BUILDING_CLIENT } from '../constraints';
-import { BUILDINGS_PATTERN } from 'libs/contracts/src/buildings/buildings.patterns';
-import { firstValueFrom } from 'rxjs';
-import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
+import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common'
+import { ClientProxy } from '@nestjs/microservices'
+import { BUILDING_CLIENT } from '../constraints'
+import { BUILDINGS_PATTERN } from 'libs/contracts/src/buildings/buildings.patterns'
+import { firstValueFrom } from 'rxjs'
+import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto'
 
 @Injectable()
 export class BuildingsService {
@@ -17,21 +17,21 @@ export class BuildingsService {
       console.log(
         '🚀 ~ BuildingsService ~ getBuildings ~ paginationParams:',
         paginationParams,
-      );
+      )
 
       // Call the microservice via ClientProxy with pagination parameters
       const buildingsObservable = this.buildingsClient.send(
         BUILDINGS_PATTERN.GET,
         paginationParams || {},
-      );
-      const buildings = await firstValueFrom(buildingsObservable);
-      return buildings;
+      )
+      const buildings = await firstValueFrom(buildingsObservable)
+      return buildings
     } catch (error) {
-      console.error('Error in getBuildings:', error);
+      console.error('Error in getBuildings:', error)
       throw new HttpException(
         'Error occurred while fetching buildings.',
         HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      )
     }
   }
 
@@ -42,13 +42,13 @@ export class BuildingsService {
       const newBuilding = await this.buildingsClient.send(
         BUILDINGS_PATTERN.CREATE,
         createBuildingDto,
-      );
-      return newBuilding;
+      )
+      return newBuilding
     } catch (error) {
       throw new HttpException(
         'Error occurred while creating building.',
         HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      )
     }
   }
 
@@ -58,23 +58,23 @@ export class BuildingsService {
       console.log(
         '🚀 ~ Buildings2313212313Service ~ getBuildingById ~ buildingId:',
         buildingId,
-      );
+      )
       const buildingObservable = this.buildingsClient.send(
         BUILDINGS_PATTERN.GET_BY_ID,
         { buildingId },
-      );
-      const building = await firstValueFrom(buildingObservable);
+      )
+      const building = await firstValueFrom(buildingObservable)
       console.log(
         '🚀 ~ BuildingsService ~ getBuildingById ~ building:',
         building,
-      );
-      return building;
+      )
+      return building
     } catch (error) {
-      console.error('🚀 ~ BuildingsService ~ getBuildingById ~ error:', error);
+      console.error('🚀 ~ BuildingsService ~ getBuildingById ~ error:', error)
       throw new HttpException(
         'Error occurred while fetching building by ID.',
         HttpStatus.NOT_FOUND,
-      );
+      )
     }
   }
 
@@ -84,36 +84,36 @@ export class BuildingsService {
       console.log(
         '🚀 ~ BuildingsService ~ getApartmentWithBuilding ~ apartmentId:',
         apartmentId,
-      );
+      )
 
       // First get the apartment to extract buildingId
       const apartmentResponse =
-        await this.getApartmentByIdFromBuilding(apartmentId);
+        await this.getApartmentByIdFromBuilding(apartmentId)
       console.log(
         '🚀 ~ BuildingsService ~ getApartmentWithBuilding ~ apartmentResponse:',
         apartmentResponse,
-      );
+      )
 
       if (!apartmentResponse || !apartmentResponse.data) {
         throw new HttpException(
           `Apartment with ID ${apartmentId} not found`,
           HttpStatus.NOT_FOUND,
-        );
+        )
       }
 
       // Extract buildingId from apartment
-      const buildingId = apartmentResponse.data.buildingId;
+      const buildingId = apartmentResponse.data.buildingId
       console.log(
         '🚀 ~ BuildingsService ~ getApartmentWithBuilding ~ buildingId:',
         buildingId,
-      );
+      )
 
       // Get building details
-      const buildingResponse = await this.getBuildingById(buildingId);
+      const buildingResponse = await this.getBuildingById(buildingId)
       console.log(
         '🚀 ~ BuildingsService ~ getApartmentWithBuilding ~ buildingResponse:',
         buildingResponse,
-      );
+      )
 
       // Combine the data
       return {
@@ -123,16 +123,16 @@ export class BuildingsService {
           apartment: apartmentResponse.data,
           building: buildingResponse?.data || null,
         },
-      };
+      }
     } catch (error) {
       console.error(
         '🚀 ~ BuildingsService ~ getApartmentWithBuilding ~ error:',
         error,
-      );
+      )
       throw new HttpException(
         `Error retrieving apartment with building details: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      )
     }
   }
 
@@ -141,15 +141,15 @@ export class BuildingsService {
       const apartmentObservable = this.buildingsClient.send(
         'get_apartment_by_id',
         { apartmentId },
-      );
-      const apartment = await firstValueFrom(apartmentObservable);
-      return apartment;
+      )
+      const apartment = await firstValueFrom(apartmentObservable)
+      return apartment
     } catch (error) {
       console.error(
         '🚀 ~ BuildingsService ~ getApartmentByIdFromBuilding ~ error:',
         error,
-      );
-      throw new Error(`Error fetching apartment: ${error.message}`);
+      )
+      throw new Error(`Error fetching apartment: ${error.message}`)
     }
   }
 
@@ -159,13 +159,13 @@ export class BuildingsService {
       const updatedBuilding = await this.buildingsClient.send(
         BUILDINGS_PATTERN.UPDATE,
         updateBuildingDto,
-      );
-      return updatedBuilding;
+      )
+      return updatedBuilding
     } catch (error) {
       throw new HttpException(
         'Error occurred while updating building.',
         HttpStatus.BAD_REQUEST,
-      );
+      )
     }
   }
 
@@ -173,15 +173,15 @@ export class BuildingsService {
   async deleteBuilding(buildingId: string) {
     try {
       const deletedBuilding = await this.buildingsClient.send(
-        BUILDINGS_PATTERN.DELELTE,
+        BUILDINGS_PATTERN.DELETE,
         { buildingId },
-      );
-      return deletedBuilding;
+      )
+      return deletedBuilding
     } catch (error) {
       throw new HttpException(
         'Error occurred while deleting building.',
         HttpStatus.NOT_FOUND,
-      );
+      )
     }
   }
 

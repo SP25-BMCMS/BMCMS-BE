@@ -1,15 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { Payload, RpcException } from '@nestjs/microservices';
-import { PrismaClient } from '@prisma/client-building';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { CreateBuildingDetailDto } from 'libs/contracts/src/BuildingDetails/create-buildingdetails.dto';
-import { UpdateBuildingDetailDto } from 'libs/contracts/src/BuildingDetails/update.buildingdetails';
-import { PrismaService } from '../../users/prisma/prisma.service';
+import { Injectable } from '@nestjs/common'
+import { Payload, RpcException } from '@nestjs/microservices'
+import { PrismaClient } from '@prisma/client-building'
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library'
+import { CreateBuildingDetailDto } from 'libs/contracts/src/BuildingDetails/create-buildingdetails.dto'
+import { UpdateBuildingDetailDto } from 'libs/contracts/src/BuildingDetails/update.buildingdetails'
+import { PrismaService } from '../../users/prisma/prisma.service'
 import {
   PaginationParams,
   PaginationResponseDto,
-} from '../../../libs/contracts/src/Pagination/pagination.dto';
-import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
+} from '../../../libs/contracts/src/Pagination/pagination.dto'
+import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 
 @Injectable()
 export class BuildingDetailsService {
@@ -28,17 +28,17 @@ export class BuildingDetailsService {
           // areaType: createBuildingDetailDto.areaType,
           // locationDetails: BuildingDetailDto.locationDetails,  // Nếu có dữ liệu locationDetails
         },
-      });
+      })
       return {
         statusCode: 201,
         message: 'Building Detail created successfully',
         data: newBuildingDetail,
-      };
+      }
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
         message: 'Building Detail creation failed',
-      });
+      })
     }
   }
 
@@ -46,12 +46,12 @@ export class BuildingDetailsService {
     paginationParams: PaginationParams = { page: 1, limit: 10 },
   ): Promise<PaginationResponseDto<any>> {
     try {
-      const page = Number(paginationParams.page) || 1;
-      const limit = Number(paginationParams.limit) || 10;
-      const skip = (page - 1) * limit;
+      const page = Number(paginationParams.page) || 1
+      const limit = Number(paginationParams.limit) || 10
+      const skip = (page - 1) * limit
 
       // Get total count
-      const total = await this.prisma.buildingDetail.count();
+      const total = await this.prisma.buildingDetail.count()
 
       // Get paginated building details
       const buildingDetails = await this.prisma.buildingDetail.findMany({
@@ -64,7 +64,7 @@ export class BuildingDetailsService {
         orderBy: {
           createdAt: 'desc',
         },
-      });
+      })
 
       const responseData = {
         statusCode: 200,
@@ -76,11 +76,11 @@ export class BuildingDetailsService {
           limit,
           totalPages: Math.ceil(total / limit),
         },
-      };
+      }
 
-      return responseData;
+      return responseData
     } catch (error) {
-      console.error('Error in getAllBuildingDetails:', error);
+      console.error('Error in getAllBuildingDetails:', error)
       const errorData = {
         statusCode: 500,
         message: error.message,
@@ -91,15 +91,15 @@ export class BuildingDetailsService {
           limit: Number(paginationParams.limit) || 10,
           totalPages: 0,
         },
-      };
+      }
 
-      return errorData;
+      return errorData
     }
   }
 
   async getBuildingDetailById(buildingDetailId: string) {
     try {
-      console.log(`Fetching building detail with ID: ${buildingDetailId}`);
+      console.log(`Fetching building detail with ID: ${buildingDetailId}`)
 
       const buildingDetail = await this.prisma.buildingDetail.findUnique({
         where: { buildingDetailId },
@@ -111,36 +111,36 @@ export class BuildingDetailsService {
           },
           //locationDetails: true
         }
-      });
+      })
 
       if (!buildingDetail) {
-        console.log(`Building detail not found for ID: ${buildingDetailId}`);
+        console.log(`Building detail not found for ID: ${buildingDetailId}`)
         return {
           statusCode: 404,
           message: 'Building Detail not found',
-        };
+        }
       }
 
-      console.log(`Building detail found for ID: ${buildingDetailId}`);
+      console.log(`Building detail found for ID: ${buildingDetailId}`)
       console.log('Building information:', {
         hasBuildingInfo: !!buildingDetail.building,
         buildingId: buildingDetail.building?.buildingId,
         hasAreaInfo: !!buildingDetail.building?.area,
         areaId: buildingDetail.building?.area?.areaId,
         // hasLocationDetails: Array.isArray(buildingDetail.locationDetails) ? buildingDetail.locationDetails.length : 0
-      });
+      })
 
       return {
         statusCode: 200,
         message: 'Building Detail retrieved successfully',
         data: buildingDetail,
-      };
+      }
     } catch (error) {
-      console.error(`Error retrieving building detail ${buildingDetailId}:`, error);
+      console.error(`Error retrieving building detail ${buildingDetailId}:`, error)
       throw new RpcException({
         statusCode: 500,
         message: 'Error retrieving building detail',
-      });
+      })
     }
   }
 
@@ -159,17 +159,17 @@ export class BuildingDetailsService {
           //  areaType: updateBuildingDetailDto.areaType,
           // locationDetails: updateBuildingDetailDto.locationDetails, // Nếu có thay đổi locationDetails
         },
-      });
+      })
       return {
         statusCode: 200,
         message: 'Building Detail updated successfully',
         data: updatedBuildingDetail,
-      };
+      }
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
         message: 'Building Detail update failed',
-      });
+      })
     }
   }
 
@@ -177,16 +177,16 @@ export class BuildingDetailsService {
     try {
       await this.prisma.buildingDetail.delete({
         where: { buildingDetailId },
-      });
+      })
       return {
         statusCode: 200,
         message: 'Building Detail deleted successfully',
-      };
+      }
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
         message: 'Building Detail deletion failed',
-      });
+      })
     }
   }
 
@@ -202,14 +202,14 @@ export class BuildingDetailsService {
           },
           locationDetails: true
         }
-      });
+      })
 
       if (!buildingDetail) {
         return {
           statusCode: 404,
           message: 'Building Detail not found',
           exists: false
-        };
+        }
       }
 
       return {
@@ -217,12 +217,12 @@ export class BuildingDetailsService {
         message: 'Building Detail exists',
         exists: true,
         data: buildingDetail,
-      };
+      }
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
         message: 'Error checking building detail',
-      });
+      })
     }
   }
 }
