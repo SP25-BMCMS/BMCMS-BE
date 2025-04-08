@@ -1,15 +1,15 @@
-import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
-import { Controller } from '@nestjs/common';
-import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
-import { BUILDINGS_PATTERN } from 'libs/contracts/src/buildings/buildings.patterns';
-import { BuildingsService } from './buildings.service';
+import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
+import { Controller } from '@nestjs/common'
+import { MessagePattern, Payload, RpcException } from '@nestjs/microservices'
+import { BUILDINGS_PATTERN } from 'libs/contracts/src/buildings/buildings.patterns'
+import { BuildingsService } from './buildings.service'
 @Controller('buildings')
 export class BuildingsController {
-  constructor(private BuildingsService: BuildingsService) {}
+  constructor(private BuildingsService: BuildingsService) { }
 
   @MessagePattern(BUILDINGS_PATTERN.CREATE)
   async createBuilding(@Payload() data: any) {
-    return await this.BuildingsService.createBuilding(data);
+    return await this.BuildingsService.createBuilding(data)
   }
 
   // @MessagePattern(BUILDINGS_PATTERN.GET)
@@ -20,33 +20,33 @@ export class BuildingsController {
   @MessagePattern(BUILDINGS_PATTERN.GET)
   async getAllBuildings(@Payload() paginationParams: PaginationParams) {
     try {
-      return await this.BuildingsService.readBuilding(paginationParams);
+      return await this.BuildingsService.readBuilding(paginationParams)
     } catch (error) {
-      console.error('Error in getAllBuildings:', error);
+      console.error('Error in getAllBuildings:', error)
       throw new RpcException({
         statusCode: 500,
         message: 'Error retrieving buildings!',
-      });
+      })
     }
   }
 
   @MessagePattern(BUILDINGS_PATTERN.UPDATE)
   updateBuilding(@Payload() data: any) {
-    return this.BuildingsService.updateBuilding(data);
+    return this.BuildingsService.updateBuilding(data)
   }
 
-  @MessagePattern(BUILDINGS_PATTERN.DELELTE)
+  @MessagePattern(BUILDINGS_PATTERN.DELETE)
   deleteBuilding(@Payload() payload: { buildingId: string }) {
-    return this.BuildingsService.deleteBuilding(payload.buildingId);
+    return this.BuildingsService.deleteBuilding(payload.buildingId)
   }
   @MessagePattern(BUILDINGS_PATTERN.GET_BY_ID)
   async getBuildingById(@Payload() payload: { buildingId: string }) {
     console.log(
       '🚀 ~ BuildingsController ~ getBuildingById ~ payload:',
       payload.buildingId,
-    );
+    )
 
-    return this.BuildingsService.getBuildingById(payload.buildingId);
+    return this.BuildingsService.getBuildingById(payload.buildingId)
   }
 
   // @MessagePattern('get_apartment_by_id')
@@ -56,36 +56,36 @@ export class BuildingsController {
 
   @MessagePattern('check_area_exists') // 🟢 Đảm bảo có handler này
   async checkAreaExists(@Payload() data: { areaName: string }) {
-    const area = await this.BuildingsService.checkAreaExists(data.areaName);
+    const area = await this.BuildingsService.checkAreaExists(data.areaName)
     return {
       exists: !!area,
       message: area ? 'Area exists' : 'Area does not exist',
-    };
+    }
   }
 
   @MessagePattern(BUILDINGS_PATTERN.CHECK_EXISTS)
   async checkBuildingExists(@Payload() data: { buildingId: string }) {
     try {
-      console.log('Received request to check building existence:', data);
+      console.log('Received request to check building existence:', data)
 
       if (!data.buildingId) {
         return {
           statusCode: 400,
           message: 'Building ID is required',
           exists: false,
-        };
+        }
       }
 
       const building = await this.BuildingsService.checkBuildingExists(
         data.buildingId,
-      );
+      )
 
       if (!building) {
         return {
           statusCode: 404,
           message: `Building with ID ${data.buildingId} not found`,
           exists: false,
-        };
+        }
       }
 
       return {
@@ -93,14 +93,14 @@ export class BuildingsController {
         message: 'Building exists',
         exists: true,
         data: building,
-      };
+      }
     } catch (error) {
-      console.error('Error in checkBuildingExists:', error);
+      console.error('Error in checkBuildingExists:', error)
       return {
         statusCode: 500,
         message: 'Error checking building existence',
         exists: false,
-      };
+      }
     }
   }
 }

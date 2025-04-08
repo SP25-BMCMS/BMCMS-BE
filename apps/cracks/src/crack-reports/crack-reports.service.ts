@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config'
 import { ClientProxy, ClientGrpc, RpcException } from '@nestjs/microservices'
 import { AssignmentStatus, Status } from '@prisma/client-Task'
 import { $Enums, Prisma, CrackReport } from '@prisma/client-cracks'
-import { ApiResponse } from 'libs/contracts/src/ApiReponse/api-response'
+import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { TASKS_PATTERN } from 'libs/contracts/src/tasks/task.patterns'
 import { BUILDINGDETAIL_PATTERN } from 'libs/contracts/src/BuildingDetails/buildingdetails.patterns'
 import { firstValueFrom, Observable, of } from 'rxjs'
@@ -649,11 +649,11 @@ export class CrackReportsService {
    */
   async getBuildingDetailByTaskId(taskId: string): Promise<ApiResponse<any>> {
     try {
-      console.log(`[CrackService] Getting buildingDetailId for taskId: ${taskId}`);
+      console.log(`[CrackService] Getting buildingDetailId for taskId: ${taskId}`)
 
       // Approach 1: If there's a task-to-crackReport relation in another service or table
       // Try to find the crack report ID first from the task service
-      console.log(`[CrackService] Calling task service to get crack_id for task: ${taskId}`);
+      console.log(`[CrackService] Calling task service to get crack_id for task: ${taskId}`)
       const crackReportResponse = await firstValueFrom(
         this.taskClient.send(
           { cmd: 'get-crack-id-by-task' },
@@ -661,85 +661,85 @@ export class CrackReportsService {
         ).pipe(
           timeout(10000),
           catchError(err => {
-            console.error(`[CrackService] Error getting crack ID from task service:`, err);
-            return of({ isSuccess: false, data: null });
+            console.error(`[CrackService] Error getting crack ID from task service:`, err)
+            return of({ isSuccess: false, data: null })
           })
         )
-      );
+      )
 
-      console.log(`[CrackService] Task service response:`, JSON.stringify(crackReportResponse, null, 2));
+      console.log(`[CrackService] Task service response:`, JSON.stringify(crackReportResponse, null, 2))
 
       // If we successfully got a crackReportId from the task service
       if (crackReportResponse && crackReportResponse.isSuccess && crackReportResponse.data) {
-        const crackReportId = crackReportResponse.data.crackReportId;
-        console.log(`[CrackService] Found crackReportId: ${crackReportId}`);
+        const crackReportId = crackReportResponse.data.crackReportId
+        console.log(`[CrackService] Found crackReportId: ${crackReportId}`)
 
         if (!crackReportId) {
-          console.log(`[CrackService] crackReportId is null or undefined`);
+          console.log(`[CrackService] crackReportId is null or undefined`)
           return new ApiResponse(true, 'Using default BuildingDetailId - No crackReportId', {
             buildingDetailId: '00000000-0000-0000-0000-000000000000',
             crackReportId: null
-          });
+          })
         }
 
         // Now get the crackReport with the crackReportId
-        console.log(`[CrackService] Looking up CrackReport with ID: ${crackReportId}`);
+        console.log(`[CrackService] Looking up CrackReport with ID: ${crackReportId}`)
         const crackReport = await this.prismaService.crackReport.findUnique({
           where: { crackReportId },
           select: {
             crackReportId: true,
             buildingDetailId: true
           }
-        });
+        })
 
-        console.log(`[CrackService] CrackReport lookup result:`, crackReport);
+        console.log(`[CrackService] CrackReport lookup result:`, crackReport)
 
         if (crackReport) {
-          console.log(`[CrackService] Found buildingDetailId: ${crackReport.buildingDetailId}`);
+          console.log(`[CrackService] Found buildingDetailId: ${crackReport.buildingDetailId}`)
           return new ApiResponse(true, 'BuildingDetailId retrieved successfully', {
             buildingDetailId: crackReport.buildingDetailId,
             crackReportId: crackReport.crackReportId
-          });
+          })
         } else {
-          console.log(`[CrackService] No CrackReport found with ID: ${crackReportId}`);
+          console.log(`[CrackService] No CrackReport found with ID: ${crackReportId}`)
         }
       } else {
-        console.log(`[CrackService] Failed to get crackReportId from task service`);
+        console.log(`[CrackService] Failed to get crackReportId from task service`)
       }
 
       // Try fallback approach - check if we have any CrackReport with this buildingDetailId
-      console.log(`[CrackService] Trying fallback approach - looking for any CrackReport`);
+      console.log(`[CrackService] Trying fallback approach - looking for any CrackReport`)
       const anyCrackReport = await this.prismaService.crackReport.findFirst({
         select: {
           buildingDetailId: true,
           crackReportId: true
         },
         orderBy: { createdAt: 'desc' }
-      });
+      })
 
       if (anyCrackReport) {
-        console.log(`[CrackService] Found a recent CrackReport with buildingDetailId: ${anyCrackReport.buildingDetailId}`);
+        console.log(`[CrackService] Found a recent CrackReport with buildingDetailId: ${anyCrackReport.buildingDetailId}`)
         return new ApiResponse(true, 'Using buildingDetailId from most recent CrackReport', {
           buildingDetailId: anyCrackReport.buildingDetailId,
           crackReportId: anyCrackReport.crackReportId,
           note: 'This is a fallback value, not directly related to the task'
-        });
+        })
       }
 
       // Approach 2: If no relation is found, return a hardcoded or default value for now
       // This is a temporary solution until the proper relation is established
-      console.log('[CrackService] No relation found, returning default UUID');
+      console.log('[CrackService] No relation found, returning default UUID')
       return new ApiResponse(true, 'Using default BuildingDetailId', {
         buildingDetailId: '00000000-0000-0000-0000-000000000000',
         crackReportId: null
-      });
+      })
     } catch (error) {
-      console.error(`[CrackService] Error retrieving BuildingDetailId for taskId ${taskId}:`, error);
+      console.error(`[CrackService] Error retrieving BuildingDetailId for taskId ${taskId}:`, error)
       // Return default UUID in case of error
       return new ApiResponse(true, 'Using default BuildingDetailId due to error', {
         buildingDetailId: '00000000-0000-0000-0000-000000000000',
         crackReportId: null
-      });
+      })
     }
   }
 }

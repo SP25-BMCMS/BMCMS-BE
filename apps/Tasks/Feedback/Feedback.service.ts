@@ -1,20 +1,20 @@
-import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
-import { CreateFeedbackDto } from '@app/contracts/feedback/create-feedback.dto';
-import { FeedbackResponseDto } from '@app/contracts/feedback/feedback.dto';
-import { UpdateFeedbackDto } from '@app/contracts/feedback/update-feedback.dto';
-import { UpdateFeedbackRatingDto } from '@app/contracts/feedback/update-feedback-rating.dto';
-import { Injectable } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices';
-import { PrismaClient } from '@prisma/client-Task';
-import { PrismaService } from '../../users/prisma/prisma.service';
-import { PaginationParams } from '../../../libs/contracts/src/Pagination/pagination.dto';
-import { UpdateFeedbackStatusDto } from '@app/contracts/feedback/update-feedback-status.dto';
+import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
+import { CreateFeedbackDto } from '@app/contracts/feedback/create-feedback.dto'
+import { FeedbackResponseDto } from '@app/contracts/feedback/feedback.dto'
+import { UpdateFeedbackDto } from '@app/contracts/feedback/update-feedback.dto'
+import { UpdateFeedbackRatingDto } from '@app/contracts/feedback/update-feedback-rating.dto'
+import { Injectable } from '@nestjs/common'
+import { RpcException } from '@nestjs/microservices'
+import { PrismaClient } from '@prisma/client-Task'
+import { PrismaService } from '../../users/prisma/prisma.service'
+import { PaginationParams } from '../../../libs/contracts/src/Pagination/pagination.dto'
+import { UpdateFeedbackStatusDto } from '@app/contracts/feedback/update-feedback-status.dto'
 
 @Injectable()
 export class FeedbackService {
   private prisma = new PrismaClient();
 
-  constructor(private prismaService: PrismaService) {}
+  constructor(private prismaService: PrismaService) { }
 
   // Create Feedback
   async createFeedback(
@@ -24,13 +24,13 @@ export class FeedbackService {
       // Kiểm tra xem task có tồn tại không
       const taskExists = await this.prisma.task.findUnique({
         where: { task_id: createFeedbackDto.task_id },
-      });
+      })
 
       if (!taskExists) {
         throw new RpcException({
           statusCode: 404,
           message: 'Task not found',
-        });
+        })
       }
 
       const newFeedback = await this.prisma.feedback.create({
@@ -40,43 +40,43 @@ export class FeedbackService {
           comments: createFeedbackDto.comments,
           rating: createFeedbackDto.rating,
         },
-      });
+      })
 
       return new ApiResponse<FeedbackResponseDto>(
         true,
         'Feedback created successfully',
         newFeedback,
-      );
+      )
     } catch (error) {
       if (error instanceof RpcException) {
-        throw error;
+        throw error
       }
       throw new RpcException({
         statusCode: 400,
         message: error.message || 'Failed to create feedback',
-      });
+      })
     }
   }
 
-  
+
 
   // Get All Feedbacks with Pagination
   async getAllFeedbacks(paginationParams?: PaginationParams) {
     try {
       // Default values if not provided
-      const page = paginationParams?.page || 1;
-      const limit = paginationParams?.limit || 10;
-      const search = paginationParams?.search || '';
+      const page = paginationParams?.page || 1
+      const limit = paginationParams?.limit || 10
+      const search = paginationParams?.search || ''
 
       // Calculate skip value for pagination
-      const skip = (page - 1) * limit;
+      const skip = (page - 1) * limit
 
       // Create where condition for search
-      const where: any = {};
+      const where: any = {}
       if (search) {
         where.OR = [
           { comments: { contains: search, mode: 'insensitive' } },
-        ];
+        ]
       }
 
       // Get paginated data
@@ -93,7 +93,7 @@ export class FeedbackService {
           },
         }),
         this.prisma.feedback.count({ where }),
-      ]);
+      ])
 
       return {
         statusCode: 200,
@@ -105,13 +105,13 @@ export class FeedbackService {
           limit,
           totalPages: Math.max(1, Math.ceil(total / limit)),
         },
-      };
+      }
     } catch (error) {
-      console.error('Error retrieving feedbacks:', error);
+      console.error('Error retrieving feedbacks:', error)
       throw new RpcException({
         statusCode: 500,
         message: error.message || 'Failed to retrieve feedbacks',
-      });
+      })
     }
   }
 
@@ -121,18 +121,18 @@ export class FeedbackService {
     try {
       const feedbacks = await this.prisma.feedback.findMany({
         where: { task_id },
-      });
+      })
 
       return new ApiResponse<FeedbackResponseDto[]>(
         true,
         'Feedbacks retrieved successfully',
         feedbacks,
-      );
+      )
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
         message: error.message || 'Failed to retrieve feedbacks by task ID',
-      });
+      })
     }
   }
   async getFeedbacksByUserId(
@@ -141,127 +141,127 @@ export class FeedbackService {
     try {
       const feedbacks = await this.prisma.feedback.findMany({
         where: { feedback_by },
-      });
+      })
 
       return new ApiResponse<FeedbackResponseDto[]>(
         true,
         'Feedbacks retrieved successfully',
         feedbacks,
-      );
+      )
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
         message: error.message || 'Failed to retrieve feedbacks by user ID',
-      });
+      })
     }
   }
-    // Delete Feedback
-    async deleteFeedback(feedback_id: string): Promise<ApiResponse<null>> {
-        try {
-          // Kiểm tra xem feedback có tồn tại không
-          const feedbackExists = await this.prisma.feedback.findUnique({
-            where: { feedback_id },
-          });
-    
-          if (!feedbackExists) {
-            throw new RpcException({
-              statusCode: 404,
-              message: 'Feedback not found',
-            });
-          }
-    
-          await this.prisma.feedback.delete({
-            where: { feedback_id },
-          });
-    
-          return new ApiResponse<null>(
-            true,
-            'Feedback deleted successfully',
-            null,
-          );
-        } catch (error) {
-          if (error instanceof RpcException) {
-            throw error;
-          }
-          throw new RpcException({
-            statusCode: 400,
-            message: error.message || 'Failed to delete feedback',
-          });
-        }
+  // Delete Feedback
+  async deleteFeedback(feedback_id: string): Promise<ApiResponse<null>> {
+    try {
+      // Kiểm tra xem feedback có tồn tại không
+      const feedbackExists = await this.prisma.feedback.findUnique({
+        where: { feedback_id },
+      })
+
+      if (!feedbackExists) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Feedback not found',
+        })
       }
-    
-      // Get Feedback by ID
-      async getFeedbackById(
-        feedback_id: string,
-      ): Promise<ApiResponse<FeedbackResponseDto>> {
-        try {
-          const feedback = await this.prisma.feedback.findUnique({
-            where: { feedback_id },
-          });
-    
-          if (!feedback) {
-            throw new RpcException({
-              statusCode: 404,
-              message: 'Feedback not found',
-            });
-          }
-    
-          return new ApiResponse<FeedbackResponseDto>(
-            true,
-            'Feedback retrieved successfully',
-            feedback,
-          );
-        } catch (error) {
-          if (error instanceof RpcException) {
-            throw error;
-          }
-          throw new RpcException({
-            statusCode: 500,
-            message: error.message || 'Failed to retrieve feedback',
-          });
-        }
+
+      await this.prisma.feedback.delete({
+        where: { feedback_id },
+      })
+
+      return new ApiResponse<null>(
+        true,
+        'Feedback deleted successfully',
+        null,
+      )
+    } catch (error) {
+      if (error instanceof RpcException) {
+        throw error
       }
+      throw new RpcException({
+        statusCode: 400,
+        message: error.message || 'Failed to delete feedback',
+      })
+    }
+  }
+
+  // Get Feedback by ID
+  async getFeedbackById(
+    feedback_id: string,
+  ): Promise<ApiResponse<FeedbackResponseDto>> {
+    try {
+      const feedback = await this.prisma.feedback.findUnique({
+        where: { feedback_id },
+      })
+
+      if (!feedback) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Feedback not found',
+        })
+      }
+
+      return new ApiResponse<FeedbackResponseDto>(
+        true,
+        'Feedback retrieved successfully',
+        feedback,
+      )
+    } catch (error) {
+      if (error instanceof RpcException) {
+        throw error
+      }
+      throw new RpcException({
+        statusCode: 500,
+        message: error.message || 'Failed to retrieve feedback',
+      })
+    }
+  }
 
   // Update Feedback Status
   async updateFeedbackStatus(
     updateStatusDto: UpdateFeedbackStatusDto,
   ): Promise<ApiResponse<FeedbackResponseDto>> {
     try {
-      const { feedback_id, status } = updateStatusDto;
+      const { feedback_id, status } = updateStatusDto
 
       // Kiểm tra xem feedback có tồn tại không
       const feedbackExists = await this.prisma.feedback.findUnique({
         where: { feedback_id },
-      });
+      })
 
       if (!feedbackExists) {
         throw new RpcException({
           statusCode: 404,
           message: 'Feedback not found',
-        });
+        })
       }
 
       // Cập nhật trạng thái
       const updatedFeedback = await this.prisma.feedback.update({
         where: { feedback_id },
-        data: { 
-          status: status as any 
+        data: {
+          status: status as any
         },
-      });
+      })
 
       return new ApiResponse<FeedbackResponseDto>(
         true,
         `Feedback status updated to ${status} successfully`,
         updatedFeedback,
-      );
+      )
     } catch (error) {
       if (error instanceof RpcException) {
-        throw error;
+        throw error
       }
       throw new RpcException({
         statusCode: 500,
         message: error.message || 'Failed to update feedback status',
-      });
+      })
     }
   }
 
@@ -274,13 +274,13 @@ export class FeedbackService {
       // Kiểm tra xem feedback có tồn tại không
       const feedbackExists = await this.prisma.feedback.findUnique({
         where: { feedback_id },
-      });
+      })
 
       if (!feedbackExists) {
         throw new RpcException({
           statusCode: 404,
           message: 'Feedback not found',
-        });
+        })
       }
 
       // Kiểm tra rating hợp lệ không (1-5)
@@ -288,66 +288,66 @@ export class FeedbackService {
         throw new RpcException({
           statusCode: 400,
           message: 'Rating must be between 1 and 5',
-        });
+        })
       }
 
       // Cập nhật rating của feedback
       const updatedFeedback = await this.prisma.feedback.update({
         where: { feedback_id },
         data: { rating },
-      });
+      })
 
       return new ApiResponse<FeedbackResponseDto>(
         true,
         'Feedback rating updated successfully',
         updatedFeedback,
-      );
+      )
     } catch (error) {
       if (error instanceof RpcException) {
-        throw error;
+        throw error
       }
       throw new RpcException({
         statusCode: 400,
         message: error.message || 'Failed to update feedback rating',
-      });
+      })
     }
   }
   async updateFeedback(
     updateFeedbackDto: UpdateFeedbackDto,
   ): Promise<ApiResponse<FeedbackResponseDto>> {
     try {
-      const { feedback_id, ...updateData } = updateFeedbackDto;
+      const { feedback_id, ...updateData } = updateFeedbackDto
 
       // Kiểm tra xem feedback có tồn tại không
       const feedbackExists = await this.prisma.feedback.findUnique({
         where: { feedback_id },
-      });
+      })
 
       if (!feedbackExists) {
         throw new RpcException({
           statusCode: 404,
           message: 'Feedback not found',
-        });
+        })
       }
 
       const updatedFeedback = await this.prisma.feedback.update({
         where: { feedback_id },
         data: updateData,
-      });
+      })
 
       return new ApiResponse<FeedbackResponseDto>(
         true,
         'Feedback updated successfully',
         updatedFeedback,
-      );
+      )
     } catch (error) {
       if (error instanceof RpcException) {
-        throw error;
+        throw error
       }
       throw new RpcException({
         statusCode: 400,
         message: error.message || 'Failed to update feedback',
-      });
+      })
     }
   }
 

@@ -1,10 +1,10 @@
-import { Body, Controller, Get, Param, Post, Put, Query } from '@nestjs/common';
-import { schedulejobsService } from './schedulejobs.service';
-import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
-import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status';
-import { CreateScheduleJobDto } from '@app/contracts/schedulesjob/create-schedule-job.dto';
-import { UpdateScheduleJobDto } from '@app/contracts/schedulesjob/UpdateScheduleJobDto';
-import { ScheduleJobResponseDto } from '@app/contracts/schedulesjob/schedule-job.dto';
+import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common'
+import { schedulejobsService } from './schedulejobs.service'
+import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
+import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status'
+import { CreateScheduleJobDto } from '@app/contracts/schedulesjob/create-schedule-job.dto'
+import { UpdateScheduleJobDto } from '@app/contracts/schedulesjob/UpdateScheduleJobDto'
+import { ScheduleJobResponseDto } from '@app/contracts/schedulesjob/schedule-job.dto'
 import {
   ApiTags,
   ApiOperation,
@@ -12,12 +12,17 @@ import {
   ApiBody,
   ApiResponse as SwaggerResponse,
   ApiQuery,
-} from '@nestjs/swagger';
+  ApiBearerAuth,
+} from '@nestjs/swagger'
+import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
+import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard'
 
 @Controller('schedule-jobs')
 @ApiTags('schedules-jobs')
+@UseGuards(PassportJwtAuthGuard)
+@ApiBearerAuth('access-token')
 export class ScheduleJobsController {
-  constructor(private readonly scheduleJobsService: schedulejobsService) {}
+  constructor(private readonly scheduleJobsService: schedulejobsService) { }
 
   @Put('status/:schedule_job_id')
   @ApiOperation({ summary: 'Update schedule job status' })
@@ -32,7 +37,7 @@ export class ScheduleJobsController {
     return this.scheduleJobsService.updateScheduleJobStatus(
       schedule_job_id,
       updateScheduleJobStatusDto,
-    );
+    )
   }
 
   @Get()
@@ -56,7 +61,7 @@ export class ScheduleJobsController {
     return this.scheduleJobsService.getAllScheduleJobs({
       page: Number(page) || 1,
       limit: Number(limit) || 10,
-    });
+    })
   }
 
   @Get(':schedule_job_id')
@@ -67,7 +72,7 @@ export class ScheduleJobsController {
   async getScheduleJobById(
     @Param('schedule_job_id') schedule_job_id: string,
   ): Promise<ApiResponse<any>> {
-    return this.scheduleJobsService.getScheduleJobById(schedule_job_id);
+    return this.scheduleJobsService.getScheduleJobById(schedule_job_id)
   }
 
   @Post()
@@ -82,14 +87,14 @@ export class ScheduleJobsController {
     @Body() createScheduleJobDto: CreateScheduleJobDto,
   ): Promise<ApiResponse<any>> {
     if (createScheduleJobDto.run_date) {
-      createScheduleJobDto.run_date = new Date(createScheduleJobDto.run_date);
+      createScheduleJobDto.run_date = new Date(createScheduleJobDto.run_date)
     }
     console.log(
       '🚀 ~ ScheduleJobsController ~ createScheduleJob ~ run_date:',
       createScheduleJobDto.run_date,
-    );
+    )
 
-    return this.scheduleJobsService.createScheduleJob(createScheduleJobDto);
+    return this.scheduleJobsService.createScheduleJob(createScheduleJobDto)
   }
 
   @Put(':schedule_job_id')
@@ -109,7 +114,28 @@ export class ScheduleJobsController {
     const response = await this.scheduleJobsService.updateScheduleJob(
       schedule_job_id,
       updateScheduleJobDto,
-    );
-    return response;
+    )
+    return response
+  }
+
+  @Get('schedule/:scheduleId')
+  @ApiOperation({ summary: 'Get schedule jobs by schedule ID' })
+  @ApiParam({ name: 'scheduleId', description: 'Schedule ID' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
+  @SwaggerResponse({
+    status: 200,
+    description: 'Returns a list of schedule jobs for the specified schedule ID',
+  })
+  async getScheduleJobsByScheduleId(
+    @Param('scheduleId') scheduleId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    const paginationParams: PaginationParams = {
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 10,
+    }
+    return this.scheduleJobsService.getScheduleJobsByScheduleId(scheduleId, paginationParams)
   }
 }

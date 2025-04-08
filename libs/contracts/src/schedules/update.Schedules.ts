@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsEnum, IsDateString, IsInt } from 'class-validator'
+import { IsOptional, IsString, IsEnum, IsDateString, IsArray, IsUUID } from 'class-validator'
 import { $Enums } from '@prisma/client-Schedule'
 import { ApiProperty } from '@nestjs/swagger'
 
@@ -13,9 +13,6 @@ export class UpdateScheduleDto {
   @ApiProperty({
     description: 'The type of the schedule', required: false, enum: $Enums.ScheduleType,
     example: $Enums.ScheduleType.Daily + "Daily ,Weekly,Monthly,Yearly,Specific",
-
-
-
   })  // Optional enum property
   schedule_type?: $Enums.ScheduleType
 
@@ -35,6 +32,13 @@ export class UpdateScheduleDto {
   end_date?: string
 
   @IsOptional()
-  @ApiProperty({ description: 'End date of the schedule', required: false, type: Array })  // Optional end date
+  @IsArray()
+  @IsUUID('4', { each: true })
+  @ApiProperty({
+    description: 'Array of building IDs associated with this schedule',
+    required: false,
+    type: [String],
+    example: ['123e4567-e89b-12d3-a456-426614174000']
+  })  // Optional building IDs
   buildingId?: string[]
 }

@@ -3,7 +3,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { Injectable } from '@nestjs/common'
 import { RpcException } from '@nestjs/microservices'
 import { UpdateCrackDetailDto } from 'libs/contracts/src/cracks/update-crack-detail.dto'
-import { ApiResponse } from '../../../../libs/contracts/src/ApiReponse/api-response'
+import { ApiResponse } from '../../../../libs/contracts/src/ApiResponse/api-response'
 import { PrismaService } from '../../prisma/prisma.service'
 import { ConfigService } from '@nestjs/config'
 

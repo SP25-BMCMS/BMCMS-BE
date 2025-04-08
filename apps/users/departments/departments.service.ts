@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { ApiResponse } from '@app/contracts/ApiReponse/api-response';
+import { Injectable } from '@nestjs/common'
+import { PrismaService } from '../prisma/prisma.service'
+import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 
 @Injectable()
 export class DepartmentsService {
@@ -12,19 +12,19 @@ export class DepartmentsService {
         orderBy: {
           departmentName: 'asc'
         }
-      });
+      })
 
       return new ApiResponse(
         true,
         'All departments retrieved successfully',
         departments
-      );
+      )
     } catch (error) {
       return new ApiResponse(
         false,
         'Failed to retrieve departments',
         null
-      );
+      )
     }
   }
 
