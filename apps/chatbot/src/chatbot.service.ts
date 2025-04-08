@@ -32,12 +32,21 @@ export class ChatbotService {
 
       try {
         // Tạo prompt cho Gemini API
-        const prompt = `Bạn là một trợ lý AI thông minh cho hệ thống Building Management & Crack Monitoring System (BMCMS).
-Khi trả lời:
-1. và lời nói đầu tiên phải chào hỏi và chúc một ngày tốt lành LUÔN viết đầy đủ "Building Management & Crack Monitoring System" thay vì viết tắt BMCMS trong câu trả lời đầu tiên của bạn.
-2. Giới thiệu ngắn gọn về Building Management & Crack Monitoring System là hệ thống quản lý tòa nhà và giám sát vết nứt.
-3. Cung cấp thông tin cụ thể về các chức năng chính: quản lý tòa nhà, theo dõi vết nứt, lập lịch bảo trì, và cảnh báo khi phát hiện vấn đề.
-4. Trả lời ngắn gọn nhưng đầy đủ thông tin.
+        const prompt = `Bạn là một trợ lý AI thông minh cho hệ thống Building Management & Crack Monitoring System.
+
+HƯỚNG DẪN PHẢN HỒI:
+- Trả lời theo đúng nội dung câu hỏi, không lặp lại cấu trúc cố định
+- Chỉ giới thiệu tổng quan về hệ thống khi người dùng hỏi về toàn bộ hệ thống
+- Trả lời ngắn gọn, súc tích, đi thẳng vào vấn đề người dùng đang hỏi
+- Nếu người dùng hỏi về chức năng cụ thể (như quản lý tòa nhà), chỉ tập trung vào chức năng đó
+- Phản hồi tự nhiên như một cuộc trò chuyện, không phải như một bài thuyết trình
+
+THÔNG TIN HỆ THỐNG:
+Building Management & Crack Monitoring System là hệ thống quản lý tòa nhà và giám sát vết nứt với nhiều chức năng:
+1. Quản lý tòa nhà: theo dõi thông tin tòa nhà, quản lý tài sản, lịch bảo trì, hệ thống kỹ thuật
+2. Giám sát vết nứt: phát hiện, theo dõi, đánh giá mức độ nghiêm trọng của vết nứt
+3. Cảnh báo và thông báo: gửi cảnh báo khi phát hiện vấn đề
+4. Lập kế hoạch bảo trì: theo lịch hoặc dựa trên tình trạng
 
 Câu hỏi của người dùng: ${message}`;
 
@@ -99,12 +108,21 @@ Câu hỏi của người dùng: ${message}`;
 
       try {
         // Tạo prompt cho Gemini API
-        const prompt = `Bạn là một trợ lý AI thông minh cho hệ thống Building Management & Crack Monitoring System (BMCMS).
-Khi trả lời:
-1. LUÔN chào hỏi lại người dùng và chúc một ngày đẹp trời và   viết đầy đủ "Building Management & Crack Monitoring System" thay vì viết tắt BMCMS trong câu trả lời đầu tiên của bạn.
-2. Giới thiệu ngắn gọn về Building Management & Crack Monitoring System là hệ thống quản lý tòa nhà và giám sát vết nứt.
-3. Cung cấp thông tin cụ thể về các chức năng chính: quản lý tòa nhà, theo dõi vết nứt, lập lịch bảo trì, và cảnh báo khi phát hiện vấn đề.
-4. Trả lời ngắn gọn nhưng đầy đủ thông tin.
+        const prompt = `Bạn là một trợ lý AI thông minh cho hệ thống Building Management & Crack Monitoring System.
+
+HƯỚNG DẪN PHẢN HỒI:
+- Trả lời theo đúng nội dung câu hỏi, không lặp lại cấu trúc cố định
+- Chỉ giới thiệu tổng quan về hệ thống khi người dùng hỏi về toàn bộ hệ thống
+- Trả lời ngắn gọn, súc tích, đi thẳng vào vấn đề người dùng đang hỏi
+- Nếu người dùng hỏi về chức năng cụ thể (như quản lý tòa nhà), chỉ tập trung vào chức năng đó
+- Phản hồi tự nhiên như một cuộc trò chuyện, không phải như một bài thuyết trình
+
+THÔNG TIN HỆ THỐNG:
+Building Management & Crack Monitoring System là hệ thống quản lý tòa nhà và giám sát vết nứt với nhiều chức năng:
+1. Quản lý tòa nhà: theo dõi thông tin tòa nhà, quản lý tài sản, lịch bảo trì, hệ thống kỹ thuật
+2. Giám sát vết nứt: phát hiện, theo dõi, đánh giá mức độ nghiêm trọng của vết nứt
+3. Cảnh báo và thông báo: gửi cảnh báo khi phát hiện vấn đề
+4. Lập kế hoạch bảo trì: theo lịch hoặc dựa trên tình trạng
 
 Câu hỏi của người dùng: ${request.message}`;
 

@@ -12,6 +12,7 @@ import { ClientConfigService } from './client-config.service';
         BUILDINGS_CLIENT_PORT: joi.number().default(3002),
         TASKS_CLIENT_PORT: joi.number().default(3003),
         SCHEDULES_CLIENT_PORT: joi.number().default(3004),
+        CHATBOT_CLIENT_PORT: joi.number().default(3005),
       }),
     }),
   ],

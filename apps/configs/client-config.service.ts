@@ -121,9 +121,13 @@ export class ClientConfigService {
   }
 
   get chatbotClientOptions(): ClientOptions {
-    const { user, password, host, queueName } = this.getRabbitMQConfig() // Get RabbitMQ config
-    const url = this.config.get<string>('RABBIT_LOCAL_URL')
-    const isLocal = process.env.NODE_ENV !== 'production'
+    const { user, password, host } = this.getRabbitMQConfig() // Get RabbitMQ config
+
+    const queueName = 'chatbot_queue';
+    const isLocal = process.env.NODE_ENV !== 'production';
+    
+    console.log(`[ClientConfig] RabbitMQ config for chatbot: host=${host}, queue=${queueName}, local=${isLocal}`);
+    
     return {
       transport: Transport.RMQ,
       options: {
@@ -134,6 +138,13 @@ export class ClientConfigService {
         queueOptions: {
           durable: true,
         },
+        prefetchCount: 1,
+        socketOptions: {
+          heartbeatIntervalInSeconds: 60,
+          reconnectTimeInSeconds: 10,
+        },
+        noAck: true,
+        persistent: false
       },
     }
   }

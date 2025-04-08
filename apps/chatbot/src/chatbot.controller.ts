@@ -11,24 +11,51 @@ export class ChatbotController {
 
   constructor(private readonly chatbotService: ChatbotService ) {
     this.logger.log('ChatbotController initialized - ready to receive messages');
+    this.logger.log(`Listening for TEST_CHAT pattern: "${CHATBOT_PATTERN.TEST_CHAT}"`);
   }
 
-
-  // @MessagePattern(CHATBOT_PATTERN.SYSTEM_INFO)
-  // async getSystemInfo() {
-  //   return this.chatbotService.getSystemInfo();
+  // @MessagePattern(CHATBOT_PATTERN.CHAT)
+  // async chat(@Payload() message: ChatMessageDto, @Ctx() context: RmqContext) {
+  //   const channel = context.getChannelRef();
+  //   const originalMsg = context.getMessage();
+    
+  //   this.logger.log(`[chat] Received message: ${JSON.stringify(message)}`);
+    
+  //   try {
+  //     // Xử lý message trước
+  //     const result = await this.chatbotService.createChat(message);
+      
+  //     // Xác nhận message sau khi xử lý xong và trước khi return
+  //     try {
+  //       channel.ack(originalMsg);
+  //       this.logger.log('[chat] Message acknowledged successfully');
+  //     } catch (ackError) {
+  //       this.logger.error(`[chat] Error acknowledging message:`, ackError);
+  //     }
+      
+  //     return result;
+  //   } catch (error) {
+  //     this.logger.error(`[chat] Error processing message:`, error);
+      
+  //     // Vẫn cố gắng xác nhận để tránh retry vô tận
+  //     try {
+  //       channel.ack(originalMsg);
+  //       this.logger.log('[chat] Message acknowledged despite error');
+  //     } catch (ackError) {
+  //       this.logger.error(`[chat] Error acknowledging message after error:`, ackError);
+  //     }
+      
+  //     throw error;
+  //   }
   // }
 
   @MessagePattern(CHATBOT_PATTERN.TEST_CHAT)
   async testChat(@Payload() data: any, @Ctx() context: RmqContext) {
-    const channel = context.getChannelRef();
-    const originalMsg = context.getMessage();
     const pattern = context.getPattern();
 
-    this.logger.log(`[testChat] Received message with pattern: ${JSON.stringify(pattern)}`);
+    this.logger.log(`[testChat] Received message with pattern: ${pattern}`);
     this.logger.log(`[testChat] Received data: ${JSON.stringify(data)}`);
     
-    console.log("🚀 ~ ChatbotControllerChatbotControllerChatbotControllerChatbotControllerChatbotController ~ testChat ~ data:", data)
     try {
       // Kiểm tra và xử lý data
       if (!data) {
@@ -61,14 +88,9 @@ export class ChatbotController {
       
       this.logger.log(`[testChat] Response: "${response}"`);
       
-      // Xác nhận message đã được xử lý
-      channel.ack(originalMsg);
-      
       return response;
     } catch (error) {
       this.logger.error(`[testChat] Error processing message:`, error);
-      // Xác nhận message để không retry vô tận
-      channel.ack(originalMsg);
       throw error;
     }
   }
