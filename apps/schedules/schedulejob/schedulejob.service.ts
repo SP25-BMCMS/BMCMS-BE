@@ -1,26 +1,29 @@
-import { Injectable, Inject } from '@nestjs/common'
-import { RpcException } from '@nestjs/microservices'
-import { PrismaService } from '../prisma/prisma.service'
+import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { CreateScheduleJobDto } from '@app/contracts/schedulesjob/create-schedule-job.dto'
 import { ScheduleJobResponseDto } from '@app/contracts/schedulesjob/schedule-job.dto'
-import { $Enums } from '@prisma/client-Schedule'
-import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status'
 import { UpdateScheduleJobDto } from '@app/contracts/schedulesjob/UpdateScheduleJobDto'
+import { Inject, Injectable } from '@nestjs/common'
+import { ClientProxy, RpcException } from '@nestjs/microservices'
+import { firstValueFrom } from 'rxjs'
+import { BUILDINGS_PATTERN } from '../../../libs/contracts/src/buildings/buildings.patterns'
 import {
   PaginationParams,
   PaginationResponseDto,
 } from '../../../libs/contracts/src/Pagination/pagination.dto'
-import { ClientProxy } from '@nestjs/microservices'
-import { BUILDING_CLIENT } from '../../api-gateway/src/constraints'
-import { BUILDINGS_PATTERN } from '../../../libs/contracts/src/buildings/buildings.patterns'
-import { firstValueFrom } from 'rxjs'
+import { PrismaService } from '../prisma/prisma.service'
+import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
+import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
+
+const NOTIFICATION_CLIENT = 'NOTIFICATION_CLIENT'
+const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 
 @Injectable()
 export class ScheduleJobsService {
   constructor(
     private readonly prismaService: PrismaService,
-    @Inject(BUILDING_CLIENT) private readonly buildingClient: ClientProxy,
+    @Inject(BUILDINGS_CLIENT) private readonly buildingClient: ClientProxy,
+    @Inject(NOTIFICATION_CLIENT) private readonly notificationsClient: ClientProxy,
   ) { }
 
   // Create a new Schedule Job
@@ -109,11 +112,6 @@ export class ScheduleJobsService {
     schedule_job_id: string,
   ): Promise<ApiResponse<ScheduleJobResponseDto>> {
     try {
-      console.log(
-        '🚀 ~ InspectionsService ~ getScheduleJobById ~ scheduleJob:',
-        schedule_job_id,
-      )
-
       const scheduleJob = await this.prismaService.scheduleJob.findUnique({
         where: { schedule_job_id },
       })
@@ -123,11 +121,6 @@ export class ScheduleJobsService {
           mescsage: 'Shedule job not found',
         })
       }
-      console.log(
-        '🚀 ~ InspectionsServiceduoi ~ getScheduleJobById ~ scheduleJob:',
-        scheduleJob,
-      )
-
       return new ApiResponse<ScheduleJobResponseDto>(
         true,
         'Schedule job fetched successfully',
@@ -265,6 +258,108 @@ export class ScheduleJobsService {
         statusCode: 500,
         message: 'Failed to get schedule jobs: ' + error.message,
       })
+    }
+  }
+
+  async sendMaintenanceEmail(scheduleJobId: string): Promise<ApiResponse<{ message: string }>> {
+    try {
+      if (!scheduleJobId) {
+        return new ApiResponse(false, 'Schedule job ID is required', null)
+      }
+
+      console.log(`Fetching schedule job with ID: ${scheduleJobId}`)
+      // Get schedule job details
+      const scheduleJob = await this.prismaService.scheduleJob.findUnique({
+        where: { schedule_job_id: scheduleJobId },
+        include: {
+          schedule: true,
+        },
+      })
+
+      if (!scheduleJob) {
+        console.error(`Schedule job not found with ID: ${scheduleJobId}`)
+        return new ApiResponse(false, 'Schedule job not found', null)
+      }
+
+      console.log(`Fetching building with ID: ${scheduleJob.building_id}`)
+      // Get building details
+      const buildingResponse = await firstValueFrom(
+        this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: scheduleJob.building_id })
+      )
+
+      if (!buildingResponse || !buildingResponse.data) {
+        console.error(`Building not found with ID: ${scheduleJob.building_id}`)
+        return new ApiResponse(false, 'Building not found', null)
+      }
+
+      const building = buildingResponse.data
+      console.log(`Building details:`, {
+        name: building.name,
+        description: building.description,
+        numberFloor: building.numberFloor,
+        area: building.area,
+        buildingDetails: building.buildingDetails
+      })
+
+      // Get building details with location information
+      const buildingDetailsResponse = await firstValueFrom(
+        this.buildingClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, {
+          buildingDetailId: building.buildingDetails?.[0]?.buildingDetailId
+        })
+      )
+
+      console.log(`Fetching residents for building ID: ${scheduleJob.building_id}`)
+      // Get residents for the building
+      const residentsResponse = await firstValueFrom(
+        this.buildingClient.send(BUILDINGS_PATTERN.GET_RESIDENTS_BY_BUILDING_ID, building.buildingId)
+      )
+
+      console.log(`Found ${residentsResponse.data.length} residents to send emails to`)
+      // Send email to each resident using notifications service
+      const emailPromises = residentsResponse.data.map(resident => {
+        if (!resident.email) {
+          console.log(`Skipping resident ${resident.name} - no email address`)
+          return Promise.resolve()
+        }
+
+        // Get location details for the resident
+        const locationDetails = buildingDetailsResponse?.data?.locationDetails?.find(
+          loc => loc.roomNumber === resident.apartmentNumber
+        )
+
+        console.log(`Sending email to resident: ${resident.name} (${resident.email})`)
+        return firstValueFrom(
+          this.notificationsClient.emit(NOTIFICATIONS_PATTERN.SEND_MAINTENANCE_SCHEDULE_EMAIL, {
+            to: resident.email,
+            residentName: resident.name,
+            buildingName: building.name,
+            maintenanceDate: scheduleJob.run_date,
+            startTime: '08:00', // Default start time
+            endTime: '17:00', // Default end time
+            maintenanceType: scheduleJob.schedule.schedule_name,
+            description: scheduleJob.schedule.description || 'No additional details provided',
+            floor: locationDetails?.floorNumber?.toString() || building.numberFloor?.toString() || 'Không xác định',
+            area: building.area?.name || 'Không xác định',
+            unit: locationDetails?.roomNumber || resident.apartmentNumber || 'Không xác định'
+          })
+        )
+      })
+
+      await Promise.all(emailPromises)
+      console.log('All maintenance schedule emails sent successfully')
+
+      return new ApiResponse(
+        true,
+        'Maintenance schedule emails sent successfully',
+        { message: `Emails sent to ${residentsResponse.data.length} residents` }
+      )
+    } catch (error) {
+      console.error('Error sending maintenance emails:', error)
+      return new ApiResponse(
+        false,
+        `Failed to send maintenance schedule emails: ${error.message}`,
+        null
+      )
     }
   }
 }
