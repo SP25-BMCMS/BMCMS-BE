@@ -221,6 +221,12 @@ export class TaskAssignmentsService {
           task: true
         }
       });
+      if (existingAssignment.employee_id == newEmployeeId) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'New employee is the same as the old employee please choose another employee',
+        });
+      }
 
       if (!existingAssignment) {
         throw new RpcException({
