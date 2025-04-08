@@ -214,21 +214,58 @@ export class TaskAssignmentsService {
     newEmployeeId: string,
   ) {
     try {
-      const updatedAssignment = await this.prisma.taskAssignment.update({
+      // Tìm task assignment cũ
+      const existingAssignment = await this.prisma.taskAssignment.findUnique({
+        where: { assignment_id: taskAssignmentId },
+        include: {
+          task: true
+        }
+      });
+
+      if (!existingAssignment) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Task assignment not found',
+        });
+      }
+
+      // Cập nhật trạng thái assignment cũ thành Reassigned
+      const oldAssignment = await this.prisma.taskAssignment.update({
         where: { assignment_id: taskAssignmentId },
         data: {
-          employee_id: newEmployeeId, // Reassign the task to the new employee
+          status: AssignmentStatus.Reassigned,
+          description: `${existingAssignment.description} Reassigned to new employee`
         },
+        include: {
+          task: true
+        }
       });
+
+      // Tạo assignment mới với dữ liệu từ assignment cũ nhưng employee mới
+      const newAssignment = await this.prisma.taskAssignment.create({
+        data: {
+          task_id: existingAssignment.task_id,
+          employee_id: newEmployeeId,
+          description: `Reassigned from assignment ${taskAssignmentId}\n Original description: ${existingAssignment.description}`,
+          status: AssignmentStatus.Pending,
+        },
+        include: {
+          task: true
+        }
+      });
+
       return {
         statusCode: 200,
-        message: 'Task assignment reassigned successfully',
-        data: updatedAssignment,
+        message: 'Task reassigned successfully',
+        data: {
+          oldAssignment,
+          newAssignment
+        }
       };
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Error reassigning task assignment',
+        message: 'Error reassigning task assignment: ' + error.message
       });
     }
   }
