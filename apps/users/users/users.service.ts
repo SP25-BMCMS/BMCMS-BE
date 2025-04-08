@@ -25,20 +25,30 @@ import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { CreateWorkingPositionDto } from '@app/contracts/users/create-working-position.dto'
 import { GrpcMethod } from '@nestjs/microservices'
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
+import { PrismaClient as TasksPrismaClient } from '@prisma/client-Task'
+import { PrismaClient as TasksPrismaClientSchedule } from '@prisma/client-Schedule'
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 const CRACKS_CLIENT = 'CRACKS_CLIENT'
+const TASKS_CLIENT = 'TASKS_CLIENT'
+
 const CRACK_PATTERN = {
   GET_CRACK_REPORT: { cmd: 'get-crack-report-by-id' }
 }
 
 @Injectable()
 export class UsersService {
+  private tasksPrisma: TasksPrismaClient
+  private tasksPrismaSchedule: TasksPrismaClientSchedule
+
   constructor(
     private prisma: PrismaService,
     @Inject(BUILDINGS_CLIENT) private readonly buildingClient: ClientProxy,
     @Inject(CRACKS_CLIENT) private readonly crackClient: ClientProxy,
-  ) { }
+    @Inject(TASKS_CLIENT) private readonly taskClient: ClientProxy,
+  ) {
+    this.tasksPrisma = new TasksPrismaClient()
+  }
 
   async getUserByUsername(username: string): Promise<UserDto | null> {
     const user = await this.prisma.user.findUnique({ where: { username } })
@@ -413,6 +423,9 @@ export class UsersService {
           break;
         case 'Janitor':
           positionNameEnum = PositionName.Janitor;
+          break;
+        case 'Maintenance_Technician':
+          positionNameEnum = PositionName.Maintenance_Technician;
           break;
         default:
           // For unsupported position names, use Leader as default
@@ -1145,16 +1158,25 @@ export class UsersService {
         }
       }
 
-      const buildingAreaName = areaResponse.data.name
+      const areaName = areaResponse.data.name
 
-      // Check if staff's department area matches building's area name
-      const isMatch = staff.userDetails.department.area === buildingAreaName
+      // Lấy area của staff từ department
+      const staffAreaName = staff.userDetails.department.area;
+
+      // So sánh area của staff với area của building
+      // Đảm bảo so sánh không phân biệt hoa thường
+      console.log(`[users.service] Comparing areas: Staff area (${staffAreaName}) vs Building area (${areaName})`);
+      const isMatch = staffAreaName.toLowerCase() === areaName.toLowerCase();
+
+      console.log(`[users.service] Area match result: ${isMatch ? 'MATCH' : 'NO MATCH'}`);
 
       return {
         isSuccess: true,
-        message: isMatch ? 'Area match found' : 'Area mismatch',
+        message: isMatch
+          ? `Nhân viên thuộc khu vực ${staffAreaName} phù hợp với khu vực ${areaName} của công việc`
+          : `Nhân viên thuộc khu vực ${staffAreaName} không phù hợp với khu vực ${areaName} của công việc`,
         isMatch
-      }
+      };
     } catch (error) {
       return {
         isSuccess: false,
@@ -1514,6 +1536,256 @@ export class UsersService {
         message: `Lỗi khi cập nhật phòng ban và vị trí công việc: ${error.message}`,
         data: null
       }
+    }
+  }
+
+  async checkStaffAreaMatchWithScheduleJob(data: { staffId: string; scheduleJobId: string }): Promise<{
+    isSuccess: boolean;
+    message: string;
+    isMatch: boolean;
+    statusCode?: number;
+  }> {
+    try {
+      console.log(`[users.service] Checking staff (${data.staffId}) area match with schedule job (${data.scheduleJobId})`);
+
+      // Get staff user with department and position info
+      const staff = await this.prisma.user.findUnique({
+        where: { userId: data.staffId },
+        include: {
+          userDetails: {
+            include: {
+              position: true,
+              department: true
+            }
+          }
+        }
+      });
+
+      console.log(`[users.service] Staff details:`, JSON.stringify({
+        userId: staff?.userId,
+        position: staff?.userDetails?.position?.positionName,
+        department: staff?.userDetails?.department?.departmentName,
+        area: staff?.userDetails?.department?.area
+      }));
+
+      if (!staff) {
+        return {
+          isSuccess: false,
+          message: `Không tìm thấy nhân viên (${data.staffId})`,
+          isMatch: false,
+          statusCode: 404
+        };
+      }
+
+      if (!staff.userDetails) {
+        return {
+          isSuccess: false,
+          message: 'Nhân viên chưa được phân công phòng ban và vị trí công việc',
+          isMatch: false
+        };
+      }
+
+      if (!staff.userDetails.position) {
+        return {
+          isSuccess: false,
+          message: 'Nhân viên chưa được phân công vị trí công việc',
+          isMatch: false
+        };
+      }
+
+      if (!staff.userDetails.department) {
+        return {
+          isSuccess: false,
+          message: 'Nhân viên chưa được phân công phòng ban',
+          isMatch: false
+        };
+      }
+
+      // Check if staff is a Maintenance Technician
+      if (staff.userDetails.position.positionName !== 'Maintenance_Technician') {
+        return {
+          isSuccess: false,
+          message: `Chỉ nhân viên kỹ thuật bảo trì (Maintenance Technician) mới có thể thực hiện công việc này. Vị trí hiện tại: ${staff.userDetails.position.positionName}`,
+          isMatch: false
+        };
+      }
+
+      // Initialize tasksPrismaSchedule if not already initialized
+      if (!this.tasksPrismaSchedule) {
+        this.tasksPrismaSchedule = new TasksPrismaClientSchedule();
+        console.log(`[users.service] Initialized Schedule PrismaClient`);
+      }
+
+      // Get schedule job info
+      const scheduleJob = await this.tasksPrismaSchedule.scheduleJob.findUnique({
+        where: { schedule_job_id: data.scheduleJobId }
+      });
+
+      console.log(`[users.service] Schedule job details:`, JSON.stringify(scheduleJob));
+
+      if (!scheduleJob) {
+        return {
+          isSuccess: false,
+          message: `Không tìm thấy lịch công việc với ID: ${data.scheduleJobId}`,
+          isMatch: false,
+          statusCode: 404
+        };
+      }
+
+      // Từ building_id trong scheduleJob, gọi đến building service để lấy thông tin building
+      console.log(`[users.service] Getting building info using building_id from scheduleJob: ${scheduleJob.building_id}`);
+
+      // Kiểm tra xem building_id có tồn tại không
+      if (!scheduleJob.building_id) {
+        return {
+          isSuccess: false,
+          message: 'Lịch công việc không có thông tin tòa nhà',
+          isMatch: false
+        };
+      }
+
+      // Gọi API để lấy thông tin building từ building_id
+      // Thử dùng BUILDINGS_PATTERN.GET_BY_ID trước (nơi đã confirm có dữ liệu)
+      const buildingResponse = await firstValueFrom(
+        this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: scheduleJob.building_id }).pipe(
+          timeout(5000),
+          catchError(err => {
+            console.error(`[users.service] Error fetching building:`, err);
+            throw new Error(`Lỗi khi lấy thông tin tòa nhà: ${err.message}`);
+          })
+        )
+      );
+
+      console.log(`[users.service] Building response:`, JSON.stringify(buildingResponse));
+
+      // Kiểm tra xem có lấy được thông tin building không
+      if (!buildingResponse) {
+        return {
+          isSuccess: false,
+          message: `Không nhận được phản hồi khi tìm tòa nhà với ID: ${scheduleJob.building_id}`,
+          isMatch: false
+        };
+      }
+
+      // Kiểm tra response success theo cả hai loại cấu trúc có thể nhận được
+      const responseSuccess =
+        (buildingResponse.statusCode === 200) ||
+        (buildingResponse.isSuccess === true);
+
+      if (!responseSuccess || !buildingResponse.data) {
+        return {
+          isSuccess: false,
+          message: `Không tìm thấy thông tin tòa nhà với ID: ${scheduleJob.building_id}`,
+          isMatch: false
+        };
+      }
+
+      // Lấy areaId từ thông tin building
+      console.log(`[users.service] Building data:`, JSON.stringify(buildingResponse.data));
+
+      // Truy cập areaId theo cả hai cấu trúc dữ liệu có thể có
+      let areaId;
+      let areaName;
+
+      // Trích xuất dữ liệu từ các cấu trúc response khác nhau
+      if (buildingResponse.data.areaId) {
+        // Cấu trúc từ BUILDINGS_PATTERN.GET_BY_ID
+        console.log('[users.service] Using direct building data structure');
+        areaId = buildingResponse.data.areaId;
+
+        // Từ area object - cấu trúc đầy đủ
+        if (buildingResponse.data.area && buildingResponse.data.area.name) {
+          areaName = buildingResponse.data.area.name;
+        }
+      }
+      else if (buildingResponse.data.building && buildingResponse.data.building.area) {
+        // Cấu trúc từ BUILDINGDETAIL_PATTERN.GET_BY_ID
+        console.log('[users.service] Using buildingDetail data structure');
+        areaId = buildingResponse.data.building.area.areaId;
+        areaName = buildingResponse.data.building.area.name;
+      }
+
+      console.log(`[users.service] Extracted area information: areaId=${areaId}, areaName=${areaName}`);
+
+      if (!areaId) {
+        return {
+          isSuccess: false,
+          message: 'Không thể xác định khu vực của tòa nhà',
+          isMatch: false
+        };
+      }
+
+      // Từ areaId, gọi đến area service để lấy thông tin area nếu không có areaName
+      if (!areaName) {
+        console.log(`[users.service] Getting area info using areaId: ${areaId}`);
+
+        try {
+          // Gọi API để lấy thông tin area từ areaId
+          const areaResponse = await firstValueFrom(
+            this.buildingClient.send(AREAS_PATTERN.GET_BY_ID, { areaId }).pipe(
+              timeout(5000),
+              catchError(err => {
+                console.error(`[users.service] Error fetching area:`, err);
+                throw new Error(`Lỗi khi lấy thông tin khu vực: ${err.message}`);
+              })
+            )
+          );
+
+          console.log(`[users.service] Area response:`, JSON.stringify(areaResponse));
+
+          // Kiểm tra xem có lấy được thông tin area không
+          if (!areaResponse || areaResponse.statusCode !== 200 || !areaResponse.data) {
+            return {
+              isSuccess: false,
+              message: `Không tìm thấy thông tin khu vực với ID: ${areaId}`,
+              isMatch: false
+            };
+          }
+
+          // Lấy areaName từ thông tin area
+          areaName = areaResponse.data.name;
+        } catch (error) {
+          console.error(`[users.service] Error getting area name:`, error);
+          return {
+            isSuccess: false,
+            message: `Lỗi khi lấy tên khu vực: ${error.message}`,
+            isMatch: false
+          };
+        }
+      }
+
+      if (!areaName) {
+        return {
+          isSuccess: false,
+          message: 'Khu vực không có tên',
+          isMatch: false
+        };
+      }
+
+      // Lấy area của staff từ department
+      const staffAreaName = staff.userDetails.department.area;
+
+      console.log(`[users.service] Comparing areas: Staff area (${staffAreaName}) vs Building area (${areaName})`);
+
+      // So sánh area của staff với area của building
+      const isMatch = staffAreaName.toLowerCase() === areaName.toLowerCase();
+
+      console.log(`[users.service] Area match result: ${isMatch ? 'MATCH' : 'NO MATCH'}`);
+
+      return {
+        isSuccess: true,
+        message: isMatch
+          ? `Nhân viên thuộc khu vực ${staffAreaName} phù hợp với khu vực ${areaName} của công việc`
+          : `Nhân viên thuộc khu vực ${staffAreaName} không phù hợp với khu vực ${areaName} của công việc`,
+        isMatch
+      };
+    } catch (error) {
+      console.error(`[users.service] Error in checkStaffAreaMatchWithScheduleJob:`, error);
+      return {
+        isSuccess: false,
+        message: `        Lỗi khi kiểm tra khu vực: ${error.message}`,
+        isMatch: false
+      };
     }
   }
 }

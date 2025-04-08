@@ -64,4 +64,17 @@ export class TasksController {
   async getCrackIdByTask(@Payload() payload: { taskId: string }) {
     return this.taskService.getCrackIdByTask(payload.taskId);
   }
+
+  @MessagePattern({ cmd: 'create-task-for-schedule-job' })
+  async createTaskForScheduleJob(@Payload() payload: { scheduleJobId: string; staffId: string }) {
+    console.log('Received create-task-for-schedule-job request with payload:', payload);
+    try {
+      const result = await this.taskService.createTaskForScheduleJob(payload.scheduleJobId, payload.staffId);
+      console.log('createTaskForScheduleJob completed with result:', JSON.stringify(result));
+      return result;
+    } catch (error) {
+      console.error('Error in createTaskForScheduleJob controller:', error);
+      throw error;
+    }
+  }
 }

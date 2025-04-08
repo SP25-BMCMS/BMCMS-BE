@@ -92,4 +92,10 @@ export interface UserInterface {
       totalPages: number;
     };
   }>;
+
+  checkStaffAreaMatchWithScheduleJob(data: { staffId: string; scheduleJobId: string }): Observable<{
+    isSuccess: boolean;
+    message: string;
+    isMatch: boolean;
+  }>;
 }

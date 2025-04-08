@@ -20,8 +20,6 @@ export class TaskAssignmentsService {
 
   constructor(private prismaService: PrismaService,
     @Inject('CRACK_CLIENT') private readonly crackClient: ClientProxy
-
-
   ) { }
 
   async createTaskAssignment(createTaskAssignmentDto: CreateTaskAssignmentDto) {

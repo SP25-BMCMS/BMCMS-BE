@@ -1,7 +1,7 @@
 // task.service.ts
-import { Injectable } from '@nestjs/common'
-import { Status } from '@prisma/client-Task'
-import { RpcException } from '@nestjs/microservices'
+import { Inject, Injectable } from '@nestjs/common'
+import { AssignmentStatus, Prisma, Status } from '@prisma/client-Task'
+import { ClientGrpc, ClientProxy, RpcException } from '@nestjs/microservices'
 import { CreateTaskDto } from '../../../libs/contracts/src/tasks/create-Task.dto'
 import { UpdateTaskDto } from '../../../libs/contracts/src/tasks/update.Task'
 import { ChangeTaskStatusDto } from '../../../libs/contracts/src/tasks/ChangeTaskStatus.Dto '
@@ -11,10 +11,30 @@ import {
 } from 'libs/contracts/src/Pagination/pagination.dto'
 import { ApiResponse } from '../../../libs/contracts/src/ApiResponse/api-response'
 import { PrismaService } from '../prisma/prisma.service'
+import { firstValueFrom, Observable } from 'rxjs'
+import { TaskAssignmentsService } from '../TaskAssignments/TaskAssignments.service'
+import { SCHEDULEJOB_PATTERN } from '@app/contracts/schedulesjob/ScheduleJob.patterns'
+import { timeout } from 'rxjs/operators'
+
+interface UserService {
+  checkStaffAreaMatchWithScheduleJob(data: { staffId: string; scheduleJobId: string }): Observable<{
+    isSuccess: boolean
+    message: string
+    isMatch: boolean
+  }>
+}
 
 @Injectable()
 export class TaskService {
-  constructor(private prisma: PrismaService) { }
+  private userService: UserService
+  constructor(
+    private prisma: PrismaService,
+    @Inject('USERS_CLIENT') private readonly usersClient: ClientGrpc,
+    @Inject('SCHEDULE_CLIENT') private readonly scheduleClient: ClientProxy,
+    private taskAssignmentService: TaskAssignmentsService
+  ) {
+    this.userService = this.usersClient.getService<UserService>('UserService')
+  }
 
   async createTask(createTaskDto: CreateTaskDto) {
     try {
@@ -263,6 +283,217 @@ export class TaskService {
     } catch (error) {
       console.error(`Error retrieving crack ID for task ${taskId}:`, error)
       return new ApiResponse(false, 'Error retrieving crack ID', null)
+    }
+  }
+
+  async createTaskForScheduleJob(scheduleJobId: string, staffId: string) {
+    try {
+
+      // Validate input parameters
+      if (!scheduleJobId || !staffId) {
+        throw new RpcException(
+          new ApiResponse(false, 'scheduleJobId và staffId là bắt buộc')
+        );
+      }
+
+
+      // Define all variables outside the transaction to maintain scope
+      let existingScheduleJob;
+      let areaMatchResponse;
+      let createTaskResponse;
+      let createTaskAssignmentResponse;
+
+      // Start a real database transaction - all operations will be committed or rolled back together
+      return await this.prisma.$transaction(async (prisma) => {
+        // Step 1: Find the scheduleJob and validate it exists
+        // Gọi đến schedules service để kiểm tra scheduleJob có tồn tại không
+        console.log('Sending request to schedule service with pattern:', SCHEDULEJOB_PATTERN.GET_BY_ID, 'and payload:', { schedule_job_id: scheduleJobId });
+
+        try {
+          existingScheduleJob = await firstValueFrom(
+            this.scheduleClient.send(
+              SCHEDULEJOB_PATTERN.GET_BY_ID,
+              { schedule_job_id: scheduleJobId }
+            ).pipe(
+              // Add a timeout to avoid hanging indefinitely
+              timeout(10000)
+            )
+          );
+
+        } catch (err) {
+          throw new RpcException({
+            statusCode: 404,
+            message: `Không tìm thấy lịch công việc với ID: ${scheduleJobId}`
+          });
+        }
+
+        if (!existingScheduleJob || !existingScheduleJob.isSuccess) {
+          console.error('Schedule job not found or invalid response:', existingScheduleJob);
+          throw new RpcException({
+            statusCode: 404,
+            message: `Không tìm thấy lịch công việc với ID: ${scheduleJobId}`
+          });
+        }
+
+        console.log('Schedule job found:', existingScheduleJob);
+
+        // Step 2: Check if staff's area matches the crack report's area
+        console.log('Checking staff area match with scheduleJobId');
+        try {
+          areaMatchResponse = await firstValueFrom(
+            this.userService.checkStaffAreaMatchWithScheduleJob({ staffId, scheduleJobId })
+          );
+          console.log('Area match response:', areaMatchResponse);
+        } catch (err) {
+          console.error('Error checking staff area match:', err);
+          throw new RpcException(
+            new ApiResponse(false, `Lỗi khi kiểm tra khu vực nhân viên: ${err.message}`)
+          );
+        }
+
+        // Kiểm tra lại chi tiết về response từ areaMatch
+        console.log('Complete area match response:', JSON.stringify(areaMatchResponse));
+
+        if (!areaMatchResponse) {
+          console.log('No response from area match check');
+          throw new RpcException({
+            statusCode: 500,
+            message: 'Không nhận được phản hồi khi kiểm tra khu vực nhân viên'
+          });
+        }
+
+        // Nếu statusCode được trả về từ microservice, sử dụng nó
+        if (areaMatchResponse.statusCode) {
+          console.log(`Using explicit statusCode from microservice: ${areaMatchResponse.statusCode}`);
+          throw new RpcException({
+            statusCode: areaMatchResponse.statusCode,
+            message: areaMatchResponse.message || 'Lỗi không xác định'
+          });
+        }
+
+        if (!areaMatchResponse.isSuccess) {
+          console.log('Area match check unsuccessful:', areaMatchResponse.message);
+
+          // Kiểm tra nội dung lỗi để quyết định statusCode
+          if (areaMatchResponse.message && (
+            areaMatchResponse.message.includes('không tìm thấy') ||
+            areaMatchResponse.message.includes('Không tìm thấy')
+          )) {
+            throw new RpcException({
+              statusCode: 404,
+              message: areaMatchResponse.message
+            });
+          } else {
+            throw new RpcException({
+              statusCode: 400,
+              message: areaMatchResponse.message || 'Lỗi khi kiểm tra khu vực nhân viên'
+            });
+          }
+        }
+
+        if (!areaMatchResponse.isMatch) {
+          console.log('Staff area does not match with schedule job area. Details:', areaMatchResponse.message);
+          throw new RpcException({
+            statusCode: 400,
+            message: areaMatchResponse.message || 'Nhân viên không thuộc khu vực của công việc này'
+          });
+        }
+
+        // Check for unconfirmed tasks
+        console.log('Checking unconfirmed tasks for staff:', staffId);
+        const unconfirmedTasks = await this.prisma.taskAssignment.findMany({
+          where: {
+            employee_id: staffId,
+            status: {
+              notIn: [AssignmentStatus.Confirmed]
+            }
+          }
+        });
+        console.log('Unconfirmed tasks count:', unconfirmedTasks.length);
+
+        if (unconfirmedTasks.length > 0) {
+          console.log('Staff has unconfirmed tasks, cannot assign new task');
+          return {
+            statusCode: 400,
+            message: 'Staff has unconfirmed tasks. Cannot assign new task.',
+            data: null
+          };
+        }
+
+        // Step 3: Create task first - do this before updating report status
+        console.log('Creating new task for schedule job');
+
+        // Kiểm tra status từ enum
+        console.log('Available Status enum values:', Object.values(Status));
+
+        try {
+          createTaskResponse = await this.createTask({
+            description: `Phân công sửa chữa vết nứt định kỳ`,
+            status: Status.Assigned, // Sử dụng string "Assigned" thay vì enum Status.Assigned
+            crack_id: "",
+            schedule_job_id: scheduleJobId,
+          });
+          console.log('Create task response:', createTaskResponse);
+        } catch (taskError) {
+          console.error('Failed to create task:', taskError);
+          throw new RpcException(
+            new ApiResponse(false, `Lỗi khi tạo task: ${taskError.message}`)
+          );
+        }
+
+        // Check if task creation was successful and task_id exists
+        if (!createTaskResponse?.data?.task_id) {
+          console.error('Task created but no task_id returned:', createTaskResponse);
+          throw new RpcException(
+            new ApiResponse(false, 'Task được tạo nhưng không trả về task_id hợp lệ')
+          );
+        }
+
+        // Step 4: Create task assignment
+        console.log('Assigning task to employee:', staffId);
+        createTaskAssignmentResponse = await this.taskAssignmentService.assignTaskToEmployee(
+          createTaskResponse.data.task_id,
+          staffId,
+          `Phân công xử lý báo cáo nứt định kỳ`
+        );
+        console.log('Task assignment response:', createTaskAssignmentResponse);
+
+        // Check task assignment response
+        if (createTaskAssignmentResponse?.statusCode === 400) {
+          console.error('Error assigning task:', createTaskAssignmentResponse);
+          throw new RpcException(
+            new ApiResponse(false, createTaskAssignmentResponse.message || 'Lỗi phân công task')
+          );
+        }
+
+        // Return success response with all data
+        console.log('Transaction completed successfully');
+        return new ApiResponse(
+          true,
+          'Task đã được tạo',
+          {
+            task: createTaskResponse,
+            taskAssignment: createTaskAssignmentResponse,
+          }
+        );
+      }, {
+        // Set a long timeout for the transaction since we're making external calls
+        timeout: 30000,
+        // Use serializable isolation level for maximum consistency
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable
+      });
+    } catch (error) {
+      console.error('🔥 Lỗi trong createTaskForScheduleJob:', error);
+
+      // Pass through RpcExceptions
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      // Wrap other errors
+      throw new RpcException(
+        new ApiResponse(false, `Lỗi hệ thống: ${error.message}`)
+      );
     }
   }
 }

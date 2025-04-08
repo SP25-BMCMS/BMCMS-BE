@@ -31,6 +31,7 @@ service UserService {
   rpc CheckPositionAndDepartment (CheckPositionAndDepartmentRequest) returns (CheckPositionAndDepartmentResponse);
   rpc UpdateDepartmentAndWorkingPosition (UpdateDepartmentAndWorkingPositionRequest) returns (UpdateDepartmentAndWorkingPositionResponse);
   rpc GetAllStaffByStaffLeader (GetAllStaffByStaffLeaderRequest) returns (StaffListResponse);
+  rpc CheckStaffAreaMatchWithScheduleJob (CheckStaffAreaMatchWithScheduleJobRequest) returns (CheckStaffAreaMatchWithScheduleJobResponse);
 }
 message GetApartmentByIdRequest {
   string apartmentId = 1;
@@ -430,6 +431,17 @@ message StaffPaginationRequest {
 
 message GetAllStaffByStaffLeaderRequest {
   string staffId = 1;
+}
+
+message CheckStaffAreaMatchWithScheduleJobRequest {
+  string staffId = 1;
+  string scheduleJobId = 2;
+}
+
+message CheckStaffAreaMatchWithScheduleJobResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  bool isMatch = 3;
 }
 
 
