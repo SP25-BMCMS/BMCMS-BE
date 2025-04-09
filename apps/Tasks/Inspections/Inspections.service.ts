@@ -115,10 +115,11 @@ export class InspectionsService implements OnModuleInit {
 
   async GetInspectionByTaskAssignmentId(task_assignment_id: string) {
     try {
-      const inspection = await this.prisma.inspection.findMany({
+      const inspections = await this.prisma.inspection.findMany({
         where: { task_assignment_id },
       })
-      if (inspection.length === 0) {
+
+      if (inspections.length === 0) {
         return {
           statusCode: 404,
           message:
@@ -126,10 +127,28 @@ export class InspectionsService implements OnModuleInit {
             task_assignment_id,
         }
       }
+
+      // Xử lý presignedUrl cho mỗi inspection
+      for (const inspection of inspections) {
+        if (inspection.image_urls && inspection.image_urls.length > 0) {
+          inspection.image_urls = await Promise.all(
+            inspection.image_urls.map(async (url: string) => {
+              try {
+                const fileKey = this.extractFileKey(url)
+                return await this.getPreSignedUrl(fileKey)
+              } catch (error) {
+                console.error(`Error getting pre-signed URL for ${url}:`, error)
+                return url // Return original URL as fallback
+              }
+            })
+          )
+        }
+      }
+
       return {
         statusCode: 200,
         message: 'Inspections retrieved successfully',
-        data: inspection,
+        data: inspections,
       }
     } catch (error) {
       throw new RpcException({
