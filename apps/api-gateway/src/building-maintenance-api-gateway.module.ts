@@ -21,6 +21,7 @@ import { NotificationsModule } from './notifications/notifications.module'
 import { FeedbackModule } from './Feedback/Feedback.module'
 import { MaterialModule } from './Material/Material.module'
 import { ChatbotModule } from './chatbot/chatbot.module'
+import { DashboardModule } from './dashboard/dashboard.module'
 
 @Module({
   imports: [
@@ -92,7 +93,8 @@ import { ChatbotModule } from './chatbot/chatbot.module'
     NotificationsModule,
     FeedbackModule,
     MaterialModule,
-    ChatbotModule
+    ChatbotModule,
+    DashboardModule
   ],
 })
 export class BuildingMaintenanceApiGatewayModule { }
