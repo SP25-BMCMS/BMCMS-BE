@@ -581,4 +581,24 @@ export class CracksController {
       ),
     )
   }
+
+  @Patch('crack-reports/:id/update-for-all-status')
+  @ApiOperation({ summary: 'Update crack report status' })
+  @ApiParam({ name: 'id', description: 'Crack report ID' })
+  @ApiBody({ type: UpdateCrackReportDto })
+  @ApiResponse({ status: 200, description: 'Status updated successfully' })
+  @ApiResponse({ status: 404, description: 'Crack report not found' })
+  async updateCrackReportForAllStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateCrackReportDto,
+  ) {
+    return firstValueFrom(
+      this.crackService.send({ cmd: 'update-crack-report-for-all-status' }, { crackReportId: id, dto }).pipe(
+        catchError((err) => {
+          throw new NotFoundException(err.message)
+        }),
+      ),
+    )
+  }
+
 }
