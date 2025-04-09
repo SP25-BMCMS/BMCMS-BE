@@ -102,4 +102,14 @@ export class CrackReportsController {
     console.log("🚀 Kha ne ~ userId:", payload.userId)
     return await this.crackReportsService.getAllCrackReportByUserId(payload.userId)
   }
+
+  @MessagePattern({ cmd: 'update-crack-report-for-all-status' })
+  async updateCrackReportForAllStatus(
+    @Payload() payload: { crackReportId: string; dto: UpdateCrackReportDto },
+  ) {
+    return await this.crackReportsService.updateCrackReportForAllStatus(
+      payload.crackReportId,
+      payload.dto,
+    )
+  }
 }

@@ -813,4 +813,45 @@ export class CrackReportsService {
       )
     }
   }
+
+  async updateCrackReportForAllStatus(crackReportId: string, dto: UpdateCrackReportDto) {
+    try {
+      // Kiểm tra crack report có tồn tại không
+      const existingReport = await this.prismaService.crackReport.findUnique({
+        where: { crackReportId },
+      })
+
+      if (!existingReport) {
+        throw new RpcException(
+          new ApiResponse(false, 'Crack Report không tồn tại')
+        )
+      }
+
+      // Cập nhật crack report
+      const updatedReport = await this.prismaService.crackReport.update({
+        where: { crackReportId },
+        data: {
+          ...dto,
+          updatedAt: new Date(),
+        },
+        include: {
+          crackDetails: true,
+        },
+      })
+
+      return new ApiResponse(
+        true,
+        'Crack Report đã được cập nhật thành công',
+        [updatedReport]
+      )
+    } catch (error) {
+      console.error('Error updating crack report:', error)
+      if (error instanceof RpcException) {
+        throw error
+      }
+      throw new RpcException(
+        new ApiResponse(false, 'Lỗi hệ thống khi cập nhật Crack Report')
+      )
+    }
+  }
 }
