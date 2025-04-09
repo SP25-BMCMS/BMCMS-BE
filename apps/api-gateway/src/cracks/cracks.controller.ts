@@ -1,4 +1,4 @@
-import { $Enums } from '@prisma/client-cracks';
+import { $Enums } from '@prisma/client-cracks'
 import {
   BadRequestException,
   Body,
@@ -16,13 +16,13 @@ import {
   UploadedFiles,
   UseGuards,
   UseInterceptors,
-} from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { FilesInterceptor } from '@nestjs/platform-express';
-import { catchError, firstValueFrom, tap } from 'rxjs';
-import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto';
-import { CreateCrackDetailDto } from '../../../../libs/contracts/src/cracks/create-crack-detail.dto';
-import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto';
+} from '@nestjs/common'
+import { ClientProxy } from '@nestjs/microservices'
+import { FilesInterceptor } from '@nestjs/platform-express'
+import { catchError, firstValueFrom, tap } from 'rxjs'
+import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto'
+import { CreateCrackDetailDto } from '../../../../libs/contracts/src/cracks/create-crack-detail.dto'
+import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto'
 import {
   ApiTags,
   ApiOperation,
@@ -32,9 +32,9 @@ import {
   ApiConsumes,
   ApiQuery,
   ApiBearerAuth,
-} from '@nestjs/swagger';
-import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard';
-import { CRACK_CLIENT } from '../constraints';
+} from '@nestjs/swagger'
+import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard'
+import { CRACK_CLIENT } from '../constraints'
 
 @Controller('cracks')
 @ApiTags('cracks')
@@ -54,10 +54,10 @@ export class CracksController {
     return firstValueFrom(
       this.crackService.send('crack-reports.test-users-connection', {}).pipe(
         catchError((err) => {
-          throw new InternalServerErrorException(err.message);
+          throw new InternalServerErrorException(err.message)
         }),
       ),
-    );
+    )
   }
 
   @Get('crack-reports')
@@ -90,11 +90,11 @@ export class CracksController {
         .pipe(
           tap((data) => console.log('Data received from microservice:', data)), // Log dữ liệu
           catchError((err) => {
-            console.error('Error from microservice:', err); // Log lỗi
-            throw new InternalServerErrorException(err.message);
+            console.error('Error from microservice:', err) // Log lỗi
+            throw new InternalServerErrorException(err.message)
           }),
         ),
-    );
+    )
   }
 
   @Get('crack-reports/:id')
@@ -147,10 +147,10 @@ export class CracksController {
     return firstValueFrom(
       this.crackService.send({ cmd: 'get-crack-report-by-id' }, id).pipe(
         catchError((err) => {
-          throw new NotFoundException(err.message);
+          throw new NotFoundException(err.message)
         }),
       ),
-    );
+    )
   }
 
   @Post('crack-reports')
@@ -258,29 +258,29 @@ export class CracksController {
     @UploadedFiles() files: Express.Multer.File[],
     @Req() req
   ) {
-    const userId = req.user.userId;
+    const userId = req.user.userId
 
     // Convert file buffers to base64 for transport over RabbitMQ
     const processedFiles = files.map(file => ({
       ...file,
       buffer: file.buffer.toString('base64')
-    }));
+    }))
 
-    dto.files = processedFiles;
+    dto.files = processedFiles
 
     return firstValueFrom(
       this.crackService
         .send({ cmd: 'create-crack-report' }, { dto, userId })
         .pipe(
           catchError((err) => {
-            console.error('Error in API Gateway:', err);
+            console.error('Error in API Gateway:', err)
             if (err.status === 404) {
-              throw new NotFoundException(err.message);
+              throw new NotFoundException(err.message)
             }
-            throw new BadRequestException(err.message);
+            throw new BadRequestException(err.message)
           }),
         ),
-    );
+    )
   }
 
   @Patch('crack-reports/:id')
@@ -301,10 +301,10 @@ export class CracksController {
         .send({ cmd: 'update-crack-report' }, { crackId: id, dto })
         .pipe(
           catchError((err) => {
-            throw new NotFoundException(err.message);
+            throw new NotFoundException(err.message)
           }),
         ),
-    );
+    )
   }
 
   @Delete('crack-reports/:id')
@@ -319,10 +319,10 @@ export class CracksController {
     return firstValueFrom(
       this.crackService.send({ cmd: 'delete-crack-report' }, id).pipe(
         catchError((err) => {
-          throw new NotFoundException(err.message);
+          throw new NotFoundException(err.message)
         }),
       ),
-    );
+    )
   }
 
   @Patch('crack-reports/:id/status')
@@ -347,7 +347,7 @@ export class CracksController {
     @Body('staffId') staffId: string,
     @Req() req
   ) {
-    const managerId = req.user.userId; // Get manager ID from token
+    const managerId = req.user.userId // Get manager ID from token
 
     return firstValueFrom(
       this.crackService
@@ -361,10 +361,10 @@ export class CracksController {
         )
         .pipe(
           catchError((err) => {
-            throw new BadRequestException(err.message);
+            throw new BadRequestException(err.message)
           }),
         ),
-    );
+    )
   }
 
   //Crack-Details
@@ -376,10 +376,10 @@ export class CracksController {
     return firstValueFrom(
       this.crackService.send({ cmd: 'get-all-crack-details' }, {}).pipe(
         catchError((err) => {
-          throw new InternalServerErrorException(err.message);
+          throw new InternalServerErrorException(err.message)
         }),
       ),
-    );
+    )
   }
 
   @Get('crack-details/:id')
@@ -391,10 +391,10 @@ export class CracksController {
     return firstValueFrom(
       this.crackService.send({ cmd: 'get-crack-detail-by-id' }, id).pipe(
         catchError((err) => {
-          throw new NotFoundException(err.message);
+          throw new NotFoundException(err.message)
         }),
       ),
-    );
+    )
   }
 
   @Post('crack-details')
@@ -411,14 +411,14 @@ export class CracksController {
       this.crackService.send({ cmd: 'create-crack-detail' }, dto).pipe(
         catchError((err) => {
           if (err.response.isSuccess == false) {
-            throw new NotFoundException(err.response.message);
+            throw new NotFoundException(err.response.message)
           }
           throw new BadRequestException(
             err.response?.message || 'Lỗi hệ thống, vui lòng thử lại sau',
-          );
+          )
         }),
       ),
-    );
+    )
   }
 
   @Patch('crack-details/:id')
@@ -439,10 +439,10 @@ export class CracksController {
         .send({ cmd: 'update-crack-detail' }, { crackId: id, dto })
         .pipe(
           catchError((err) => {
-            throw new NotFoundException(err.message);
+            throw new NotFoundException(err.message)
           }),
         ),
-    );
+    )
   }
 
   @Delete('crack-details/:id')
@@ -457,10 +457,10 @@ export class CracksController {
     return firstValueFrom(
       this.crackService.send({ cmd: 'delete-crack-detail' }, id).pipe(
         catchError((err) => {
-          throw new NotFoundException(err.message);
+          throw new NotFoundException(err.message)
         }),
       ),
-    );
+    )
   }
 
   @Post('crack-details/upload-images')
@@ -489,7 +489,7 @@ export class CracksController {
   @UseInterceptors(FilesInterceptor('image', 10))
   async uploadImage(@UploadedFiles() files: Express.Multer.File[]) {
     if (!files || files.length === 0) {
-      throw new BadRequestException('No files uploaded');
+      throw new BadRequestException('No files uploaded')
     }
 
     // Chuyển Buffer thành Base64
@@ -500,17 +500,17 @@ export class CracksController {
       mimetype: file.mimetype,
       size: file.size,
       buffer: file.buffer.toString('base64'), // Convert buffer to Base64
-    }));
+    }))
 
     return firstValueFrom(
       this.crackService
         .send({ cmd: 'upload-crack-images' }, { files: filesWithBase64 })
         .pipe(
           catchError((err) => {
-            throw new InternalServerErrorException(err.message);
+            throw new InternalServerErrorException(err.message)
           }),
         ),
-    );
+    )
   }
 
   @Post('crack-details/upload-images')
@@ -539,7 +539,7 @@ export class CracksController {
   @UseInterceptors(FilesInterceptor('image', 10))
   async uploadInspectionImage(@UploadedFiles() files: Express.Multer.File[]) {
     if (!files || files.length === 0) {
-      throw new BadRequestException('No files uploaded');
+      throw new BadRequestException('No files uploaded')
     }
 
     // Chuyển Buffer thành Base64
@@ -550,16 +550,109 @@ export class CracksController {
       mimetype: file.mimetype,
       size: file.size,
       buffer: file.buffer.toString('base64'), // Convert buffer to Base64
-    }));
+    }))
 
     return firstValueFrom(
       this.crackService
         .send({ cmd: 'upload-inspection-images' }, { files: filesWithBase64 })
         .pipe(
           catchError((err) => {
-            throw new InternalServerErrorException(err.message);
+            throw new InternalServerErrorException(err.message)
           }),
         ),
-    );
+    )
   }
+
+  @Get('crack-reports/user/:userId')
+  @ApiOperation({ summary: 'Get all crack reports by user ID' })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'Returns all crack reports by user ID' })
+  @ApiResponse({ status: 404, description: 'No crack reports found for the user' })
+  async getCrackReportsByUserId(@Param('userId') userId: string) {
+    console.log("🚀 Kha ne ~ userId:", userId)
+    return firstValueFrom(
+      this.crackService.send({ cmd: 'get-all-crack-report-by-user-id' }, { userId }).pipe(
+        catchError((err) => {
+          if (err.status === 404) {
+            throw new NotFoundException(err.message)
+          }
+          throw new InternalServerErrorException(err.message)
+        }),
+      ),
+    )
+  }
+
+  @Patch('crack-reports/:id/update-for-all-status')
+  @ApiOperation({
+    summary: 'Update crack report status',
+    description: 'Cập nhật trạng thái của báo cáo vết nứt. Các trạng thái có thể cập nhật:\n' +
+      '- Pending: Đang chờ xử lý\n' +
+      '- InProgress: Đang xử lý\n' +
+      '- Completed: Đã hoàn thành\n' +
+      '- Cancelled: Đã hủy\n' +
+      '- Rejected: Đã từ chối'
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID của báo cáo vết nứt cần cập nhật',
+    example: '123e4567-e89b-12d3-a456-426614174000'
+  })
+  @ApiBody({
+    type: UpdateCrackReportDto,
+    description: 'Dữ liệu cập nhật trạng thái',
+    examples: {
+      'Cập nhật trạng thái thành InProgress': {
+        value: {
+          status: 'InProgress',
+          description: 'Đang tiến hành xử lý vết nứt'
+        }
+      },
+      'Cập nhật trạng thái thành Completed': {
+        value: {
+          status: 'Completed',
+          description: 'Đã hoàn thành xử lý vết nứt'
+        }
+      }
+    }
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Cập nhật trạng thái thành công',
+    schema: {
+      example: {
+        isSuccess: true,
+        message: 'Crack Report đã được cập nhật thành công',
+        data: [{
+          crackReportId: '123e4567-e89b-12d3-a456-426614174000',
+          status: 'InProgress',
+          description: 'Đang tiến hành xử lý vết nứt',
+          updatedAt: '2024-03-20T10:00:00Z'
+        }]
+      }
+    }
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Không tìm thấy báo cáo vết nứt',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Crack Report không tồn tại',
+        error: 'Not Found'
+      }
+    }
+  })
+  async updateCrackReportForAllStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateCrackReportDto,
+  ) {
+    return firstValueFrom(
+      this.crackService.send({ cmd: 'update-crack-report-for-all-status' }, { crackReportId: id, dto }).pipe(
+        catchError((err) => {
+          throw new NotFoundException(err.message)
+        }),
+      ),
+    )
+  }
+
 }
