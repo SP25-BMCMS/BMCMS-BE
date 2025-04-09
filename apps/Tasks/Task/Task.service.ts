@@ -11,10 +11,10 @@ import {
 } from 'libs/contracts/src/Pagination/pagination.dto'
 import { ApiResponse } from '../../../libs/contracts/src/ApiResponse/api-response'
 import { PrismaService } from '../prisma/prisma.service'
-import { firstValueFrom, Observable } from 'rxjs'
+import { firstValueFrom, Observable, of, throwError } from 'rxjs'
 import { TaskAssignmentsService } from '../TaskAssignments/TaskAssignments.service'
 import { SCHEDULEJOB_PATTERN } from '@app/contracts/schedulesjob/ScheduleJob.patterns'
-import { timeout } from 'rxjs/operators'
+import { catchError, retry, timeout } from 'rxjs/operators'
 
 interface UserService {
   checkStaffAreaMatchWithScheduleJob(data: { staffId: string; scheduleJobId: string }): Observable<{
@@ -23,7 +23,9 @@ interface UserService {
     isMatch: boolean
   }>
 }
-
+const CRACK_PATTERNS = {
+  GET_DETAILS: { cmd: 'get-crack-report-by-id' }
+};
 @Injectable()
 export class TaskService {
   private userService: UserService
@@ -31,9 +33,30 @@ export class TaskService {
     private prisma: PrismaService,
     @Inject('USERS_CLIENT') private readonly usersClient: ClientGrpc,
     @Inject('SCHEDULE_CLIENT') private readonly scheduleClient: ClientProxy,
+    @Inject('CRACK_CLIENT') private readonly crackClient: ClientProxy,
+
     private taskAssignmentService: TaskAssignmentsService
   ) {
     this.userService = this.usersClient.getService<UserService>('UserService')
+  }
+
+  // Helper để gọi crackClient với retry và timeout
+  private async callCrackService(pattern: any, data: any) {
+    try {
+      return await firstValueFrom(
+        this.crackClient.send(pattern, data).pipe(
+          timeout(5000), // Tăng timeout lên 5 giây
+          retry(2),      // Thử lại 2 lần nếu thất bại
+          catchError(err => {
+            console.error(`Error calling crack service with pattern ${JSON.stringify(pattern)}: `, err);
+            return throwError(() => err);
+          })
+        )
+      );
+    } catch (error) {
+      console.error(`Failed to get response from crack service after retries: `, error);
+      throw error;
+    }
   }
 
   async createTask(createTaskDto: CreateTaskDto) {
@@ -94,10 +117,22 @@ export class TaskService {
           message: 'Task not found',
         }
       }
+      
+      const result = { task };
+      
+      // If crack_id exists, get crack info
+      if (task.crack_id) {
+        console.log("🚀 ~ TaskService ~ getTaskById ~ task.crack_id:", task.crack_id)
+        const crackInfo = await firstValueFrom(
+          this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
+        );
+        result['crackInfo'] = crackInfo;
+      }
+      
       return {
         statusCode: 200,
         message: 'Task retrieved successfully',
-        data: task,
+        data: result,
       }
     } catch (error) {
       throw new RpcException({
@@ -220,7 +255,35 @@ export class TaskService {
           where: whereClause,
         }),
       ])
-
+      
+   
+      
+        try {
+          // Thêm thông tin crack vào các task (nếu có)
+          for (const task of tasks) {
+            if (task.crack_id) {
+              try {
+                  const crackInfo = await firstValueFrom(
+                    this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id).pipe(
+                      timeout(5000),
+                      catchError(err => {
+                        console.error(`Error fetching crack info for task ${task.task_id}:`, err);
+                        return throwError(() => err);
+                      })
+                    )
+                );
+                task['crackInfo'] = crackInfo;
+              } catch (err) {
+                console.error(`Error fetching crack info for task ${task.task_id}:`, err);
+                // Tiếp tục với task tiếp theo
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error processing crack info:", error);
+          // Tiếp tục trả về tasks mà không có thông tin crack
+        }
+      
       // Use PaginationResponseDto for consistent response formatting
       return new PaginationResponseDto(
         tasks,
@@ -229,7 +292,7 @@ export class TaskService {
         limit,
         200,
         tasks.length > 0 ? 'Tasks retrieved successfully' : 'No tasks found',
-      )
+      );
     } catch (error) {
       console.error('Error retrieving tasks:', error)
       throw new RpcException({
@@ -244,6 +307,23 @@ export class TaskService {
       const tasks = await this.prisma.task.findMany({
         where: { status },
       })
+      
+      // Thêm thông tin crack vào các task (nếu có)
+      for (const task of tasks) {
+        if (task.crack_id) {
+          try {
+            const crackInfo = await firstValueFrom(
+              this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
+            );
+            // Thêm crackInfo vào task
+            task['crackInfo'] = crackInfo;
+          } catch (err) {
+            console.error(`Error fetching crack info for task ${task.task_id}:`, err);
+            // Tiếp tục với task tiếp theo
+          }
+        }
+      }
+      
       return {
         statusCode: 200,
         message: 'Tasks by status fetched successfully',

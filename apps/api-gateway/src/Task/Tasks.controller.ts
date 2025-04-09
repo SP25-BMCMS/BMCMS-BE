@@ -147,13 +147,13 @@ export class TaskController {
     }
   }
 
-  @Get('status/:status')
-  @ApiOperation({ summary: 'Get tasks by status' })
-  @ApiParam({ name: 'status', description: 'Task status' })
-  @ApiResponse({ status: 200, description: 'Returns tasks by status' })
-  async getTasksByStatus(@Param('status') status: string) {
-    return this.taskService.getTasksByStatus(status);
-  }
+  // @Get('status/:status')
+  // @ApiOperation({ summary: 'Get tasks by status' })
+  // @ApiParam({ name: 'status', description: 'Task status' })
+  // @ApiResponse({ status: 200, description: 'Returns tasks by status' })
+  // async getTasksByStatus(@Param('status') status: string) {
+  //   return this.taskService.getTasksByStatus(status);
+  // }
 
   @Post('schedule-job/:scheduleJobId/staff/:staffId')
   @ApiOperation({ summary: 'Create task for schedule job' })

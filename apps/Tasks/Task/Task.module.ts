@@ -62,7 +62,7 @@ const SCHEDULE_CLIENT = 'SCHEDULE_CLIENT';
               urls: isLocal
                 ? [`amqp://${user}:${password}@${host}`]
                 : [`amqp://${user}:${password}@rabbitmq:5672`],
-              queue: 'crack_reports_queue',
+              queue: 'cracks_queue',
               queueOptions: {
                 durable: true,
                 prefetchCount: 1,
