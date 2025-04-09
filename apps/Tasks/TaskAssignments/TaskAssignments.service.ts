@@ -154,7 +154,7 @@ export class TaskAssignmentsService {
     const createErrorImageBuffer = () => {
       // Tạo một buffer cơ bản chứa hình ảnh placeholder đơn giản
       // Đây là một pixel 1x1 màu trắng trong định dạng PNG - nhẹ nhất có thể
-      return Buffer.from('iVBORw0KGgoAAAANSUhEUgAAASwAAAEsCAIAAAD2HxkiAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyNpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTQ4IDc5LjE2NDAzNiwgMjAxOS8wOC8xMy0wMTowNjo1NyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIDIxLjAgKFdpbmRvd3MpIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkI5MDJDRDIzNTcwQjExRUJCMkE0OEIxQkY3QTcyNUVEIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkI5MDJDRDI0NTcwQjExRUJCMkE0OEIxQkY3QTcyNUVEIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6QjkwMkNEMjE1NzBCMTFFQkIyQTQ4QjFCRjdBNzI1RUQiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6QjkwMkNEMjI1NzBCMTFFQkIyQTQ4QjFCRjdBNzI1RUQiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz7/7gAOQWRvYmUAZMAAAAAB/9sAhAAGBAQEBQQGBQUGCQYFBgkLCAYGCAsMCgoLCgoMEAwMDAwMDBAMDg8QDw4MExMUFBMTHBsbGxwfHx8fHx8fHx8fAQcHBw0MDRgQEBgaFREVGh8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx//wAARCABiAGIDAREAAhEBAxEB/8QAGgABAQEAAwEAAAAAAAAAAAAAAAEGAgMEBQEBAAAAAAAAAAAAAAAAAAAAABAAAQMCAwUECQIHAAAAAAAAAQACAwQFEQYhMRNRYRJBUhRxgZGhIjJCkkNyFTOzI1NisrMkNBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8A+TsbYLVMYj4lSMGIw+V/itH3YeHLoQdVv1Q6nmjp6SgpGzVUohheJJnDmkcGgEsGrgCdiDXbO20Wu201upAeRSwtibyjAuw2knZie1BzoCAgICAgICAg4auKKWmqIZmlkckT2PbxDmkNcD2jDag/PoGqq7bd4jRTujqaZ76aaB/yuY+N5a4EfaCNuGKD9HQaAgICAgICAgIKfMX8QuvDi/qIIN/03XUdwtMM1PK17uQCSNpBfHIM2OaR2gjFBpSAgICAgICAgIKfMX8QuvDi/qIIN90zUxVFkpTFI17RG2N2BxDZGfK4HsI3IPdQEBAQEBAQEBAQU+Yv4hdeHF/UQQfpuiqGVtn4FQ0OikjhDQdha5gOB8OhBpCAgICAgICAgIKfMX8QuvDi/qIIN/0xx0xP7zfsoD9lBPUEBAQEBAQEBAQU+Yv4hdeHF/UQQdFBeKO3aXud5rj5ehoWGSaQAnlGwAADFzicGtG0lB8Z5nvlVK8UtvlpKc54Rx8NkoH1PccXnwwQb/pLUNNe7YySMtZVRYR1MD/mjkG7Eb2uG8H9hQelQEBAQEBAQEFPmL+IXXhxf1EEGu6VtP73cXSyNxoaInzDx/UkO2NvgBtPgN6D6sqaoqKqaeeV8s0ri+SWRxc97jvcSdpKDGqVs9ounC4QitdmD/MKEjBwA/NiB2HA7W9OGGKDYdD3l17sVPUyHGohPk6jEbXPaMHHHe4Yt9OxB71AQEBAQEBBV5fpI7vbr5ZZ25wVLOVwb1LXteDsO48pQb7p63xWu0UNuh+SnhZGDj1OIGLj4nE+lBYING0Lp2O1U77nVsDrhVtHyEYiniOPK0cXH5j7N6CzutfdKO701uoKuCn86wvmfLA2TyUYcG4Y4j9QtIw6dhQdmn9SV9ZdqW2XOOETVGPl56ch0U5aCSMCcWuwGw+zrQaPQEBAQEBAQEBAQEBBn+obD5uX9yobhRXFvzjDGOQD6XNGOB6HYUHnrLrdbnZHW+3QshukkgijlqG8UUQLgZJXA7S0DBo60HCzUeqLT8kUJ+MJjjlABSSOa3rTuc4DA/V79iDTKCogrKeOpp5BJDKwPjeOhB6HgekIOdAQEBAQEBAQEGS3Wgu1qvdeK6EysgqqiWGohGMkOLyei0gdDhtQWGnLZLb4JJalsclbUvL5RGMWQtGxjAeg6nrj7EFmgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIP/Z', 'base64');
+      return Buffer.from('iVBORw0KGgoAAAANSUhEUgAAASwAAAEsCAIAAAD2HxkiAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyNpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTQ4IDc5LjE2NDAzNiwgMjAxOS8wOC8xMy0wMTowNjo1NyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIDIxLjAgKFdpbmRvd3MpIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkI5MDJDRDIzNTcwQjExRUJCMkE0OEIxQkY3QTcyNUVEIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkI5MDJDRDI0NTcwQjExRUJCMkE0OEIxQkY3QTcyNUVEIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6QjkwMkNEMjE1NzBCMTFFQkIyQTQ4QjFCRjdBNzI1RUQiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6QjkwMkNEMjI1NzBCMTFFQkIyQTQ4QjFCRjdBNzI1RUQiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz7/7gAOQWRvYmUAZMAAAAAB/9sAhAAGBAQEBQQGBQUGCQYFBgkLCAYGCAsMCgoLCgoMEAwMDAwMDBAMDg8QDw4MExMUFBMTHBsbGxwfHx8fHx8fHx8fAQcHBw0MDRgQEBgaFREVGh8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx//wAARCABiAGIDAREAAhEBAxEB/8QAGgABAQEAAwEAAAAAAAAAAAAAAAEGAgMEBQEBAAAAAAAAAAAAAAAAAAAAABAAAQMCAwUECQIHAAAAAAAAAQACAwQFEQYhMRNRYRJBUhRxgZGhIjJCkkNyFTOzI1NisrMkNBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8A+TsbYLVMYj4lSMGIw+V/itH3YeHLoQdVv1Q6nmjp6SgpGzVUohheJJnDmkcGgEsGrgCdiDXbO20Wu201upAeRSwtibyjAuw2knZie1BzoCAgICAgICAg4auKKWmqIZmlkckT2PbxDmkNcD2jDag/PoGqq7bd4jRTujqaZ76aaB/yuY+N5a4EfaCNuGKD9HQaAgICAgICAgIKfMX8QuvDi/qIIN/03XUdwtMM1PK17uQCSNpBfHIM2OaR2gjFBpSAgICAgICAgIKfMX8QuvDi/qIIN90zUxVFkpTFI17RG2N2BxDZGfK4HsI3IPdQEBAQEBAQEBAQU+Yv4hdeHF/UQQfpuiqGVtn4FQ0OikjhDQdha5gOB8OhBpCAgICAgICAgIKfMX8QuvDi/qIIN/0xx0xP7zfsoD9lBPUEBAQEBAQEBAQU+Yv4hdeHF/UQQdFBeKO3aXud5rj5ehoWGSaQAnlGwAADFzicGtG0lB8Z5nvlVK8UtvlpKc54Rx8NkoH1PccXnwwQb/pLUNNe7YySMtZVRYR1MD/mjkG7Eb2uG8H9hQelQEBAQEBAQEFPmL+IXXhxf1EEGu6VtP73cXSyNxoaInzDx/UkO2NvgBtPgN6D6sqaoqKqaeeV8s0ri+SWRxc97jvcSdpKDGqVs9ounC4QitdmD/MKEjBwA/NiB2HA7W9OGGKDYdD3l17sVPUyHGohPk6jEbXPaMHHHe4Yt9OxB71AQEBAQEBBV5fpI7vbr5ZZ25wVLOVwb1LXteDsO48pQb7p63xWu0UNuh+SnhZGDj1OIGLj4nE+lBYING0Lp2O1U77nVsDrhVtHyEYiniOPK0cXH5j7N6CzutfdKO701uoKuCn86wvmfLA2TyUYcG4Y4j9QtIw6dhQdmn9SV9ZdqW2XOOETVGPl56ch0U5aCSMCcWuwGw+zrQaPQEBAQEBAQEBAQEBBn+obD5uX9yobhRXFvzjDGOQD6XNGOB6HYUHnrLrdbnZHW+3QshukkgijlqG8UUQLgZJXA7S0DBo60HCzUeqLT8kUJ+MJjjlABSSOa3rTuc4DA/V79iDTKCogrKeOpp5BJDKwPjeOhB6HgekIOdAQEBAQEBAQEGS3Wgu1qvdeK6EysgqqiWGohGMkOLyei0gdDhtQWGnLZLb4JJalsclbUvL5RGMWQtGxjAeg6nrj7EFmgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIP/Z', 'base64');
     };
 
     try {
@@ -1593,6 +1593,114 @@ export class TaskAssignmentsService {
         reject(err);
       }
     });
+  }
+
+  async updateTaskAssignmentStatusToCreateWorklog(payload: {
+    assignment_id: string;
+    status: AssignmentStatus;
+  }) {
+    try {
+      // 1. Get the task assignment to verify it exists and to get the task_id
+      const taskAssignment = await this.prisma.taskAssignment.findUnique({
+        where: { assignment_id: payload.assignment_id },
+        include: { task: true }
+      });
+
+      if (!taskAssignment) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Task assignment not found'
+        });
+      }
+
+      // 2. Update the task assignment status
+      const updatedTaskAssignment = await this.prisma.taskAssignment.update({
+        where: { assignment_id: payload.assignment_id },
+        data: { status: payload.status }
+      });
+
+      // 3. Generate appropriate worklog title and description based on status
+      let worklog_title = '';
+      let worklog_description = '';
+
+      // Determine the appropriate worklog status and title/description based on the task assignment status
+      let worklogStatus;
+      switch (payload.status) {
+        case 'Pending':
+          worklogStatus = 'INIT_INSPECTION';
+          worklog_title = 'Tạo Mới Công Việc';
+          worklog_description = 'Công việc đã được giao và đang chờ kiểm tra.';
+          break;
+        case 'Verified':
+          worklogStatus = 'WAIT_FOR_DEPOSIT';
+          worklog_title = 'Công Việc Đã Được Xác Nhận';
+          worklog_description = 'Công việc đã được xác nhận và đang chờ đặt cọc.';
+          break;
+        case 'InFixing':
+          worklogStatus = 'EXECUTE_CRACKS';
+          worklog_title = 'Công Việc Đang Được Sửa Chữa';
+          worklog_description = 'Công việc đang được kỹ thuật viên sửa chữa.';
+          break;
+        case 'Fixed':
+          worklogStatus = 'CONFIRM_NO_PENDING_ISSUES';
+          worklog_title = 'Công Việc Đã Được Sửa Chữa';
+          worklog_description = 'Công việc đã được sửa chữa và đang chờ xác nhận không còn vấn đề tồn đọng.';
+          break;
+        case 'Confirmed':
+          worklogStatus = 'FINAL_REVIEW';
+          worklog_title = 'Công Việc Được Đã Xác Nhận';
+          worklog_description = 'Công việc đã được xác nhận và đang trong quá trình kiểm tra cuối cùng.';
+          break;
+        case 'Reassigned':
+          worklogStatus = 'CANCELLED';
+          worklog_title = 'Công Việc Đã Được Giao Lại';
+          worklog_description = 'Công việc đã được giao lại cho kỹ thuật viên khác.';
+          break;
+        case 'Unverified':
+          worklogStatus = 'CANCELLED';
+          worklog_title = 'Công Việc Chưa Được Xác Minh';
+          worklog_description = 'Công việc không thể xác minh và cần được xem xét lại.';
+          break;
+        case 'Notcompleted':
+          worklogStatus = 'CANCELLED';
+          worklog_title = 'Công Việc Chưa Được Hoàn Thành';
+          worklog_description = 'Công việc không thể hoàn thành và đã bị hủy.';
+          break;
+        default:
+          worklogStatus = 'INIT_INSPECTION'; // Default status
+          worklog_title = 'Cập Nhật Trạng Thái Công Việc';
+          worklog_description = `Trạng thái công việc đã được cập nhật thành ${payload.status}.`;
+      }
+
+      // 4. Create a worklog entry for this status change
+      const newWorkLog = await this.prisma.workLog.create({
+        data: {
+          task_id: taskAssignment.task_id, // Use the task_id from the task assignment
+          title: worklog_title,
+          description: worklog_description,
+          status: worklogStatus
+        }
+      });
+
+      // 5. Return the updated task assignment and the new worklog
+      return {
+        success: true,
+        message: 'Task assignment status updated and worklog created successfully',
+        data: {
+          taskAssignment: updatedTaskAssignment,
+          worklog: newWorkLog
+        }
+      };
+    } catch (error) {
+      console.error('Error updating task assignment status and creating worklog:', error);
+      if (error instanceof RpcException) {
+        throw error;
+      }
+      throw new RpcException({
+        statusCode: error.statusCode || 400,
+        message: error.message || 'Failed to update task assignment and create worklog'
+      });
+    }
   }
 }
 

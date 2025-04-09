@@ -6,6 +6,7 @@ import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create
 import { UpdateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/update.taskAssigment';
 import { AssignmentStatus } from '@prisma/client-Task';
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
+import { UpdateStatusCreateWorklogDto } from 'libs/contracts/src/taskAssigment/update-status-create-worklog.dto';
 
 @Controller('task-assignments')
 export class TaskAssignmentsController {
@@ -133,5 +134,14 @@ export class TaskAssignmentsController {
   @MessagePattern(TASKASSIGNMENT_PATTERN.EXPORT_COST_PDF)
   async exportCostPdf(@Payload() payload: { taskId: string }) {
     return this.taskAssignmentService.exportCostPdf(payload.taskId);
+  }
+
+  @MessagePattern(TASKASSIGNMENT_PATTERN.UPDATE_STATUS_CREATE_WORKLOG)
+  async updateTaskAssignmentStatusToCreateWorklog(
+    @Payload() payload: { assignment_id: string; status: AssignmentStatus },
+  ) {
+    return this.taskAssignmentService.updateTaskAssignmentStatusToCreateWorklog(
+      payload
+    );
   }
 }

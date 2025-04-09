@@ -8,6 +8,7 @@ import { AssignmentStatus } from '@prisma/client-Task';
 import { firstValueFrom } from 'rxjs';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 import { ChangeTaskAssignmentStatusDto } from '@app/contracts/taskAssigment/changeTaskStatusDto ';
+import { UpdateStatusCreateWorklogDto } from 'libs/contracts/src/taskAssigment/update-status-create-worklog.dto';
 
 @Injectable()
 export class TaskAssignmentService {
@@ -307,6 +308,40 @@ export class TaskAssignmentService {
         message: 'Error generating cost PDF report',
         error: error.message
       };
+    }
+  }
+
+  // Update Task Assignment Status and Create Worklog
+  async updateTaskAssignmentStatusToCreateWorklog(payload: { assignment_id: string, status: AssignmentStatus }) {
+    try {
+      return await firstValueFrom(
+        this.taskClient.send(
+          TASKASSIGNMENT_PATTERN.UPDATE_STATUS_CREATE_WORKLOG,
+          payload
+        ),
+      );
+    } catch (error) {
+      console.error('Error updating task assignment status and creating worklog:', error);
+      if (error?.response) {
+        const status = error.status || error.response.statusCode || 400;
+        const message = typeof error.response === 'string'
+          ? error.response
+          : error.response.message || 'Task assignment update and worklog creation failed';
+
+        throw new HttpException(message, status);
+      }
+
+      if (error?.statusCode) {
+        throw new HttpException(
+          error.message || 'Task assignment update and worklog creation failed',
+          error.statusCode
+        );
+      }
+
+      throw new HttpException(
+        'Error updating task assignment status and creating worklog',
+        HttpStatus.BAD_REQUEST
+      );
     }
   }
 }

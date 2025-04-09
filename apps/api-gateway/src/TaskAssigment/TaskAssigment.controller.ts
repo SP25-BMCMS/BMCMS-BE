@@ -31,6 +31,7 @@ import {
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 import { TaskAssignmentsController } from 'apps/Tasks/TaskAssignments/TaskAssignments.controller';
 import { ExportCostPdfDto } from 'libs/contracts/src/taskAssigment/export-cost-pdf.dto';
+import { UpdateStatusCreateWorklogDto } from 'libs/contracts/src/taskAssigment/update-status-create-worklog.dto';
 
 @Controller('task-assignments')
 @ApiTags('task-assignments')
@@ -396,5 +397,31 @@ export class TaskAssignmentController {
         error: error.message
       });
     }
+  }
+
+  @Patch(':assignment_id/update-status-create-worklog')
+  @ApiOperation({ summary: 'Update task assignment status and create worklog' })
+  @ApiParam({ name: 'assignment_id', description: 'Task assignment ID' })
+  @ApiBody({ type: UpdateStatusCreateWorklogDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Task assignment status updated and worklog created successfully',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Task assignment not found'
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid status value or error creating worklog'
+  })
+  async updateTaskAssignmentStatusToCreateWorklog(
+    @Param('assignment_id') assignment_id: string,
+    @Body() payload: UpdateStatusCreateWorklogDto,
+  ) {
+    return this.taskAssignmentService.updateTaskAssignmentStatusToCreateWorklog({
+      assignment_id,
+      status: payload.status
+    });
   }
 }

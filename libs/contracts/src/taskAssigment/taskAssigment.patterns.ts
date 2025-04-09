@@ -13,6 +13,7 @@ export const TASKASSIGNMENT_PATTERN = {
     GET_DETAILS: 'get_details_taskAssignment',
     UPDATE_STATUS_TO_REASSIGNED: 'update_status_to_reassigned',
     GET_ALL_BY_EMPLOYEE_ID: 'get_all_by_employee_id',
-    EXPORT_COST_PDF: 'export_cost_pdf'
+    EXPORT_COST_PDF: 'export_cost_pdf',
+    UPDATE_STATUS_CREATE_WORKLOG: 'update_status_create_worklog'
 }
 
