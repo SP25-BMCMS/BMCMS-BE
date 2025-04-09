@@ -9,8 +9,12 @@ async function bootstrap() {
   app.enableCors({
     origin: (origin, callback) => {
       const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000',
-      'http://ec2-44-222-252-194.compute-1.amazonaws.com', // 👈 thêm dòng này
-      'https://ec2-44-222-252-194.compute-1.amazonaws.com', // 👈 nếu bạn truy cập qua HTTPS
+        'http://ec2-44-222-252-194.compute-1.amazonaws.com',
+        'https://ec2-44-222-252-194.compute-1.amazonaws.com',
+        'http://buildingmaintennace.tech',
+        'https://buildingmaintennace.tech',
+        'http://app.buildingmaintennace.tech',
+        'https://app.buildingmaintennace.tech'
       ]
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true)
