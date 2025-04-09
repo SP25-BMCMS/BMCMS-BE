@@ -389,7 +389,7 @@ export class TaskAssignmentsService {
           task_id: existingAssignment.task_id,
           employee_id: newEmployeeId,
           description: `Reassigned from assignment ${taskAssignmentId}\n Original description: ${existingAssignment.description}`,
-          status: AssignmentStatus.Pending,
+          status: AssignmentStatus.InFixing,
         },
         include: {
           task: true
