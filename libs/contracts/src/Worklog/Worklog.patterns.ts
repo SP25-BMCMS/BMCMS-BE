@@ -5,4 +5,5 @@ export const WORKLOG_PATTERN = {
   UPDATE_STATUS: 'update_worklog_status',
   GET_BY_ID: 'get_worklog_by_id',
   GET_BY_USER_ID: 'get_worklogs_by_user_id',
+  GET_BY_RESIDENT_ID: 'get_worklogs_by_resident_id'
 };

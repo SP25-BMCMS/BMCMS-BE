@@ -7,7 +7,7 @@ import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 import { TASK_CLIENT } from '../constraints';
 @Injectable()
 export class WorklogService {
-  constructor(@Inject(TASK_CLIENT) private readonly taskClient: ClientProxy) {}
+  constructor(@Inject(TASK_CLIENT) private readonly taskClient: ClientProxy) { }
 
   async createWorkLog(createWorkLogDto: any): Promise<WorkLogResponseDto> {
     const response = await firstValueFrom(
@@ -57,6 +57,18 @@ export class WorklogService {
       );
     } catch (error) {
       console.error('Error in getAllWorkLogs:', error);
+      throw error;
+    }
+  }
+
+  async getWorklogsByResidentId(resident_id: string): Promise<any> {
+    try {
+      const response = await firstValueFrom(
+        this.taskClient.send(WORKLOG_PATTERN.GET_BY_RESIDENT_ID, { residentId: resident_id }),
+      );
+      return response;
+    } catch (error) {
+      console.error('Error getting worklogs by resident ID:', error);
       throw error;
     }
   }
