@@ -164,6 +164,28 @@ services:
     networks:
       - my_network
 
+  chatbot_service:
+    build:
+      context: .
+      dockerfile: ./apps/chatbot/Dockerfile
+    container_name: chatbot_service
+    ports:
+      - '3007:3007'
+    env_file:
+      - .env
+    depends_on:
+      - rabbitmq
+      - redis # ✅ Đảm bảo Redis chạy trước
+    environment:
+      SIGNALR_URL: http://chatbot:3007/chatHub
+      NODE_ENV: production
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: admin
+      RABBITMQ_PASS: admin
+    restart: always
+    networks:
+      - my_network
+
 networks:
   my_network:
     driver: bridge
