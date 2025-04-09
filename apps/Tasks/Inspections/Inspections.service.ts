@@ -12,6 +12,9 @@ import { catchError, firstValueFrom, Observable, of, timeout } from 'rxjs'
 import { IsUUID } from 'class-validator'
 import { MATERIAL_PATTERN } from '@app/contracts/materials/material.patterns'
 import { TASK_CLIENT } from 'apps/api-gateway/src/constraints'
+import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { ConfigService } from '@nestjs/config'
 
 const USERS_CLIENT = 'USERS_CLIENT'
 // Define interface for the User service
@@ -38,14 +41,24 @@ const CRACK_PATTERNS = {
 @Injectable()
 export class InspectionsService implements OnModuleInit {
   private userService: UserService
+  private s3: S3Client
+  private bucketName: string
 
   constructor(
     private readonly prisma: PrismaService,
     @Inject('CRACK_CLIENT') private readonly crackClient: ClientProxy,
     @Inject(USERS_CLIENT) private readonly userClient: ClientGrpc,
-    @Inject(TASK_CLIENT) private readonly taskClient: ClientProxy
+    @Inject(TASK_CLIENT) private readonly taskClient: ClientProxy,
+    private configService: ConfigService
   ) {
-
+    this.s3 = new S3Client({
+      region: this.configService.get<string>('AWS_REGION'),
+      credentials: {
+        accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID'),
+        secretAccessKey: this.configService.get<string>('AWS_SECRET_ACCESS_KEY'),
+      },
+    })
+    this.bucketName = this.configService.get<string>('AWS_S3_BUCKET')
   }
 
   onModuleInit() {
@@ -62,6 +75,61 @@ export class InspectionsService implements OnModuleInit {
       console.log('userService initialized:', this.userService ? 'Successfully' : 'Failed')
     } catch (error) {
       console.error('Error initializing userService:', error)
+    }
+  }
+
+  /**
+   * Get pre-signed URL for an S3 object
+   * @param fileKey The S3 object key
+   * @returns A pre-signed URL for accessing the object
+   */
+  async getPreSignedUrl(fileKey: string): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucketName,
+      Key: fileKey,
+    })
+
+    return getSignedUrl(this.s3, command, { expiresIn: 86400 }) // URL expires after 24 hours
+  }
+
+  /**
+   * Refresh the presigned URL for a file
+   * @param fileKey The S3 object key
+   * @returns A new pre-signed URL for accessing the object
+   */
+  async refreshPresignedUrl(fileKey: string): Promise<ApiResponse<string>> {
+    try {
+      // Extract file key if it's a full URL
+      if (fileKey.startsWith('http')) {
+        fileKey = this.extractFileKey(fileKey)
+      }
+
+      const url = await this.getPreSignedUrl(fileKey)
+      return new ApiResponse(true, 'URL refreshed successfully', url)
+    } catch (error) {
+      console.error('Error refreshing presigned URL:', error)
+      return new ApiResponse(false, 'Failed to refresh URL', null)
+    }
+  }
+
+  /**
+   * Extract S3 file key from full URL
+   * @param url Full S3 URL
+   * @returns The file key part
+   */
+  private extractFileKey(url: string): string {
+    try {
+      // If already a key rather than a URL, return as is
+      if (!url.startsWith('http')) {
+        return url
+      }
+
+      // Extract key from URL
+      const urlObj = new URL(url)
+      return urlObj.pathname.substring(1) // Remove leading '/'
+    } catch (error) {
+      console.error('Invalid URL format:', url)
+      return url // Return original as fallback
     }
   }
 
@@ -158,6 +226,23 @@ export class InspectionsService implements OnModuleInit {
           statusCode: 404,
           message: 'No inspections found',
           data: [],
+        }
+      }
+
+      // Process image URLs for each inspection
+      for (const inspection of inspections) {
+        if (inspection.image_urls && inspection.image_urls.length > 0) {
+          inspection.image_urls = await Promise.all(
+            inspection.image_urls.map(async (url: string) => {
+              try {
+                const fileKey = this.extractFileKey(url)
+                return await this.getPreSignedUrl(fileKey)
+              } catch (error) {
+                console.error(`Error getting pre-signed URL for ${url}:`, error)
+                return url // Return original URL as fallback
+              }
+            })
+          )
         }
       }
 
@@ -394,9 +479,25 @@ export class InspectionsService implements OnModuleInit {
 
       const result: any = { ...inspection }
 
+      // Process main inspection image URLs
+      if (result.image_urls && result.image_urls.length > 0) {
+        result.image_urls = await Promise.all(
+          result.image_urls.map(async (url: string) => {
+            try {
+              const fileKey = this.extractFileKey(url)
+              return await this.getPreSignedUrl(fileKey)
+            } catch (error) {
+              console.error(`Error getting pre-signed URL for ${url}:`, error)
+              return url // Return original URL as fallback
+            }
+          })
+        )
+      }
+
       // 2. Get task info
       const task = inspection.taskAssignment.task
       console.log(task)
+
       // 3. If crack_id exists, get crack info
       if (task.crack_id) {
         console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ task.crack_id:", task.crack_id)
@@ -405,6 +506,44 @@ export class InspectionsService implements OnModuleInit {
         )
         result.crackInfo = crackInfo
         console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ crackInfo:", crackInfo)
+
+        // Process crack images if they exist
+        if (result.crackInfo && result.crackInfo.data) {
+          const crackData = result.crackInfo.data
+
+          // Process crack main image if it exists
+          if (crackData.photoUrl) {
+            try {
+              const fileKey = this.extractFileKey(crackData.photoUrl)
+              crackData.photoUrl = await this.getPreSignedUrl(fileKey)
+            } catch (error) {
+              console.error(`Error getting pre-signed URL for crack photo:`, error)
+            }
+          }
+
+          // Process crack detail images if they exist
+          if (crackData.crackDetails && Array.isArray(crackData.crackDetails)) {
+            for (const detail of crackData.crackDetails) {
+              if (detail.photoUrl) {
+                try {
+                  const fileKey = this.extractFileKey(detail.photoUrl)
+                  detail.photoUrl = await this.getPreSignedUrl(fileKey)
+                } catch (error) {
+                  console.error(`Error getting pre-signed URL for crack detail photo:`, error)
+                }
+              }
+
+              if (detail.aiDetectionUrl) {
+                try {
+                  const fileKey = this.extractFileKey(detail.aiDetectionUrl)
+                  detail.aiDetectionUrl = await this.getPreSignedUrl(fileKey)
+                } catch (error) {
+                  console.error(`Error getting pre-signed URL for AI detection image:`, error)
+                }
+              }
+            }
+          }
+        }
       }
 
       // 4. If schedule_id exists, get schedule info (you can add this later)
@@ -434,6 +573,21 @@ export class InspectionsService implements OnModuleInit {
 
       if (!inspection) {
         return new ApiResponse(false, 'Inspection not found', null)
+      }
+
+      // Process image URLs
+      if (inspection.image_urls && inspection.image_urls.length > 0) {
+        inspection.image_urls = await Promise.all(
+          inspection.image_urls.map(async (url: string) => {
+            try {
+              const fileKey = this.extractFileKey(url)
+              return await this.getPreSignedUrl(fileKey)
+            } catch (error) {
+              console.error(`Error getting pre-signed URL for ${url}:`, error)
+              return url // Return original URL as fallback
+            }
+          })
+        )
       }
 
       return new ApiResponse(true, 'Inspection retrieved successfully', inspection)

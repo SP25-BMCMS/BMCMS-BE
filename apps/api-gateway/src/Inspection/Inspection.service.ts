@@ -134,6 +134,8 @@ export class InspectionService implements OnModuleInit {
 
   async GetAllInspections() {
     try {
+      // Gọi microservice và trả về kết quả trực tiếp
+      // Không cần xử lý pre-signed URL nữa vì đã được xử lý ở microservice
       const response = await firstValueFrom(
         this.inspectionClient.send(INSPECTIONS_PATTERN.GET, {})
           .pipe(
@@ -147,28 +149,7 @@ export class InspectionService implements OnModuleInit {
           )
       )
 
-      // If the response contains inspection data with image URLs, get pre-signed URLs for each inspection
-      if (response && response.statusCode === 200 && response.data && Array.isArray(response.data)) {
-        // Process each inspection to get pre-signed URLs for its images
-        for (const inspection of response.data) {
-          if (inspection.image_urls && inspection.image_urls.length > 0) {
-            // Get pre-signed URLs for all images in this inspection
-            inspection.image_urls = await Promise.all(
-              inspection.image_urls.map(async (url: string) => {
-                try {
-                  const fileKey = this.extractFileKey(url)
-                  return await this.getPreSignedUrl(fileKey)
-                } catch (error) {
-                  console.error(`Error getting pre-signed URL for ${url}:`, error)
-                  return url // Return original URL as fallback
-                }
-              })
-            )
-          }
-        }
-      }
-
-      return response
+      return response;
     } catch (error) {
       throw new HttpException(
         'Error retrieving all inspections',
@@ -467,67 +448,13 @@ export class InspectionService implements OnModuleInit {
 
   async getInspectionDetails(inspection_id: string): Promise<ApiResponse<any>> {
     try {
+      // Gọi microservice và trả về kết quả trực tiếp
+      // Không cần xử lý pre-signed URL nữa vì đã được xử lý ở microservice
       const response = await firstValueFrom(
         this.inspectionClient.send(INSPECTIONS_PATTERN.GET_DETAILS, inspection_id)
       )
 
-      // If the response is successful and contains image URLs, get pre-signed URLs
-      if (response.isSuccess && response.data) {
-        // Process main inspection image URLs
-        if (response.data.image_urls && response.data.image_urls.length > 0) {
-          response.data.image_urls = await Promise.all(
-            response.data.image_urls.map(async (url: string) => {
-              try {
-                const fileKey = this.extractFileKey(url)
-                return await this.getPreSignedUrl(fileKey)
-              } catch (error) {
-                console.error(`Error getting pre-signed URL for ${url}:`, error)
-                return url // Return original URL as fallback
-              }
-            })
-          )
-        }
-
-        // If there's crack info with images, process those as well
-        if (response.data.crackInfo && response.data.crackInfo.data) {
-          const crackData = response.data.crackInfo.data
-
-          // Process crack main image if it exists
-          if (crackData.photoUrl) {
-            try {
-              const fileKey = this.extractFileKey(crackData.photoUrl)
-              crackData.photoUrl = await this.getPreSignedUrl(fileKey)
-            } catch (error) {
-              console.error(`Error getting pre-signed URL for crack photo:`, error)
-            }
-          }
-
-          // Process crack detail images if they exist
-          if (crackData.crackDetails && Array.isArray(crackData.crackDetails)) {
-            for (const detail of crackData.crackDetails) {
-              if (detail.photoUrl) {
-                try {
-                  const fileKey = this.extractFileKey(detail.photoUrl)
-                  detail.photoUrl = await this.getPreSignedUrl(fileKey)
-                } catch (error) {
-                  console.error(`Error getting pre-signed URL for crack detail photo:`, error)
-                }
-              }
-
-              if (detail.aiDetectionUrl) {
-                try {
-                  const fileKey = this.extractFileKey(detail.aiDetectionUrl)
-                  detail.aiDetectionUrl = await this.getPreSignedUrl(fileKey)
-                } catch (error) {
-                  console.error(`Error getting pre-signed URL for AI detection image:`, error)
-                }
-              }
-            }
-          }
-        }
-      }
-
-      return response
+      return response;
     } catch (error) {
       return new ApiResponse(false, 'Error getting inspection details', error.message)
     }
@@ -535,30 +462,13 @@ export class InspectionService implements OnModuleInit {
 
   async getInspectionById(inspection_id: string): Promise<any> {
     try {
+      // Gọi microservice và trả về kết quả trực tiếp
+      // Không cần xử lý pre-signed URL nữa vì đã được xử lý ở microservice
       const response = await firstValueFrom(
         this.inspectionClient.send(INSPECTIONS_PATTERN.GET_BY_ID, { inspection_id })
       )
 
-      // If the response is successful and contains image URLs, get pre-signed URLs
-      if (response.isSuccess && response.data && response.data.image_urls && response.data.image_urls.length > 0) {
-        // Get pre-signed URLs for all images
-        const signedUrls = await Promise.all(
-          response.data.image_urls.map(async (url: string) => {
-            try {
-              const fileKey = this.extractFileKey(url)
-              return await this.getPreSignedUrl(fileKey)
-            } catch (error) {
-              console.error(`Error getting pre-signed URL for ${url}:`, error)
-              return url // Return original URL as fallback
-            }
-          })
-        )
-
-        // Replace original URLs with signed URLs
-        response.data.image_urls = signedUrls
-      }
-
-      return response
+      return response;
     } catch (error) {
       return {
         isSuccess: false,
