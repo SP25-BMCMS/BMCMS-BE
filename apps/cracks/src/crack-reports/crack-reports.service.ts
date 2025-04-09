@@ -800,8 +800,25 @@ export class CrackReportsService {
         )
       }
 
+      // Process each crack report to presign image URLs
+      const processedReports = await Promise.all(crackReports.map(async (report) => {
+        // Process each crack detail to presign image URLs
+        const processedDetails = await Promise.all(report.crackDetails.map(async (detail) => {
+          return {
+            ...detail,
+            photoUrl: detail.photoUrl ? await this.getPreSignedUrl(this.extractFileKey(detail.photoUrl)) : null,
+            aiDetectionUrl: detail.aiDetectionUrl ? await this.getPreSignedUrl(this.extractFileKey(detail.aiDetectionUrl)) : null
+          }
+        }))
+
+        return {
+          ...report,
+          crackDetails: processedDetails
+        }
+      }))
+
       return new ApiResponse(true, 'Get all crack report by user id successfully', {
-        crackReports
+        crackReports: processedReports
       })
     } catch (error) {
       console.error('Error getting all crack report by user id:', error)
