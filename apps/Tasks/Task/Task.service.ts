@@ -122,11 +122,22 @@ export class TaskService {
       
       // If crack_id exists, get crack info
       if (task.crack_id) {
-        console.log("🚀 ~ TaskService ~ getTaskById ~ task.crack_id:", task.crack_id)
-        const crackInfo = await firstValueFrom(
-          this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
-        );
-        result['crackInfo'] = crackInfo;
+
+        try {
+          console.log("🚀 ~ TaskService ~ getTaskById ~ task.crack_id:", task.crack_id)
+          const crackInfo = await firstValueFrom(
+            this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
+          );
+          result['crackInfo'] = crackInfo;
+        } catch (error) {
+          task['crackInfo'] = {
+            statusCode: 400,
+            message: 'No crackReport find á',
+            data: null,
+          };
+        }
+   
+        
       }
       
       return {
@@ -259,7 +270,6 @@ export class TaskService {
    
       
         try {
-          // Thêm thông tin crack vào các task (nếu có)
           for (const task of tasks) {
             if (task.crack_id) {
               try {
@@ -274,6 +284,12 @@ export class TaskService {
                 );
                 task['crackInfo'] = crackInfo;
               } catch (err) {
+                task['crackInfo'] = {
+                  statusCode: 400,
+                  message: 'No crackReport find á',
+                  data: null,
+                };
+
                 console.error(`Error fetching crack info for task ${task.task_id}:`, err);
                 // Tiếp tục với task tiếp theo
               }
