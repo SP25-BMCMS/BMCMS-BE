@@ -93,26 +93,6 @@ export class InspectionsService implements OnModuleInit {
   }
 
   /**
-   * Refresh the presigned URL for a file
-   * @param fileKey The S3 object key
-   * @returns A new pre-signed URL for accessing the object
-   */
-  async refreshPresignedUrl(fileKey: string): Promise<ApiResponse<string>> {
-    try {
-      // Extract file key if it's a full URL
-      if (fileKey.startsWith('http')) {
-        fileKey = this.extractFileKey(fileKey)
-      }
-
-      const url = await this.getPreSignedUrl(fileKey)
-      return new ApiResponse(true, 'URL refreshed successfully', url)
-    } catch (error) {
-      console.error('Error refreshing presigned URL:', error)
-      return new ApiResponse(false, 'Failed to refresh URL', null)
-    }
-  }
-
-  /**
    * Extract S3 file key from full URL
    * @param url Full S3 URL
    * @returns The file key part

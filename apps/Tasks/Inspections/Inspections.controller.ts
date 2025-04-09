@@ -85,9 +85,4 @@ export class InspectionsController {
   async getBuildingDetailIdFromTaskAssignment(@Payload() payload: { task_assignment_id: string }) {
     return this.inspectionService.getBuildingDetailIdFromTaskAssignment(payload.task_assignment_id)
   }
-
-  @MessagePattern(INSPECTIONS_PATTERN.REFRESH_IMAGE_URL)
-  async refreshImageUrl(@Payload() payload: { fileKey: string }): Promise<ApiResponseDto<string>> {
-    return this.inspectionService.refreshPresignedUrl(payload.fileKey);
-  }
 }
