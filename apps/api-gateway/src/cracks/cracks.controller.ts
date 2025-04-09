@@ -583,11 +583,65 @@ export class CracksController {
   }
 
   @Patch('crack-reports/:id/update-for-all-status')
-  @ApiOperation({ summary: 'Update crack report status' })
-  @ApiParam({ name: 'id', description: 'Crack report ID' })
-  @ApiBody({ type: UpdateCrackReportDto })
-  @ApiResponse({ status: 200, description: 'Status updated successfully' })
-  @ApiResponse({ status: 404, description: 'Crack report not found' })
+  @ApiOperation({
+    summary: 'Update crack report status',
+    description: 'Cập nhật trạng thái của báo cáo vết nứt. Các trạng thái có thể cập nhật:\n' +
+      '- Pending: Đang chờ xử lý\n' +
+      '- InProgress: Đang xử lý\n' +
+      '- Completed: Đã hoàn thành\n' +
+      '- Cancelled: Đã hủy\n' +
+      '- Rejected: Đã từ chối'
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID của báo cáo vết nứt cần cập nhật',
+    example: '123e4567-e89b-12d3-a456-426614174000'
+  })
+  @ApiBody({
+    type: UpdateCrackReportDto,
+    description: 'Dữ liệu cập nhật trạng thái',
+    examples: {
+      'Cập nhật trạng thái thành InProgress': {
+        value: {
+          status: 'InProgress',
+          description: 'Đang tiến hành xử lý vết nứt'
+        }
+      },
+      'Cập nhật trạng thái thành Completed': {
+        value: {
+          status: 'Completed',
+          description: 'Đã hoàn thành xử lý vết nứt'
+        }
+      }
+    }
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Cập nhật trạng thái thành công',
+    schema: {
+      example: {
+        isSuccess: true,
+        message: 'Crack Report đã được cập nhật thành công',
+        data: [{
+          crackReportId: '123e4567-e89b-12d3-a456-426614174000',
+          status: 'InProgress',
+          description: 'Đang tiến hành xử lý vết nứt',
+          updatedAt: '2024-03-20T10:00:00Z'
+        }]
+      }
+    }
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Không tìm thấy báo cáo vết nứt',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Crack Report không tồn tại',
+        error: 'Not Found'
+      }
+    }
+  })
   async updateCrackReportForAllStatus(
     @Param('id') id: string,
     @Body() dto: UpdateCrackReportDto,
