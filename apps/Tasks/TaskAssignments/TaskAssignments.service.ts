@@ -37,6 +37,8 @@ export class TaskAssignmentsService {
   private userService: UserService
   private s3: S3Client;
   private bucketName: string;
+  // Cache cho presigned URLs để tránh tạo lại nhiều lần
+  private urlCache: Map<string, { url: string, expiry: number }> = new Map();
 
   constructor(
     @Inject('USERS_CLIENT') private readonly usersClient: ClientGrpc,
@@ -69,12 +71,35 @@ export class TaskAssignmentsService {
 
   // Hàm tạo presigned URL
   async getPreSignedUrl(fileKey: string): Promise<string> {
-    const command = new GetObjectCommand({
-      Bucket: this.bucketName,
-      Key: fileKey,
-    });
+    try {
+      // Kiểm tra cache trước
+      const cachedItem = this.urlCache.get(fileKey);
+      if (cachedItem && Date.now() < cachedItem.expiry) {
+        return cachedItem.url;
+      }
 
-    return getSignedUrl(this.s3, command, { expiresIn: 3600 }); // URL hết hạn sau 1 giờ
+      // Nếu không có trong cache hoặc hết hạn, tạo URL mới
+      const command = new GetObjectCommand({
+        Bucket: this.bucketName,
+        Key: fileKey,
+      });
+
+      // Giảm thời gian hết hạn để URL ngắn hơn
+      const expiresIn = 3600; // Tăng lên 1 giờ để đảm bảo URL không hết hạn quá sớm
+      const url = await getSignedUrl(this.s3, command, { expiresIn });
+
+      // Lưu vào cache
+      this.urlCache.set(fileKey, {
+        url,
+        expiry: Date.now() + (expiresIn * 1000) - 300000 // Để trước 5 phút hết hạn để đảm bảo
+      });
+
+      return url;
+    } catch (error) {
+      console.error(`Error generating presigned URL for ${fileKey}:`, error.message);
+      // Trả về null để xử lý ở phía gọi hàm
+      return null;
+    }
   }
 
   /**
@@ -84,8 +109,7 @@ export class TaskAssignmentsService {
    */
   private async refreshPresignedUrl(imageUrl: string): Promise<string> {
     try {
-      // Extract the path from URL
-      let path = '';
+      // Loại bỏ console.log không cần thiết và tối ưu hóa quá trình
 
       // Clean URL if enclosed in curly braces
       let cleanUrl = imageUrl;
@@ -95,79 +119,92 @@ export class TaskAssignmentsService {
 
       // Parse the URL to extract the S3 path
       const urlObj = new URL(cleanUrl);
-      path = urlObj.pathname.substring(1); // Remove leading slash
+      const path = urlObj.pathname.substring(1); // Remove leading slash
 
-      console.log('Refreshing presigned URL for path:', path);
-
-      // Create a new presigned URL
+      // Create a new presigned URL - không log ra
       return await this.getPreSignedUrl(path);
     } catch (error) {
-      console.error('Error refreshing presigned URL:', error);
       // Return original URL if we can't refresh it
       return imageUrl;
     }
   }
 
-  // Helper method to fetch image as buffer from URL with auto-refresh of expired URLs
-  private async getImageBufferFromUrl(url: string): Promise<Buffer> {
+  // Helper method to parse multiple image URLs from a single string
+  private parseImageUrls(imageUrlString: string): string[] {
     try {
-      console.log('Attempting to load image from URL:', url);
+      // Remove curly braces if present
+      let cleanUrlString = imageUrlString;
+      if (imageUrlString.startsWith('{') && imageUrlString.endsWith('}')) {
+        cleanUrlString = imageUrlString.substring(1, imageUrlString.length - 1);
+      }
 
-      // Make sure URL is properly formatted for axios
-      // Some URLs might be enclosed in curly braces, remove them if present
+      // Split by comma
+      const urls = cleanUrlString.split(',').map(url => url.trim());
+      console.log(`Parsed ${urls.length} image URLs:`, urls);
+      return urls;
+    } catch (error) {
+      console.error('Error parsing image URLs:', error);
+      return [imageUrlString]; // Return original string as fallback
+    }
+  }
+
+  // Helper method to fetch image as buffer from URL with better error handling
+  private async getImageBufferFromUrl(url: string): Promise<Buffer> {
+    // Image placeholder for failures - không sử dụng canvas
+    const createErrorImageBuffer = () => {
+      // Tạo một buffer cơ bản chứa hình ảnh placeholder đơn giản
+      // Đây là một pixel 1x1 màu trắng trong định dạng PNG - nhẹ nhất có thể
+      return Buffer.from('iVBORw0KGgoAAAANSUhEUgAAASwAAAEsCAIAAAD2HxkiAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyNpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTQ4IDc5LjE2NDAzNiwgMjAxOS8wOC8xMy0wMTowNjo1NyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIDIxLjAgKFdpbmRvd3MpIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkI5MDJDRDIzNTcwQjExRUJCMkE0OEIxQkY3QTcyNUVEIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkI5MDJDRDI0NTcwQjExRUJCMkE0OEIxQkY3QTcyNUVEIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6QjkwMkNEMjE1NzBCMTFFQkIyQTQ4QjFCRjdBNzI1RUQiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6QjkwMkNEMjI1NzBCMTFFQkIyQTQ4QjFCRjdBNzI1RUQiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz7/7gAOQWRvYmUAZMAAAAAB/9sAhAAGBAQEBQQGBQUGCQYFBgkLCAYGCAsMCgoLCgoMEAwMDAwMDBAMDg8QDw4MExMUFBMTHBsbGxwfHx8fHx8fHx8fAQcHBw0MDRgQEBgaFREVGh8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx//wAARCABiAGIDAREAAhEBAxEB/8QAGgABAQEAAwEAAAAAAAAAAAAAAAEGAgMEBQEBAAAAAAAAAAAAAAAAAAAAABAAAQMCAwUECQIHAAAAAAAAAQACAwQFEQYhMRNRYRJBUhRxgZGhIjJCkkNyFTOzI1NisrMkNBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8A+TsbYLVMYj4lSMGIw+V/itH3YeHLoQdVv1Q6nmjp6SgpGzVUohheJJnDmkcGgEsGrgCdiDXbO20Wu201upAeRSwtibyjAuw2knZie1BzoCAgICAgICAg4auKKWmqIZmlkckT2PbxDmkNcD2jDag/PoGqq7bd4jRTujqaZ76aaB/yuY+N5a4EfaCNuGKD9HQaAgICAgICAgIKfMX8QuvDi/qIIN/03XUdwtMM1PK17uQCSNpBfHIM2OaR2gjFBpSAgICAgICAgIKfMX8QuvDi/qIIN90zUxVFkpTFI17RG2N2BxDZGfK4HsI3IPdQEBAQEBAQEBAQU+Yv4hdeHF/UQQfpuiqGVtn4FQ0OikjhDQdha5gOB8OhBpCAgICAgICAgIKfMX8QuvDi/qIIN/0xx0xP7zfsoD9lBPUEBAQEBAQEBAQU+Yv4hdeHF/UQQdFBeKO3aXud5rj5ehoWGSaQAnlGwAADFzicGtG0lB8Z5nvlVK8UtvlpKc54Rx8NkoH1PccXnwwQb/pLUNNe7YySMtZVRYR1MD/mjkG7Eb2uG8H9hQelQEBAQEBAQEFPmL+IXXhxf1EEGu6VtP73cXSyNxoaInzDx/UkO2NvgBtPgN6D6sqaoqKqaeeV8s0ri+SWRxc97jvcSdpKDGqVs9ounC4QitdmD/MKEjBwA/NiB2HA7W9OGGKDYdD3l17sVPUyHGohPk6jEbXPaMHHHe4Yt9OxB71AQEBAQEBBV5fpI7vbr5ZZ25wVLOVwb1LXteDsO48pQb7p63xWu0UNuh+SnhZGDj1OIGLj4nE+lBYING0Lp2O1U77nVsDrhVtHyEYiniOPK0cXH5j7N6CzutfdKO701uoKuCn86wvmfLA2TyUYcG4Y4j9QtIw6dhQdmn9SV9ZdqW2XOOETVGPl56ch0U5aCSMCcWuwGw+zrQaPQEBAQEBAQEBAQEBBn+obD5uX9yobhRXFvzjDGOQD6XNGOB6HYUHnrLrdbnZHW+3QshukkgijlqG8UUQLgZJXA7S0DBo60HCzUeqLT8kUJ+MJjjlABSSOa3rTuc4DA/V79iDTKCogrKeOpp5BJDKwPjeOhB6HgekIOdAQEBAQEBAQEGS3Wgu1qvdeK6EysgqqiWGohGMkOLyei0gdDhtQWGnLZLb4JJalsclbUvL5RGMWQtGxjAeg6nrj7EFmgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIP/Z', 'base64');
+    };
+
+    try {
+      if (!url || url.trim() === '') {
+        return createErrorImageBuffer();
+      }
+
       let cleanUrl = url;
       if (url.startsWith('{') && url.endsWith('}')) {
         cleanUrl = url.substring(1, url.length - 1);
       }
 
-      console.log('Cleaned URL:', cleanUrl);
+      // Xử lý URL S3 với cách tiếp cận mới
+      if (cleanUrl.includes('.s3.amazonaws.com')) {
+        try {
+          // Không cần tạo presigned URL nếu URL đã có chữ ký
+          if (!cleanUrl.includes('X-Amz-Signature')) {
+            const urlObj = new URL(cleanUrl);
+            const path = urlObj.pathname.substring(1);
 
-      // First attempt with the original URL
-      try {
-        const response = await axios.get(cleanUrl, {
-          responseType: 'arraybuffer',
-          httpsAgent: new https.Agent({
-            rejectUnauthorized: false,
-            keepAlive: true
-          }),
-          maxContentLength: 10 * 1024 * 1024, // 10MB limit
-          timeout: 15000 // 15 second timeout
-        });
-
-        console.log('Image downloaded successfully, size:', response.data.length);
-        return Buffer.from(response.data);
-      } catch (firstError) {
-        // If 403 Forbidden (expired URL), try to refresh the URL
-        if (firstError.response && firstError.response.status === 403) {
-          console.log('URL has expired, refreshing...');
-          const refreshedUrl = await this.refreshPresignedUrl(cleanUrl);
-          console.log('Refreshed URL:', refreshedUrl);
-
-          // Try again with the refreshed URL
-          const response = await axios.get(refreshedUrl, {
-            responseType: 'arraybuffer',
-            httpsAgent: new https.Agent({
-              rejectUnauthorized: false,
-              keepAlive: true
-            }),
-            maxContentLength: 10 * 1024 * 1024,
-            timeout: 15000
-          });
-
-          console.log('Image downloaded successfully with refreshed URL, size:', response.data.length);
-          return Buffer.from(response.data);
-        } else {
-          // If not a 403 error, rethrow
-          throw firstError;
+            // Tạo presigned URL mới
+            const presignedUrl = await this.getPreSignedUrl(path);
+            if (presignedUrl) {
+              cleanUrl = presignedUrl;
+            }
+          }
+        } catch (error) {
+          // Tiếp tục với URL ban đầu nếu có lỗi
         }
       }
-    } catch (error) {
-      console.error('Error fetching image:', error.message);
-      if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response headers:', JSON.stringify(error.response.headers));
+
+      // Thử tải ảnh với timeout ngắn
+      const response = await axios.get(cleanUrl, {
+        responseType: 'arraybuffer',
+        httpsAgent: new https.Agent({
+          rejectUnauthorized: false,
+          keepAlive: true
+        }),
+        maxContentLength: 5 * 1024 * 1024, // 5MB limit
+        timeout: 5000 // Giảm xuống 5 giây để không chờ lâu
+      });
+
+      if (response.status === 200 && response.data) {
+        return Buffer.from(response.data);
+      } else {
+        return createErrorImageBuffer();
       }
-      throw error;
+    } catch (error) {
+      // Log lỗi và trả về ảnh lỗi thay vì ném exception
+      return createErrorImageBuffer();
     }
   }
 
@@ -747,14 +784,21 @@ export class TaskAssignmentsService {
                 select: {
                   inspection_id: true,
                   inspected_by: true,
-                  image_urls: true, // Make sure we're getting the image_urls
+                  image_urls: true,
                   description: true,
                   created_at: true,
                   updated_at: true,
                   total_cost: true,
                   repairMaterials: {
                     include: {
-                      material: true // Join with material table for material details
+                      material: {
+                        select: {
+                          material_id: true,
+                          name: true,
+                          unit_price: true,
+                          description: true
+                        }
+                      }
                     }
                   }
                 }
@@ -830,6 +874,17 @@ export class TaskAssignmentsService {
 
       console.log('Calculated actual cost (Confirmed):', actualCost);
       console.log('Cost details count:', costDetails.length);
+
+      // Log the first inspection with materials for debugging
+      for (const assignment of task.taskAssignments) {
+        for (const inspection of assignment.inspections) {
+          if (inspection.repairMaterials && inspection.repairMaterials.length > 0) {
+            console.log('First inspection with materials:', inspection.inspection_id);
+            console.log('Complete materials list:', JSON.stringify(inspection.repairMaterials, null, 2));
+            break;
+          }
+        }
+      }
 
       // 5. Generate PDF
       try {
@@ -942,7 +997,6 @@ export class TaskAssignmentsService {
           .fillColor('#000000')
           .text('Crack Report Information', PAGE_MARGIN, yPos, { underline: true });
         yPos += LINE_HEIGHT + 5;
-        doc.fontSize(11);
 
         // Two-column layout for crack info
         const colWidth = CONTENT_WIDTH / 2 - 10;
@@ -969,10 +1023,10 @@ export class TaskAssignmentsService {
 
         // Right column
         doc.text('Severity Level:', PAGE_MARGIN + colWidth, yPos - LINE_HEIGHT * 2);
-        doc.text(severity, PAGE_MARGIN + colWidth + 120, yPos - LINE_HEIGHT * 2);
+        doc.text(severity, PAGE_MARGIN + colWidth + 140, yPos - LINE_HEIGHT * 2);
 
         doc.text('Payment Confirmed:', PAGE_MARGIN + colWidth, yPos - LINE_HEIGHT);
-        doc.text('Confirm', PAGE_MARGIN + colWidth + 120, yPos - LINE_HEIGHT);
+        doc.text('Confirm', PAGE_MARGIN + colWidth + 140, yPos - LINE_HEIGHT);
 
         // Description (full width)
         yPos += LINE_HEIGHT;
@@ -1018,7 +1072,7 @@ export class TaskAssignmentsService {
             // Add original photo in first rectangle if available
             if (crackDetail.photoUrl) {
               try {
-                // Download the image using axios and add it to the PDF
+                // Tải ảnh với xử lý lỗi tốt hơn - sẽ không throw lỗi nữa
                 const imageBuffer = await this.getImageBufferFromUrl(crackDetail.photoUrl);
                 doc.image(imageBuffer, PAGE_MARGIN + 5, yPos + 20, {
                   fit: [crackImageWidth - 10, crackImageHeight - 25],
@@ -1026,17 +1080,19 @@ export class TaskAssignmentsService {
                   valign: 'center'
                 });
               } catch (imgError) {
-                console.error('Error adding original photo:', imgError.message);
-                doc.text('Error loading original photo', PAGE_MARGIN + 30, yPos + 50);
+                // Fallback text sẽ không còn cần thiết vì getImageBufferFromUrl luôn trả về buffer
               }
             } else {
-              doc.text('No original photo available', PAGE_MARGIN + 30, yPos + 50);
+              // Vẽ một placeholder đơn giản
+              doc.rect(PAGE_MARGIN + 30, yPos + 30, crackImageWidth - 70, crackImageHeight - 60)
+                .fillAndStroke('#f8f8f8', '#cccccc');
+              doc.fillColor('#999999').fontSize(10);
+              doc.text('No original photo', PAGE_MARGIN + crackImageWidth / 2 - 40, yPos + 50);
             }
 
             // Add AI detection photo in second rectangle if available
             if (crackDetail.aiDetectionUrl) {
               try {
-                // Download the image using axios and add it to the PDF
                 const aiImageBuffer = await this.getImageBufferFromUrl(crackDetail.aiDetectionUrl);
                 doc.image(aiImageBuffer, PAGE_MARGIN + crackImageWidth + 25, yPos + 20, {
                   fit: [crackImageWidth - 10, crackImageHeight - 25],
@@ -1044,17 +1100,24 @@ export class TaskAssignmentsService {
                   valign: 'center'
                 });
               } catch (imgError) {
-                console.error('Error adding AI detection photo:', imgError.message);
-                doc.text('Error loading AI photo', PAGE_MARGIN + crackImageWidth + 50, yPos + 50);
+                // Fallback text sẽ không còn cần thiết
               }
             } else {
-              doc.text('No AI detection photo available', PAGE_MARGIN + crackImageWidth + 50, yPos + 50);
+              // Vẽ một placeholder đơn giản
+              doc.rect(PAGE_MARGIN + crackImageWidth + 55, yPos + 30, crackImageWidth - 70, crackImageHeight - 60)
+                .fillAndStroke('#f8f8f8', '#cccccc');
+              doc.fillColor('#999999').fontSize(10);
+              doc.text('No AI detection photo', PAGE_MARGIN + crackImageWidth + crackImageWidth / 2 - 40, yPos + 50);
             }
           } catch (imgError) {
-            console.error('Error adding images to PDF:', imgError);
-            doc.text('Error loading images', PAGE_MARGIN + 30, yPos + 50);
+            // Vẽ placeholders cho cả hai ảnh
+            doc.fillColor('#999999').fontSize(10);
+            doc.text('No crack details available', PAGE_MARGIN + 30, yPos + 50);
+            doc.text('No crack details available', PAGE_MARGIN + crackImageWidth + 50, yPos + 50);
           }
         } else {
+          // Vẽ placeholders cho cả hai ảnh
+          doc.fillColor('#999999').fontSize(10);
           doc.text('No crack details available', PAGE_MARGIN + 30, yPos + 50);
           doc.text('No crack details available', PAGE_MARGIN + crackImageWidth + 50, yPos + 50);
         }
@@ -1071,12 +1134,12 @@ export class TaskAssignmentsService {
           doc.fontSize(10).text('Detection Date: Not available', PAGE_MARGIN, yPos);
         }
 
-        // Section: Inspection Images
-        yPos += SECTION_SPACING;
+        // Section: Inspection Images - reduce spacing from previous section
+        yPos += 40; // Reduced from SECTION_SPACING (20)
         doc.fontSize(14)
           .fillColor('#000000')
           .text('Inspection Images', PAGE_MARGIN, yPos, { underline: true });
-        yPos += LINE_HEIGHT + 5;
+        yPos += LINE_HEIGHT + 10; // Reduced by 5
 
         // Status order priority (for sorting)
         const statusOrder = {
@@ -1090,6 +1153,7 @@ export class TaskAssignmentsService {
         };
 
         // Display images from inspections if available
+        let imageContentAdded = false; // Track if we've added any real image content
         if (task.taskAssignments && task.taskAssignments.length > 0) {
           let hasImages = false;
 
@@ -1100,7 +1164,8 @@ export class TaskAssignmentsService {
           for (const assignment of task.taskAssignments) {
             if (assignment.inspections && assignment.inspections.length > 0) {
               for (const inspection of assignment.inspections) {
-                if (inspection.image_urls && Array.isArray(inspection.image_urls) && inspection.image_urls.length > 0) {
+                if (inspection.image_urls && (Array.isArray(inspection.image_urls) && inspection.image_urls.length > 0 ||
+                  typeof inspection.image_urls === 'string' && inspection.image_urls.trim() !== '')) {
                   // Add each inspection with its related assignment status
                   allInspections.push({
                     inspection: inspection,
@@ -1121,24 +1186,130 @@ export class TaskAssignmentsService {
           });
 
           if (hasImages) {
+            // Tạo mảng chứa tất cả promise để tải ảnh trước
+            const imagePromises = new Map();
+
+            // Thu thập tất cả URL ảnh và tạo promise tải ảnh
+            for (let i = 0; i < allInspections.length; i++) {
+              const { inspection } = allInspections[i];
+
+              let imageUrls = [];
+              if (typeof inspection.image_urls === 'string') {
+                imageUrls = this.parseImageUrls(inspection.image_urls);
+              } else if (Array.isArray(inspection.image_urls)) {
+                imageUrls = inspection.image_urls;
+              }
+
+              // Tạo promise cho mỗi ảnh và lưu vào map
+              for (const imgUrl of imageUrls) {
+                if (imgUrl && imgUrl.trim() !== '' && !imagePromises.has(imgUrl)) {
+                  // Tạo promise cho mỗi URL - getImageBufferFromUrl sẽ không throw lỗi nữa
+                  imagePromises.set(imgUrl, this.getImageBufferFromUrl(imgUrl));
+                }
+              }
+            }
+
+            // Tải song song tất cả ảnh trước với xử lý lỗi tốt hơn
+            try {
+              await Promise.all(imagePromises.values());
+            } catch (error) {
+              // Bỏ qua lỗi - các ảnh lỗi sẽ được thay thế bằng placeholder
+            }
+
             // Now display each inspection in a full-width row
             for (let i = 0; i < allInspections.length; i++) {
               const { inspection, status, assignmentId } = allInspections[i];
 
-              // Check if we need a new page
-              if (yPos > 620 && i < allInspections.length - 1) {
-                // Add a new page if we're reaching the bottom
-                doc.addPage();
-                yPos = PAGE_MARGIN + 20;
+              // Process the image URLs - can be an array or a string
+              let imageUrls = [];
+              if (typeof inspection.image_urls === 'string') {
+                imageUrls = this.parseImageUrls(inspection.image_urls);
+              } else if (Array.isArray(inspection.image_urls)) {
+                imageUrls = inspection.image_urls;
               }
 
-              // We'll display only the first image from each inspection
-              if (inspection.image_urls && inspection.image_urls.length > 0) {
-                const imageUrl = inspection.image_urls[0];
+              if (imageUrls.length > 0) {
+                // Get materials information if available
+                let materialsText = 'No materials information';
+                let totalCost = 'N/A';
+                let materialCount = 0;
 
-                // Create a full-width container for this inspection
-                const containerWidth = CONTENT_WIDTH;
-                const containerHeight = 180; // Tall enough for image and details
+                if (inspection.repairMaterials && inspection.repairMaterials.length > 0) {
+                  // Optimize material processing
+                  const materialMap = new Map();
+                  const materialIds = new Set();
+
+                  // Faster processing of materials 
+                  for (const material of inspection.repairMaterials) {
+                    const materialId = material.material?.material_id || material.material_id || 'unknown';
+                    if (!materialIds.has(materialId)) {
+                      materialIds.add(materialId);
+                      materialMap.set(materialId, {
+                        id: materialId,
+                        name: material.material?.name || 'Unknown Material',
+                        quantity: Number(material.quantity) || 0,
+                        unitCost: Number(material.unit_cost) || 0,
+                        totalCost: (Number(material.quantity) || 0) * (Number(material.unit_cost) || 0)
+                      });
+                    } else {
+                      // Đã có, cộng thêm số lượng
+                      const existing = materialMap.get(materialId);
+                      const quantity = Number(material.quantity) || 0;
+                      existing.quantity += quantity;
+                      existing.totalCost += quantity * (Number(material.unit_cost) || 0);
+                    }
+                  }
+
+                  // Convert map to array and create text
+                  const uniqueMaterials = Array.from(materialMap.values());
+                  materialCount = uniqueMaterials.length;
+
+                  // Format the materials text - use join for better performance
+                  materialsText = uniqueMaterials.map(material =>
+                    `• ${material.name} (${material.quantity} × ${material.unitCost.toLocaleString('vi-VN')} VND)`
+                  ).join('\n');
+
+                  // Format the total cost
+                  totalCost = `${inspection.total_cost.toLocaleString('vi-VN')} VND`;
+                }
+
+                // Calculate how many rows of images we'll need (2 images per row)
+                const imagesPerRow = 2;
+                const imageRows = Math.ceil(imageUrls.length / imagesPerRow);
+
+                // Each row of images needs this much height
+                const rowHeight = 140;
+
+                // Calculate the initial container height based on content
+                let containerBaseHeight = 100; // Base height for header and description
+
+                // Tính toán chính xác vị trí của ảnh dựa trên số lượng material
+                // Nếu không có material thì khoảng cách sẽ bé hơn
+                const materialSpace = materialCount > 0 ? 15 + materialCount * 20 : 10;
+
+                // Calculate the exact height needed for images
+                const imagesHeight = imageRows * rowHeight;
+
+                // Calculate how many images per row (always 2 images per row)
+                let imagesInLastRow = imageUrls.length % imagesPerRow;
+                if (imagesInLastRow === 0 && imageUrls.length > 0) {
+                  imagesInLastRow = imagesPerRow; // If last row is full
+                }
+
+                // Final container height: base + materials + images + small buffer
+                const estimatedHeight = 20 + materialSpace + imagesHeight + 30;
+                const containerHeight = estimatedHeight;
+
+                console.log(`Container sizing: base=100, materials=${materialSpace}, images=${imagesHeight}, total=${containerHeight}`);
+
+                // Check if this inspection will fit on current page, if not add a new page
+                if (yPos + containerHeight > 900) {
+                  doc.addPage();
+                  yPos = PAGE_MARGIN + 10; // Start higher on new page
+                }
+
+                // Create a full-width container for this inspection - exact size for content
+                imageContentAdded = true;
 
                 // Create a status badge with colored background
                 let statusColor;
@@ -1152,197 +1323,264 @@ export class TaskAssignmentsService {
                   default: statusColor = '#9E9E9E'; // Grey
                 }
 
-                // Draw container outline with status color
-                doc.rect(PAGE_MARGIN, yPos, containerWidth, containerHeight).fillAndStroke('#FFFFFF', statusColor);
+                // Draw container outline with status color - precise size
+                doc.rect(PAGE_MARGIN, yPos, CONTENT_WIDTH, containerHeight).fillAndStroke('#FFFFFF', statusColor);
 
-                // Header with status and inspection ID
-                doc.rect(PAGE_MARGIN, yPos, containerWidth, 20).fillAndStroke('#e6e6e6', statusColor);
-                doc.fillColor('#333333').fontSize(10).font('VietnameseFont', 'bold');
+                // Header with status and inspection ID - IMPROVED HEADER STYLING
+                doc.rect(PAGE_MARGIN, yPos, CONTENT_WIDTH, 20).fillAndStroke(statusColor, statusColor);
+                doc.fillColor('white').fontSize(11).font('VietnameseFont', 'bold');
 
                 // Format the inspection date
                 const inspectionDate = inspection.created_at
                   ? new Date(inspection.created_at).toLocaleDateString()
                   : 'Unknown date';
 
-                // Draw status badge
-                const statusWidth = 80;
-                doc.rect(PAGE_MARGIN + containerWidth - statusWidth - 5, yPos + 3, statusWidth, 14)
-                  .fillAndStroke(statusColor, statusColor);
+                // Draw status badge - IMPROVED BADGE STYLING
+                const statusWidth = 100; // Increased width for better visibility
+                doc.rect(PAGE_MARGIN + CONTENT_WIDTH - statusWidth - 10, yPos + 2, statusWidth, 16)
+                  .fillAndStroke(statusColor, '#000000'); // Added black border for contrast
                 doc.fillColor('white').text(status,
-                  PAGE_MARGIN + containerWidth - statusWidth - 5 + 5,
-                  yPos + 5,
+                  PAGE_MARGIN + CONTENT_WIDTH - statusWidth - 10 + 5,
+                  yPos + 4,
                   { width: statusWidth - 10, align: 'center' }
                 );
 
                 // Reset text color and write header
-                doc.fillColor('#333333').text(
+                doc.fillColor('white').text( // Changed to white for better contrast on colored header
                   `Inspection (${inspectionDate}) - ID: ${inspection.inspection_id.substring(0, 8)}...`,
                   PAGE_MARGIN + 10,
                   yPos + 5
                 );
 
-                // Display the image on the left
-                const imageSize = 140;
-                try {
-                  const inspectionImg = await this.getImageBufferFromUrl(imageUrl);
-                  doc.image(inspectionImg, PAGE_MARGIN + 10, yPos + 30, {
-                    fit: [imageSize, imageSize],
-                    align: 'center',
-                    valign: 'center'
-                  });
+                // Add inspection description and details at the top - more compact layout
+                const detailsX = PAGE_MARGIN + 10;
+                const detailsWidth = CONTENT_WIDTH - 20;
 
-                  // Add image border with status color
-                  doc.rect(PAGE_MARGIN + 10, yPos + 30, imageSize, imageSize).stroke(statusColor);
-                } catch (imgError) {
-                  console.error(`Error loading inspection image:`, imgError.message);
-                  doc.text('Error loading image', PAGE_MARGIN + 30, yPos + 70);
-                }
-
-                // Reset fill color
-                doc.fillColor('black');
-
-                // Add inspection description and details on the right
-                const detailsX = PAGE_MARGIN + imageSize + 20;
-                const detailsWidth = containerWidth - imageSize - 30;
-
-                // Description title - BOLD & LARGER
-                doc.fontSize(11).font('VietnameseFont', 'bold')
+                // Description title
+                doc.fontSize(10).font('VietnameseFont', 'bold') // Reduced font size
                   .fillColor('#000000')
-                  .text('Description:', detailsX, yPos + 30);
+                  .text('Description:', detailsX, yPos + 25); // Reduced vertical space
 
                 // Description content
                 doc.fontSize(9).font('VietnameseFont', 'normal')
                   .fillColor('#333333')
                   .text(inspection.description || 'No description available',
                     detailsX,
-                    yPos + 45,
-                    { width: detailsWidth, height: 40, ellipsis: true }
+                    yPos + 35, // Reduced vertical space
+                    { width: detailsWidth, height: 30, ellipsis: true }
                   );
 
-                // Materials section - BOLD & LARGER
-                doc.fontSize(11).font('VietnameseFont', 'bold')
+                // Materials section - reduced vertical space
+                doc.fontSize(10).font('VietnameseFont', 'bold') // Reduced font size
                   .fillColor('#000000')
-                  .text('Materials:', detailsX, yPos + 90);
+                  .text('Materials:', detailsX, yPos + 60); // Reduced vertical space
 
-                // Get materials information if available
-                let materialsText = 'No materials information';
-                let totalCost = 'N/A';
-
-                if (inspection.repairMaterials && inspection.repairMaterials.length > 0) {
-                  materialsText = inspection.repairMaterials.map(material => {
-                    const materialName = material.material?.name || 'Unknown Material';
-                    return `• ${materialName} (${material.quantity} × ${material.unit_cost.toLocaleString('vi-VN')} VND)`;
-                  }).join('\n');
-
-                  // Format the total cost
-                  totalCost = `${inspection.total_cost.toLocaleString('vi-VN')} VND`;
+                // Add a background to make ALL materials visible with stronger contrast
+                const materialsBoxHeight = materialCount * 30 + 20; // Additional padding
+                if (materialCount > 0) {
                 }
 
-                // Materials list
-                doc.fontSize(9).font('VietnameseFont', 'normal')
-                  .fillColor('#333333')
+                // Set text color explicitly to BLACK before drawing text
+                doc.fontSize(10).font('VietnameseFont', 'normal')
+                  .fillColor('#000000');
+
+                // Add the text with plenty of height - FORCE black color again for safety
+                doc.fillColor('#000000') // Force black color again
                   .text(materialsText,
-                    detailsX,
-                    yPos + 105,
-                    { width: detailsWidth, height: 40, ellipsis: true }
+                    detailsX + 10, // More padding
+                    yPos + 75, // Slight adjustment to vertical position
+                    {
+                      width: detailsWidth - 130, // Narrower to fit within box
+                      height: materialsBoxHeight - 10, // More padding
+                      ellipsis: false, // Never truncate with ellipsis
+                      lineBreak: true // Ensure line breaks work properly
+                    }
                   );
 
-                // Estimated cost - BOLD & LARGER
-                doc.fontSize(11).font('VietnameseFont', 'bold')
+                // Estimated cost - move it even further right to avoid overlap with materials
+                doc.fontSize(10).font('VietnameseFont', 'bold')
                   .fillColor('#000000')
-                  .text('Estimated Cost:', detailsX, yPos + 150);
+                  .text('Cost:', detailsX + detailsWidth - 90, yPos + 70);
 
                 doc.fontSize(10).fillColor('#d32f2f').font('VietnameseFont', 'bold')
-                  .text(totalCost, detailsX + 110, yPos + 150);
+                  .text(totalCost, detailsX + detailsWidth - 50, yPos + 70);
 
-                // Move position for next inspection
-                yPos += containerHeight + 15;
+                // Position images precisely based on material content
+                // Giảm khoảng cách giữa phần materials và ảnh, phụ thuộc vào số lượng material
+                const imageBaseY = yPos + 50 + materialSpace; // Vị trí bắt đầu của ảnh sau phần materials
+                const imageWidth = (CONTENT_WIDTH - 50) / imagesPerRow; // Width of each image
+                const imageHeight = 120; // Height of each image
+                const imageHorizontalSpacing = 10; // Space between images horizontally
+
+                // Display multiple images in a grid - with precise layout
+                for (let imgIndex = 0; imgIndex < imageUrls.length; imgIndex++) {
+                  const row = Math.floor(imgIndex / imagesPerRow);
+                  const col = imgIndex % imagesPerRow;
+
+                  const imgX = PAGE_MARGIN + 20 + col * (imageWidth + imageHorizontalSpacing);
+                  const imgY = imageBaseY + row * (imageHeight + 10);
+
+                  try {
+                    doc.fillColor('#333333').fontSize(9).font('VietnameseFont', 'bold');
+                    doc.rect(imgX, imgY, imageWidth, imageHeight).fillAndStroke('#FFFFFF', statusColor);
+
+                    const imgUrl = imageUrls[imgIndex];
+                    if (!imgUrl || imgUrl.trim() === '') {
+                      doc.fillColor('#333333').fontSize(9);
+                      doc.text('Invalid image URL', imgX + 20, imgY + 50);
+                      continue;
+                    }
+
+                    // Sử dụng ảnh đã được tải trước đó - luôn có giá trị do getImageBufferFromUrl không throw lỗi
+                    const imgBuffer = await imagePromises.get(imgUrl);
+                    doc.image(imgBuffer, imgX + 5, imgY + 5, {
+                      fit: [imageWidth - 10, imageHeight - 10],
+                      align: 'center',
+                      valign: 'center'
+                    });
+                  } catch (imgError) {
+                    doc.fillColor('#333333').fontSize(9);
+                    doc.text('Error loading image', imgX + 20, imgY + 50);
+                  }
+                }
+
+                // Move position for next inspection - smaller gap between inspections
+                yPos += containerHeight + 10; // Reduced from 15
+              } else {
+                // No images found - smaller message box
+                imageContentAdded = true;
+                doc.rect(PAGE_MARGIN, yPos, CONTENT_WIDTH, 70).fillAndStroke('#FFFFFF', '#cccccc');
+                doc.fontSize(12).text('No inspection images available', PAGE_MARGIN + CONTENT_WIDTH / 2 - 80, yPos + 30);
+                yPos += 80; // Reduced from 110
               }
             }
           } else {
-            // No images found
-            doc.rect(PAGE_MARGIN, yPos, CONTENT_WIDTH, 100).fillAndStroke('#FFFFFF', '#000000');
-            doc.fontSize(12).text('No inspection images available', PAGE_MARGIN + CONTENT_WIDTH / 2 - 80, yPos + 45);
-            yPos += 110;
+            // No task assignments found - smaller message box
+            imageContentAdded = true;
+            doc.rect(PAGE_MARGIN, yPos, CONTENT_WIDTH, 70).fillAndStroke('#FFFFFF', '#cccccc');
+            doc.fontSize(12).text('No task assignments available', PAGE_MARGIN + CONTENT_WIDTH / 2 - 80, yPos + 30);
+            yPos += 80; // Reduced from 110
           }
-
-          // Cost summary section
-          yPos += 10;
-          doc.fontSize(12)
-            .fillColor('#000000')
-            .text('Cost Summary:', PAGE_MARGIN, yPos, { underline: true });
-          doc.fillColor('black');
-          yPos += LINE_HEIGHT + 5;
-
-          // Display cost information
-          doc.text(`Total Estimated Cost: ${estimatedCost.toLocaleString('vi-VN')} VND`, PAGE_MARGIN, yPos);
-          yPos += LINE_HEIGHT;
-          doc.text(`Total Actual Cost: ${actualCost.toLocaleString('vi-VN')} VND`, PAGE_MARGIN, yPos);
-          yPos += LINE_HEIGHT;
-
-          // Reset fill color
-          doc.fillColor('black');
-
         } else {
-          // No inspections found
-          doc.rect(PAGE_MARGIN, yPos, CONTENT_WIDTH, 100).fillAndStroke('#FFFFFF', '#000000');
-          doc.fontSize(12).text('No inspection data available', PAGE_MARGIN + CONTENT_WIDTH / 2 - 80, yPos + 45);
-          yPos += 110;
+          // No task assignments found - smaller message box
+          imageContentAdded = true;
+          doc.rect(PAGE_MARGIN, yPos, CONTENT_WIDTH, 70).fillAndStroke('#FFFFFF', '#cccccc');
+          doc.fontSize(12).text('No task assignments available', PAGE_MARGIN + CONTENT_WIDTH / 2 - 80, yPos + 30);
+          yPos += 80; // Reduced from 110
         }
 
-        // Footer area - Đảm bảo footer không bị đè lên nội dung
-        // Tính toán vị trí footer dựa vào vị trí hiện tại (yPos) + khoảng cách an toàn
-        const minFooterY = 700; // Vị trí tối thiểu của footer
-        const safetyMargin = 50; // Khoảng cách an toàn giữa nội dung và footer
-        const footerY = Math.max(minFooterY, yPos + safetyMargin); // Lấy giá trị lớn hơn giữa minFooterY và yPos + safetyMargin
+        // Check if we have any content yet - if not, add a default "No Data" message
+        if (!imageContentAdded) {
+          // There's a large empty space, which means no real content was added
+          doc.rect(PAGE_MARGIN, yPos, CONTENT_WIDTH, 80).fillAndStroke('#f9f9f9', '#cccccc');
 
-        // Thêm page mới nếu footer quá gần cuối trang
-        if (footerY > 750) {
+          // Add a warning symbol
+          doc.fontSize(20).fillColor('#FF9800');
+          doc.text('⚠', PAGE_MARGIN + CONTENT_WIDTH / 2 - 10, yPos + 15, { align: 'center' });
+
+          // Add explanatory text
+          doc.fontSize(12).fillColor('#333333');
+          doc.text('No inspection images available for this report',
+            PAGE_MARGIN + 20,
+            yPos + 40,
+            { align: 'center', width: CONTENT_WIDTH - 40 });
+
+          yPos += 90; // Smaller message box
+        }
+
+        // Now output the final Cost Summary section on a new page if needed
+        const costSummaryHeight = LINE_HEIGHT * 6; // Approximate height for cost summary section
+
+        // Check if there's enough space for the Cost Summary
+        if (yPos + costSummaryHeight > 700) {
+          // Not enough space, add a new page
           doc.addPage();
-          const newFooterY = PAGE_MARGIN + 50;
-          doc.fontSize(10).text(`Ho Chi Minh, ngày ${new Date().getDate()} tháng ${new Date().getMonth() + 1} năm ${new Date().getFullYear()}`, PAGE_MARGIN, newFooterY);
-
-          // Signatures
-          const sigWidth = 100;
-          const sigMargin = (CONTENT_WIDTH - (sigWidth * 3)) / 4;
-
-          // Manager signature
-          doc.fillColor('#000000').fontSize(10).font('VietnameseFont', 'bold');
-          doc.text('Manager Signature', PAGE_MARGIN + sigMargin, newFooterY + 20, { align: 'center', width: sigWidth });
-          doc.rect(PAGE_MARGIN + sigMargin, newFooterY + 40, sigWidth, 50).fillAndStroke('#FFFFFF', '#000000');
-
-          // Leader signature - explicitly set color again
-          doc.fillColor('#000000').fontSize(10).font('VietnameseFont', 'bold');
-          doc.text('Leader Signature', PAGE_MARGIN + sigMargin * 2 + sigWidth, newFooterY + 20, { align: 'center', width: sigWidth });
-          doc.rect(PAGE_MARGIN + sigMargin * 2 + sigWidth, newFooterY + 40, sigWidth, 50).fillAndStroke('#FFFFFF', '#000000');
-
-          // Resident signature - explicitly set color again
-          doc.fillColor('#000000').fontSize(10).font('VietnameseFont', 'bold');
-          doc.text('Resident Signature', PAGE_MARGIN + sigMargin * 3 + sigWidth * 2, newFooterY + 20, { align: 'center', width: sigWidth });
-          doc.rect(PAGE_MARGIN + sigMargin * 3 + sigWidth * 2, newFooterY + 40, sigWidth, 50).fillAndStroke('#FFFFFF', '#000000');
-        } else {
-          // Hiển thị footer trên trang hiện tại
-          doc.fontSize(10).text(`Ho Chi Minh, ngày ${new Date().getDate()} tháng ${new Date().getMonth() + 1} năm ${new Date().getFullYear()}`, PAGE_MARGIN, footerY);
-
-          // Signatures
-          const sigWidth = 100;
-          const sigMargin = (CONTENT_WIDTH - (sigWidth * 3)) / 4;
-
-          // Manager signature
-          doc.fillColor('#000000').fontSize(10).font('VietnameseFont', 'bold');
-          doc.text('Manager Signature', PAGE_MARGIN + sigMargin, footerY + 20, { align: 'center', width: sigWidth });
-          doc.rect(PAGE_MARGIN + sigMargin, footerY + 40, sigWidth, 50).fillAndStroke('#FFFFFF', '#000000');
-
-          // Leader signature - explicitly set color again
-          doc.fillColor('#000000').fontSize(10).font('VietnameseFont', 'bold');
-          doc.text('Leader Signature', PAGE_MARGIN + sigMargin * 2 + sigWidth, footerY + 20, { align: 'center', width: sigWidth });
-          doc.rect(PAGE_MARGIN + sigMargin * 2 + sigWidth, footerY + 40, sigWidth, 50).fillAndStroke('#FFFFFF', '#000000');
-
-          // Resident signature - explicitly set color again
-          doc.fillColor('#000000').fontSize(10).font('VietnameseFont', 'bold');
-          doc.text('Resident Signature', PAGE_MARGIN + sigMargin * 3 + sigWidth * 2, footerY + 20, { align: 'center', width: sigWidth });
-          doc.rect(PAGE_MARGIN + sigMargin * 3 + sigWidth * 2, footerY + 40, sigWidth, 50).fillAndStroke('#FFFFFF', '#000000');
+          yPos = PAGE_MARGIN + 10; // Reduced top margin
         }
+
+        // Add a divider line
+        doc.moveTo(PAGE_MARGIN, yPos).lineTo(PAGE_MARGIN + CONTENT_WIDTH, yPos).stroke('#cccccc');
+        yPos += 15;
+
+        // Cost summary section with background
+        doc.rect(PAGE_MARGIN, yPos, CONTENT_WIDTH, costSummaryHeight).fillAndStroke('#f8f8f8', '#cccccc');
+
+        yPos += 10;
+        doc.fontSize(14)
+          .fillColor('#000000')
+          .text('Cost Summary:', PAGE_MARGIN + 10, yPos, { underline: true });
+        doc.fillColor('black');
+        yPos += LINE_HEIGHT + 5;
+
+        // Display cost information with more emphasis
+        doc.fontSize(12)
+          .fillColor('#333333')
+          .text(`Total Estimated Cost:`, PAGE_MARGIN + 20, yPos);
+        doc.fontSize(12)
+          .fillColor('#d32f2f')
+          .text(`${estimatedCost.toLocaleString('vi-VN')} VND`, PAGE_MARGIN + 200, yPos);
+        yPos += LINE_HEIGHT + 5;
+
+        doc.fontSize(12)
+          .fillColor('#333333')
+          .text(`Total Actual Cost:`, PAGE_MARGIN + 20, yPos);
+        doc.fontSize(12)
+          .fillColor('#d32f2f')
+          .text(`${actualCost.toLocaleString('vi-VN')} VND`, PAGE_MARGIN + 200, yPos);
+        yPos += LINE_HEIGHT + 15;
+
+        // Calculate signature section positioning
+        const footerHeight = 120; // Height needed for the footer content (reduced from 150)
+        const pageBottom = 770; // Bottom position of the page
+        const remainingSpace = pageBottom - yPos;
+        const idealFooterGap = 50; // Ideal gap between cost summary and signatures
+
+        // Calculate the optimal Y position for the footer
+        let footerY;
+
+        if (remainingSpace < footerHeight + idealFooterGap) {
+          // Not enough room for footer with ideal gap, add a new page
+          doc.addPage();
+          footerY = PAGE_MARGIN + 100; // Position footer at nice height on new page
+        } else if (remainingSpace > footerHeight + 150) {
+          // Too much empty space, position footer at a reasonable distance
+          footerY = yPos + idealFooterGap;
+        } else {
+          // Just enough space, center the footer in the remaining space
+          footerY = yPos + (remainingSpace - footerHeight) / 2;
+        }
+
+        // Add date line
+        doc.fontSize(10)
+          .fillColor('#000000')
+          .text(`Ho Chi Minh, ngày ${new Date().getDate()} tháng ${new Date().getMonth() + 1} năm ${new Date().getFullYear()}`,
+            PAGE_MARGIN,
+            footerY, // Use calculated footer position
+            { align: 'right', width: CONTENT_WIDTH });
+
+        // Signatures section with clear spacing
+        const sigWidth = 100;
+        const sigMargin = (CONTENT_WIDTH - (sigWidth * 3)) / 4;
+        const sigY = footerY + 20;
+
+        // Add a background for signature section
+        doc.rect(PAGE_MARGIN, sigY, CONTENT_WIDTH, 100).fillAndStroke('#f5f5f5', '#cccccc');
+
+        // Manager signature
+        doc.fillColor('#000000').fontSize(10).font('VietnameseFont', 'bold');
+        doc.text('Manager Signature', PAGE_MARGIN + sigMargin, sigY + 10, { align: 'center', width: sigWidth });
+        doc.rect(PAGE_MARGIN + sigMargin, sigY + 30, sigWidth, 50).fillAndStroke('#FFFFFF', '#000000');
+
+        // Leader signature
+        doc.fillColor('#000000').fontSize(10).font('VietnameseFont', 'bold');
+        doc.text('Leader Signature', PAGE_MARGIN + sigMargin * 2 + sigWidth, sigY + 10, { align: 'center', width: sigWidth });
+        doc.rect(PAGE_MARGIN + sigMargin * 2 + sigWidth, sigY + 30, sigWidth, 50).fillAndStroke('#FFFFFF', '#000000');
+
+        // Resident signature
+        doc.fillColor('#000000').fontSize(10).font('VietnameseFont', 'bold');
+        doc.text('Resident Signature', PAGE_MARGIN + sigMargin * 3 + sigWidth * 2, sigY + 10, { align: 'center', width: sigWidth });
+        doc.rect(PAGE_MARGIN + sigMargin * 3 + sigWidth * 2, sigY + 30, sigWidth, 50).fillAndStroke('#FFFFFF', '#000000');
+
 
         // Reset fill color for remaining content
         doc.fillColor('black');
@@ -1356,7 +1594,6 @@ export class TaskAssignmentsService {
       }
     });
   }
-
 }
 
 

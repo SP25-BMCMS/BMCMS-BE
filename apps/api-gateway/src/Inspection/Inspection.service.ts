@@ -98,7 +98,7 @@ export class InspectionService implements OnModuleInit {
     } catch (error) {
       throw new HttpException(
         'Inspection not found with the given task assignment ID = ' +
-          task_assignment_id,
+        task_assignment_id,
         HttpStatus.NOT_FOUND,
       )
     }
@@ -216,21 +216,7 @@ export class InspectionService implements OnModuleInit {
 
           if (uploadResponse.isSuccess && uploadResponse.data && uploadResponse.data.InspectionImage) {
             imageUrls = uploadResponse.data.InspectionImage
-
-            // Get pre-signed URLs for all uploaded images
-            imageUrls = await Promise.all(
-              imageUrls.map(async (url: string) => {
-                try {
-                  const fileKey = this.extractFileKey(url)
-                  return await this.getPreSignedUrl(fileKey)
-                } catch (error) {
-                  console.error(`Error getting pre-signed URL for ${url}:`, error)
-                  return url // Return original URL as fallback
-                }
-              })
-            )
-
-            console.log('Uploaded image URLs with signed URLs:', imageUrls)
+            console.log('Uploaded image URLs:', imageUrls)
           } else {
             console.error('Image upload failed:', uploadResponse)
             // Continue without images
