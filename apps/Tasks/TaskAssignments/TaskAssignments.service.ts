@@ -949,16 +949,30 @@ export class TaskAssignmentsService {
           }
         })
 
-        // Use path.join to handle paths correctly in both development and production
-        const fontPath = path.join(process.cwd(), 'apps', 'Tasks', 'fonts', 'Arial.ttf')
-        console.log('Loading font from:', fontPath)
+        // Try multiple font paths and fallback options
+        const fontPaths = [
+          path.join(process.cwd(), 'libs', 'contracts', 'src', 'taskAssigment', 'fonts', 'ARIAL.TTF'),
+          path.join(process.cwd(), 'dist', 'libs', 'contracts', 'src', 'taskAssigment', 'fonts', 'ARIAL.TTF'),
+          '/usr/src/app/libs/contracts/src/taskAssigment/fonts/ARIAL.TTF',
+          '/usr/src/app/dist/libs/contracts/src/taskAssigment/fonts/ARIAL.TTF'
+        ]
 
-        try {
-          doc.registerFont('VietnameseFont', fontPath)
-          doc.font('VietnameseFont')
-        } catch (error) {
-          console.error('Error loading font:', error)
-          // Fallback to default font if Vietnamese font fails to load
+        let fontLoaded = false
+        for (const fontPath of fontPaths) {
+          try {
+            console.log('Trying to load font from:', fontPath)
+            doc.registerFont('VietnameseFont', fontPath)
+            doc.font('VietnameseFont')
+            fontLoaded = true
+            console.log('Successfully loaded font from:', fontPath)
+            break
+          } catch (error) {
+            console.error('Failed to load font from:', fontPath, error)
+          }
+        }
+
+        if (!fontLoaded) {
+          console.warn('No Vietnamese font loaded, falling back to Helvetica')
           doc.font('Helvetica')
         }
 
