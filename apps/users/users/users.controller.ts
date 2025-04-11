@@ -24,10 +24,14 @@ export class UsersController {
     apartments: { apartmentName: string; buildingDetailId: string }[];
   }) {
     try {
+      console.log("Users microservice received updateResidentApartments request:", JSON.stringify(data, null, 2));
+
       const response = await this.usersService.updateResidentApartments(
         data.residentId,
         data.apartments,
       );
+
+      console.log("Users microservice sending response:", JSON.stringify(response, null, 2));
 
       if (!response.isSuccess) {
         throw new RpcException({

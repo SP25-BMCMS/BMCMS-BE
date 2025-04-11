@@ -1011,24 +1011,8 @@ export class TaskAssignmentsService {
         yPos += 30 // Move below header
 
         // Logo placeholder (placed on the right side of header)
-<<<<<<< HEAD
-        const logoPath = path.join('C:', 'CapStone', 'New folder', 'BMCMS-BE', 'apps', 'Tasks', 'assets', 'logo.png');
-        try {
-          doc.image(logoPath, CONTENT_WIDTH - 70, PAGE_MARGIN + 5, {
-            fit: [80, 50],
-            align: 'center',
-            valign: 'center'
-          });
-        } catch (logoError) {
-          // Fallback to placeholder if logo can't be loaded
-          doc.rect(CONTENT_WIDTH - 70, PAGE_MARGIN + 5, 80, 50).stroke();
-          doc.text('Logo', CONTENT_WIDTH - 50, PAGE_MARGIN + 25);
-          console.error('Error loading logo:', logoError);
-        }
-=======
         doc.rect(CONTENT_WIDTH - 70, PAGE_MARGIN + 5, 80, 50).stroke()
         doc.text('Logo', CONTENT_WIDTH - 50, PAGE_MARGIN + 25)
->>>>>>> 957e0f6ffd92c4e8995a9b0bcfa11e2ec13b3e02
 
         // Section: Crack report information
         yPos += 10
@@ -1742,5 +1726,3 @@ export class TaskAssignmentsService {
     }
   }
 }
-
-

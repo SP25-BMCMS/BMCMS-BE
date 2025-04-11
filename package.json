@@ -20,7 +20,7 @@
     "prisma:generate": "npx prisma generate --schema=apps/users/prisma/schema.prisma && npx prisma generate --schema=apps/tasks/prisma/schema.prisma && npx prisma generate --schema=apps/cracks/prisma/schema.prisma && npx prisma generate --schema=apps/buildings/prisma/schema.prisma && npx prisma generate --schema=apps/schedules/prisma/schema.prisma && npx prisma generate --schema=apps/chatbot/prisma/schema.prisma",
     "prisma:deploy": "npx prisma migrate dev --schema=apps/users/prisma/schema.prisma --name init && npx prisma migrate dev --schema=apps/tasks/prisma/schema.prisma --name init && npx prisma migrate dev --schema=apps/cracks/prisma/schema.prisma --name init && npx prisma migrate dev --schema=apps/buildings/prisma/schema.prisma --name init && npx prisma migrate dev --schema=apps/schedules/prisma/schema.prisma --name init && npx prisma migrate dev --schema=apps/chatbot/prisma/schema.prisma --name init",
     "prisma:seed": "ts-node apps/Tasks/prisma/seed.ts",
-    "nest:start": "concurrently \"nest start buildings --watch\" \"nest start tasks --watch\" \"nest start schedules --watch\" \"nest start users --watch\" \"nest start cracks --watch\" \"nest start chatbot --watch\"",
+    "nest:start": "concurrently \"nest start buildings --watch\" \"nest start tasks --watch\" \"nest start schedules --watch\" \"nest start users --watch\" \"nest start cracks --watch\" \"nest start chatbot --watch\" \"nest start notifications --watch\"",
     "rebuild": "rimraf dist && npm run prisma:generate && npm run build"
   },
   "dependencies": {

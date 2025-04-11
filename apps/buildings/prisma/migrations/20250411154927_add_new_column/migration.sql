@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Building" ALTER COLUMN "completion_date" SET DEFAULT CURRENT_TIMESTAMP,
+ALTER COLUMN "construction_date" SET DEFAULT CURRENT_TIMESTAMP;

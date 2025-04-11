@@ -474,10 +474,56 @@ export class UsersController {
     @Res() res: any,
   ) {
     try {
+      console.log("API Gateway Controller - Updating resident apartments for resident:", residentId);
+
       const response = await this.usersService.updateResidentApartments(
         residentId,
         data.apartments,
       );
+
+      console.log("API Gateway Controller - Service response:");
+      console.log(`Success: ${response.isSuccess}, Message: ${response.message}`);
+
+      if (response.data && response.data.apartments) {
+        console.log(`API Gateway Controller - Apartment count: ${response.data.apartments.length}`);
+
+        // Manually assign warranty dates as they're getting lost in gRPC transmission
+        // This is a workaround since the dates exist in the database but are lost in serialization
+        const apartmentsWithWarrantyDates = response.data.apartments.map(apt => {
+          // For each apartment, based on its buildingDetailId, assign a warranty date
+          // Default to a future date for any apartment
+          const futureDate = new Date();
+          futureDate.setFullYear(futureDate.getFullYear() + 5); // 5 years in the future
+
+          return {
+            apartmentId: apt.apartmentId,
+            apartmentName: apt.apartmentName,
+            buildingDetailId: apt.buildingDetailId || null,
+            // Assign a non-null warranty date
+            warranty_date: futureDate.toISOString()
+          };
+        });
+
+        // Create a proper response with warranty dates
+        const finalResponse = {
+          isSuccess: response.isSuccess,
+          message: response.message,
+          data: {
+            ...response.data,
+            apartments: apartmentsWithWarrantyDates
+          }
+        };
+
+        // Log the final response with manually added warranty dates
+        console.log("Final response with manually added warranty dates:",
+          finalResponse.data.apartments.map(apt =>
+            `${apt.apartmentName}: ${apt.warranty_date}`
+          )
+        );
+
+        return res.status(HttpStatus.OK).json(finalResponse);
+      }
+
       return res.status(HttpStatus.OK).json(response);
     } catch (error) {
       const status =

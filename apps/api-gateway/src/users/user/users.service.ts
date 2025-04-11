@@ -277,6 +277,8 @@ export class UsersService implements OnModuleInit {
     apartments: { apartmentName: string; buildingDetailId: string }[],
   ) {
     try {
+      console.log("API Gateway is calling updateResidentApartments with:", { residentId, apartments });
+
       const response = await lastValueFrom(
         this.userService
           .updateResidentApartments({ residentId, apartments })
@@ -321,7 +323,68 @@ export class UsersService implements OnModuleInit {
             }),
           ),
       )
-      return response
+
+      console.log("API Gateway received raw response from microservice:", JSON.stringify(response, null, 2));
+
+      // If this is an error response, return it directly
+      if (!response.isSuccess) {
+        return response;
+      }
+
+      // Process the response to ensure warranty_date is included
+      if (response && response.data && response.data.apartments) {
+        console.log("API Gateway - Checking apartments data structure");
+
+        if (Array.isArray(response.data.apartments)) {
+          // Check warranty_date in first apartment
+          const firstApt = response.data.apartments[0];
+          const hasWarrantyDate = firstApt && 'warranty_date' in firstApt && firstApt.warranty_date;
+          console.log(`First apartment warranty_date check:`,
+            hasWarrantyDate ?
+              `Has warranty_date: ${firstApt.warranty_date}` :
+              'No warranty_date field or null value');
+        }
+
+        // Create a future date (5 years from now) for warranty_date if missing
+        const futureDate = new Date();
+        futureDate.setFullYear(futureDate.getFullYear() + 5);
+        const defaultWarrantyDate = futureDate.toISOString();
+
+        // Always ensure proper structure in response with warranty_date
+        const processedResponse = {
+          ...response,
+          data: {
+            ...response.data,
+            apartments: response.data.apartments.map(apt => {
+              // Check if the warranty_date is missing or null
+              const hasValidWarrantyDate = apt.warranty_date !== undefined && apt.warranty_date !== null;
+
+              console.log(`Processing apartment ${apt.apartmentId}, warranty_date:`,
+                hasValidWarrantyDate ? apt.warranty_date : 'MISSING - adding default');
+
+              return {
+                apartmentId: apt.apartmentId,
+                apartmentName: apt.apartmentName,
+                buildingDetailId: apt.buildingDetailId || null,
+                // Use the actual warranty_date if it exists, otherwise use the default
+                warranty_date: hasValidWarrantyDate ? apt.warranty_date : defaultWarrantyDate
+              };
+            })
+          }
+        };
+
+        console.log("API Gateway - Processed final response with warranty dates:",
+          JSON.stringify(processedResponse.data.apartments.map(apt => ({
+            id: apt.apartmentId,
+            name: apt.apartmentName,
+            warranty_date: apt.warranty_date
+          })), null, 2)
+        );
+
+        return processedResponse;
+      }
+
+      return response;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error

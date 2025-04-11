@@ -63,17 +63,10 @@ export class BuildingsService {
           Status: CreateBuildingDto.status,
           construction_date: CreateBuildingDto.construction_date,
           completion_date: CreateBuildingDto.completion_date,
+          Warranty_date: CreateBuildingDto.Warranty_date,
         },
       })
 
-      // if(!newBuilding){
-      //   return {
-      //     statusCode: 500,
-      //     message: 'Something wwrong wwhile created',
-      //     data: newBuilding,
-      //   };
-
-      // }
       return {
         statusCode: 201,
         message: 'Building created successfully',

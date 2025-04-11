@@ -28,8 +28,9 @@ model Building {
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   Status            BuildingStatus?
-  construction_date String
-  completion_date   String
+  construction_date DateTime         @default(now()) @db.Date
+  completion_date   DateTime         @default(now()) @db.Date
+  Warranty_date     DateTime         @default(now()) @db.Date
 }
 
 enum BuildingStatus {

@@ -892,10 +892,13 @@ export class UsersService {
         }
       }
 
-      // Validate buildingDetail IDs
+      // Validate buildingDetail IDs and get building information including warranty_date
+      const apartmentsWithWarranty = [];
+
       for (const apartment of apartments) {
         try {
-          const buildingResponse = await firstValueFrom(
+          // Validate if buildingDetail exists
+          const buildingDetailResponse = await firstValueFrom(
             this.buildingClient
               .send(BUILDINGDETAIL_PATTERN.CHECK_EXISTS, {
                 buildingDetailId: apartment.buildingDetailId,
@@ -913,12 +916,77 @@ export class UsersService {
               ),
           )
 
-          if (!buildingResponse.exists) {
+          if (!buildingDetailResponse.exists) {
             return {
               isSuccess: false,
               message: `Không tìm thấy tòa nhà với ID ${apartment.buildingDetailId}`,
               data: null
             }
+          }
+
+          // Get building information to get warranty_date
+          const buildingDetailInfo = await firstValueFrom(
+            this.buildingClient
+              .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, {
+                buildingDetailId: apartment.buildingDetailId,
+              })
+              .pipe(
+                timeout(5000),
+                catchError((err) => {
+                  console.error('Error getting building details:', err)
+                  return of({
+                    statusCode: 503,
+                    message: 'Dịch vụ tòa nhà không phản hồi',
+                    data: null
+                  })
+                }),
+              ),
+          )
+
+          // Extract building data and warranty_date
+          if (buildingDetailInfo.statusCode === 200 && buildingDetailInfo.data) {
+            // Navigate to the building through building detail
+            const buildingId = buildingDetailInfo.data.buildingId;
+
+            // Get the actual building information to access warranty_date
+            const buildingResponse = await firstValueFrom(
+              this.buildingClient
+                .send(BUILDINGS_PATTERN.GET_BY_ID, {
+                  buildingId: buildingId,
+                })
+                .pipe(
+                  timeout(5000),
+                  catchError((err) => {
+                    console.error('Error getting building information:', err)
+                    return of({
+                      statusCode: 503,
+                      message: 'Dịch vụ tòa nhà không phản hồi',
+                      data: null
+                    })
+                  }),
+                ),
+            )
+
+            if (buildingResponse.statusCode === 200 && buildingResponse.data) {
+              // Extract warranty_date from building data
+              const warrantyDate = buildingResponse.data.Warranty_date;
+
+              // Add apartment with warranty_date to the array
+              apartmentsWithWarranty.push({
+                ...apartment,
+                warranty_date: warrantyDate
+              });
+
+              console.log(`Warranty date for building ${buildingId}: ${warrantyDate}`);
+            } else {
+              // If building data could not be retrieved, add apartment without warranty_date
+              apartmentsWithWarranty.push(apartment);
+              console.log(`Could not retrieve building data for building detail ${apartment.buildingDetailId}`);
+            }
+          } else {
+            // If building detail data could not be retrieved, add apartment without warranty_date
+            apartmentsWithWarranty.push(apartment);
+            console.log(`Could not retrieve building detail data for ${apartment.buildingDetailId}`);
           }
         } catch (error) {
           console.error('Error validating building:', error)
@@ -930,12 +998,45 @@ export class UsersService {
         }
       }
 
+      // Log warranty date
+      console.log('Apartments with warranty dates:', JSON.stringify(apartmentsWithWarranty, null, 2));
+
+      // Fetch full user data with userDetails included
+      const fullUserData = await this.prisma.user.findUnique({
+        where: { userId: residentId },
+        include: {
+          userDetails: true,
+          apartments: true
+        }
+      });
+
       // Update apartments by adding new ones without deleting existing ones
       const updatedUser = await this.prisma.user.update({
         where: { userId: residentId },
         data: {
           apartments: {
-            create: apartments,
+            create: apartmentsWithWarranty.map(apt => {
+              // Kiểm tra kiểu dữ liệu của warranty_date
+              let warrantyDate = apt.warranty_date || null;
+              if (warrantyDate && !(warrantyDate instanceof Date)) {
+                try {
+                  // Cố gắng chuyển đổi sang Date nếu là string ISO
+                  warrantyDate = new Date(warrantyDate);
+                } catch (e) {
+                  console.error(`Cannot convert warranty_date to Date: ${warrantyDate}`);
+                  warrantyDate = null;
+                }
+              }
+
+              const apartmentData = {
+                apartmentId: apt.apartmentId,
+                apartmentName: apt.apartmentName,
+                buildingDetailId: apt.buildingDetailId,
+                warranty_date: warrantyDate,
+              };
+              console.log('Mapping apartment with warranty_date:', apt.apartmentId, JSON.stringify(apartmentData, null, 2));
+              return apartmentData;
+            }),
           },
         },
         include: {
@@ -943,18 +1044,151 @@ export class UsersService {
         },
       })
 
+      // Verify data was saved correctly
+      console.log('Database records after save:');
+      const savedApartments = await this.prisma.apartment.findMany({
+        where: {
+          ownerId: residentId,
+          buildingDetailId: {
+            in: apartmentsWithWarranty.map(apt => apt.buildingDetailId)
+          }
+        },
+        orderBy: {
+          apartmentId: 'desc'
+        }
+      });
+
+      console.log('Recently saved apartments:', JSON.stringify(savedApartments, null, 2));
+
+      // Lấy tất cả căn hộ của user để trả về trong response
+      const allApartments = await this.prisma.apartment.findMany({
+        where: {
+          ownerId: residentId,
+        },
+      });
+
+      console.log('All apartments from database:', JSON.stringify(allApartments.map(apt => ({
+        apartmentId: apt.apartmentId,
+        apartmentName: apt.apartmentName,
+        hasWarrantyDate: !!apt.warranty_date,
+        warrantyDateType: apt.warranty_date ? typeof apt.warranty_date : 'undefined',
+        warrantyDateValue: apt.warranty_date ? String(apt.warranty_date) : 'null'
+      })), null, 2));
+
+      // Lấy model info
+      const modelInfo = this.prisma.apartment.fields;
+      console.log('Apartment model fields:', modelInfo);
+
+      // Tạo response data
+      const responseData = {
+        userId: fullUserData.userId,
+        username: fullUserData.username,
+        email: fullUserData.email,
+        phone: fullUserData.phone,
+        role: fullUserData.role,
+        dateOfBirth: fullUserData.dateOfBirth ? fullUserData.dateOfBirth.toISOString() : null,
+        gender: fullUserData.gender,
+        accountStatus: fullUserData.accountStatus,
+        apartments: allApartments.map((apt) => {
+          // Kiểm tra kiểu dữ liệu của warranty_date
+          let formattedWarrantyDate = null;
+          if (apt.warranty_date) {
+            if (apt.warranty_date instanceof Date) {
+              formattedWarrantyDate = apt.warranty_date.toISOString();
+              console.log(`Apartment ${apt.apartmentId}: warranty_date is Date, formatted to ${formattedWarrantyDate}`);
+            } else if (typeof apt.warranty_date === 'string') {
+              // Nếu là string, trả về luôn
+              formattedWarrantyDate = apt.warranty_date;
+              console.log(`Apartment ${apt.apartmentId}: warranty_date is string: ${formattedWarrantyDate}`);
+            } else {
+              // Nếu là kiểu dữ liệu khác, chuyển đổi thành string
+              formattedWarrantyDate = String(apt.warranty_date);
+              console.log(`Apartment ${apt.apartmentId}: warranty_date is other type, converted to ${formattedWarrantyDate}`);
+            }
+          } else {
+            console.log(`Apartment ${apt.apartmentId}: warranty_date is null or undefined`);
+          }
+
+          // Create an explicit object without relying on the Prisma model's shape
+          const apartmentObj = {
+            apartmentId: apt.apartmentId,
+            apartmentName: apt.apartmentName,
+            buildingDetailId: apt.buildingDetailId,
+            warranty_date: formattedWarrantyDate
+          };
+
+          console.log(`Final apartment object: ${JSON.stringify(apartmentObj)}`);
+
+          return apartmentObj;
+        }),
+        userDetails: fullUserData.userDetails
+          ? {
+            positionId: fullUserData.userDetails.positionId,
+            departmentId: fullUserData.userDetails.departmentId,
+            staffStatus: fullUserData.userDetails.staffStatus,
+            image: fullUserData.userDetails.image
+          }
+          : null,
+      };
+
+      console.log('Final response data with warranty_date:', JSON.stringify(responseData, null, 2));
+      console.log('Apartments data check - has warranty_date field?',
+        responseData.apartments.map(apt => ({ id: apt.apartmentId, has_warranty: !!apt.warranty_date }))
+      );
+
+      // Convert to JSON string and parse back to ensure proper serialization
+      const stringifiedData = JSON.stringify(responseData);
+      const parsedData = JSON.parse(stringifiedData);
+
+      // Make a new final object explicitly to avoid any serialization issues
+      const finalData = {
+        userId: parsedData.userId,
+        username: parsedData.username,
+        email: parsedData.email,
+        phone: parsedData.phone,
+        role: parsedData.role,
+        dateOfBirth: parsedData.dateOfBirth,
+        gender: parsedData.gender,
+        accountStatus: parsedData.accountStatus,
+        apartments: parsedData.apartments.map(apt => {
+          // Ensure warranty_date is properly set
+          return {
+            apartmentId: apt.apartmentId,
+            apartmentName: apt.apartmentName,
+            buildingDetailId: apt.buildingDetailId,
+            warranty_date: apt.warranty_date || null
+          };
+        }),
+        userDetails: parsedData.userDetails
+      };
+
+      // Final check before returning
+      console.log('Final serialized data - apartments check:',
+        finalData.apartments.map(apt => ({
+          id: apt.apartmentId,
+          name: apt.apartmentName,
+          has_warranty: 'warranty_date' in apt,
+          warranty_value: apt.warranty_date
+        }))
+      );
+
+      // Return result with explicit data structure for gRPC compatibility
       return {
         isSuccess: true,
         message: 'Thêm căn hộ thành công',
         data: {
-          userId: updatedUser.userId,
-          username: updatedUser.username,
-          apartments: updatedUser.apartments.map((apt) => ({
-            apartmentName: apt.apartmentName,
-            buildingDetailId: apt.buildingDetailId,
-          })),
-        },
-      }
+          userId: finalData.userId,
+          username: finalData.username,
+          email: finalData.email,
+          phone: finalData.phone,
+          role: finalData.role,
+          dateOfBirth: finalData.dateOfBirth,
+          gender: finalData.gender,
+          accountStatus: finalData.accountStatus,
+          userDetails: finalData.userDetails,
+          apartments: finalData.apartments
+        }
+      };
     } catch (error) {
       console.error('Error updating resident apartments:', error)
       return {

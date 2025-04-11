@@ -37,12 +37,12 @@ model UserDetails {
 }
 
 model Apartment {
-  apartmentId      String @id @default(uuid())
+  apartmentId      String   @id @default(uuid())
   apartmentName    String
   buildingDetailId String
-  ownerId          String @map("owner_id")
-
-  owner User @relation(fields: [ownerId], references: [userId], onDelete: Cascade)
+  ownerId          String   @map("owner_id")
+  warranty_date    DateTime @default(now()) @db.Date
+  owner            User     @relation(fields: [ownerId], references: [userId], onDelete: Cascade)
 }
 
 model Department {
