@@ -1,16 +1,16 @@
-import { Module } from '@nestjs/common';
-import { TaskAssignmentsService } from './TaskAssignments.service';
-import { TaskAssignmentsController } from './TaskAssignments.controller';
-import { PrismaModule } from '../prisma/prisma.module';
-import { ClientsModule, ClientProxyFactory, Transport } from '@nestjs/microservices';
-import { ClientConfigService } from 'apps/configs/client-config.service';
-import { ClientConfigModule } from 'apps/configs/client-config.module';
-import { ConfigService } from '@nestjs/config';
-import { join } from 'path';
+import { Module } from '@nestjs/common'
+import { TaskAssignmentsService } from './TaskAssignments.service'
+import { TaskAssignmentsController } from './TaskAssignments.controller'
+import { PrismaModule } from '../prisma/prisma.module'
+import { ClientsModule, ClientProxyFactory, Transport } from '@nestjs/microservices'
+import { ClientConfigService } from 'apps/configs/client-config.service'
+import { ClientConfigModule } from 'apps/configs/client-config.module'
+import { ConfigService } from '@nestjs/config'
+import { join } from 'path'
 
-const USERS_CLIENT = 'USERS_CLIENT';
-const TASK_CLIENT = 'TASK_CLIENT';
-const CRACK_CLIENT = 'CRACK_CLIENT';
+const USERS_CLIENT = 'USERS_CLIENT'
+const TASK_CLIENT = 'TASK_CLIENT'
+const CRACK_CLIENT = 'CRACK_CLIENT'
 
 @Module({
   imports: [
@@ -20,11 +20,11 @@ const CRACK_CLIENT = 'CRACK_CLIENT';
       {
         name: USERS_CLIENT,
         useFactory: (configService: ConfigService) => {
-          const isLocal = process.env.NODE_ENV !== 'production';
+          const isLocal = process.env.NODE_ENV !== 'production'
           const usersHost = isLocal
             ? configService.get('USERS_SERVICE_HOST', 'localhost')
-            : 'users_service';
-          const usersPort = configService.get('USERS_SERVICE_PORT', '3001');
+            : 'users_service'
+          const usersPort = configService.get('USERS_SERVICE_PORT', '3001')
 
           return {
             transport: Transport.GRPC,
@@ -43,53 +43,43 @@ const CRACK_CLIENT = 'CRACK_CLIENT';
                 oneofs: true,
               },
             },
-          };
+          }
         },
         inject: [ConfigService],
       },
       {
         name: TASK_CLIENT,
         useFactory: (configService: ConfigService) => {
-          const user = configService.get('RABBITMQ_USER');
-          const password = configService.get('RABBITMQ_PASSWORD');
-          const host = configService.get('RABBITMQ_HOST');
-          const isLocal = process.env.NODE_ENV !== 'production';
+          const url = configService.get('RABBITMQ_URL')
           return {
             transport: Transport.RMQ,
             options: {
-              urls: isLocal
-                ? [`amqp://${user}:${password}@${host}`]
-                : [`amqp://${user}:${password}@rabbitmq:5672`],
+              urls: [url],
               queue: 'tasks_queue',
               queueOptions: {
                 durable: true,
                 prefetchCount: 1,
               },
             },
-          };
+          }
         },
         inject: [ConfigService],
       },
       {
         name: CRACK_CLIENT,
         useFactory: (configService: ConfigService) => {
-          const user = configService.get('RABBITMQ_USER');
-          const password = configService.get('RABBITMQ_PASSWORD');
-          const host = configService.get('RABBITMQ_HOST');
-          const isLocal = process.env.NODE_ENV !== 'production';
+          const url = configService.get('RABBITMQ_URL')
           return {
             transport: Transport.RMQ,
             options: {
-              urls: isLocal
-                ? [`amqp://${user}:${password}@${host}`]
-                : [`amqp://${user}:${password}@rabbitmq:5672`],
+              urls: [url],
               queue: 'cracks_queue',
               queueOptions: {
                 durable: true,
                 prefetchCount: 1,
               },
             },
-          };
+          }
         },
         inject: [ConfigService],
       },
@@ -100,8 +90,8 @@ const CRACK_CLIENT = 'CRACK_CLIENT';
     {
       provide: 'CRACK_CLIENT',
       useFactory: (configService: ClientConfigService) => {
-        const clientOptions = configService.cracksClientOptions;
-        return ClientProxyFactory.create(clientOptions);
+        const clientOptions = configService.cracksClientOptions
+        return ClientProxyFactory.create(clientOptions)
       },
       inject: [ClientConfigService],
     },

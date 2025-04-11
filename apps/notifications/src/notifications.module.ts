@@ -17,14 +17,9 @@ import { MailerModule } from '@nestjs-modules/mailer'
         // Get template directory from environment variable or use default
         const templateDir = configService.get<string>('EMAIL_TEMPLATE_DIR') ||
           join(process.cwd(), 'libs/contracts/src/notifications/templates')
-
-        console.log('Using email template directory:', templateDir)
-
         return {
           transport: {
-            host: configService.get<string>('EMAIL_HOST'),
-            port: configService.get<number>('EMAIL_PORT'),
-            secure: false,
+            service: 'gmail', // Use Gmail service
             auth: {
               user: configService.get<string>('EMAIL_USER'),
               pass: configService.get<string>('EMAIL_PASSWORD'),

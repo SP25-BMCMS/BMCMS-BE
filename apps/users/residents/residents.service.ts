@@ -1,12 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
-import { ResidentDto } from '../../../libs/contracts/src/residents/resident.dto';
-import { ClientProxy } from '@nestjs/microservices';
-import { BUILDINGS_PATTERN } from '../../../libs/contracts/src/buildings/buildings.patterns';
-import { BUILDINGDETAIL_PATTERN } from '../../../libs/contracts/src/BuildingDetails/buildingdetails.patterns';
-import { firstValueFrom, catchError, timeout, of, retry, from } from 'rxjs';
-import { Prisma } from '@prisma/client';
-import { AREAS_PATTERN } from '../../../libs/contracts/src/Areas/Areas.patterns';
+import { ResidentDto } from '../../../libs/contracts/src/residents/resident.dto'
+import { ClientProxy } from '@nestjs/microservices'
+import { BUILDINGS_PATTERN } from '../../../libs/contracts/src/buildings/buildings.patterns'
+import { BUILDINGDETAIL_PATTERN } from '../../../libs/contracts/src/BuildingDetails/buildingdetails.patterns'
+import { firstValueFrom, catchError, timeout, of, retry, from } from 'rxjs'
+import { Prisma } from '@prisma/client'
+import { AREAS_PATTERN } from '../../../libs/contracts/src/Areas/Areas.patterns'
 
 @Injectable()
 export class ResidentsService {
@@ -25,21 +25,21 @@ export class ResidentsService {
           timeout(5000),
           retry(2), // Retry 2 times before giving up
           catchError(err => {
-            console.error(`Error fetching building ${buildingId} after retries:`, err);
+            console.error(`Error fetching building ${buildingId} after retries:`, err)
             return of({
               statusCode: 404,
               data: null
-            });
+            })
           })
         )
-      );
-      return response;
+      )
+      return response
     } catch (error) {
-      console.error(`Failed to get building ${buildingId}:`, error);
+      console.error(`Failed to get building ${buildingId}:`, error)
       return {
         statusCode: 404,
         data: null
-      };
+      }
     }
   }
 
@@ -53,35 +53,35 @@ export class ResidentsService {
           timeout(5000),
           retry(2), // Retry 2 times before giving up
           catchError(err => {
-            console.error(`Error fetching area ${areaId} after retries:`, err);
+            console.error(`Error fetching area ${areaId} after retries:`, err)
             return of({
               statusCode: 404,
               data: null
-            });
+            })
           })
         )
-      );
-      return response;
+      )
+      return response
     } catch (error) {
-      console.error(`Failed to get area ${areaId}:`, error);
+      console.error(`Failed to get area ${areaId}:`, error)
       return {
         statusCode: 404,
         data: null
-      };
+      }
     }
   }
 
   async getAllResidents(paginationParams?: { page?: number; limit?: number; search?: string }) {
     try {
-      const { page = 1, limit = 10, search = '' } = paginationParams || {};
-      const skip = (page - 1) * limit;
+      const { page = 1, limit = 10, search = '' } = paginationParams || {}
+      const skip = (page - 1) * limit
 
-      console.log(`Service - Getting residents with params - page: ${page}, limit: ${limit}, search: ${search || 'none'}, skip: ${skip}`);
+      console.log(`Service - Getting residents with params - page: ${page}, limit: ${limit}, search: ${search || 'none'}, skip: ${skip}`)
 
       // Tạo điều kiện tìm kiếm
       const whereCondition: any = {
         role: 'Resident'
-      };
+      }
 
       // Nếu có từ khóa tìm kiếm
       if (search && search.trim()) {
@@ -89,15 +89,15 @@ export class ResidentsService {
           { username: { contains: search, mode: 'insensitive' } },
           { email: { contains: search, mode: 'insensitive' } },
           { phone: { contains: search, mode: 'insensitive' } }
-        ];
+        ]
       }
 
       // Get total count for pagination with search filter
       const totalCount = await this.prisma.user.count({
         where: whereCondition
-      });
+      })
 
-      const totalPages = Math.ceil(totalCount / limit);
+      const totalPages = Math.ceil(totalCount / limit)
 
       // Get all users with Resident role with pagination and search
       const residents = await this.prisma.user.findMany({
@@ -116,16 +116,16 @@ export class ResidentsService {
         },
         skip,
         take: limit
-      });
+      })
 
-      console.log('Found residents:', residents.length);
+      console.log('Found residents:', residents.length)
 
       // Process residents in parallel with better error handling
       const residentsWithBuildingDetails = await Promise.all(
         residents.map(async (resident) => {
           // Process all apartments for a resident in parallel
           const apartmentPromises = resident.apartments.map(async (apartment) => {
-            console.log(`Processing apartment ${apartment.apartmentName} with buildingDetailId ${apartment.buildingDetailId}`);
+            console.log(`Processing apartment ${apartment.apartmentName} with buildingDetailId ${apartment.buildingDetailId}`)
 
             try {
               // Get building detail information
@@ -137,21 +137,21 @@ export class ResidentsService {
                   timeout(5000),
                   retry(2),
                   catchError(err => {
-                    console.error(`Error fetching building detail ${apartment.buildingDetailId}:`, err);
-                    return of({ statusCode: 404, data: null });
+                    console.error(`Error fetching building detail ${apartment.buildingDetailId}:`, err)
+                    return of({ statusCode: 404, data: null })
                   })
                 )
-              );
+              )
 
               console.log(`Building detail response for ${apartment.buildingDetailId}:`,
                 buildingDetailResponse?.statusCode,
                 buildingDetailResponse?.data?.building ? 'Has building' : 'No building',
                 buildingDetailResponse?.data?.building?.buildingId ? 'Has buildingId' : 'No buildingId'
-              );
+              )
 
               // Lấy thông tin buildingDetail từ response
               const buildingDetail = buildingDetailResponse?.statusCode === 200 ?
-                buildingDetailResponse.data : null;
+                buildingDetailResponse.data : null
 
               // Format response theo đúng cấu trúc proto
               return {
@@ -163,18 +163,18 @@ export class ResidentsService {
                   total_apartments: buildingDetail.total_apartments || 0,
                   building: buildingDetail.building || null // Đã có thông tin building và area từ buildingDetail
                 } : null
-              };
+              }
             } catch (error) {
-              console.error(`Error processing apartment ${apartment.apartmentName}:`, error);
+              console.error(`Error processing apartment ${apartment.apartmentName}:`, error)
               return {
                 apartmentName: apartment.apartmentName,
                 buildingDetails: null
-              };
+              }
             }
-          });
+          })
 
           // Wait for all apartment details to be fetched
-          const apartmentsWithBuildings = await Promise.all(apartmentPromises);
+          const apartmentsWithBuildings = await Promise.all(apartmentPromises)
 
           return {
             userId: resident.userId,
@@ -187,16 +187,16 @@ export class ResidentsService {
             accountStatus: resident.accountStatus,
             userDetails: resident.userDetails,
             apartments: apartmentsWithBuildings
-          };
+          }
         })
-      );
+      )
 
       const paginationData = {
         total: totalCount,
         page: page,
         limit: limit,
         totalPages: totalPages
-      };
+      }
 
 
       return {
@@ -204,9 +204,9 @@ export class ResidentsService {
         message: 'Danh sách cư dân',
         data: residentsWithBuildingDetails,
         pagination: paginationData
-      };
+      }
     } catch (error) {
-      console.error('Error in getAllResidents:', error);
+      console.error('Error in getAllResidents:', error)
       return {
         isSuccess: false,
         message: error.message || 'Lỗi khi lấy danh sách cư dân',
@@ -217,7 +217,7 @@ export class ResidentsService {
           limit: 10,
           totalPages: 0
         }
-      };
+      }
     }
   }
 
@@ -237,7 +237,7 @@ export class ResidentsService {
           role: true,
           userDetails: true
         }
-      });
+      })
 
       if (!resident) {
         return {
@@ -245,7 +245,7 @@ export class ResidentsService {
           success: false,
           message: "Resident not found",
           data: []
-        };
+        }
       }
 
 
@@ -254,7 +254,7 @@ export class ResidentsService {
         where: {
           ownerId: residentId
         }
-      });
+      })
 
       // Return apartments directly instead of wrapping in user object
       if (apartments.length === 0) {
@@ -263,7 +263,7 @@ export class ResidentsService {
           success: true,
           message: "No apartments found",
           data: []
-        };
+        }
       }
 
       // Process apartments with building details
@@ -279,13 +279,13 @@ export class ResidentsService {
                 timeout(5000),
                 retry(2),
                 catchError(err => {
-                  return of({ statusCode: 404, data: null });
+                  return of({ statusCode: 404, data: null })
                 })
               )
-            ) : { statusCode: 404, data: null };
+            ) : { statusCode: 404, data: null }
             // Get buildingDetail information
             const buildingDetail = buildingDetailResponse?.statusCode === 200 ?
-              buildingDetailResponse.data : null;
+              buildingDetailResponse.data : null
 
             // Explicit apartment response object
             return {
@@ -308,16 +308,16 @@ export class ResidentsService {
                   area: buildingDetail.building.area || null
                 } : null
               } : null
-            };
+            }
           } catch (error) {
             return {
               apartmentId: apartment.apartmentId || '',
               apartmentName: apartment.apartmentName || '',
               buildingDetails: null
-            };
+            }
           }
         })
-      );
+      )
 
       // Return in the format expected by GetApartmentByResidentIdResponse proto
       return {
@@ -325,20 +325,20 @@ export class ResidentsService {
         success: true,
         message: "Success",
         data: processedApartments
-      };
+      }
     } catch (error) {
       return {
         isSuccess: false,
         success: false,
         message: error.message || 'Unknown error',
         data: []
-      };
+      }
     }
   }
 
   async getApartmentByResidentAndApartmentId(residentId: string, apartmentId: string) {
     try {
-      console.log(`Getting apartment for resident ${residentId} and apartment ${apartmentId}`);
+      console.log(`Getting apartment for resident ${residentId} and apartment ${apartmentId}`)
 
       // Get user information first
       const resident = await this.prisma.user.findUnique({
@@ -350,16 +350,16 @@ export class ResidentsService {
           phone: true,
           role: true
         }
-      });
+      })
 
       if (!resident) {
-        console.log(`Resident with ID ${residentId} not found`);
+        console.log(`Resident with ID ${residentId} not found`)
         return {
           isSuccess: false,
           success: false,
           message: "Resident not found",
           data: null
-        };
+        }
       }
 
       // Find the specific apartment
@@ -368,22 +368,22 @@ export class ResidentsService {
           apartmentId: apartmentId,
           ownerId: residentId
         }
-      });
+      })
 
       if (!apartment) {
-        console.log(`Apartment with ID ${apartmentId} not found for resident ${residentId}`);
+        console.log(`Apartment with ID ${apartmentId} not found for resident ${residentId}`)
         return {
           isSuccess: false,
           success: false,
           message: "Apartment not found",
           data: null
-        };
+        }
       }
 
-      console.log(`Found apartment: ${apartment.apartmentName}`);
+      console.log(`Found apartment: ${apartment.apartmentName}`)
 
       // Get building detail information
-      let buildingDetail = null;
+      let buildingDetail = null
 
       if (apartment.buildingDetailId) {
         const buildingDetailResponse = await firstValueFrom(
@@ -394,16 +394,16 @@ export class ResidentsService {
             timeout(5000),
             retry(2),
             catchError(err => {
-              console.error(`Error fetching building detail ${apartment.buildingDetailId}:`, err);
-              return of({ statusCode: 404, data: null });
+              console.error(`Error fetching building detail ${apartment.buildingDetailId}:`, err)
+              return of({ statusCode: 404, data: null })
             })
           )
-        );
+        )
 
-        console.log(`Building detail response status: ${buildingDetailResponse?.statusCode}`);
+        console.log(`Building detail response status: ${buildingDetailResponse?.statusCode}`)
 
         if (buildingDetailResponse?.statusCode === 200) {
-          buildingDetail = buildingDetailResponse.data;
+          buildingDetail = buildingDetailResponse.data
         }
       }
 
@@ -412,22 +412,22 @@ export class ResidentsService {
         apartmentName: apartment.apartmentName,
         apartmentId: apartment.apartmentId,
         building: buildingDetail?.building || null
-      };
+      }
 
       return {
         isSuccess: true,
         success: true,
         message: "Success",
         data: apartmentResponse
-      };
+      }
     } catch (error) {
-      console.error('Error in getApartmentByResidentAndApartmentId:', error);
+      console.error('Error in getApartmentByResidentAndApartmentId:', error)
       return {
         isSuccess: false,
         success: false,
         message: error.message || 'Unknown error',
         data: null
-      };
+      }
     }
   }
 }
