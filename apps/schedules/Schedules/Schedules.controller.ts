@@ -10,7 +10,6 @@ import { CreateScheduleDto } from '@app/contracts/schedules/create-Schedules.dto
 import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules'
 import { ScheduleResponseDto } from '@app/contracts/schedules/Schedule.dto'
-import { $Enums } from '@prisma/client-Schedule'
 import { SCHEDULES_PATTERN } from '@app/contracts/schedules/Schedule.patterns'
 import {
   PaginationParams,
@@ -20,12 +19,12 @@ import {
 export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) { }
 
-  @MessagePattern(SCHEDULES_PATTERN.CREATE)
-  async createSchedule(
-    @Payload() createScheduleDto: CreateScheduleDto,
-  ): Promise<ApiResponse<ScheduleResponseDto>> {
-    return this.scheduleService.createSchedule(createScheduleDto)
-  }
+  // @MessagePattern(SCHEDULES_PATTERN.CREATE)
+  // async createSchedule(
+  //   @Payload() createScheduleDto: CreateScheduleDto,
+  // ): Promise<ApiResponse<ScheduleResponseDto>> {
+  //   return this.scheduleService.createSchedule(createScheduleDto)
+  // }
 
   @MessagePattern(SCHEDULES_PATTERN.UPDATE)
   async updateSchedule(
@@ -41,19 +40,6 @@ export class ScheduleController {
     return this.scheduleService.updateSchedule(schedule_id, updateScheduleDto)
   }
 
-  @MessagePattern(SCHEDULES_PATTERN.UPDATE_TYPE)
-  async changeScheduleType(
-    @Payload()
-    {
-      schedule_id,
-      schedule_type,
-    }: {
-      schedule_id: string
-      schedule_type: $Enums.ScheduleType
-    },
-  ): Promise<ApiResponse<ScheduleResponseDto>> {
-    return this.scheduleService.changeScheduleType(schedule_id, schedule_type)
-  }
 
   @MessagePattern(SCHEDULES_PATTERN.GET)
   async getAllSchedulesMicro(

@@ -895,12 +895,7 @@ export class UsersService {
         }
       }
 
-<<<<<<< HEAD
       const apartmentsWithWarranty = [];
-=======
-      // Validate buildingDetail IDs and get building information including warranty_date
-      const apartmentsWithWarranty = []
->>>>>>> f2744fc7aa63bd6d1982122cb42eb256f2523f6b
 
       for (const apartment of apartments) {
         try {
@@ -972,7 +967,6 @@ export class UsersService {
             )
 
             if (buildingResponse.statusCode === 200 && buildingResponse.data) {
-<<<<<<< HEAD
               let warrantyDate = null;
 
               if (buildingResponse.data.Warranty_date) {
@@ -990,14 +984,9 @@ export class UsersService {
               } else {
                 console.log(`No warrantyDate found for building ${buildingId}`);
               }
-=======
-              // Extract warranty_date from building data
-              const warrantyDate = buildingResponse.data.Warranty_date
->>>>>>> f2744fc7aa63bd6d1982122cb42eb256f2523f6b
 
               apartmentsWithWarranty.push({
                 ...apartment,
-<<<<<<< HEAD
                 warrantyDate: warrantyDate || apartment.warrantyDate
               });
 
@@ -1009,21 +998,6 @@ export class UsersService {
           } else {
             apartmentsWithWarranty.push(apartment);
             console.log(`Could not retrieve building detail data for ${apartment.buildingDetailId}`);
-=======
-                warranty_date: warrantyDate
-              })
-
-              console.log(`Warranty date for building ${buildingId}: ${warrantyDate}`)
-            } else {
-              // If building data could not be retrieved, add apartment without warranty_date
-              apartmentsWithWarranty.push(apartment)
-              console.log(`Could not retrieve building data for building detail ${apartment.buildingDetailId}`)
-            }
-          } else {
-            // If building detail data could not be retrieved, add apartment without warranty_date
-            apartmentsWithWarranty.push(apartment)
-            console.log(`Could not retrieve building detail data for ${apartment.buildingDetailId}`)
->>>>>>> f2744fc7aa63bd6d1982122cb42eb256f2523f6b
           }
         } catch (error) {
           console.error('Error validating building:', error)
@@ -1054,34 +1028,11 @@ export class UsersService {
         data: {
           apartments: {
             create: apartmentsWithWarranty.map(apt => {
-<<<<<<< HEAD
               return {
                 apartmentName: apt.apartmentName,
                 buildingDetailId: apt.buildingDetailId,
                 warrantyDate: apt.warrantyDate || null
               };
-=======
-              // Kiểm tra kiểu dữ liệu của warranty_date
-              let warrantyDate = apt.warranty_date || null
-              if (warrantyDate && !(warrantyDate instanceof Date)) {
-                try {
-                  // Cố gắng chuyển đổi sang Date nếu là string ISO
-                  warrantyDate = new Date(warrantyDate)
-                } catch (e) {
-                  console.error(`Cannot convert warranty_date to Date: ${warrantyDate}`)
-                  warrantyDate = null
-                }
-              }
-
-              const apartmentData = {
-                apartmentId: apt.apartmentId,
-                apartmentName: apt.apartmentName,
-                buildingDetailId: apt.buildingDetailId,
-                warranty_date: warrantyDate,
-              }
-              console.log('Mapping apartment with warranty_date:', apt.apartmentId, JSON.stringify(apartmentData, null, 2))
-              return apartmentData
->>>>>>> f2744fc7aa63bd6d1982122cb42eb256f2523f6b
             }),
           },
         },
@@ -1113,25 +1064,9 @@ export class UsersService {
         },
       })
 
-<<<<<<< HEAD
       console.log('All apartments from database:', JSON.stringify(allApartments, null, 2));
 
       // Tạo response data theo đúng cấu trúc UserResponseWithApartments trong proto
-=======
-      console.log('All apartments from database:', JSON.stringify(allApartments.map(apt => ({
-        apartmentId: apt.apartmentId,
-        apartmentName: apt.apartmentName,
-        hasWarrantyDate: !!apt.warranty_date,
-        warrantyDateType: apt.warranty_date ? typeof apt.warranty_date : 'undefined',
-        warrantyDateValue: apt.warranty_date ? String(apt.warranty_date) : 'null'
-      })), null, 2))
-
-      // Lấy model info
-      const modelInfo = this.prisma.apartment.fields
-      console.log('Apartment model fields:', modelInfo)
-
-      // Tạo response data
->>>>>>> f2744fc7aa63bd6d1982122cb42eb256f2523f6b
       const responseData = {
         userId: fullUserData.userId,
         username: fullUserData.username,
@@ -1143,47 +1078,16 @@ export class UsersService {
         accountStatus: fullUserData.accountStatus,
         // Tạo mảng apartments theo đúng cấu trúc ApartmentWithWarranty từ proto
         apartments: allApartments.map((apt) => {
-<<<<<<< HEAD
           // Log chi tiết cho việc debug
           console.log(`Processing apartment ${apt.apartmentId} with warrantyDate = '${apt.warrantyDate}'`);
-=======
-          // Kiểm tra kiểu dữ liệu của warranty_date
-          let formattedWarrantyDate = null
-          if (apt.warranty_date) {
-            if (apt.warranty_date instanceof Date) {
-              formattedWarrantyDate = apt.warranty_date.toISOString()
-              console.log(`Apartment ${apt.apartmentId}: warranty_date is Date, formatted to ${formattedWarrantyDate}`)
-            } else if (typeof apt.warranty_date === 'string') {
-              // Nếu là string, trả về luôn
-              formattedWarrantyDate = apt.warranty_date
-              console.log(`Apartment ${apt.apartmentId}: warranty_date is string: ${formattedWarrantyDate}`)
-            } else {
-              // Nếu là kiểu dữ liệu khác, chuyển đổi thành string
-              formattedWarrantyDate = String(apt.warranty_date)
-              console.log(`Apartment ${apt.apartmentId}: warranty_date is other type, converted to ${formattedWarrantyDate}`)
-            }
-          } else {
-            console.log(`Apartment ${apt.apartmentId}: warranty_date is null or undefined`)
-          }
->>>>>>> f2744fc7aa63bd6d1982122cb42eb256f2523f6b
 
           // Tạo đúng cấu trúc ApartmentWithWarranty
           return {
             apartmentId: apt.apartmentId,
             apartmentName: apt.apartmentName,
-<<<<<<< HEAD
             warrantyDate: apt.warrantyDate,
             buildingDetails: apt.buildingDetailId ? apt.buildingDetailId : null
           };
-=======
-            buildingDetailId: apt.buildingDetailId,
-            warranty_date: formattedWarrantyDate
-          }
-
-          console.log(`Final apartment object: ${JSON.stringify(apartmentObj)}`)
-
-          return apartmentObj
->>>>>>> f2744fc7aa63bd6d1982122cb42eb256f2523f6b
         }),
         userDetails: fullUserData.userDetails
           ? {
@@ -1195,54 +1099,8 @@ export class UsersService {
           : null,
       }
 
-<<<<<<< HEAD
       // Log để kiểm tra
       console.log('Final response structure:', JSON.stringify({
-=======
-      console.log('Final response data with warranty_date:', JSON.stringify(responseData, null, 2))
-      console.log('Apartments data check - has warranty_date field?',
-        responseData.apartments.map(apt => ({ id: apt.apartmentId, has_warranty: !!apt.warranty_date }))
-      )
-
-      // Convert to JSON string and parse back to ensure proper serialization
-      const stringifiedData = JSON.stringify(responseData)
-      const parsedData = JSON.parse(stringifiedData)
-
-      // Make a new final object explicitly to avoid any serialization issues
-      const finalData = {
-        userId: parsedData.userId,
-        username: parsedData.username,
-        email: parsedData.email,
-        phone: parsedData.phone,
-        role: parsedData.role,
-        dateOfBirth: parsedData.dateOfBirth,
-        gender: parsedData.gender,
-        accountStatus: parsedData.accountStatus,
-        apartments: parsedData.apartments.map(apt => {
-          // Ensure warranty_date is properly set
-          return {
-            apartmentId: apt.apartmentId,
-            apartmentName: apt.apartmentName,
-            buildingDetailId: apt.buildingDetailId,
-            warranty_date: apt.warranty_date || null
-          }
-        }),
-        userDetails: parsedData.userDetails
-      }
-
-      // Final check before returning
-      console.log('Final serialized data - apartments check:',
-        finalData.apartments.map(apt => ({
-          id: apt.apartmentId,
-          name: apt.apartmentName,
-          has_warranty: 'warranty_date' in apt,
-          warranty_value: apt.warranty_date
-        }))
-      )
-
-      // Return result with explicit data structure for gRPC compatibility
-      return {
->>>>>>> f2744fc7aa63bd6d1982122cb42eb256f2523f6b
         isSuccess: true,
         message: 'Thêm căn hộ thành công',
         data: {
@@ -1255,7 +1113,6 @@ export class UsersService {
               warrantyDate: responseData.apartments[0].warrantyDate
             } : null
         }
-<<<<<<< HEAD
       }, null, 2));
 
       // Return kết quả với cấu trúc phù hợp
@@ -1264,9 +1121,6 @@ export class UsersService {
         message: 'Thêm căn hộ thành công',
         data: responseData
       };
-=======
-      }
->>>>>>> f2744fc7aa63bd6d1982122cb42eb256f2523f6b
     } catch (error) {
       console.error('Error updating resident apartments:', error)
       return {

@@ -410,15 +410,10 @@ export class ResidentsService {
       // Create apartment response
       const apartmentResponse = {
         apartmentId: apartment.apartmentId,
-<<<<<<< HEAD
         apartmentName: apartment.apartmentName,
         warrantyDate: apartment.warrantyDate || null,
         buildingDetails: buildingDetail || null
       };
-=======
-        building: buildingDetail?.building || null
-      }
->>>>>>> f2744fc7aa63bd6d1982122cb42eb256f2523f6b
 
       return {
         isSuccess: true,

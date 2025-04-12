@@ -15,49 +15,50 @@ export class ScheduleService {
   private prisma = new PrismaClient();
 
   // Create Schedule
-  async createSchedule(
-    createScheduleDto: CreateScheduleDto,
-  ): Promise<ApiResponse<ScheduleResponseDto>> {
-    const { buildingId, ...scheduleData } = createScheduleDto
+  // async createSchedule(
+  //   createScheduleDto: CreateScheduleDto,
+  // ): Promise<ApiResponse<ScheduleResponseDto>> {
+  //   const { buildingId, ...scheduleData } = createScheduleDto
 
-    try {
-      const newSchedule = await this.prisma.$transaction(async (prisma) => {
-        const schedule = await prisma.schedule.create({
-          data: {
-            ...scheduleData,
-            start_date: createScheduleDto.start_date,
-            end_date: createScheduleDto.end_date,
-          },
-        })
+  //   try {
+  //     const newSchedule = await this.prisma.$transaction(async (prisma) => {
+  //       const schedule = await prisma.schedule.create({
+  //         data: {
+  //           ...scheduleData,
+  //           cycle: scheduleData.cycle || 'Daily',
+  //           start_date: createScheduleDto.start_date,
+  //           end_date: createScheduleDto.end_date,
+  //         },
+  //       })
 
-        if (buildingId && buildingId.length > 0) {
-          const scheduleJobs = buildingId.map((id) => ({
-            schedule_id: schedule.schedule_id,
-            run_date: new Date(),
-            status: ScheduleJobStatus.InProgress, // Use the correct enum value
-            building_id: id,
-          }))
+  //       if (buildingId && buildingId.length > 0) {
+  //         const scheduleJobs = buildingId.map((id) => ({
+  //           schedule_id: schedule.schedule_id,
+  //           run_date: new Date(),
+  //           status: ScheduleJobStatus.InProgress, // Use the correct enum value
+  //           building_id: id,
+  //         }))
 
-          await prisma.scheduleJob.createMany({
-            data: scheduleJobs,
-          })
-        }
+  //         await prisma.scheduleJob.createMany({
+  //           data: scheduleJobs,
+  //         })
+  //       }
 
-        return schedule
-      })
+  //       return schedule
+  //     })
 
-      return new ApiResponse<ScheduleResponseDto>(
-        true,
-        'Schedule created successfully',
-        newSchedule,
-      )
-    } catch (error) {
-      throw new RpcException({
-        statusCode: 400,
-        message: 'Schedule creation failed',
-      })
-    }
-  }
+  //     return new ApiResponse<ScheduleResponseDto>(
+  //       true,
+  //       'Schedule created successfully',
+  //       newSchedule,
+  //     )
+  //   } catch (error) {
+  //     throw new RpcException({
+  //       statusCode: 400,
+  //       message: 'Schedule creation failed',
+  //     })
+  //   }
+  // }
   // Update Schedule
   async updateSchedule(
     schedule_id: string,
@@ -226,42 +227,6 @@ export class ScheduleService {
     }
   }
 
-  // Change Schedule Type
-  async changeScheduleType(
-    schedule_id: string,
-    schedule_type: $Enums.ScheduleType,
-  ): Promise<ApiResponse<ScheduleResponseDto>> {
-    try {
-      const updatedSchedule = await this.prisma.schedule.update({
-        where: { schedule_id },
-        data: {
-          schedule_type,
-        },
-      })
-
-      // Convert Prisma response to ScheduleResponseDto
-      const scheduleResponse: ScheduleResponseDto = {
-        ...updatedSchedule,
-        start_date: updatedSchedule.start_date
-          ? updatedSchedule.start_date
-          : null,
-        end_date: updatedSchedule.end_date ? updatedSchedule.end_date : null,
-        created_at: updatedSchedule.created_at,
-        updated_at: updatedSchedule.updated_at,
-      }
-
-      return new ApiResponse<ScheduleResponseDto>(
-        true,
-        'Schedule type updated successfully',
-        scheduleResponse,
-      )
-    } catch (error) {
-      throw new RpcException({
-        statusCode: 400,
-        message: 'Change schedule type failed',
-      })
-    }
-  }
 
   // Get all schedules
   async getAllSchedules(

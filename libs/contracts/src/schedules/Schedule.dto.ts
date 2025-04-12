@@ -8,7 +8,6 @@ export class ScheduleResponseDto {
 
   schedule_name: string;
 
-  schedule_type: $Enums.ScheduleType;
 
   description?: string;
   @IsOptional()
@@ -19,5 +18,5 @@ export class ScheduleResponseDto {
 
   created_at: Date;    // Changed to Date
 
-  updated_at: Date;   
+  updated_at: Date;
 }

@@ -19,8 +19,6 @@ import { CreateScheduleDto } from '@app/contracts/schedules/create-Schedules.dto
 import { ScheduleResponseDto } from '@app/contracts/schedules/Schedule.dto'
 import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules'
-import { $Enums } from '@prisma/client-Schedule'
-import { ChangeScheduleTypeDto } from '@app/contracts/schedules/changeScheduleStatusDto '
 import {
   ApiTags,
   ApiOperation,
@@ -68,25 +66,7 @@ export class SchedulesController {
     return this.schedulesService.updateSchedule(schedule_id, updateScheduleDto)
   }
 
-  // Change schedule type
-  @Put('change-type/:schedule_id')
-  @ApiOperation({ summary: 'Change schedule type' })
-  @ApiParam({ name: 'schedule_id', description: 'Schedule ID' })
-  @ApiBody({ type: ChangeScheduleTypeDto })
-  @SwaggerResponse({
-    status: 200,
-    description: 'Schedule type changed successfully',
-  })
-  @SwaggerResponse({ status: 404, description: 'Schedule not found' })
-  async changeScheduleType(
-    @Param('schedule_id') schedule_id: string,
-    @Body() changeScheduleTypeDto: ChangeScheduleTypeDto,
-  ): Promise<ApiResponse<ScheduleResponseDto>> {
-    return this.schedulesService.changeScheduleType(
-      schedule_id,
-      changeScheduleTypeDto.schedule_type,
-    )
-  }
+
 
   // Get all schedules
   @Get()
