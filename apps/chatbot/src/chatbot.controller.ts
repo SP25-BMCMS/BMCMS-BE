@@ -103,6 +103,7 @@ export class ChatbotController {
     this.logger.log(`[testChat] Received message with pattern: ${pattern}`);
     this.logger.log(`[testChat] Received data: ${JSON.stringify(data)}`);
     
+    console.log("🚀 ~ ChatbotController ~ testChat ~ stringify:ádasdsadasdsdsadsdsijhdbauhsdbuhs")
     try {
       // Kiểm tra và xử lý data
       if (!data) {

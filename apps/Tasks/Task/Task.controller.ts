@@ -52,6 +52,7 @@ export class TasksController {
 
   @MessagePattern(TASKS_PATTERN.GET)
   async getAllTasks(@Payload() data: PaginationParams = {}) {
+    console.log("🚀 ~ TasksController ~ getAllTasks ~ getAllTasks:")
     return this.taskService.getAllTasks(data);
   }
 
