@@ -227,45 +227,6 @@ export class ScheduleService {
     }
   }
 
-<<<<<<< HEAD
-=======
-  // Change Schedule Type
-  async changeScheduleType(
-    schedule_id: string,
-    schedule_type: $Enums.Frequency,
-  ): Promise<ApiResponse<ScheduleResponseDto>> {
-    try {
-      const updatedSchedule = await this.prisma.schedule.update({
-        where: { schedule_id },
-        data: {
-          schedule_type,
-        },
-      })
-
-      // Convert Prisma response to ScheduleResponseDto
-      const scheduleResponse: ScheduleResponseDto = {
-        ...updatedSchedule,
-        start_date: updatedSchedule.start_date
-          ? updatedSchedule.start_date
-          : null,
-        end_date: updatedSchedule.end_date ? updatedSchedule.end_date : null,
-        created_at: updatedSchedule.created_at,
-        updated_at: updatedSchedule.updated_at,
-      }
-
-      return new ApiResponse<ScheduleResponseDto>(
-        true,
-        'Schedule type updated successfully',
-        scheduleResponse,
-      )
-    } catch (error) {
-      throw new RpcException({
-        statusCode: 400,
-        message: 'Change schedule type failed',
-      })
-    }
-  }
->>>>>>> 4e2e49669949f2e43f6f2f3f47f1071f9e0b0d0e
 
   // Get all schedules
   async getAllSchedules(
