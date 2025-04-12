@@ -1,27 +1,33 @@
-import { Module } from '@nestjs/common';
-import { BuildingsService } from './buildings.service';
-import { BuildingsController } from './buildings.controller';
-import { PrismaModule } from '../prisma/prisma.module';
-import { ClientsModule, Transport } from '@nestjs/microservices';
-import { join } from 'path';
-import { ConfigService } from '@nestjs/config';
+import { Module } from '@nestjs/common'
+import { BuildingsService } from './buildings.service'
+import { BuildingsController } from './buildings.controller'
+import { PrismaModule } from '../prisma/prisma.module'
+import { ClientsModule, Transport } from '@nestjs/microservices'
+import { join } from 'path'
+import { ConfigService } from '@nestjs/config'
 
-const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
+const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 
 @Module({
   imports: [
     PrismaModule,
-    ClientsModule.register([
+    ClientsModule.registerAsync([
       {
         name: BUILDINGS_CLIENT,
-        transport: Transport.RMQ,
-        options: {
-          urls: ['amqp://admin:admin@rabbitmq:5672'],
-          queue: 'buildings_queue',
-          queueOptions: {
-            durable: true,
-          },
+        useFactory: (configService: ConfigService) => {
+          const url = configService.get('RABBITMQ_URL')
+          return {
+            transport: Transport.RMQ,
+            options: {
+              urls: [url],
+              queue: 'buildings_queue',
+              queueOptions: {
+                durable: true,
+              },
+            },
+          }
         },
+        inject: [ConfigService],
       },
     ]),
   ],
@@ -29,4 +35,4 @@ const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT';
   controllers: [BuildingsController],
   exports: [BuildingsService],
 })
-export class BuildingsModule {}
+export class BuildingsModule { }

@@ -25,7 +25,7 @@ interface UserService {
 }
 const CRACK_PATTERNS = {
   GET_DETAILS: { cmd: 'get-crack-report-by-id' }
-};
+}
 @Injectable()
 export class TaskService {
   private userService: UserService
@@ -48,14 +48,14 @@ export class TaskService {
           timeout(5000), // Tăng timeout lên 5 giây
           retry(2),      // Thử lại 2 lần nếu thất bại
           catchError(err => {
-            console.error(`Error calling crack service with pattern ${JSON.stringify(pattern)}: `, err);
-            return throwError(() => err);
+            console.error(`Error calling crack service with pattern ${JSON.stringify(pattern)}: `, err)
+            return throwError(() => err)
           })
         )
-      );
+      )
     } catch (error) {
-      console.error(`Failed to get response from crack service after retries: `, error);
-      throw error;
+      console.error(`Failed to get response from crack service after retries: `, error)
+      throw error
     }
   }
 
@@ -117,9 +117,9 @@ export class TaskService {
           message: 'Task not found',
         }
       }
-      
-      const result = { task };
-      
+
+      const result = { task }
+
       // If crack_id exists, get crack info
       if (task.crack_id) {
 
@@ -127,19 +127,19 @@ export class TaskService {
           console.log("🚀 ~ TaskService ~ getTaskById ~ task.crack_id:", task.crack_id)
           const crackInfo = await firstValueFrom(
             this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
-          );
-          result['crackInfo'] = crackInfo;
+          )
+          result['crackInfo'] = crackInfo
         } catch (error) {
           task['crackInfo'] = {
             statusCode: 400,
             message: 'No crackReport find á',
             data: null,
-          };
+          }
         }
-   
-        
+
+
       }
-      
+
       return {
         statusCode: 200,
         message: 'Task retrieved successfully',
@@ -266,40 +266,40 @@ export class TaskService {
           where: whereClause,
         }),
       ])
-      
-   
-      
-        try {
-          for (const task of tasks) {
-            if (task.crack_id) {
-              try {
-                  const crackInfo = await firstValueFrom(
-                    this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id).pipe(
-                      timeout(5000),
-                      catchError(err => {
-                        console.error(`Error fetching crack info for task ${task.task_id}:`, err);
-                        return throwError(() => err);
-                      })
-                    )
-                );
-                task['crackInfo'] = crackInfo;
-              } catch (err) {
-                task['crackInfo'] = {
-                  statusCode: 400,
-                  message: 'No crackReport find á',
-                  data: null,
-                };
 
-                console.error(`Error fetching crack info for task ${task.task_id}:`, err);
-                // Tiếp tục với task tiếp theo
+
+
+      try {
+        for (const task of tasks) {
+          if (task.crack_id) {
+            try {
+              const crackInfo = await firstValueFrom(
+                this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id).pipe(
+                  timeout(5000),
+                  catchError(err => {
+                    console.error(`Error fetching crack info for task ${task.task_id}:`, err)
+                    return throwError(() => err)
+                  })
+                )
+              )
+              task['crackInfo'] = crackInfo
+            } catch (err) {
+              task['crackInfo'] = {
+                statusCode: 400,
+                message: 'No crackReport find á',
+                data: null,
               }
+
+              console.error(`Error fetching crack info for task ${task.task_id}:`, err)
+              // Tiếp tục với task tiếp theo
             }
           }
-        } catch (error) {
-          console.error("Error processing crack info:", error);
-          // Tiếp tục trả về tasks mà không có thông tin crack
         }
-      
+      } catch (error) {
+        console.error("Error processing crack info:", error)
+        // Tiếp tục trả về tasks mà không có thông tin crack
+      }
+
       // Use PaginationResponseDto for consistent response formatting
       return new PaginationResponseDto(
         tasks,
@@ -308,7 +308,7 @@ export class TaskService {
         limit,
         200,
         tasks.length > 0 ? 'Tasks retrieved successfully' : 'No tasks found',
-      );
+      )
     } catch (error) {
       console.error('Error retrieving tasks:', error)
       throw new RpcException({
@@ -323,23 +323,23 @@ export class TaskService {
       const tasks = await this.prisma.task.findMany({
         where: { status },
       })
-      
+
       // Thêm thông tin crack vào các task (nếu có)
       for (const task of tasks) {
         if (task.crack_id) {
           try {
             const crackInfo = await firstValueFrom(
               this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
-            );
+            )
             // Thêm crackInfo vào task
-            task['crackInfo'] = crackInfo;
+            task['crackInfo'] = crackInfo
           } catch (err) {
-            console.error(`Error fetching crack info for task ${task.task_id}:`, err);
+            console.error(`Error fetching crack info for task ${task.task_id}:`, err)
             // Tiếp tục với task tiếp theo
           }
         }
       }
-      
+
       return {
         statusCode: 200,
         message: 'Tasks by status fetched successfully',
@@ -371,7 +371,6 @@ export class TaskService {
       }
 
       console.log('Found task:', JSON.stringify(task, null, 2))
-      console.log('Task crack_id:', task.crack_id)
 
       return new ApiResponse(true, 'Crack ID retrieved successfully', {
         crackReportId: task.crack_id
@@ -389,21 +388,21 @@ export class TaskService {
       if (!scheduleJobId || !staffId) {
         throw new RpcException(
           new ApiResponse(false, 'scheduleJobId và staffId là bắt buộc')
-        );
+        )
       }
 
 
       // Define all variables outside the transaction to maintain scope
-      let existingScheduleJob;
-      let areaMatchResponse;
-      let createTaskResponse;
-      let createTaskAssignmentResponse;
+      let existingScheduleJob
+      let areaMatchResponse
+      let createTaskResponse
+      let createTaskAssignmentResponse
 
       // Start a real database transaction - all operations will be committed or rolled back together
       return await this.prisma.$transaction(async (prisma) => {
         // Step 1: Find the scheduleJob and validate it exists
         // Gọi đến schedules service để kiểm tra scheduleJob có tồn tại không
-        console.log('Sending request to schedule service with pattern:', SCHEDULEJOB_PATTERN.GET_BY_ID, 'and payload:', { schedule_job_id: scheduleJobId });
+        console.log('Sending request to schedule service with pattern:', SCHEDULEJOB_PATTERN.GET_BY_ID, 'and payload:', { schedule_job_id: scheduleJobId })
 
         try {
           existingScheduleJob = await firstValueFrom(
@@ -414,61 +413,61 @@ export class TaskService {
               // Add a timeout to avoid hanging indefinitely
               timeout(10000)
             )
-          );
+          )
 
         } catch (err) {
           throw new RpcException({
             statusCode: 404,
             message: `Không tìm thấy lịch công việc với ID: ${scheduleJobId}`
-          });
+          })
         }
 
         if (!existingScheduleJob || !existingScheduleJob.isSuccess) {
-          console.error('Schedule job not found or invalid response:', existingScheduleJob);
+          console.error('Schedule job not found or invalid response:', existingScheduleJob)
           throw new RpcException({
             statusCode: 404,
             message: `Không tìm thấy lịch công việc với ID: ${scheduleJobId}`
-          });
+          })
         }
 
-        console.log('Schedule job found:', existingScheduleJob);
+        console.log('Schedule job found:', existingScheduleJob)
 
         // Step 2: Check if staff's area matches the crack report's area
-        console.log('Checking staff area match with scheduleJobId');
+        console.log('Checking staff area match with scheduleJobId')
         try {
           areaMatchResponse = await firstValueFrom(
             this.userService.checkStaffAreaMatchWithScheduleJob({ staffId, scheduleJobId })
-          );
-          console.log('Area match response:', areaMatchResponse);
+          )
+          console.log('Area match response:', areaMatchResponse)
         } catch (err) {
-          console.error('Error checking staff area match:', err);
+          console.error('Error checking staff area match:', err)
           throw new RpcException(
             new ApiResponse(false, `Lỗi khi kiểm tra khu vực nhân viên: ${err.message}`)
-          );
+          )
         }
 
         // Kiểm tra lại chi tiết về response từ areaMatch
-        console.log('Complete area match response:', JSON.stringify(areaMatchResponse));
+        console.log('Complete area match response:', JSON.stringify(areaMatchResponse))
 
         if (!areaMatchResponse) {
-          console.log('No response from area match check');
+          console.log('No response from area match check')
           throw new RpcException({
             statusCode: 500,
             message: 'Không nhận được phản hồi khi kiểm tra khu vực nhân viên'
-          });
+          })
         }
 
         // Nếu statusCode được trả về từ microservice, sử dụng nó
         if (areaMatchResponse.statusCode) {
-          console.log(`Using explicit statusCode from microservice: ${areaMatchResponse.statusCode}`);
+          console.log(`Using explicit statusCode from microservice: ${areaMatchResponse.statusCode}`)
           throw new RpcException({
             statusCode: areaMatchResponse.statusCode,
             message: areaMatchResponse.message || 'Lỗi không xác định'
-          });
+          })
         }
 
         if (!areaMatchResponse.isSuccess) {
-          console.log('Area match check unsuccessful:', areaMatchResponse.message);
+          console.log('Area match check unsuccessful:', areaMatchResponse.message)
 
           // Kiểm tra nội dung lỗi để quyết định statusCode
           if (areaMatchResponse.message && (
@@ -478,25 +477,25 @@ export class TaskService {
             throw new RpcException({
               statusCode: 404,
               message: areaMatchResponse.message
-            });
+            })
           } else {
             throw new RpcException({
               statusCode: 400,
               message: areaMatchResponse.message || 'Lỗi khi kiểm tra khu vực nhân viên'
-            });
+            })
           }
         }
 
         if (!areaMatchResponse.isMatch) {
-          console.log('Staff area does not match with schedule job area. Details:', areaMatchResponse.message);
+          console.log('Staff area does not match with schedule job area. Details:', areaMatchResponse.message)
           throw new RpcException({
             statusCode: 400,
             message: areaMatchResponse.message || 'Nhân viên không thuộc khu vực của công việc này'
-          });
+          })
         }
 
         // Check for unconfirmed tasks
-        console.log('Checking unconfirmed tasks for staff:', staffId);
+        console.log('Checking unconfirmed tasks for staff:', staffId)
         const unconfirmedTasks = await this.prisma.taskAssignment.findMany({
           where: {
             employee_id: staffId,
@@ -504,23 +503,23 @@ export class TaskService {
               notIn: [AssignmentStatus.Confirmed]
             }
           }
-        });
-        console.log('Unconfirmed tasks count:', unconfirmedTasks.length);
+        })
+        console.log('Unconfirmed tasks count:', unconfirmedTasks.length)
 
         if (unconfirmedTasks.length > 0) {
-          console.log('Staff has unconfirmed tasks, cannot assign new task');
+          console.log('Staff has unconfirmed tasks, cannot assign new task')
           return {
             statusCode: 400,
             message: 'Staff has unconfirmed tasks. Cannot assign new task.',
             data: null
-          };
+          }
         }
 
         // Step 3: Create task first - do this before updating report status
-        console.log('Creating new task for schedule job');
+        console.log('Creating new task for schedule job')
 
         // Kiểm tra status từ enum
-        console.log('Available Status enum values:', Object.values(Status));
+        console.log('Available Status enum values:', Object.values(Status))
 
         try {
           createTaskResponse = await this.createTask({
@@ -528,42 +527,42 @@ export class TaskService {
             status: Status.Assigned, // Sử dụng string "Assigned" thay vì enum Status.Assigned
             crack_id: "",
             schedule_job_id: scheduleJobId,
-          });
-          console.log('Create task response:', createTaskResponse);
+          })
+          console.log('Create task response:', createTaskResponse)
         } catch (taskError) {
-          console.error('Failed to create task:', taskError);
+          console.error('Failed to create task:', taskError)
           throw new RpcException(
             new ApiResponse(false, `Lỗi khi tạo task: ${taskError.message}`)
-          );
+          )
         }
 
         // Check if task creation was successful and task_id exists
         if (!createTaskResponse?.data?.task_id) {
-          console.error('Task created but no task_id returned:', createTaskResponse);
+          console.error('Task created but no task_id returned:', createTaskResponse)
           throw new RpcException(
             new ApiResponse(false, 'Task được tạo nhưng không trả về task_id hợp lệ')
-          );
+          )
         }
 
         // Step 4: Create task assignment
-        console.log('Assigning task to employee:', staffId);
+        console.log('Assigning task to employee:', staffId)
         createTaskAssignmentResponse = await this.taskAssignmentService.assignTaskToEmployee(
           createTaskResponse.data.task_id,
           staffId,
           `Phân công xử lý báo cáo nứt định kỳ`
-        );
-        console.log('Task assignment response:', createTaskAssignmentResponse);
+        )
+        console.log('Task assignment response:', createTaskAssignmentResponse)
 
         // Check task assignment response
         if (createTaskAssignmentResponse?.statusCode === 400) {
-          console.error('Error assigning task:', createTaskAssignmentResponse);
+          console.error('Error assigning task:', createTaskAssignmentResponse)
           throw new RpcException(
             new ApiResponse(false, createTaskAssignmentResponse.message || 'Lỗi phân công task')
-          );
+          )
         }
 
         // Return success response with all data
-        console.log('Transaction completed successfully');
+        console.log('Transaction completed successfully')
         return new ApiResponse(
           true,
           'Task đã được tạo',
@@ -571,25 +570,25 @@ export class TaskService {
             task: createTaskResponse,
             taskAssignment: createTaskAssignmentResponse,
           }
-        );
+        )
       }, {
         // Set a long timeout for the transaction since we're making external calls
         timeout: 30000,
         // Use serializable isolation level for maximum consistency
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable
-      });
+      })
     } catch (error) {
-      console.error('🔥 Lỗi trong createTaskForScheduleJob:', error);
+      console.error('🔥 Lỗi trong createTaskForScheduleJob:', error)
 
       // Pass through RpcExceptions
       if (error instanceof RpcException) {
-        throw error;
+        throw error
       }
 
       // Wrap other errors
       throw new RpcException(
         new ApiResponse(false, `Lỗi hệ thống: ${error.message}`)
-      );
+      )
     }
   }
 }

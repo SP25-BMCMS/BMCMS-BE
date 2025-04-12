@@ -2,25 +2,49 @@ import { NestFactory } from '@nestjs/core'
 import { ConfigService } from '@nestjs/config'
 import { MicroserviceOptions, Transport } from '@nestjs/microservices'
 import { NotificationsModule } from './notifications.module'
+import Redis from 'ioredis'
 
 async function bootstrap() {
   const app = await NestFactory.create(NotificationsModule)
   const configService = app.get(ConfigService)
 
-  // Lấy cấu hình Redis từ environment variables với giá trị mặc định
-  const redisHost = configService.get<string>('REDIS_HOST', 'redis')
-  const redisPort = configService.get<number>('REDIS_PORT', 6379)
-  const redisPassword = configService.get<string>('REDIS_PASSWORD', '')
-
-  const redisOptions = {
-    host: redisHost,
-    port: redisPort,
-    password: redisPassword || undefined,
-    retryAttempts: 5,
-    retryDelay: 5000,
+  const redisUrl = configService.get<string>('REDIS_URL')
+  if (!redisUrl) {
+    throw new Error('REDIS_URL environment variable is not set')
   }
 
+  // Create Redis instance
+  const redis = new Redis(redisUrl, {
+    tls: {
+      rejectUnauthorized: false
+    },
+    retryStrategy: (times) => {
+      const delay = Math.min(times * 50, 2000)
+      return delay
+    },
+    maxRetriesPerRequest: 3
+  })
 
+  // Test connection
+  try {
+    await redis.ping()
+    console.log('✅ Redis connection successful')
+  } catch (error) {
+    console.error('❌ Redis connection failed:', error)
+    process.exit(1)
+  }
+
+  const redisOptions = {
+    host: redis.options.host,
+    port: redis.options.port,
+    username: redis.options.username,
+    password: redis.options.password,
+    retryAttempts: 5,
+    retryDelay: 5000,
+    tls: {
+      rejectUnauthorized: false
+    }
+  }
 
   try {
     app.connectMicroservice<MicroserviceOptions>({

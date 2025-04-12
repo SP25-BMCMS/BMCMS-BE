@@ -12,12 +12,12 @@ import {
   Query,
   Req,
   UseGuards,
-} from '@nestjs/common';
-import { BuildingsService } from './Buildings.service';
-import { catchError, NotFoundError } from 'rxjs';
-import { CreateBuildingDetailDto } from '@app/contracts/BuildingDetails/create-buildingdetails.dto';
-import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto';
-import { UpdateBuildingDto } from '@app/contracts/buildings/update-buildings.dto';
+} from '@nestjs/common'
+import { BuildingsService } from './Buildings.service'
+import { catchError, NotFoundError } from 'rxjs'
+import { CreateBuildingDetailDto } from '@app/contracts/BuildingDetails/create-buildingdetails.dto'
+import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto'
+import { UpdateBuildingDto } from '@app/contracts/buildings/update-buildings.dto'
 import {
   ApiTags,
   ApiOperation,
@@ -25,8 +25,8 @@ import {
   ApiParam,
   ApiBody,
   ApiQuery,
-} from '@nestjs/swagger';
-import { ApartmentService } from '../users/apartment/apartment.service';
+} from '@nestjs/swagger'
+import { ApartmentService } from '../users/apartment/apartment.service'
 
 @Controller('building')
 @ApiTags('buildings')
@@ -70,7 +70,7 @@ export class BuildingsController {
       page: Number(page) || 1,
       limit: Number(limit) || 10,
       search: search || '',
-    });
+    })
   }
 
   // New endpoint to get apartment with building details
@@ -80,28 +80,28 @@ export class BuildingsController {
       console.log(
         '🚀 ~ BuildingsController ~ getApartmentWithBuilding ~ apartmentId:',
         apartmentId,
-      );
+      )
 
       // This will use BuildingsService method to combine apartment and building data
       const result =
-        await this.buildingsService.getApartmentWithBuilding(apartmentId);
+        await this.buildingsService.getApartmentWithBuilding(apartmentId)
       console.log(
         '🚀 ~ BuildingsController ~ getApartmentWithBuilding ~ result:',
         result,
-      );
+      )
 
-      return result;
+      return result
     } catch (error) {
       console.error(
         '🚀 ~ BuildingsController ~ getApartmentWithBuilding ~ error:',
         error,
-      );
+      )
       if (error instanceof NotFoundException) {
-        throw error;
+        throw error
       }
       throw new Error(
         `Error retrieving apartment with building: ${error.message}`,
-      );
+      )
     }
   }
 
@@ -113,27 +113,27 @@ export class BuildingsController {
     try {
       // Get apartment details
       const apartmentResponse =
-        await this.apartmentService.getApartmentById(apartmentId);
+        await this.apartmentService.getApartmentById(apartmentId)
 
       if (!apartmentResponse || !apartmentResponse.isSuccess) {
         throw new NotFoundException(
           `Apartment with ID ${apartmentId} not found`,
-        );
+        )
       }
       // Extract building ID
-      const buildingId = apartmentResponse.data.buildingId;
+      const buildingId = apartmentResponse.data.buildingId
       console.log(
         '🚀 ~ BuildingsController ~ getApartmentWithBuildingDetails ~ buildingId:',
         buildingId,
-      );
+      )
 
       // Get building details
       const buildingResponse =
-        await this.buildingsService.getBuildingById(buildingId);
+        await this.buildingsService.getBuildingById(buildingId)
       console.log(
         '🚀 ~ BuildingsController ~ getApartmentWithBuildingDetails ~ buildingResponse:',
         buildingResponse,
-      );
+      )
 
       // Combine the results
       return {
@@ -143,39 +143,39 @@ export class BuildingsController {
           apartment: apartmentResponse.data,
           building: buildingResponse?.data || null,
         },
-      };
+      }
     } catch (error) {
       if (error instanceof NotFoundException) {
-        throw error;
+        throw error
       }
       throw new Error(
         `Error retrieving apartment with building details: ${error.message}`,
-      );
+      )
     }
   }
 
   @Get(':id')
   async getBuildingById(@Param('id') id: string) {
     try {
-      console.log('🚀 ~ BuildingsController ~ getBuildingById ~ id:', id);
-      const result = await this.buildingsService.getBuildingById(id);
+      console.log('🚀 ~ BuildingsController ~ getBuildingById ~ id:', id)
+      const result = await this.buildingsService.getBuildingById(id)
       console.log(
         '🚀 ~ BuildingsController ~ getBuildingById ~ result:',
         result,
-      );
-      return result;
+      )
+      return result
     } catch (error) {
       console.error(
         '🚀 ~ BuildingsController ~ getBuildingById ~ error:',
         error,
-      );
-      throw new Error(`Error retrieving building: ${error.message}`);
+      )
+      throw new Error(`Error retrieving building: ${error.message}`)
     }
   }
 
   @Post()
   async createBuilding(@Body() createBuildingDto: CreateBuildingDto) {
-    return await this.buildingsService.createBuilding(createBuildingDto);
+    return await this.buildingsService.createBuilding(createBuildingDto)
   }
 
   @Put(':id')
@@ -186,18 +186,18 @@ export class BuildingsController {
     return this.buildingsService.updateBuilding({
       ...updateBuildingDto,
       buildingId: id,
-    });
+    })
   }
 
   @Delete(':id')
   async deleteBuilding(@Param('id') id: string) {
-    return this.buildingsService.deleteBuilding(id);
+    return this.buildingsService.deleteBuilding(id)
   }
 
   @Get(':id/residents')
   @ApiOperation({ summary: 'Get all residents by building ID' })
   @ApiParam({ name: 'id', description: 'Building ID' })
   async getAllResidentsByBuildingId(@Param('id') id: string) {
-    return this.buildingsService.getAllResidentsByBuildingId(id);
+    return this.buildingsService.getAllResidentsByBuildingId(id)
   }
 }

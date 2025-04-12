@@ -16,6 +16,11 @@ export class EmailService {
     try {
       this.logger.log(`Sending OTP email to: ${email}`)
       this.logger.debug(`OTP: ${otp}`)
+      this.logger.debug(`Email configuration:`, {
+        host: this.configService.get('EMAIL_HOST'),
+        port: this.configService.get('EMAIL_PORT'),
+        user: this.configService.get('EMAIL_USER'),
+      })
 
       const result = await this.mailerService.sendMail({
         to: email,
@@ -31,10 +36,12 @@ export class EmailService {
 
       this.logger.log(`OTP email sent successfully to: ${email}`)
       this.logger.debug(`Message ID: ${result.messageId}`)
+      this.logger.debug(`Email response:`, result)
       return true
     } catch (error) {
       this.logger.error(`Failed to send OTP email to ${email}: ${error.message}`)
-      this.logger.error(error.stack)
+      this.logger.error(`Error details:`, error)
+      this.logger.error(`Stack trace:`, error.stack)
       return false
     }
   }
