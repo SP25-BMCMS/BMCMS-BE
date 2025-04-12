@@ -87,7 +87,6 @@ export interface UserInterface {
     apartments: {
       apartmentName: string;
       buildingDetailId: string;
-      warrantyDate?: string;
     }[]
   }): Observable<any>
 

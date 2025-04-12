@@ -274,14 +274,13 @@ export class UsersService implements OnModuleInit {
 
   async updateResidentApartments(
     residentId: string,
-    apartments: { apartmentName: string; buildingDetailId: string; warrantyDate?: string }[],
+    apartments: { apartmentName: string; buildingDetailId: string }[],
   ) {
     try {
-      console.log("API Gateway - Received apartment data with warranty dates:",
+      console.log("API Gateway - Received apartment data:",
         JSON.stringify(apartments.map(apt => ({
           name: apt.apartmentName,
-          buildingId: apt.buildingDetailId,
-          warrantyDate: apt.warrantyDate
+          buildingId: apt.buildingDetailId
         })), null, 2)
       );
 
@@ -291,52 +290,6 @@ export class UsersService implements OnModuleInit {
           apartments
         }),
       )
-
-      if (response.data && response.data.apartments) {
-        // Đảm bảo dữ liệu warrantyDate được chuyển đúng
-        console.log("API Gateway - Raw response from microservice:",
-          JSON.stringify(response.data.apartments.map(apt => ({
-            id: apt.apartmentId,
-            name: apt.apartmentName,
-            warrantyDate: apt.warrantyDate
-          })), null, 2)
-        );
-
-        // Process the response to ensure warrantyDate is properly included
-        const processedResponse = {
-          ...response,
-          data: {
-            ...response.data,
-            apartments: response.data.apartments.map(apt => {
-              console.log(`API Gateway processing apartment ${apt.apartmentId}:`,
-                JSON.stringify({
-                  id: apt.apartmentId,
-                  name: apt.apartmentName,
-                  has_warrantyDate: apt.warrantyDate !== undefined,
-                  warrantyDate: apt.warrantyDate,
-                  warrantyDate_type: apt.warrantyDate !== undefined ? typeof apt.warrantyDate : 'undefined'
-                }, null, 2)
-              );
-
-              // Lấy warrantyDate từ response mà không biến đổi gì cả
-              return {
-                ...apt,
-                warrantyDate: apt.warrantyDate
-              };
-            })
-          }
-        };
-
-        console.log("API Gateway - Processed final response with warranty dates:",
-          JSON.stringify(processedResponse.data.apartments.map(apt => ({
-            id: apt.apartmentId,
-            name: apt.apartmentName,
-            warrantyDate: apt.warrantyDate
-          })), null, 2)
-        );
-
-        return processedResponse;
-      }
 
       return response;
     } catch (error) {
