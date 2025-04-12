@@ -101,6 +101,27 @@ export class SchedulesService {
     }
   }
 
+<<<<<<< HEAD
+
+=======
+  // Change schedule type (Microservice)
+  async changeScheduleType(
+    schedule_id: string,
+    schedule_type: $Enums.Frequency,
+  ): Promise<any> {
+    try {
+      return await this.scheduleClient.send(SCHEDULES_PATTERN.UPDATE_TYPE, {
+        schedule_id,
+        schedule_type,
+      })
+    } catch (error) {
+      throw new HttpException(
+        'Error occurred while changing schedule type',
+        HttpStatus.BAD_REQUEST,
+      )
+    }
+  }
+>>>>>>> 4e2e49669949f2e43f6f2f3f47f1071f9e0b0d0e
 
   // Get schedule by ID (Microservice)
   async getScheduleById(schedule_id: string): Promise<any> {
