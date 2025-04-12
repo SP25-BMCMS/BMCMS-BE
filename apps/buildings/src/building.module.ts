@@ -15,6 +15,9 @@ import { LocationDetailService } from '../LocationDetails/locationdetails.servic
 import { ContractsModule } from '../contract/contracts.module';
 import { ContractsController } from '../contract/contracts.controller';
 import { ContractsService } from '../contract/contracts.service';
+import { CrackRecordModule } from '../CrackRecord/CrackRecord.module';
+import { CrackRecordController } from '../CrackRecord/CrackRecord.controller';
+import { CrackRecordService } from '../CrackRecord/CrackRecord.service';
 
 @Module({
   imports: [
@@ -26,18 +29,21 @@ import { ContractsService } from '../contract/contracts.service';
     BuildingDetailsModule,
     locationDetailsModulee,
     ContractsModule,
+    CrackRecordModule,
   ],
   controllers: [
     AreasController,
     BuildingDetailsController,
     LocationDetailsController,
     ContractsController,
+    CrackRecordController,
   ],
   providers: [
     AreasService,
     BuildingDetailsService,
     LocationDetailService,
     ContractsService,
+    CrackRecordService,
   ],
 })
 export class BuildingModule { }
