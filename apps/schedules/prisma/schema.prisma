@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../../../node_modules/@prisma/client-Schedule"
@@ -14,7 +11,53 @@ datasource db {
   url      = env("DB_SCHEDULE_SERVICE")
 }
 
-  model Schedule {
+model Device {
+  device_id     String    @id @default(uuid())
+  name          String    @db.VarChar(100)
+  type          String    @db.VarChar(50) // Thang máy, PCCC, Điện, Nước,...
+  manufacturer  String?   @db.VarChar(100)
+  model         String?   @db.VarChar(100)
+  location      String?   @db.VarChar(100)
+  technical_records TechnicalRecord[]
+  maintenanceHistories MaintenanceHistory[]
+  contract_id String?
+  Contract Contract? @relation(fields: [contract_id], references: [contract_id])
+}
+
+model TechnicalRecord {
+  record_id   String    @id @default(uuid())
+  device_id   String
+  file_name   String    @db.VarChar(255)
+  file_type   String    @db.VarChar(50) // Bản vẽ, Hướng dẫn bảo trì,...
+  upload_date DateTime  @db.Date
+  device      Device    @relation(fields: [device_id], references: [device_id])
+}
+
+model MaintenanceHistory {
+  maintenance_id String    @id @default(uuid())
+  device_id      String
+  date_performed DateTime  @db.Date
+  description    String?
+  cost           Decimal?
+  device         Device    @relation(fields: [device_id], references: [device_id])
+}
+
+model MaintenanceCycle {
+  cycle_id   String    @id @default(uuid())
+  device_type String    @db.VarChar(50)
+  frequency  Int
+  basis      String    @db.VarChar(255) // Khuyến cáo NSX, Quy chuẩn pháp lý, Thực tế vận hành
+}
+
+model Contract {
+  contract_id String @id @default(uuid())
+  start_date DateTime? @db.Date
+  end_date DateTime? @db.Date
+  vendor String? @db.VarChar(255)
+  devices Device[]
+}
+
+model Schedule {
     schedule_id   String    @id @default(uuid())
     schedule_name String    @db.VarChar(100)
     schedule_type ScheduleType
