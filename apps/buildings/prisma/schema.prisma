@@ -52,7 +52,7 @@ model BuildingDetail {
   buildingDetailId String           @id @default(uuid())
   buildingId       String
   name             String
-  total_apartments Int 
+  total_apartments Int
   locationDetails  LocationDetail[]
   device           Device[]
 
@@ -62,44 +62,43 @@ model BuildingDetail {
 }
 
 model LocationDetail {
-  locationDetailId String           @id @default(uuid())
+  locationDetailId String          @id @default(uuid())
   buildingDetailId String
   inspection_id    String
   roomNumber       String?
   floorNumber      Int
   areaType         AreaDetailsType
   description      String?
-  buildingDetail   BuildingDetail   @relation(fields: [buildingDetailId], references: [buildingDetailId])
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  buildingDetail   BuildingDetail  @relation(fields: [buildingDetailId], references: [buildingDetailId])
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
-  crackRecords     CrackRecord[]    // Quan hệ 1:N với CrackRecord
+  crackRecords CrackRecord[] // Quan hệ 1:N với CrackRecord
 }
 
-
 model Device {
-  device_id     String    @id @default(uuid())
-  name          String    @db.VarChar(100)
-  type          DeviceType    @default(Other)
-  manufacturer  String?   @db.VarChar(100)
-  model         String?   @db.VarChar(100)
+  device_id        String         @id @default(uuid())
+  name             String         @db.VarChar(100)
+  type             DeviceType     @default(Other)
+  manufacturer     String?        @db.VarChar(100)
+  model            String?        @db.VarChar(100)
   buildingDetailId String
-  buildingDetail BuildingDetail @relation(fields: [buildingDetailId], references: [buildingDetailId])
-  
-  contract_id   String?
-  Contract      Contract? @relation(fields: [contract_id], references: [contract_id])
-  
+  buildingDetail   BuildingDetail @relation(fields: [buildingDetailId], references: [buildingDetailId])
+
+  contract_id String?
+  Contract    Contract? @relation(fields: [contract_id], references: [contract_id])
+
   technical_records     TechnicalRecord[]
   maintenance_histories MaintenanceHistory[]
 }
 
 model Contract {
-  contract_id String  @id @default(uuid())
+  contract_id String    @id @default(uuid())
   start_date  DateTime? @db.Date
   end_date    DateTime? @db.Date
-  vendor      String? @db.VarChar(255)
+  vendor      String?   @db.VarChar(255)
 
-  devices     Device[]
+  devices Device[]
 }
 
 model TechnicalRecord {
@@ -109,7 +108,7 @@ model TechnicalRecord {
   file_type   String   @db.VarChar(50) // Bản vẽ, Hướng dẫn bảo trì,...
   upload_date DateTime @db.Date
 
-  device      Device   @relation(fields: [device_id], references: [device_id])
+  device Device @relation(fields: [device_id], references: [device_id])
 }
 
 model MaintenanceHistory {
@@ -119,28 +118,28 @@ model MaintenanceHistory {
   description    String?
   cost           Decimal?
 
-  device         Device   @relation(fields: [device_id], references: [device_id])
+  device Device @relation(fields: [device_id], references: [device_id])
 }
 
 model CrackRecord {
-  crackRecordId     String          @id @default(uuid())
-  locationDetailId  String
-  crackType         CrackType
-  length            Float           // Chiều dài vết nứt (mét hoặc cm tùy đơn vị bạn chọn)
-  width             Float           // Chiều rộng vết nứt
-  depth             Float?          // Độ sâu vết nứt nếu cần
-  description       String?         // Mô tả thêm (nếu có)
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  crackRecordId    String    @id @default(uuid())
+  locationDetailId String
+  crackType        CrackType
+  length           Float // Chiều dài vết nứt (mét hoặc cm tùy đơn vị bạn chọn)
+  width            Float // Chiều rộng vết nứt
+  depth            Float? // Độ sâu vết nứt nếu cần
+  description      String? // Mô tả thêm (nếu có)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  locationDetail    LocationDetail  @relation(fields: [locationDetailId], references: [locationDetailId])
+  locationDetail LocationDetail @relation(fields: [locationDetailId], references: [locationDetailId])
 }
 
 enum CrackType {
-  Vertical     // Dọc
-  Horizontal   // Ngang
-  Diagonal     // Xiên
-  Structural   // Kết cấu
+  Vertical // Dọc
+  Horizontal // Ngang
+  Diagonal // Xiên
+  Structural // Kết cấu
   NonStructural // Không kết cấu
   Other
 }
@@ -164,17 +163,16 @@ enum AreaDetailsType {
 }
 
 enum DeviceType {
-  Elevator             // Thang máy
-  FireProtection       // PCCC
-  Electrical           // Hệ thống điện
-  Plumbing             // Cấp thoát nước
-  HVAC                 // Điều hòa thông gió
-  CCTV                 // Camera giám sát
-  Generator            // Máy phát điện
-  Lighting             // Chiếu sáng
-  AutomaticDoor        // Cửa cuốn / barrier
-  FireExtinguisher     // Bình chữa cháy
-  
-  Other                // Thiết bị khác
-}
+  Elevator // Thang máy
+  FireProtection // PCCC
+  Electrical // Hệ thống điện
+  Plumbing // Cấp thoát nước
+  HVAC // Điều hòa thông gió
+  CCTV // Camera giám sát
+  Generator // Máy phát điện
+  Lighting // Chiếu sáng
+  AutomaticDoor // Cửa cuốn / barrier
+  FireExtinguisher // Bình chữa cháy
 
+  Other // Thiết bị khác
+}

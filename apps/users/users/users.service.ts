@@ -1755,10 +1755,10 @@ export class UsersService {
       }
 
       // Từ building_id trong scheduleJob, gọi đến building service để lấy thông tin building
-      console.log(`[users.service] Getting building info using building_id from scheduleJob: ${scheduleJob.building_id}`)
+      console.log(`[users.service] Getting building info using building_id from scheduleJob: ${scheduleJob.buildingDetailId}`)
 
       // Kiểm tra xem building_id có tồn tại không
-      if (!scheduleJob.building_id) {
+      if (!scheduleJob.buildingDetailId) {
         return {
           isSuccess: false,
           message: 'Lịch công việc không có thông tin tòa nhà',
@@ -1769,7 +1769,7 @@ export class UsersService {
       // Gọi API để lấy thông tin building từ building_id
       // Thử dùng BUILDINGS_PATTERN.GET_BY_ID trước (nơi đã confirm có dữ liệu)
       const buildingResponse = await firstValueFrom(
-        this.buildingsClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: scheduleJob.building_id }).pipe(
+        this.buildingsClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: scheduleJob.buildingDetailId }).pipe(
           timeout(5000),
           catchError(err => {
             console.error(`[users.service] Error fetching building:`, err)
@@ -1784,7 +1784,7 @@ export class UsersService {
       if (!buildingResponse) {
         return {
           isSuccess: false,
-          message: `Không nhận được phản hồi khi tìm tòa nhà với ID: ${scheduleJob.building_id}`,
+          message: `Không nhận được phản hồi khi tìm tòa nhà với ID: ${scheduleJob.buildingDetailId}`,
           isMatch: false
         }
       }
@@ -1797,7 +1797,7 @@ export class UsersService {
       if (!responseSuccess || !buildingResponse.data) {
         return {
           isSuccess: false,
-          message: `Không tìm thấy thông tin tòa nhà với ID: ${scheduleJob.building_id}`,
+          message: `Không tìm thấy thông tin tòa nhà với ID: ${scheduleJob.buildingDetailId}`,
           isMatch: false
         }
       }
