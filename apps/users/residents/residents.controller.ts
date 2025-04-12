@@ -110,7 +110,9 @@ export class ResidentsController {
 
       console.log('GRPC Controller - Apartment result:', JSON.stringify({
         isSuccess: result.isSuccess,
-        hasData: !!result.data
+        hasData: !!result.data,
+        warrantyDate: result.data?.warrantyDate || 'none',
+        hasBuildingDetails: !!result.data?.buildingDetails
       }));
 
       return {

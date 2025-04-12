@@ -21,15 +21,26 @@ export class UsersController {
   @GrpcMethod('UserService', 'UpdateResidentApartments')
   async updateResidentApartments(data: {
     residentId: string;
-    apartments: { apartmentName: string; buildingDetailId: string }[];
+    apartments: { apartmentName: string; buildingDetailId: string; warrantyDate?: string }[];
   }) {
     try {
-      console.log("Users microservice received updateResidentApartments request:", JSON.stringify(data, null, 2));
+      console.log("Users microservice received request:", JSON.stringify(data, null, 2));
 
       const response = await this.usersService.updateResidentApartments(
         data.residentId,
         data.apartments,
       );
+
+      // Kiểm tra dữ liệu warrantyDate trong response
+      if (response.data && response.data.apartments && response.data.apartments.length > 0) {
+        console.log("Microservice response apartments:", JSON.stringify(response.data.apartments.map(apt => ({
+          id: apt.apartmentId,
+          name: apt.apartmentName,
+          has_warrantyDate: apt.warrantyDate !== undefined,
+          warrantyDate: apt.warrantyDate,
+          warrantyDate_type: apt.warrantyDate !== undefined ? typeof apt.warrantyDate : 'undefined'
+        })), null, 2));
+      }
 
       console.log("Users microservice sending response:", JSON.stringify(response, null, 2));
 

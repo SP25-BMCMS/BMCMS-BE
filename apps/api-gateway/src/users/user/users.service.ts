@@ -274,100 +274,54 @@ export class UsersService implements OnModuleInit {
 
   async updateResidentApartments(
     residentId: string,
-    apartments: { apartmentName: string; buildingDetailId: string }[],
+    apartments: { apartmentName: string; buildingDetailId: string; warrantyDate?: string }[],
   ) {
     try {
-      console.log("API Gateway is calling updateResidentApartments with:", { residentId, apartments });
+      console.log("API Gateway - Received apartment data with warranty dates:",
+        JSON.stringify(apartments.map(apt => ({
+          name: apt.apartmentName,
+          buildingId: apt.buildingDetailId,
+          warrantyDate: apt.warrantyDate
+        })), null, 2)
+      );
 
-      const response = await lastValueFrom(
-        this.userService
-          .updateResidentApartments({ residentId, apartments })
-          .pipe(
-            catchError((error) => {
-              console.error('Update resident apartments error:', error)
-
-              // Kiểm tra nếu error có details
-              if (error.details) {
-                // Kiểm tra message để xác định loại lỗi
-                if (error.details.includes('Cư dân đã sở hữu')) {
-                  return throwError(
-                    () =>
-                      new HttpException(error.details, HttpStatus.BAD_REQUEST),
-                  )
-                } else if (error.details.includes('Không tìm thấy tòa nhà')) {
-                  return throwError(
-                    () =>
-                      new HttpException(error.details, HttpStatus.NOT_FOUND),
-                  )
-                } else if (
-                  error.details.includes('Dịch vụ tòa nhà không khả dụng')
-                ) {
-                  return throwError(
-                    () =>
-                      new HttpException(
-                        error.details,
-                        HttpStatus.SERVICE_UNAVAILABLE,
-                      ),
-                  )
-                }
-              }
-
-              // Nếu không có details hoặc không match với các trường hợp trên, trả về 500
-              return throwError(
-                () =>
-                  new HttpException(
-                    'Lỗi khi thêm căn hộ',
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                  ),
-              )
-            }),
-          ),
+      const response = await firstValueFrom(
+        this.userService.updateResidentApartments({
+          residentId,
+          apartments
+        }),
       )
 
-      console.log("API Gateway received raw response from microservice:", JSON.stringify(response, null, 2));
+      if (response.data && response.data.apartments) {
+        // Đảm bảo dữ liệu warrantyDate được chuyển đúng
+        console.log("API Gateway - Raw response from microservice:",
+          JSON.stringify(response.data.apartments.map(apt => ({
+            id: apt.apartmentId,
+            name: apt.apartmentName,
+            warrantyDate: apt.warrantyDate
+          })), null, 2)
+        );
 
-      // If this is an error response, return it directly
-      if (!response.isSuccess) {
-        return response;
-      }
-
-      // Process the response to ensure warranty_date is included
-      if (response && response.data && response.data.apartments) {
-        console.log("API Gateway - Checking apartments data structure");
-
-        if (Array.isArray(response.data.apartments)) {
-          // Check warranty_date in first apartment
-          const firstApt = response.data.apartments[0];
-          const hasWarrantyDate = firstApt && 'warranty_date' in firstApt && firstApt.warranty_date;
-          console.log(`First apartment warranty_date check:`,
-            hasWarrantyDate ?
-              `Has warranty_date: ${firstApt.warranty_date}` :
-              'No warranty_date field or null value');
-        }
-
-        // Create a future date (5 years from now) for warranty_date if missing
-        const futureDate = new Date();
-        futureDate.setFullYear(futureDate.getFullYear() + 5);
-        const defaultWarrantyDate = futureDate.toISOString();
-
-        // Always ensure proper structure in response with warranty_date
+        // Process the response to ensure warrantyDate is properly included
         const processedResponse = {
           ...response,
           data: {
             ...response.data,
             apartments: response.data.apartments.map(apt => {
-              // Check if the warranty_date is missing or null
-              const hasValidWarrantyDate = apt.warranty_date !== undefined && apt.warranty_date !== null;
+              console.log(`API Gateway processing apartment ${apt.apartmentId}:`,
+                JSON.stringify({
+                  id: apt.apartmentId,
+                  name: apt.apartmentName,
+                  has_warrantyDate: apt.warrantyDate !== undefined,
+                  warrantyDate: apt.warrantyDate,
+                  warrantyDate_type: apt.warrantyDate !== undefined ? typeof apt.warrantyDate : 'undefined'
+                }, null, 2)
+              );
 
-              console.log(`Processing apartment ${apt.apartmentId}, warranty_date:`,
-                hasValidWarrantyDate ? apt.warranty_date : 'MISSING - adding default');
-
+              // Lấy warrantyDate từ response mà không biến đổi gì cả
               return {
-                apartmentId: apt.apartmentId,
-                apartmentName: apt.apartmentName,
-                buildingDetailId: apt.buildingDetailId || null,
-                // Use the actual warranty_date if it exists, otherwise use the default
-                warranty_date: hasValidWarrantyDate ? apt.warranty_date : defaultWarrantyDate
+                ...apt,
+                warrantyDate: apt.warrantyDate
               };
             })
           }
@@ -377,7 +331,7 @@ export class UsersService implements OnModuleInit {
           JSON.stringify(processedResponse.data.apartments.map(apt => ({
             id: apt.apartmentId,
             name: apt.apartmentName,
-            warranty_date: apt.warranty_date
+            warrantyDate: apt.warrantyDate
           })), null, 2)
         );
 
