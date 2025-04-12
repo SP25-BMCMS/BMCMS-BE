@@ -10,13 +10,13 @@ export class CreateScheduleDto {
   schedule_name: string
 
   @IsNotEmpty()
-  @IsEnum($Enums.ScheduleType)
+  @IsEnum($Enums.Frequency)
   @ApiProperty({
-    description: 'The type of the schedule', enum: $Enums.ScheduleType
-    , example: $Enums.ScheduleType.Daily + "Daily ,Weekly,Monthly,Yearly,Specific",
+    description: 'The type of the schedule', enum: $Enums.Frequency
+    , example: $Enums.Frequency.Daily + "Daily ,Weekly,Monthly,Yearly,Specific",
 
   })  // Enum description for Swagger
-  schedule_type: $Enums.ScheduleType
+  schedule_type: $Enums.Frequency
 
   @IsOptional()
   @IsString()

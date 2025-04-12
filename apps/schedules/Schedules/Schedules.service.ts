@@ -229,7 +229,7 @@ export class ScheduleService {
   // Change Schedule Type
   async changeScheduleType(
     schedule_id: string,
-    schedule_type: $Enums.ScheduleType,
+    schedule_type: $Enums.Frequency,
   ): Promise<ApiResponse<ScheduleResponseDto>> {
     try {
       const updatedSchedule = await this.prisma.schedule.update({

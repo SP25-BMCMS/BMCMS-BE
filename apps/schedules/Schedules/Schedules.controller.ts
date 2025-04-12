@@ -49,7 +49,7 @@ export class ScheduleController {
       schedule_type,
     }: {
       schedule_id: string
-      schedule_type: $Enums.ScheduleType
+      schedule_type: $Enums.Frequency
     },
   ): Promise<ApiResponse<ScheduleResponseDto>> {
     return this.scheduleService.changeScheduleType(schedule_id, schedule_type)
