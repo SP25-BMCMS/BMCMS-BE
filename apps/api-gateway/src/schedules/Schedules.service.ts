@@ -104,7 +104,7 @@ export class SchedulesService {
   // Change schedule type (Microservice)
   async changeScheduleType(
     schedule_id: string,
-    schedule_type: $Enums.ScheduleType,
+    schedule_type: $Enums.Frequency,
   ): Promise<any> {
     try {
       return await this.scheduleClient.send(SCHEDULES_PATTERN.UPDATE_TYPE, {
