@@ -97,6 +97,8 @@ model Contract {
   start_date  DateTime? @db.Date
   end_date    DateTime? @db.Date
   vendor      String?   @db.VarChar(255)
+  file_name   String?   @db.VarChar(255)
+  createdAt   DateTime  @default(now())
 
   devices Device[]
 }
@@ -173,6 +175,5 @@ enum DeviceType {
   Lighting // Chiếu sáng
   AutomaticDoor // Cửa cuốn / barrier
   FireExtinguisher // Bình chữa cháy
-
   Other // Thiết bị khác
 }
