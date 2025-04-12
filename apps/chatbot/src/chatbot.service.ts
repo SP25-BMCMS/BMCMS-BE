@@ -1,10 +1,8 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ChatMessageDto, ChatResponseDto, ChatListQueryDto } from '@app/contracts/chatbot/chatbot.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { GeminiService } from './utils/gemini.service';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
-import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns';
+
 @Injectable()
 export class ChatbotService {
   private readonly logger = new Logger(ChatbotService.name);
@@ -12,12 +10,8 @@ export class ChatbotService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly geminiService: GeminiService,
-    @Inject('CRACK_CLIENT') private readonly cracksClient: ClientProxy,
-    @Inject('BUILDINGS_CLIENT') private readonly buildingsClient: ClientProxy,
   ) {
     this.logger.log('ChatbotService initialized');
-    this.logger.log('CRACK_CLIENT connected successfully');
-    this.logger.log('BUILDINGS_CLIENT connected successfully');
   }
 
   async getUserChats(userId: string, page: number = 1, limit: number = 10): Promise<any> {
@@ -69,82 +63,6 @@ export class ChatbotService {
     }
   }
 
-  private async getCrackReportsInfo(userId: string): Promise<string> {
-    try {
-      // Lấy thông tin crack reports
-      const crackReportsResponse = await firstValueFrom(
-        this.cracksClient.send({ cmd: 'get-all-crack-report-by-user-id' }, { userId })
-      );
-      console.log("🚀 ~ ChatbotService ~ getCrackReportsInfo ~ Full response:", crackReportsResponse);
-      
-      if (!crackReportsResponse || !crackReportsResponse.isSuccess || !crackReportsResponse.data || !crackReportsResponse.data.crackReports) {
-        console.log("🚀 ~ ChatbotService ~ getCrackReportsInfo ~ Invalid response structure:", crackReportsResponse);
-        return "\n\nKhông thể lấy thông tin vết nứt. Vui lòng thử lại sau.\n";
-      }
-
-      const crackReports = crackReportsResponse.data.crackReports;
-      console.log("🚀 ~ ChatbotService ~ getCrackReportsInfo ~ crackReports array:", crackReports);
-      
-      if (crackReports.length === 0) {
-        console.log("🚀 ~ ChatbotService ~ getCrackReportsInfo ~ No crack reports found for user");
-        return "\n\nBạn chưa có báo cáo vết nứt nào.\n";
-      }
-
-      // Lấy thông tin building cho mỗi report
-      let crackReportsInfo = `\n\nTHÔNG TIN VẾT NỨT CỦA BẠN:\n`;
-      for (const report of crackReports) {
-        try {
-          console.log(`🚀 ~ ChatbotService ~ getCrackRepádasdassdasdsdasdsortsInfo ~ Processing report:`,  report.buildingDetailId);
-          
-          // Lấy thông tin building
-          let buildingName = 'Không xác định';
-          try {
-            if (report.buildingDetailId) {
-              const buildingResponse = await firstValueFrom(
-                this.buildingsClient.send(BUILDINGS_PATTERN.GET_BY_ID, { id: report.buildingDetailId })
-              );
-              console.log(`🚀 ~ ChatbotService ~ getCrackReportsInfo ~ Building response:`, buildingResponse);
-              
-              if (buildingResponse && buildingResponse.isSuccess && buildingResponse.data) {
-                buildingName = buildingResponse.data.name;
-                console.log("🚀 ~ ChatbotService ~ getCrackReportsInfo ~ Building name:", buildingName);
-              }
-            } else {
-              console.log("🚀 ~ ChatbotService ~ getCrackReportsInfo ~ No buildingDetailId found for report");
-            }
-          } catch (buildingError) {
-            console.error(`🚀 ~ ChatbotService ~ getCrackReportsInfo ~ Error getting building info:`, buildingError);
-          }
-          
-          crackReportsInfo += `- Vị trí: ${report.position}\n`;
-          crackReportsInfo += `- Khu vực: ${buildingName}\n`;
-          crackReportsInfo += `  Mô tả: ${report.description}\n`;
-          crackReportsInfo += `  Trạng thái: ${report.status}\n`;
-          
-          if (report.crackDetails && report.crackDetails.length > 0) {
-            console.log(`🚀 ~ ChatbotService ~ getCrackReportsInfo ~ crackDetails:`, report.crackDetails);
-            crackReportsInfo += `  Mức độ nghiêm trọng: ${report.crackDetails[0].severity}\n`;
-            
-            // Thêm thông tin ảnh nếu có
-            if (report.crackDetails[0].aiDetectionUrl) {
-              crackReportsInfo += `  Ảnh phát hiện: ${report.crackDetails[0].aiDetectionUrl}\n`;
-            }
-          }
-          crackReportsInfo += `\n`;
-        } catch (error) {
-          console.error(`🚀 ~ ChatbotService ~ getCrackReportsInfo ~ Error processing report:`, error);
-          continue;
-        }
-      }
-
-      console.log("🚀 ~ ChatbotService ~ getCrackReportsInfo ~ Final crackReportsInfo:", crackReportsInfo);
-      return crackReportsInfo;
-    } catch (error) {
-      console.error("🚀 ~ ChatbotService ~ getCrackReportsInfo ~ Error:", error);
-      return "\n\nKhông thể lấy thông tin vết nứt. Vui lòng thử lại sau.\n";
-    }
-  }
-
   async testChat(message: string, userId: string): Promise<string> {
     this.logger.log(`[testChat] Processing message from user ${userId}: "${message}"`);
 
@@ -160,11 +78,8 @@ export class ChatbotService {
       });
 
       let response: string;
-      console.log("🚀 ~ ChatbotService ~ đâsdasdsadsdasdadasdadsdadasdsad ~ response:", response)
-      try {
-        // Lấy thông tin crack reports
-        const crackReportsInfo = await this.getCrackReportsInfo(userId);
 
+      try {
         // Tạo prompt cho Gemini API
         const prompt = `Bạn là một trợ lý AI thông minh cho hệ thống Building Management & Crack Monitoring System  và chỉ có thể trả lời liên quan tới những câu hỏi liên quan tới bảo trì , vết nứt và hướng dẫn cách báo cáo report đến cho hệ thống.
 
@@ -175,8 +90,6 @@ HƯỚNG DẪN PHẢN HỒI:
 - Nếu người dùng hỏi về chức năng cụ thể (như quản lý tòa nhà) hướng dẫn họ cách report đến cho hệ thống 
 - Phản hồi tự nhiên như một cuộc trò chuyện, không phải như một bài thuyết trình
 - Luôn luôn cho họ số điện thoại cần hỗ trợ "0939193974" nhớ ghi là "bạn có thắc mắc gì hay có gì khiếu nại hãy gọi tới ban quan lý Trần Nhật Quang"
-- Nếu người dùng hỏi về tình trạng vết nứt, hãy tham khảo thông tin vết nứt của họ từ phần THÔNG TIN VẾT NỨT CỦA BẠN
-- bởi vì 1 resident có rất nhiều bản report , nên dựa vào  ${crackReportsInfo} created_at mới nhất để trả  
 
 THÔNG TIN HỆ THỐNG:
 Building Management & Crack Monitoring System là hệ thống quản lý tòa nhà và giám sát vết nứt với nhiều chức năng:
@@ -185,8 +98,6 @@ Building Management & Crack Monitoring System là hệ thống quản lý tòa n
 3. Cảnh báo và thông báo: gửi cảnh báo khi phát hiện vấn đề
 4. Lập kế hoạch bảo trì: theo lịch hoặc dựa trên tình trạng
 5. Mục tiêu là cho phép người dùng xem lịch sử bảo trì của căn hộ nào đó, theo dõi lịch sử hoạt động của báo cáo vết nứt, cảnh báo khi cho lịch bảo trì  mới được tạo liên quan tới căn hộ của nó.
-${crackReportsInfo}
-
 Câu hỏi của người dùng: ${message}`;
 
         // Gọi Gemini API

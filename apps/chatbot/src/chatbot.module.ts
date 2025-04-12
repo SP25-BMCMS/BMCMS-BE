@@ -5,13 +5,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config'
 import { PrismaModule } from '../prisma/prisma.module'
 import { GeminiService } from './utils/gemini.service'
 import { CHATBOT_CLIENT } from 'apps/api-gateway/src/constraints'
-import { ClientProxyFactory, Transport } from '@nestjs/microservices'
+import { ClientProxyFactory } from '@nestjs/microservices'
 import { ClientConfigService } from 'apps/configs/client-config.service'
 import { ClientConfigModule } from 'apps/configs/client-config.module'
-
-// Define the client token
-const CRACK_CLIENT = 'CRACK_CLIENT';
-const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 
 @Module({
   imports: [
@@ -22,53 +18,14 @@ const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
     ClientConfigModule,
   ],
   controllers: [ChatbotController],
-  providers: [
-    ChatbotService, 
-    GeminiService, 
-    {
-      provide: CHATBOT_CLIENT,
-      useFactory: (configService: ClientConfigService) => {
-        const clientOptions = configService.chatbotClientOptions
-        return ClientProxyFactory.create(clientOptions)
-      },
-      inject: [ClientConfigService],
+  providers: [ChatbotService, GeminiService, {
+    provide: CHATBOT_CLIENT,
+    useFactory: (configService: ClientConfigService) => {
+      const clientOptions = configService.chatbotClientOptions
+      return ClientProxyFactory.create(clientOptions)
     },
-    {
-      provide: BUILDINGS_CLIENT,
-        useFactory: (configService: ConfigService) => {
-          const url = configService.get('RABBITMQ_URL')
-          return {
-            transport: Transport.RMQ,
-            options: {
-              urls: [url],
-              queue: 'buildings_queue',
-              queueOptions: {
-                durable: true,
-              },
-            },
-          }
-        },
-        inject: [ConfigService],
-
-    },
-    {
-      provide: CRACK_CLIENT,
-      useFactory: (configService: ConfigService) => {
-        const rabbitUrl = configService.get('RABBITMQ_URL')
-        return ClientProxyFactory.create({
-          transport: Transport.RMQ,
-          options: {
-            urls: [rabbitUrl],
-            queue: 'cracks_queue',
-            queueOptions: {
-              durable: true,
-              prefetchCount: 1,
-            },
-          },
-        })
-      },
-      inject: [ConfigService],
-    },
+    inject: [ClientConfigService],
+  },
   ],
   exports: [ChatbotService],
 })
