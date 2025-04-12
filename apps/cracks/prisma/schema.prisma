@@ -37,20 +37,8 @@ model CrackDetail {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   crackReport    CrackReport    @relation(fields: [crackReportId], references: [crackReportId])
-  crackSegment   CrackSegment[]
 }
 
-model CrackSegment {
-  crackSegmentId String      @id @default(uuid())
-  crackDetailsId String
-  confidence     Float
-  x              Float
-  y              Float
-  z              Float
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-  crackDetail    CrackDetail @relation(fields: [crackDetailsId], references: [crackDetailsId])
-}
 
 enum ReportStatus {
   Pending
