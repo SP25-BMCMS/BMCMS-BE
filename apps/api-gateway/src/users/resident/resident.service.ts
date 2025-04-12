@@ -139,7 +139,7 @@ export class ResidentService {
 
           // Log apartment data details
           if (response.data) {
-            console.log(`Found apartment: ${response.data.apartmentName}, has building: ${!!response.data.building}`);
+            console.log(`Found apartment: ${response.data.apartmentName}, has buildingDetails: ${!!response.data.buildingDetails}, warrantyDate: ${response.data.warrantyDate || 'none'}`);
           } else {
             console.log('No apartment data in response');
           }

@@ -449,6 +449,12 @@ export class UsersController {
             properties: {
               apartmentName: { type: 'string', example: 'A101' },
               buildingDetailId: { type: 'string', example: '12345' },
+              warrantyDate: {
+                type: 'string',
+                format: 'date-time',
+                example: '2030-04-11T00:00:00.000Z',
+                description: 'Warranty expiration date (ISO date format string)'
+              }
             },
             required: ['apartmentName', 'buildingDetailId'],
           },
@@ -470,7 +476,7 @@ export class UsersController {
   async updateResidentApartments(
     @Param('residentId') residentId: string,
     @Body()
-    data: { apartments: { apartmentName: string; buildingDetailId: string }[] },
+    data: { apartments: { apartmentName: string; buildingDetailId: string; warrantyDate?: string }[] },
     @Res() res: any,
   ) {
     try {
@@ -486,21 +492,40 @@ export class UsersController {
 
       if (response.data && response.data.apartments) {
         console.log(`API Gateway Controller - Apartment count: ${response.data.apartments.length}`);
+        console.log(`API Gateway Controller - First apartment data: ${JSON.stringify(response.data.apartments[0])}`);
 
-        // Manually assign warranty dates as they're getting lost in gRPC transmission
-        // This is a workaround since the dates exist in the database but are lost in serialization
+        // Tạo map giữa buildingDetailId và warrantyDate từ request ban đầu
+        const requestWarrantyMap = {};
+        if (data.apartments && data.apartments.length > 0) {
+          data.apartments.forEach(apt => {
+            if (apt.warrantyDate) {
+              requestWarrantyMap[apt.buildingDetailId] = apt.warrantyDate;
+            }
+          });
+        }
+        console.log("RequestWarrantyMap:", JSON.stringify(requestWarrantyMap, null, 2));
+
+        // Manually preserve warranty dates from request if lost in gRPC transmission
         const apartmentsWithWarrantyDates = response.data.apartments.map(apt => {
-          // For each apartment, based on its buildingDetailId, assign a warranty date
-          // Default to a future date for any apartment
-          const futureDate = new Date();
-          futureDate.setFullYear(futureDate.getFullYear() + 5); // 5 years in the future
+          const originalWarrantyDate = apt.warrantyDate;
+          const requestWarrantyDate = requestWarrantyMap[apt.buildingDetailId];
+
+          // Ưu tiên warrantyDate từ response, nếu không có thì dùng từ request ban đầu
+          const finalWarrantyDate = originalWarrantyDate || requestWarrantyDate || "";
+
+          console.log(`Controller fixing apartment ${apt.apartmentName}:`,
+            JSON.stringify({
+              from_response: originalWarrantyDate,
+              from_request: requestWarrantyDate,
+              final: finalWarrantyDate
+            }, null, 2)
+          );
 
           return {
             apartmentId: apt.apartmentId,
             apartmentName: apt.apartmentName,
             buildingDetailId: apt.buildingDetailId || null,
-            // Assign a non-null warranty date
-            warranty_date: futureDate.toISOString()
+            warrantyDate: finalWarrantyDate
           };
         });
 
@@ -514,11 +539,12 @@ export class UsersController {
           }
         };
 
-        // Log the final response with manually added warranty dates
-        console.log("Final response with manually added warranty dates:",
-          finalResponse.data.apartments.map(apt =>
-            `${apt.apartmentName}: ${apt.warranty_date}`
-          )
+        // Log the final response with warranty dates
+        console.log("Final controller response:",
+          JSON.stringify(finalResponse.data.apartments.map(apt => ({
+            name: apt.apartmentName,
+            warrantyDate: apt.warrantyDate
+          })), null, 2)
         );
 
         return res.status(HttpStatus.OK).json(finalResponse);

@@ -487,14 +487,7 @@ export class CrackReportsService {
         const crackDetailIds = existingReport.crackDetails.map(detail => detail.crackDetailsId)
 
 
-        // Xóa tất cả CrackSegment liên quan đến các CrackDetail của báo cáo này
-        if (crackDetailIds.length > 0) {
-          await prisma.crackSegment.deleteMany({
-            where: {
-              crackDetailsId: { in: crackDetailIds }
-            }
-          })
-        }
+
 
         // Xóa tất cả CrackDetail của báo cáo
         await prisma.crackDetail.deleteMany({

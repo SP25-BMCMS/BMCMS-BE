@@ -12,6 +12,9 @@ import { BuildingDetailsService } from 'apps/buildings/BuildingDetails/buildingd
 import { locationDetailsModulee } from '../LocationDetails/locationdetails.module';
 import { LocationDetailsController } from '../LocationDetails/locationdetails.controller';
 import { LocationDetailService } from '../LocationDetails/locationdetails.service';
+import { ContractsModule } from '../contract/contracts.module';
+import { ContractsController } from '../contract/contracts.controller';
+import { ContractsService } from '../contract/contracts.service';
 
 @Module({
   imports: [
@@ -22,12 +25,19 @@ import { LocationDetailService } from '../LocationDetails/locationdetails.servic
     AreasModule,
     BuildingDetailsModule,
     locationDetailsModulee,
+    ContractsModule,
   ],
   controllers: [
     AreasController,
     BuildingDetailsController,
     LocationDetailsController,
+    ContractsController,
   ],
-  providers: [AreasService, BuildingDetailsService, LocationDetailService],
+  providers: [
+    AreasService,
+    BuildingDetailsService,
+    LocationDetailService,
+    ContractsService,
+  ],
 })
-export class BuildingModule {}
+export class BuildingModule { }

@@ -84,7 +84,11 @@ export interface UserInterface {
 
   updateResidentApartments(data: {
     residentId: string
-    apartments: { apartmentName: string; buildingDetailId: string }[]
+    apartments: {
+      apartmentName: string;
+      buildingDetailId: string;
+      warrantyDate?: string;
+    }[]
   }): Observable<any>
 
   // Account Status

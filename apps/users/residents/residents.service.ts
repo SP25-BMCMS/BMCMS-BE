@@ -409,10 +409,11 @@ export class ResidentsService {
 
       // Create apartment response
       const apartmentResponse = {
-        apartmentName: apartment.apartmentName,
         apartmentId: apartment.apartmentId,
-        building: buildingDetail?.building || null
-      }
+        apartmentName: apartment.apartmentName,
+        warrantyDate: apartment.warrantyDate || null,
+        buildingDetails: buildingDetail || null
+      };
 
       return {
         isSuccess: true,

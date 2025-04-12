@@ -71,7 +71,7 @@ message CreateUserRequest {
 message ApartmentRequest {
   string apartmentName = 1;
   string buildingDetailId = 2;
-  string warranty_date = 3;
+  string warrantyDate = 3;
 }
 
 message ApiResponseUser {
@@ -125,7 +125,7 @@ message ApartmentResponse {
   string apartmentName = 2;
   string buildingDetailId = 3;
   BuildingDetailInfo buildingDetails = 4;
-  string warranty_date = 5;
+  string warrantyDate = 5;
 }
 
 message BuildingInfo {
@@ -144,8 +144,8 @@ message BuildingInfo {
 message GetApartmentRepsonse {
   string apartmentId = 1;
   string apartmentName = 2;
+  string warrantyDate = 4;
   BuildingDetailInfo buildingDetails = 3;
-  string warranty_date = 4;
   string buildingDetailId = 5;
 }
 
@@ -325,6 +325,7 @@ message Apartment {
   string apartmentName = 1;
   string apartmentId = 2;
   BuildingInfo building = 3;
+  string warrantyDate = 4;
 }
 
 message GetApartmentsResponse {
@@ -373,7 +374,7 @@ message ApartmentWithWarranty {
   string apartmentId = 1;
   string apartmentName = 2;
   string buildingDetailId = 3;
-  string warranty_date = 4;
+  string warrantyDate = 4;
 }
 
 message UpdateAccountStatusRequest {

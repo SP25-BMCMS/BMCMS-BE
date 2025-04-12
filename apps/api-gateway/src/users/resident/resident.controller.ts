@@ -82,6 +82,10 @@ export class ResidentController {
 
             console.log(`API Gateway Controller - Response: success=${response.success || response.isSuccess}, hasData=${!!response.data}`);
 
+            if (response.data) {
+                console.log(`Apartment data: id=${response.data.apartmentId}, name=${response.data.apartmentName}, warrantyDate=${response.data.warrantyDate || 'none'}, hasBuildingDetails=${!!response.data.buildingDetails}`);
+            }
+
             if (!response.success && !response.isSuccess) {
                 throw new NotFoundException(response.message || 'Apartment not found');
             }
