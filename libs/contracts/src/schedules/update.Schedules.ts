@@ -9,6 +9,17 @@ export class UpdateScheduleDto {
   schedule_name?: string
 
   @IsOptional()
+<<<<<<< HEAD
+=======
+  @IsEnum($Enums.Frequency)
+  @ApiProperty({
+    description: 'The type of the schedule', required: false, enum: $Enums.Frequency,
+    example: $Enums.Frequency.Daily + "Daily ,Weekly,Monthly,Yearly,Specific",
+  })  // Optional enum property
+  schedule_type?: $Enums.Frequency
+
+  @IsOptional()
+>>>>>>> 4e2e49669949f2e43f6f2f3f47f1071f9e0b0d0e
   @IsString()
   @ApiProperty({ description: 'A brief description of the schedule', required: false })  // Optional description
   description?: string

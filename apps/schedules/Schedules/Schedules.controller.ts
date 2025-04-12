@@ -40,6 +40,22 @@ export class ScheduleController {
     return this.scheduleService.updateSchedule(schedule_id, updateScheduleDto)
   }
 
+<<<<<<< HEAD
+=======
+  @MessagePattern(SCHEDULES_PATTERN.UPDATE_TYPE)
+  async changeScheduleType(
+    @Payload()
+    {
+      schedule_id,
+      schedule_type,
+    }: {
+      schedule_id: string
+      schedule_type: $Enums.Frequency
+    },
+  ): Promise<ApiResponse<ScheduleResponseDto>> {
+    return this.scheduleService.changeScheduleType(schedule_id, schedule_type)
+  }
+>>>>>>> 4e2e49669949f2e43f6f2f3f47f1071f9e0b0d0e
 
   @MessagePattern(SCHEDULES_PATTERN.GET)
   async getAllSchedulesMicro(
