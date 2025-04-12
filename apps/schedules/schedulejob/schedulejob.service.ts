@@ -35,15 +35,19 @@ export class ScheduleJobsService {
         data: {
           schedule_id: createScheduleJobDto.schedule_id,
           run_date: createScheduleJobDto.run_date,
-          // status:  $Enums.ScheduleJobStatus.InProgress,
           status: createScheduleJobDto.status,
-          building_id: createScheduleJobDto.building_id,
+          buildingDetailId: createScheduleJobDto.buildingDetailId,
         },
       })
+      // Map buildingDetailId to building_id to match ScheduleJobResponseDto
+      const responseDto: ScheduleJobResponseDto = {
+        ...newScheduleJob,
+        building_id: newScheduleJob.buildingDetailId,
+      }
       return new ApiResponse<ScheduleJobResponseDto>(
         true,
         'Schedule job created successfully',
-        newScheduleJob,
+        responseDto,
       )
     } catch (error) {
       throw new RpcException({
@@ -87,9 +91,15 @@ export class ScheduleJobsService {
         orderBy: { created_at: 'desc' },
       })
 
+      // Map each scheduleJob to include building_id
+      const mappedJobs: ScheduleJobResponseDto[] = scheduleJobs.map(job => ({
+        ...job,
+        building_id: job.buildingDetailId,
+      }))
+
       // Use PaginationResponseDto for consistent response formatting
       return new PaginationResponseDto(
-        scheduleJobs,
+        mappedJobs,
         total,
         page,
         limit,
@@ -121,10 +131,16 @@ export class ScheduleJobsService {
           mescsage: 'Shedule job not found',
         })
       }
+
+      const responseDto: ScheduleJobResponseDto = {
+        ...scheduleJob,
+        building_id: scheduleJob.buildingDetailId,
+      }
+
       return new ApiResponse<ScheduleJobResponseDto>(
         true,
         'Schedule job fetched successfully',
-        scheduleJob,
+        responseDto,
       )
     } catch (error) {
       throw new RpcException({
@@ -147,10 +163,16 @@ export class ScheduleJobsService {
           status,
         },
       })
+
+      const responseDto: ScheduleJobResponseDto = {
+        ...updatedScheduleJob,
+        building_id: updatedScheduleJob.buildingDetailId,
+      }
+
       return new ApiResponse<ScheduleJobResponseDto>(
         true,
         'Schedule job status updated successfully',
-        updatedScheduleJob,
+        responseDto,
       )
     } catch (error) {
       throw new RpcException({
@@ -171,14 +193,20 @@ export class ScheduleJobsService {
           schedule_id: updateData.schedule_id, // Nếu có, cập nhật schedule_id
           run_date: updateData.run_date, // Nếu có, cập nhật run_date
           status: updateData.status, // Nếu có, cập nhật status
-          building_id: updateData.building_id, // Nếu có, cập nhật building_id        },
+          // Map building_id to buildingDetailId in the database
+          buildingDetailId: updateData.building_id,
         },
       })
+
+      const responseDto: ScheduleJobResponseDto = {
+        ...updatedScheduleJob,
+        building_id: updatedScheduleJob.buildingDetailId,
+      }
 
       return new ApiResponse<ScheduleJobResponseDto>(
         true,
         'Schedule job updated successfully',
-        updatedScheduleJob,
+        responseDto,
       )
     } catch (error) {
       throw new RpcException({
@@ -213,29 +241,32 @@ export class ScheduleJobsService {
       const scheduleJobsWithBuildings = await Promise.all(
         scheduleJobs.map(async (job) => {
           try {
-            // Kiểm tra xem building_id có tồn tại không
-            if (!job.building_id) {
-              console.warn(`Schedule job ${job.schedule_job_id} has no building_id`)
+            // Kiểm tra xem buildingDetailId có tồn tại không
+            if (!job.buildingDetailId) {
+              console.warn(`Schedule job ${job.schedule_job_id} has no buildingDetailId`)
               return {
                 ...job,
                 building: null,
+                building_id: job.buildingDetailId,
               }
             }
 
-            console.log(`Fetching building with ID: ${job.building_id}`)
+            console.log(`Fetching building with ID: ${job.buildingDetailId}`)
             const building = await firstValueFrom(
-              this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: job.building_id })
+              this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: job.buildingDetailId })
             )
             console.log(`Building response:`, building)
             return {
               ...job,
               building: building.data,
+              building_id: job.buildingDetailId,
             }
           } catch (error) {
             console.error(`Error fetching building for job ${job.schedule_job_id}:`, error)
             return {
               ...job,
               building: null,
+              building_id: job.buildingDetailId,
             }
           }
         })
@@ -281,14 +312,14 @@ export class ScheduleJobsService {
         return new ApiResponse(false, 'Schedule job not found', null)
       }
 
-      console.log(`Fetching building with ID: ${scheduleJob.building_id}`)
+      console.log(`Fetching building with ID: ${scheduleJob.buildingDetailId}`)
       // Get building details
       const buildingResponse = await firstValueFrom(
-        this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: scheduleJob.building_id })
+        this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: scheduleJob.buildingDetailId })
       )
 
       if (!buildingResponse || !buildingResponse.data) {
-        console.error(`Building not found with ID: ${scheduleJob.building_id}`)
+        console.error(`Building not found with ID: ${scheduleJob.buildingDetailId}`)
         return new ApiResponse(false, 'Building not found', null)
       }
 
@@ -308,7 +339,7 @@ export class ScheduleJobsService {
         })
       )
 
-      console.log(`Fetching residents for building ID: ${scheduleJob.building_id}`)
+      console.log(`Fetching residents for building ID: ${scheduleJob.buildingDetailId}`)
       // Get residents for the building
       const residentsResponse = await firstValueFrom(
         this.buildingClient.send(BUILDINGS_PATTERN.GET_RESIDENTS_BY_BUILDING_ID, building.buildingId)
