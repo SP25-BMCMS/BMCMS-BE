@@ -1022,7 +1022,7 @@ export class TaskAssignmentsService {
         yPos += LINE_HEIGHT + 5
 
         // Two-column layout for crack info
-        const colWidth = CONTENT_WIDTH / 2 - 10
+        const colWidth = CONTENT_WIDTH / 2 - 5
 
         // Lấy thông tin reportby từ crack record
         const reportby = crackInfo?.data && crackInfo.data[0]?.reportedBy?.username || 'N/A'
@@ -1037,11 +1037,11 @@ export class TaskAssignmentsService {
 
         // Left column
         doc.text('Reporter:', PAGE_MARGIN, yPos)
-        doc.text(reportby, PAGE_MARGIN + 100, yPos)
+        doc.text(reportby, PAGE_MARGIN + 90, yPos)
         yPos += LINE_HEIGHT
 
         doc.text('Report Date:', PAGE_MARGIN, yPos)
-        doc.text(reportDate, PAGE_MARGIN + 100, yPos)
+        doc.text(reportDate, PAGE_MARGIN + 90, yPos)
         yPos += LINE_HEIGHT
 
         // Right column

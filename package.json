@@ -60,6 +60,7 @@
     "class-validator": "^0.14.1",
     "decimal.js": "^10.5.0",
     "decode-uri-component": "^0.4.1",
+    "fs": "^0.0.1-security",
     "fs-extra": "^11.3.0",
     "iconv-lite": "^0.6.3",
     "ioredis": "^5.5.0",
@@ -71,12 +72,15 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
+    "path": "^0.12.7",
     "pdfkit": "^0.16.0",
     "redis": "^4.7.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
     "swagger-ui-express": "^5.0.1",
-    "twilio": "^5.5.1"
+    "twilio": "^5.5.1",
+    "util": "^0.12.5",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",

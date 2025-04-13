@@ -4,35 +4,212 @@ import { RpcException } from '@nestjs/microservices';
 import { PrismaClient } from '@prisma/client-building';
 import { CreateContractDto } from 'libs/contracts/src/contracts/create-contract.dto';
 import { UpdateContractDto } from 'libs/contracts/src/contracts/update-contract.dto';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as util from 'util';
+import { v4 as uuidv4 } from 'uuid';
+
+const mkdirAsync = util.promisify(fs.mkdir);
+const writeFileAsync = util.promisify(fs.writeFile);
 
 @Injectable()
 export class ContractsService {
     private prisma = new PrismaClient();
+    private readonly uploadDir = path.join(process.cwd(), 'uploads', 'contracts');
 
-    // Create a new contract
-    async createContract(createContractDto: CreateContractDto) {
+    constructor() {
+        // Ensure upload directory exists
+        this.ensureUploadDirExists();
+    }
+
+    private async ensureUploadDirExists() {
         try {
-            const newContract = await this.prisma.contract.create({
-                data: {
-                    start_date: createContractDto.start_date ? new Date(createContractDto.start_date) : null,
-                    end_date: createContractDto.end_date ? new Date(createContractDto.end_date) : null,
-                    vendor: createContractDto.vendor || null,
-                },
-                include: {
-                    devices: true,
-                },
+            await mkdirAsync(this.uploadDir, { recursive: true });
+        } catch (error) {
+            console.error('Error creating upload directory:', error);
+        }
+    }
+
+    private async saveFile(file: any): Promise<string> {
+        try {
+            // Create filename with unique identifier
+            const fileName = `${uuidv4()}-${file.originalname}`;
+            const filePath = path.join(this.uploadDir, fileName);
+
+            // Convert base64 buffer back to Buffer and save
+            const buffer = Buffer.from(file.buffer, 'base64');
+            await writeFileAsync(filePath, buffer);
+
+            return fileName;
+        } catch (error) {
+            console.error('Error saving file:', error);
+            throw new RpcException({
+                statusCode: 500,
+                message: 'Error saving contract file',
+            });
+        }
+    }
+
+    // Create a new contract with devices
+    async createContract(createContractDto: CreateContractDto, file: any) {
+        let fileName = null;
+        try {
+            // Save the file and get filename
+            fileName = await this.saveFile(file);
+
+            // Sử dụng transaction để đảm bảo tính nhất quán dữ liệu
+            const result = await this.prisma.$transaction(async (tx) => {
+                // Create the contract with the file reference
+                const newContract = await tx.contract.create({
+                    data: {
+                        start_date: createContractDto.start_date ? new Date(createContractDto.start_date) : null,
+                        end_date: createContractDto.end_date ? new Date(createContractDto.end_date) : null,
+                        vendor: createContractDto.vendor || null,
+                        file_name: fileName,
+                    },
+                });
+
+                // Create devices and associate them with the contract
+                if (createContractDto.devices) {
+                    // Parse devices if it's a string
+                    let deviceArray = createContractDto.devices;
+                    if (typeof deviceArray === 'string') {
+                        try {
+                            deviceArray = JSON.parse(deviceArray);
+                        } catch (error) {
+                            throw new RpcException({
+                                statusCode: 400,
+                                message: 'Invalid devices JSON format',
+                            });
+                        }
+                    }
+
+                    if (Array.isArray(deviceArray) && deviceArray.length > 0) {
+                        // Lọc bỏ các thiết bị không có buildingDetailId
+                        const validDevices = deviceArray.filter(d => d.buildingDetailId);
+
+                        if (validDevices.length === 0) {
+                            // Tạo hợp đồng không có thiết bị nếu không có thiết bị nào hợp lệ
+                            return {
+                                statusCode: 201,
+                                message: 'Contract created successfully without devices (all devices had missing buildingDetailId)',
+                                data: newContract,
+                            };
+                        }
+
+                        // Get all unique buildingDetailIds to validate - filter out undefined/null values
+                        const buildingDetailIds = [...new Set(validDevices.map(d => d.buildingDetailId))];
+
+                        // Only proceed with validation if there are valid IDs
+                        if (buildingDetailIds.length > 0) {
+                            // Check if all buildingDetailIds exist
+                            const existingBuildingDetails = await tx.buildingDetail.findMany({
+                                where: {
+                                    buildingDetailId: {
+                                        in: buildingDetailIds
+                                    }
+                                },
+                                select: {
+                                    buildingDetailId: true
+                                }
+                            });
+
+                            // Convert to a Set for easy lookup
+                            const existingIds = new Set(existingBuildingDetails.map(bd => bd.buildingDetailId));
+
+                            // Find missing IDs
+                            const missingIds = buildingDetailIds.filter(id => !existingIds.has(id));
+
+                            if (missingIds.length > 0) {
+                                throw new RpcException({
+                                    statusCode: 404,
+                                    message: `Building Detail IDs not found: ${missingIds.join(', ')}`,
+                                });
+                            }
+                        }
+
+                        // Tạo device chỉ với những thiết bị hợp lệ trong cùng một transaction
+                        const createdDevices = [];
+                        for (const deviceDto of validDevices) {
+                            const device = await tx.device.create({
+                                data: {
+                                    name: deviceDto.name,
+                                    type: deviceDto.type,
+                                    manufacturer: deviceDto.manufacturer,
+                                    model: deviceDto.model,
+                                    buildingDetailId: deviceDto.buildingDetailId,
+                                    contract_id: newContract.contract_id,
+                                }
+                            });
+                            createdDevices.push(device);
+                        }
+
+                        return {
+                            statusCode: 201,
+                            message: 'Contract created successfully with devices',
+                            data: {
+                                ...newContract,
+                                devices: createdDevices
+                            },
+                        };
+                    }
+                }
+
+                return {
+                    statusCode: 201,
+                    message: 'Contract created successfully',
+                    data: newContract,
+                };
+            }, {
+                maxWait: 5000, // maximum time to wait to acquire transaction lock (ms)
+                timeout: 10000, // maximum time for the transaction to complete (ms)
+                isolationLevel: 'ReadCommitted' // transaction isolation level
             });
 
-            return {
-                statusCode: 201,
-                message: 'Contract created successfully',
-                data: newContract,
-            };
+            return result;
         } catch (error) {
             console.error('Error during contract creation:', error);
+
+            // Xóa file nếu transaction thất bại để tránh rác
+            if (fileName) {
+                try {
+                    const filePath = path.join(this.uploadDir, fileName);
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+                        console.log(`Cleaned up file ${fileName} after failed transaction`);
+                    }
+                } catch (cleanupError) {
+                    console.error('Error cleaning up file:', cleanupError);
+                }
+            }
+
+            // If it's already an RpcException, rethrow it
+            if (error instanceof RpcException) {
+                throw error;
+            }
+
+            // Check for Prisma validation errors
+            if (error.name === 'PrismaClientValidationError') {
+                throw new RpcException({
+                    statusCode: 400,
+                    message: 'Invalid data format for contract creation',
+                    error: error.message
+                });
+            }
+
+            // Check for Prisma not found errors
+            if (error.code === 'P2025' || error.message?.includes('not found')) {
+                throw new RpcException({
+                    statusCode: 404,
+                    message: error.message || 'Resource not found',
+                });
+            }
+
+            // Default error
             throw new RpcException({
                 statusCode: 400,
                 message: 'Contract creation failed',
+                error: error.message,
             });
         }
     }
