@@ -12,6 +12,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DB_BUILDING_SERVICE")
+  directUrl = env("BUILDING_PRISMA_ACCELERATE_URL")
 }
 
 model Building {
@@ -23,7 +24,7 @@ model Building {
   area              Area?            @relation(fields: [areaId], references: [areaId])
   //Trong trường hợp của Building và Area, mối quan hệ này là 1:N, tức là mỗi Building có thể thuộc về một Area, nhưng một Area có thể có nhiều Building.
   buildingDetails   BuildingDetail[]
-  // scheduleJobs    ScheduleJob[]
+  manager_id        String?
   areaId            String?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt

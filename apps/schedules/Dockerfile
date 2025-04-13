@@ -11,7 +11,7 @@ RUN npm install --legacy-peer-deps
 COPY . .
 
 # Generate Prisma Client cho tất cả services và đảm bảo output vào thư mục node_modules gốc
-RUN find ./apps -name schema.prisma -exec dirname {} \; | xargs -I{} sh -c 'npx prisma generate --schema={}/schema.prisma'
+RUN find ./apps -name schema.prisma -exec dirname {} \; | xargs -I{} sh -c 'npx prisma generate --schema={}/schema.prisma --no-engine'
 
 # Build the application
 RUN npm run build schedules

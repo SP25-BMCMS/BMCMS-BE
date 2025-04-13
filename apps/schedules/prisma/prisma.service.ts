@@ -1,38 +1,46 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PrismaClient } from '@prisma/client-Schedule';
-import { log } from 'console';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
+import { PrismaClient } from '@prisma/client-Schedule'
+import { withAccelerate } from '@prisma/extension-accelerate'
 
 @Injectable()
 export class PrismaService
   extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
-{
-  constructor(config: ConfigService) {
-    console.log('schedules Initialized'); // Add a debug log to ensure service is being initialized
-
-    const url = config.get<string>('DB_SCHEDULE_SERVICE');
-    // console.log("database: ", process.env.DATABASE_URL);
+  implements OnModuleInit, OnModuleDestroy {
+  constructor(private configService: ConfigService) {
+    const accelerateUrl = configService.get<string>('SCHEDULE_PRISMA_ACCELERATE_URL')
+    if (!accelerateUrl) {
+      throw new Error('SCHEDULE_PRISMA_ACCELERATE_URL is not defined')
+    }
 
     super({
+      log: ['error', 'warn'],
       datasources: {
         db: {
-          url,
+          url: accelerateUrl,
         },
       },
-    });
+    })
   }
 
   async onModuleInit() {
-    await this.$connect();
+    try {
+      await this.$connect()
+      // Apply Accelerate extension
+      this.$extends(withAccelerate())
+      console.log('Successfully connected to database with Accelerate')
+    } catch (error) {
+      console.error('Failed to connect to database:', error)
+      throw error
+    }
   }
 
   async onModuleDestroy() {
-    await this.$disconnect();
+    await this.$disconnect()
   }
 
   async cleanDatabase() {
-    if (process.env.NODE_ENV === 'production') return;
+    if (process.env.NODE_ENV === 'production') return
 
     // teardown logic
     //   return Promise.all([this.user.deleteMany()])

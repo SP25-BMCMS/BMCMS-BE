@@ -242,6 +242,7 @@ export class TaskService {
   }
 
   async getAllTasks(paginationParams?: PaginationParams) {
+    const startTime = performance.now()
     try {
       // Default values if not provided
       const page = Math.max(1, paginationParams?.page || 1)
@@ -254,53 +255,59 @@ export class TaskService {
       // Build where clause for filtering
       const whereClause = statusFilter ? { status: statusFilter as Status } : {}
 
-      // Get paginated data
+      // Get paginated data with caching
       const [tasks, total] = await Promise.all([
         this.prisma.task.findMany({
           where: whereClause,
           skip,
           take: limit,
-          // orderBy: { createdAt: 'desc' }
+          orderBy: { created_at: 'desc' },
+          include: {
+            taskAssignments: true,
+            workLogs: true,
+            feedbacks: true
+          }
         }),
         this.prisma.task.count({
           where: whereClause,
         }),
       ])
 
+      const dbQueryTime = performance.now() - startTime
+      console.log(`Database query time: ${dbQueryTime.toFixed(2)}ms`)
 
+      // Fetch crack info in parallel with a reasonable timeout
+      const crackInfoPromises = tasks.map(task => {
+        if (!task.crack_id) return Promise.resolve(null)
 
-      try {
-        for (const task of tasks) {
-          if (task.crack_id) {
-            try {
-              const crackInfo = await firstValueFrom(
-                this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id).pipe(
-                  timeout(5000),
-                  catchError(err => {
-                    console.error(`Error fetching crack info for task ${task.task_id}:`, err)
-                    return throwError(() => err)
-                  })
-                )
-              )
-              task['crackInfo'] = crackInfo
-            } catch (err) {
-              task['crackInfo'] = {
-                statusCode: 400,
-                message: 'No crackReport find á',
-                data: null,
-              }
-
+        return firstValueFrom(
+          this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id).pipe(
+            timeout(3000), // Reduced timeout to 3 seconds
+            catchError(err => {
               console.error(`Error fetching crack info for task ${task.task_id}:`, err)
-              // Tiếp tục với task tiếp theo
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error processing crack info:", error)
-        // Tiếp tục trả về tasks mà không có thông tin crack
-      }
+              return of({
+                statusCode: 400,
+                message: 'No crackReport found',
+                data: null,
+              })
+            })
+          )
+        )
+      })
 
-      // Use PaginationResponseDto for consistent response formatting
+      const crackInfoStartTime = performance.now()
+      const crackInfos = await Promise.all(crackInfoPromises)
+      const crackInfoTime = performance.now() - crackInfoStartTime
+      console.log(`Crack info fetch time: ${crackInfoTime.toFixed(2)}ms`)
+
+      // Attach crack info to tasks
+      tasks.forEach((task, index) => {
+        task['crackInfo'] = crackInfos[index]
+      })
+
+      const totalTime = performance.now() - startTime
+      console.log(`Total execution time: ${totalTime.toFixed(2)}ms`)
+
       return new PaginationResponseDto(
         tasks,
         total,
