@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { CrackType } from '@prisma/client-Building';
+import { CrackType } from '@prisma/client-building';
 
 export class CrackRecordDto {
   @ApiProperty({ description: 'Unique identifier of the crack record' })

@@ -4,7 +4,7 @@ import { CreateScheduleDto } from '@app/contracts/schedules/create-Schedules.dto
 import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules'
 import { Injectable } from '@nestjs/common'
 import { RpcException } from '@nestjs/microservices'
-import { $Enums, PrismaClient, ScheduleJobStatus } from '@prisma/client-Schedule'
+import { $Enums, PrismaClient, ScheduleJobStatus } from '@prisma/client-schedule'
 import {
   PaginationParams,
   PaginationResponseDto,

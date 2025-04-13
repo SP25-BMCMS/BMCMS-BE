@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
-import { CrackType } from '@prisma/client-Building';
+import { CrackType } from '@prisma/client-building';
 
 export class UpdateCrackRecordDto {
   @IsOptional()

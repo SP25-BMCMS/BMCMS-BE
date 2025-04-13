@@ -1,6 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty } from 'class-validator';
-import { DeviceType, Frequency, MaintenanceBasis } from '@prisma/client-Schedule';
+import { ApiProperty } from '@nestjs/swagger'
+import { IsEnum, IsNotEmpty } from 'class-validator'
+import { DeviceType, Frequency, MaintenanceBasis } from '@prisma/client-schedule'
 
 export class CreateMaintenanceCycleDto {
   @IsNotEmpty()
@@ -10,7 +10,7 @@ export class CreateMaintenanceCycleDto {
     enum: DeviceType,
     example: DeviceType.Elevator,
   })
-  device_type: DeviceType;
+  device_type: DeviceType
 
   @IsNotEmpty()
   @IsEnum(Frequency)
@@ -19,7 +19,7 @@ export class CreateMaintenanceCycleDto {
     enum: Frequency,
     example: Frequency.Monthly,
   })
-  frequency: Frequency;
+  frequency: Frequency
 
   @IsNotEmpty()
   @IsEnum(MaintenanceBasis)
@@ -28,5 +28,5 @@ export class CreateMaintenanceCycleDto {
     enum: MaintenanceBasis,
     example: MaintenanceBasis.ManufacturerRecommendation,
   })
-  basis: MaintenanceBasis;
+  basis: MaintenanceBasis
 } 
