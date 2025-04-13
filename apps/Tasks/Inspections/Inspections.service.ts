@@ -288,10 +288,15 @@ export class InspectionsService implements OnModuleInit {
       }
 
       // Parse repairMaterials if it's a string
-      let repairMaterialsArray: RepairMaterialDto[]
+      let repairMaterialsArray: RepairMaterialDto[] = [];
       try {
         const repairMaterials = dto.repairMaterials as string | RepairMaterialDto[]
-        if (typeof repairMaterials === 'string') {
+
+        // Handle empty string or undefined
+        if (!repairMaterials || (typeof repairMaterials === 'string' && repairMaterials.trim() === '')) {
+          // Set to empty array if empty or not provided
+          repairMaterialsArray = [];
+        } else if (typeof repairMaterials === 'string') {
           // Handle case where multiple objects are sent as separate strings
           const repairMaterialsStr = repairMaterials.trim()
           if (repairMaterialsStr.startsWith('{') && repairMaterialsStr.includes('},{')) {
@@ -313,97 +318,118 @@ export class InspectionsService implements OnModuleInit {
 
       // Validate all materials and calculate total cost
       let totalCost = 0
-      const materialValidations = await Promise.all(
-        repairMaterialsArray.map(async (repairMaterial) => {
-          const materialResponse = await firstValueFrom(
-            this.taskClient.send(
-              MATERIAL_PATTERN.GET_MATERIAL_BY_ID,
-              repairMaterial.materialId
-            ).pipe(
-              timeout(10000),
-              catchError(err => {
-                console.error('Error getting material info:', err)
-                return of(new ApiResponse(false, 'Error getting material info', null))
-              })
+
+      // Skip validation if no repair materials
+      if (repairMaterialsArray.length > 0) {
+        const materialValidations = await Promise.all(
+          repairMaterialsArray.map(async (repairMaterial) => {
+            const materialResponse = await firstValueFrom(
+              this.taskClient.send(
+                MATERIAL_PATTERN.GET_MATERIAL_BY_ID,
+                repairMaterial.materialId
+              ).pipe(
+                timeout(10000),
+                catchError(err => {
+                  console.error('Error getting material info:', err)
+                  return of(new ApiResponse(false, 'Error getting material info', null))
+                })
+              )
             )
+
+            if (!materialResponse || !materialResponse.isSuccess || !materialResponse.data) {
+              throw new Error(`Material not found or error retrieving material information for ID: ${repairMaterial.materialId}`)
+            }
+
+            const material = materialResponse.data
+
+            // Check if there's enough stock
+            if (material.stock_quantity < repairMaterial.quantity) {
+              throw new Error(`Not enough stock for material ${material.name}. Current stock: ${material.stock_quantity}, Required: ${repairMaterial.quantity}`)
+            }
+
+            // Calculate cost for this material
+            const unitCost = Number(material.unit_price)
+            const materialTotalCost = unitCost * repairMaterial.quantity
+            totalCost += materialTotalCost
+
+            return {
+              material,
+              repairMaterial,
+              unitCost,
+              materialTotalCost
+            }
+          })
+        )
+
+        // Create inspection and repair materials in a transaction
+        const result = await this.prisma.$transaction(async (prisma) => {
+          // Create the inspection
+          const inspection = await prisma.inspection.create({
+            data: {
+              task_assignment_id: dto.task_assignment_id,
+              inspected_by: dto.inspected_by,
+              image_urls: dto.image_urls || [],
+              description: dto.description || "",
+              total_cost: totalCost,
+            },
+          })
+
+          // Create all repair materials
+          const repairMaterials = await Promise.all(
+            materialValidations.map(async (validation) => {
+              const repairMaterial = await prisma.repairMaterial.create({
+                data: {
+                  inspection_id: inspection.inspection_id,
+                  material_id: validation.repairMaterial.materialId,
+                  quantity: validation.repairMaterial.quantity,
+                  unit_cost: validation.unitCost,
+                  total_cost: validation.materialTotalCost,
+                },
+              })
+
+              // Update material stock
+              await prisma.material.update({
+                where: { material_id: validation.repairMaterial.materialId },
+                data: {
+                  stock_quantity: {
+                    decrement: validation.repairMaterial.quantity,
+                  },
+                },
+              })
+
+              return repairMaterial
+            })
           )
 
-          if (!materialResponse || !materialResponse.isSuccess || !materialResponse.data) {
-            throw new Error(`Material not found or error retrieving material information for ID: ${repairMaterial.materialId}`)
-          }
-
-          const material = materialResponse.data
-
-          // Check if there's enough stock
-          if (material.stock_quantity < repairMaterial.quantity) {
-            throw new Error(`Not enough stock for material ${material.name}. Current stock: ${material.stock_quantity}, Required: ${repairMaterial.quantity}`)
-          }
-
-          // Calculate cost for this material
-          const unitCost = Number(material.unit_price)
-          const materialTotalCost = unitCost * repairMaterial.quantity
-          totalCost += materialTotalCost
-
           return {
-            material,
-            repairMaterial,
-            unitCost,
-            materialTotalCost
+            ...inspection,
+            repairMaterials,
           }
         })
-      )
 
-      // Create inspection and repair materials in a transaction
-      const result = await this.prisma.$transaction(async (prisma) => {
-        // Create the inspection
-        const inspection = await prisma.inspection.create({
+        return new ApiResponse(
+          true,
+          'Inspection and repair materials created successfully',
+          result
+        )
+      } else {
+        // No repair materials, just create the inspection
+        const inspection = await this.prisma.inspection.create({
           data: {
             task_assignment_id: dto.task_assignment_id,
             inspected_by: dto.inspected_by,
             image_urls: dto.image_urls || [],
             description: dto.description || "",
-            total_cost: totalCost,
+            total_cost: 0,
           },
         })
 
-        // Create all repair materials
-        const repairMaterials = await Promise.all(
-          materialValidations.map(async (validation) => {
-            const repairMaterial = await prisma.repairMaterial.create({
-              data: {
-                inspection_id: inspection.inspection_id,
-                material_id: validation.repairMaterial.materialId,
-                quantity: validation.repairMaterial.quantity,
-                unit_cost: validation.unitCost,
-                total_cost: validation.materialTotalCost,
-              },
-            })
-
-            // Update material stock
-            await prisma.material.update({
-              where: { material_id: validation.repairMaterial.materialId },
-              data: {
-                stock_quantity: {
-                  decrement: validation.repairMaterial.quantity,
-                },
-              },
-            })
-
-            return repairMaterial
-          })
+        return new ApiResponse(
+          true,
+          'Inspection created successfully with no repair materials',
+          inspection
         )
-
-        return {
-          ...inspection,
-          repairMaterials,
-        }
-      })
-
-      return new ApiResponse(
-        true,
-        'Inspection and repair materials created successfully',
-        result
-      )
+      }
     } catch (error) {
       console.error('Error in createInspection:', error)
       return new ApiResponse(false, error.message || 'Error creating inspection and repair materials', null)

@@ -379,8 +379,14 @@ export class InspectionService implements OnModuleInit {
               })
             })
           }
-          // If no location details provided, create a default one
+          // Nếu additionalLocationDetails là mảng rỗng có chủ ý, không tạo mặc định
+          else if (additionalLocDetails && Array.isArray(additionalLocDetails) && additionalLocDetails.length === 0) {
+            console.log('Empty location details array provided, respecting empty array')
+            // Không tạo mặc định, giữ mảng rỗng
+          }
+          // Trường hợp không có additionalLocationDetails hoặc nó là null/undefined
           else {
+            console.log('No location details provided, creating default')
             locationDetails.push({
               buildingDetailId: buildingDetailId,
               inspection_id: inspection.inspection_id,
@@ -401,19 +407,22 @@ export class InspectionService implements OnModuleInit {
             locationDetails.forEach(detail => {
               this.buildingClient.emit(LOCATIONDETAIL_PATTERN.CREATE, detail)
             })
+
+            // Add locationDetail info to the response ONLY if we have location details
+            response.data.locationDetails = locationDetails.map(detail => ({
+              inspection_id: detail.inspection_id,
+              buildingDetailId: detail.buildingDetailId,
+              roomNumber: detail.roomNumber,
+              floorNumber: detail.floorNumber,
+              areaType: detail.areaType,
+              description: detail.description
+            }))
+
+            console.log('Added locationDetails info to response:', response.data.locationDetails)
+          } else {
+            // Không thêm locationDetails vào response khi không có location details nào
+            console.log('No location details to add to response')
           }
-
-          // Add locationDetail info to the response
-          response.data.locationDetails = locationDetails.map(detail => ({
-            inspection_id: detail.inspection_id,
-            buildingDetailId: detail.buildingDetailId,
-            roomNumber: detail.roomNumber,
-            floorNumber: detail.floorNumber,
-            areaType: detail.areaType,
-            description: detail.description
-          }))
-
-          console.log('Added locationDetails info to response:', response.data.locationDetails)
         } catch (error) {
           console.error('Error in LocationDetail creation process:', error)
           // Don't fail the whole request if LocationDetail creation fails
