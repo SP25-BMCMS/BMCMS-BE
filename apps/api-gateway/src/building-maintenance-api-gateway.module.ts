@@ -24,6 +24,7 @@ import { ChatbotModule } from './chatbot/chatbot.module'
 import { DashboardModule } from './dashboard/dashboard.module'
 import { ContractsModule } from './contract/contracts.module'
 import { CrackRecordModule } from './CrackRecord/CrackRecord.module'
+import { MaintenanceCycleModule } from './MaintenanceCycle/MaintenanceCycle.module'
 
 @Module({
   imports: [
@@ -98,7 +99,8 @@ import { CrackRecordModule } from './CrackRecord/CrackRecord.module'
     ChatbotModule,
     DashboardModule,
     ContractsModule,
-    CrackRecordModule
+    CrackRecordModule,
+    MaintenanceCycleModule
   ],
 })
 export class BuildingMaintenanceApiGatewayModule { }

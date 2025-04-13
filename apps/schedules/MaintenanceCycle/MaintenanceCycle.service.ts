@@ -6,6 +6,7 @@ import { UpdateMaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/updat
 import { MaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/MaintenanceCycle.dto';
 import { ApiResponse } from '@app/contracts/ApiResponse/api-response';
 import { PaginationParams, PaginationResponseDto } from '@app/contracts/Pagination/pagination.dto';
+import { DeviceType, Frequency, MaintenanceBasis } from '@prisma/client-Schedule';
 
 @Injectable()
 export class MaintenanceCycleService {
@@ -33,19 +34,31 @@ export class MaintenanceCycleService {
     }
   }
 
-  async findAll(paginationParams?: PaginationParams): Promise<PaginationResponseDto<MaintenanceCycleDto>> {
+  async findAll(
+    paginationParams?: PaginationParams,
+    device_type?: DeviceType,
+    basis?: MaintenanceBasis,
+    frequency?: Frequency
+  ): Promise<PaginationResponseDto<MaintenanceCycleDto>> {
     try {
       const page = Math.max(1, paginationParams?.page || 1);
       const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10));
       const skip = (page - 1) * limit;
 
+      const where = {
+        ...(device_type && { device_type }),
+        ...(basis && { basis }),
+        ...(frequency && { frequency }),
+      };
+
       const [cycles, total] = await Promise.all([
         this.prisma.maintenanceCycle.findMany({
+          where,
           skip,
           take: limit,
-          //orderBy: { createdAt: 'desc' },
+        //  orderBy: { createdAt: 'desc' },
         }),
-        this.prisma.maintenanceCycle.count(),
+        this.prisma.maintenanceCycle.count({ where }),
       ]);
 
       return new PaginationResponseDto<MaintenanceCycleDto>(

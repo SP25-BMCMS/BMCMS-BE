@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config'
 import { ClientConfigModule } from 'apps/configs/client-config.module'
 import { SchedulesModule } from '../Schedules/Schedules.module'
 import { ScheduleJobModule } from '../schedulejob/schedulejob.module'
+import { MaintenanceCycleModule } from '../MaintenanceCycle/MaintenanceCycle.module'
 
 @Module({
   imports: [
@@ -10,6 +11,7 @@ import { ScheduleJobModule } from '../schedulejob/schedulejob.module'
     ClientConfigModule,
     SchedulesModule,
     ScheduleJobModule,
+    MaintenanceCycleModule,
   ],
   controllers: [],
   providers: [],

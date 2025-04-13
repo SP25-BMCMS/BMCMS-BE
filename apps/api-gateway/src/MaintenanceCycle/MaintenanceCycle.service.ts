@@ -1,48 +1,57 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
+import { MAINTENANCE_CYCLE_PATTERN } from '@app/contracts/MaintenanceCycle/MaintenanceCycle.patterns';
 import { CreateMaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/create-MaintenanceCycle.dto';
 import { UpdateMaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/update-MaintenanceCycle.dto';
 import { MaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/MaintenanceCycle.dto';
-import { MAINTENANCE_CYCLE_PATTERN } from '@app/contracts/MaintenanceCycle/MaintenanceCycle.patterns';
-import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
+import { ApiResponse } from '@app/contracts/ApiResponse/api-response';
+import { PaginationParams, PaginationResponseDto } from '@app/contracts/Pagination/pagination.dto';
+import { DeviceType, Frequency, MaintenanceBasis } from '@prisma/client-Schedule';
+import { SCHEDULE_CLIENT } from '../constraints';
 
 @Injectable()
 export class MaintenanceCycleService {
-  constructor(
-    @Inject('SCHEDULE_SERVICE') private readonly scheduleClient: ClientProxy,
-  ) {}
+  private readonly logger = new Logger(MaintenanceCycleService.name);
 
-  async create(createDto: CreateMaintenanceCycleDto): Promise<MaintenanceCycleDto> {
-    return firstValueFrom(
-      this.scheduleClient.send(MAINTENANCE_CYCLE_PATTERN.CREATE, createDto),
-    );
+  constructor(@Inject(SCHEDULE_CLIENT) private readonly client: ClientProxy) {}
+
+  async create(createDto: CreateMaintenanceCycleDto): Promise<ApiResponse<MaintenanceCycleDto>> {
+    this.logger.log(`Sending create request to microservice: ${JSON.stringify(createDto)}`);
+    return this.client.send(MAINTENANCE_CYCLE_PATTERN.CREATE, createDto).toPromise();
   }
 
-  async findAll(paginationParams?: PaginationParams) {
-    return firstValueFrom(
-      this.scheduleClient.send(MAINTENANCE_CYCLE_PATTERN.GET_ALL, paginationParams),
-    );
+  async findAll(
+    paginationParams?: PaginationParams,
+    device_type?: DeviceType,
+    basis?: MaintenanceBasis,
+    frequency?: Frequency
+  ): Promise<PaginationResponseDto<MaintenanceCycleDto>> {
+    this.logger.log(`Sending findAll request to microservice with filters: ${JSON.stringify({
+      paginationParams,
+      device_type,
+      basis,
+      frequency
+    })}`);
+    return this.client.send(MAINTENANCE_CYCLE_PATTERN.GET_ALL, {
+      paginationParams,
+      device_type,
+      basis,
+      frequency
+    }).toPromise();
   }
 
-  async findById(cycle_id: string): Promise<MaintenanceCycleDto> {
-    return firstValueFrom(
-      this.scheduleClient.send(MAINTENANCE_CYCLE_PATTERN.GET_BY_ID, cycle_id),
-    );
+  async findById(id: string): Promise<ApiResponse<MaintenanceCycleDto>> {
+    this.logger.log(`Sending findById request to microservice: ${id}`);
+    return this.client.send(MAINTENANCE_CYCLE_PATTERN.GET_BY_ID, id).toPromise();
   }
 
-  async update(cycle_id: string, updateDto: UpdateMaintenanceCycleDto): Promise<MaintenanceCycleDto> {
-    return firstValueFrom(
-      this.scheduleClient.send(MAINTENANCE_CYCLE_PATTERN.UPDATE, {
-        cycle_id,
-        updateDto,
-      }),
-    );
+  async update(id: string, updateDto: UpdateMaintenanceCycleDto): Promise<ApiResponse<MaintenanceCycleDto>> {
+    this.logger.log(`Sending update request to microservice: ${id}, ${JSON.stringify(updateDto)}`);
+    return this.client.send(MAINTENANCE_CYCLE_PATTERN.UPDATE, { cycle_id: id, updateDto }).toPromise();
   }
 
-  async delete(cycle_id: string): Promise<MaintenanceCycleDto> {
-    return firstValueFrom(
-      this.scheduleClient.send(MAINTENANCE_CYCLE_PATTERN.DELETE, cycle_id),
-    );
+  async delete(id: string): Promise<ApiResponse<MaintenanceCycleDto>> {
+    this.logger.log(`Sending delete re  quest to microservice: ${id}`);
+    return this.client.send(MAINTENANCE_CYCLE_PATTERN.DELETE, id).toPromise();
   }
 } 
