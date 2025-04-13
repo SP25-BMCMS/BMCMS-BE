@@ -11,15 +11,12 @@ export class ContractsController {
     constructor(private contractsService: ContractsService) { }
 
     @MessagePattern(CONTRACTS_PATTERN.CREATE)
-    async createContract(@Payload() createContractDto: CreateContractDto) {
+    async createContract(@Payload() payload: { dto: CreateContractDto, file: any }) {
         try {
-            return await this.contractsService.createContract(createContractDto);
+            return await this.contractsService.createContract(payload.dto, payload.file);
         } catch (error) {
             console.error('Error in createContract:', error);
-            throw new RpcException({
-                statusCode: 500,
-                message: 'Error creating contract',
-            });
+            throw error;
         }
     }
 
@@ -29,10 +26,7 @@ export class ContractsController {
             return await this.contractsService.getAllContracts(queryDto);
         } catch (error) {
             console.error('Error in getAllContracts:', error);
-            throw new RpcException({
-                statusCode: 500,
-                message: 'Error retrieving contracts',
-            });
+            throw error;
         }
     }
 
@@ -43,10 +37,7 @@ export class ContractsController {
             return await this.contractsService.getContractById(payload.contractId);
         } catch (error) {
             console.error('Error in getContractById:', error);
-            throw new RpcException({
-                statusCode: 500,
-                message: 'Error retrieving contract',
-            });
+            throw error;
         }
     }
 
@@ -59,10 +50,7 @@ export class ContractsController {
             );
         } catch (error) {
             console.error('Error in updateContract:', error);
-            throw new RpcException({
-                statusCode: 500,
-                message: 'Error updating contract',
-            });
+            throw error;
         }
     }
 
@@ -72,10 +60,7 @@ export class ContractsController {
             return await this.contractsService.deleteContract(payload.contractId);
         } catch (error) {
             console.error('Error in deleteContract:', error);
-            throw new RpcException({
-                statusCode: 500,
-                message: 'Error deleting contract',
-            });
+            throw error;
         }
     }
 }

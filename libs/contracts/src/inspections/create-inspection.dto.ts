@@ -60,21 +60,21 @@ export class RepairMaterialDto {
   @ApiProperty({
     description: 'ID of the material',
     example: '123e4567-e89b-12d3-a456-426614174000',
-    required: true,
+    required: false,
     type: String
   })
   @IsUUID()
-  @IsNotEmpty()
+  @IsOptional()
   materialId: string;
 
   @ApiProperty({
     description: 'Quantity of the material',
     example: 5,
-    required: true,
+    required: false,
     type: Number
   })
   @IsInt()
-  @IsNotEmpty()
+  @IsOptional()
   quantity: number;
 }
 

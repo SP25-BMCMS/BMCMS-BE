@@ -202,4 +202,28 @@ export class BuildingsService {
       );
     }
   }
+
+  // Get buildings by manager ID
+  async getBuildingsByManagerId(managerId: string) {
+    try {
+      if (!managerId) {
+        throw new HttpException(
+          'Manager ID is required',
+          HttpStatus.BAD_REQUEST,
+        )
+      }
+      // Call the microservice via ClientProxy to get buildings by manager ID
+      const buildingsObservable = this.buildingsClient.send(
+        BUILDINGS_PATTERN.GET_BY_MANAGER_ID,
+        managerId
+      )
+      const buildings = await firstValueFrom(buildingsObservable)
+      return buildings
+    } catch (error) {
+      throw new HttpException(
+        'Error occurred while fetching buildings for manager.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      )
+    }
+  }
 }

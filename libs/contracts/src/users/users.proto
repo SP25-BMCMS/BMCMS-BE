@@ -34,6 +34,7 @@ service UserService {
   rpc GetAllStaffByStaffLeader (GetAllStaffByStaffLeaderRequest) returns (StaffListResponse);
   rpc CheckStaffAreaMatchWithScheduleJob (CheckStaffAreaMatchWithScheduleJobRequest) returns (CheckStaffAreaMatchWithScheduleJobResponse);
   rpc GetUserByIdForTaskAssignmentDetail (UserRequest) returns (UserForTaskAssignmentResponse);
+  rpc CheckUserExists (CheckUserExistsRequest) returns (CheckUserExistsResponse);
 }
 message GetApartmentByIdRequest {
   string apartmentId = 1;
@@ -480,6 +481,22 @@ message UserForTaskAssignmentResponse {
 message UserForTaskAssignment {
   string userId = 1;
   string username = 2;
+}
+
+message CheckUserExistsRequest {
+  string userId = 1;
+  optional string role = 2; // Optional field for filtering by role
+}
+
+message CheckUserExistsResponse {
+  bool exists = 1;
+  string message = 2;
+  optional UserData data = 3; // Will be null if user doesn't exist
+}
+
+message UserData {
+  string userId = 1;
+  string role = 2;
 }
 
 

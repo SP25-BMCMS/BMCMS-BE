@@ -21,7 +21,7 @@ export class UsersController {
   @GrpcMethod('UserService', 'UpdateResidentApartments')
   async updateResidentApartments(data: {
     residentId: string;
-    apartments: { apartmentName: string; buildingDetailId: string; warrantyDate?: string }[];
+    apartments: { apartmentName: string; buildingDetailId: string }[];
   }) {
     try {
       console.log("Users microservice received request:", JSON.stringify(data, null, 2));
@@ -31,14 +31,12 @@ export class UsersController {
         data.apartments,
       );
 
-      // Kiểm tra dữ liệu warrantyDate trong response
+      // Log the response data
       if (response.data && response.data.apartments && response.data.apartments.length > 0) {
         console.log("Microservice response apartments:", JSON.stringify(response.data.apartments.map(apt => ({
           id: apt.apartmentId,
           name: apt.apartmentName,
-          has_warrantyDate: apt.warrantyDate !== undefined,
-          warrantyDate: apt.warrantyDate,
-          warrantyDate_type: apt.warrantyDate !== undefined ? typeof apt.warrantyDate : 'undefined'
+          warrantyDate: apt.warrantyDate
         })), null, 2));
       }
 
@@ -166,6 +164,24 @@ export class UsersController {
       return response;
     } catch (error) {
       throw error;
+    }
+  }
+
+  @GrpcMethod('UserService', 'CheckUserExists')
+  async checkUserExists(data: { userId: string; role?: string }) {
+    try {
+      const user = await this.usersService.checkUserExists(data.userId, data.role);
+      return {
+        exists: !!user,
+        message: user ? `User with ID ${data.userId} found` : `User with ID ${data.userId} not found${data.role ? ` with role ${data.role}` : ''}`,
+        data: user ? { userId: user.userId, role: user.role } : null
+      };
+    } catch (error) {
+      console.error('Error checking user existence:', error);
+      throw new RpcException({
+        statusCode: 500,
+        message: `Error checking user existence: ${error.message}`,
+      });
     }
   }
 }

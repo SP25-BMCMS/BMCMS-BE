@@ -852,7 +852,7 @@ export class UsersService {
 
   async updateResidentApartments(
     residentId: string,
-    apartments: { apartmentName: string; buildingDetailId: string; warrantyDate?: string }[],
+    apartments: { apartmentName: string; buildingDetailId: string }[],
   ): Promise<{ isSuccess: boolean; message: string; data: any }> {
     try {
       // Check if user exists and is a Resident
@@ -908,7 +908,6 @@ export class UsersService {
               .pipe(
                 timeout(5000),
                 catchError((err) => {
-                  console.error('Error checking building:', err)
                   return of({
                     statusCode: 503,
                     message: 'Dịch vụ tòa nhà không phản hồi',
@@ -977,30 +976,27 @@ export class UsersService {
                   } else {
                     warrantyDate = String(warDate);
                   }
-                  console.log(`Got warranty date from building ${buildingId}: ${warrantyDate}`);
                 } catch (error) {
-                  console.error(`Error parsing warranty date: ${error.message}`);
                 }
-              } else {
-                console.log(`No warrantyDate found for building ${buildingId}`);
               }
 
               apartmentsWithWarranty.push({
                 ...apartment,
-                warrantyDate: warrantyDate || apartment.warrantyDate
+                warrantyDate: warrantyDate
               });
-
-              console.log(`Final warranty date for apartment: ${warrantyDate || apartment.warrantyDate || 'null'}`);
             } else {
-              apartmentsWithWarranty.push(apartment);
-              console.log(`Could not retrieve building data for building detail ${apartment.buildingDetailId}`);
+              apartmentsWithWarranty.push({
+                ...apartment,
+                warrantyDate: null
+              });
             }
           } else {
-            apartmentsWithWarranty.push(apartment);
-            console.log(`Could not retrieve building detail data for ${apartment.buildingDetailId}`);
+            apartmentsWithWarranty.push({
+              ...apartment,
+              warrantyDate: null
+            });
           }
         } catch (error) {
-          console.error('Error validating building:', error)
           return {
             isSuccess: false,
             message: 'Lỗi khi kiểm tra thông tin tòa nhà',
@@ -1008,9 +1004,6 @@ export class UsersService {
           }
         }
       }
-
-      // Log warranty date
-      console.log('Apartments with warranty dates:', JSON.stringify(apartmentsWithWarranty, null, 2))
 
       // Fetch full user data with userDetails included
       const fullUserData = await this.prisma.user.findUnique({
@@ -1022,7 +1015,6 @@ export class UsersService {
       })
 
       // Update apartments by adding new ones without deleting existing ones
-      console.log('Creating new apartments with data:', JSON.stringify(apartmentsWithWarranty, null, 2));
       const updatedUser = await this.prisma.user.update({
         where: { userId: residentId },
         data: {
@@ -1042,7 +1034,6 @@ export class UsersService {
       })
 
       // Verify data was saved correctly
-      console.log('Database records after save:')
       const savedApartments = await this.prisma.apartment.findMany({
         where: {
           ownerId: residentId,
@@ -1050,83 +1041,22 @@ export class UsersService {
             in: apartmentsWithWarranty.map(apt => apt.buildingDetailId)
           }
         },
-        orderBy: {
-          apartmentId: 'desc'
-        }
       })
 
-      console.log('Recently saved apartments:', JSON.stringify(savedApartments, null, 2))
-
-      // Lấy tất cả căn hộ của user để trả về trong response
-      const allApartments = await this.prisma.apartment.findMany({
-        where: {
-          ownerId: residentId,
-        },
-      })
-
-      console.log('All apartments from database:', JSON.stringify(allApartments, null, 2));
-
-      // Tạo response data theo đúng cấu trúc UserResponseWithApartments trong proto
-      const responseData = {
-        userId: fullUserData.userId,
-        username: fullUserData.username,
-        email: fullUserData.email,
-        phone: fullUserData.phone,
-        role: fullUserData.role,
-        dateOfBirth: fullUserData.dateOfBirth ? fullUserData.dateOfBirth.toISOString() : null,
-        gender: fullUserData.gender,
-        accountStatus: fullUserData.accountStatus,
-        // Tạo mảng apartments theo đúng cấu trúc ApartmentWithWarranty từ proto
-        apartments: allApartments.map((apt) => {
-          // Log chi tiết cho việc debug
-          console.log(`Processing apartment ${apt.apartmentId} with warrantyDate = '${apt.warrantyDate}'`);
-
-          // Tạo đúng cấu trúc ApartmentWithWarranty
-          return {
-            apartmentId: apt.apartmentId,
-            apartmentName: apt.apartmentName,
-            warrantyDate: apt.warrantyDate,
-            buildingDetails: apt.buildingDetailId ? apt.buildingDetailId : null
-          };
-        }),
-        userDetails: fullUserData.userDetails
-          ? {
-            positionId: fullUserData.userDetails.positionId,
-            departmentId: fullUserData.userDetails.departmentId,
-            staffStatus: fullUserData.userDetails.staffStatus,
-            image: fullUserData.userDetails.image
-          }
-          : null,
-      }
-
-      // Log để kiểm tra
-      console.log('Final response structure:', JSON.stringify({
-        isSuccess: true,
-        message: 'Thêm căn hộ thành công',
-        data: {
-          userInfo: `${responseData.username} (${responseData.email})`,
-          apartmentCount: responseData.apartments.length,
-          apartmentSample: responseData.apartments.length > 0 ?
-            {
-              apartmentId: responseData.apartments[0].apartmentId,
-              apartmentName: responseData.apartments[0].apartmentName,
-              warrantyDate: responseData.apartments[0].warrantyDate
-            } : null
-        }
-      }, null, 2));
-
-      // Return kết quả với cấu trúc phù hợp
       return {
         isSuccess: true,
-        message: 'Thêm căn hộ thành công',
-        data: responseData
-      };
+        message: 'Cập nhật căn hộ thành công',
+        data: {
+          userId: updatedUser.userId,
+          username: updatedUser.username,
+          apartments: updatedUser.apartments,
+        },
+      }
     } catch (error) {
-      console.error('Error updating resident apartments:', error)
       return {
         isSuccess: false,
-        message: 'Lỗi khi thêm căn hộ',
-        data: null
+        message: error.message || 'Lỗi khi cập nhật căn hộ',
+        data: null,
       }
     }
   }
@@ -1194,8 +1124,6 @@ export class UsersService {
       }
     }
   }
-
-
 
   async checkStaffAreaMatch(staffId: string, crackReportId: string): Promise<{ isSuccess: boolean; message: string; isMatch: boolean }> {
     try {
@@ -1942,6 +1870,43 @@ export class UsersService {
         statusCode: 500,
         message: 'Error retrieving user details',
       })
+    }
+  }
+
+  /**
+   * Check if a user exists with optional role validation
+   * @param userId The user ID to check
+   * @param role Optional role to validate against
+   * @returns The user if found, null otherwise
+   */
+  async checkUserExists(userId: string, role?: string): Promise<any> {
+    try {
+      if (!userId) {
+        return null;
+      }
+
+      // Build the where clause
+      const where: any = { userId };
+
+      // If role is specified, add it to the query
+      if (role) {
+        where.role = role;
+      }
+
+      // Find the user
+      const user = await this.prisma.user.findFirst({
+        where,
+        select: {
+          userId: true,
+          role: true,
+          username: true
+        }
+      });
+
+      return user;
+    } catch (error) {
+      console.error(`Error checking if user exists (userId: ${userId}, role: ${role}):`, error);
+      return null;
     }
   }
 }

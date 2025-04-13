@@ -87,7 +87,6 @@ export interface UserInterface {
     apartments: {
       apartmentName: string;
       buildingDetailId: string;
-      warrantyDate?: string;
     }[]
   }): Observable<any>
 
@@ -116,5 +115,12 @@ export interface UserInterface {
     isSuccess: boolean;
     message: string;
     isMatch: boolean;
+  }>;
+
+  // User role validation
+  checkUserExists(data: { userId: string; role?: string }): Observable<{
+    exists: boolean;
+    message: string;
+    data?: { userId: string; role: string } | null;
   }>;
 }

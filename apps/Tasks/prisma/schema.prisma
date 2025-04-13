@@ -7,11 +7,15 @@
 generator client {
   provider = "prisma-client-js"
   output   = "../../../node_modules/@prisma/client-Task"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DB_TASKS_SERVICE")
+  directUrl = env("TASK_PRISMA_ACCELERATE_URL")
+  relationMode = "prisma"
+  extensions = [pgcrypto]
 }
 
 model Task {

@@ -12,11 +12,6 @@ export class BuildingsController {
     return await this.buildingsService.createBuilding(data);
   }
 
-  // @MessagePattern(BUILDINGS_PATTERN.GET)
-  // async getAllBuildings(@Payload() data: any) {
-  //   console.log('Getting all buildings...');
-  //   return await this.buildingsService.readBuilding();
-  // }
   @MessagePattern(BUILDINGS_PATTERN.GET)
   async getAllBuildings(@Payload() paginationParams: PaginationParams) {
     try {
@@ -107,5 +102,17 @@ export class BuildingsController {
   @MessagePattern(BUILDINGS_PATTERN.GET_RESIDENTS_BY_BUILDING_ID)
   async getAllResidentsByBuildingId(@Payload() buildingId: string) {
     return this.buildingsService.getAllResidentsByBuildingId(buildingId);
+  }
+
+  @MessagePattern(BUILDINGS_PATTERN.GET_BY_MANAGER_ID)
+  async getBuildingsByManagerId(@Payload() managerId: string) {
+    try {
+      return this.buildingsService.getBuildingsByManagerId(managerId);
+    } catch (error) {
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error retrieving buildings for manager',
+      })
+    }
   }
 }

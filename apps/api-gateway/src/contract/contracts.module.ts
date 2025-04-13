@@ -6,9 +6,14 @@ import { ClientProxyFactory } from '@nestjs/microservices';
 import { BUILDING_CLIENT } from '../constraints';
 import { ConfigModule } from '@nestjs/config';
 import { ClientConfigModule } from 'apps/configs/client-config.module';
+import { MulterModule } from '@nestjs/platform-express';
 
 @Module({
-    imports: [ClientConfigModule, ConfigModule],
+    imports: [
+        ClientConfigModule,
+        ConfigModule,
+        MulterModule.register(),
+    ],
     controllers: [ContractsController],
     providers: [ContractsService,
         {
