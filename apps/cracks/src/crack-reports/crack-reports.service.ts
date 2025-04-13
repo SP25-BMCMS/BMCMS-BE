@@ -81,6 +81,7 @@ export class CrackReportsService {
       totalPages: number
     }
   }> {
+    const startTime = performance.now()
     // Validate pagination parameters
     if (page < 1 || limit < 1) {
       throw new RpcException(
@@ -116,14 +117,19 @@ export class CrackReportsService {
     }
 
     try {
-      const crackReports = await this.prismaService.crackReport.findMany({
-        where,
-        include: { crackDetails: true }, // Bao gồm thông tin chi tiết vết nứt
-        skip,
-        take: limit,
-      })
-
-      const totalCount = await this.prismaService.crackReport.count({ where })
+      // Đo thời gian query database
+      const dbQueryStartTime = performance.now()
+      const [crackReports, totalCount] = await Promise.all([
+        this.prismaService.crackReport.findMany({
+          where,
+          include: { crackDetails: true },
+          skip,
+          take: limit,
+        }),
+        this.prismaService.crackReport.count({ where })
+      ])
+      const dbQueryTime = performance.now() - dbQueryStartTime
+      console.log(`Database query time: ${dbQueryTime.toFixed(2)}ms`)
 
       // Get usernames for all reporters
       const reporterIds = [...new Set(crackReports.map(report => report.reportedBy))]
@@ -131,55 +137,61 @@ export class CrackReportsService {
 
       const userMap = new Map()
 
-      await Promise.all(verifierIds.map(async (userId) => {
-        try {
-          if (userId) {
-            const userResponse = await firstValueFrom(
-              this.userService.GetUserInfo({ userId }).pipe(
-                catchError(error => {
-                  console.error(`Error fetching user data for ID ${userId}:`, error)
-                  return of(null)
-                })
+      // Đo thời gian lấy user info
+      const userInfoStartTime = performance.now()
+      await Promise.all([
+        ...verifierIds.map(async (userId) => {
+          try {
+            if (userId) {
+              const userResponse = await firstValueFrom(
+                this.userService.GetUserInfo({ userId }).pipe(
+                  catchError(error => {
+                    console.error(`Error fetching user data for ID ${userId}:`, error)
+                    return of(null)
+                  })
+                )
               )
-            )
 
-            if (userResponse) {
-              userMap.set(userId, {
-                userId: userResponse.userId,
-                username: userResponse.username
-              })
-            }
-          }
-        } catch (error) {
-          console.error(`Failed to get user data for ID ${userId}:`, error)
-        }
-      }))
-      // Get user data for each reporter ID
-      await Promise.all(reporterIds.map(async (userId) => {
-        try {
-          if (userId) {
-            const userResponse = await firstValueFrom(
-              this.userService.GetUserInfo({ userId }).pipe(
-                catchError(error => {
-                  console.error(`Error fetching user data for ID ${userId}:`, error)
-                  return of(null)
+              if (userResponse) {
+                userMap.set(userId, {
+                  userId: userResponse.userId,
+                  username: userResponse.username
                 })
-              )
-            )
-
-            if (userResponse) {
-              userMap.set(userId, {
-                userId: userResponse.userId,
-                username: userResponse.username
-              })
+              }
             }
+          } catch (error) {
+            console.error(`Failed to get user data for ID ${userId}:`, error)
           }
-        } catch (error) {
-          console.error(`Failed to get user data for ID ${userId}:`, error)
-        }
-      }))
+        }),
+        ...reporterIds.map(async (userId) => {
+          try {
+            if (userId) {
+              const userResponse = await firstValueFrom(
+                this.userService.GetUserInfo({ userId }).pipe(
+                  catchError(error => {
+                    console.error(`Error fetching user data for ID ${userId}:`, error)
+                    return of(null)
+                  })
+                )
+              )
 
-      // Add username and presigned URLs to each crack report
+              if (userResponse) {
+                userMap.set(userId, {
+                  userId: userResponse.userId,
+                  username: userResponse.username
+                })
+              }
+            }
+          } catch (error) {
+            console.error(`Failed to get user data for ID ${userId}:`, error)
+          }
+        })
+      ])
+      const userInfoTime = performance.now() - userInfoStartTime
+      console.log(`User info fetch time: ${userInfoTime.toFixed(2)}ms`)
+
+      // Đo thời gian lấy presigned URLs
+      const presignedUrlStartTime = performance.now()
       const enrichedReports = await Promise.all(crackReports.map(async report => {
         const userData = userMap.get(report.reportedBy)
         const verifierData = userMap.get(report.verifiedBy)
@@ -201,6 +213,11 @@ export class CrackReportsService {
           })))
         }
       }))
+      const presignedUrlTime = performance.now() - presignedUrlStartTime
+      console.log(`Presigned URL generation time: ${presignedUrlTime.toFixed(2)}ms`)
+
+      const totalTime = performance.now() - startTime
+      console.log(`Total execution time: ${totalTime.toFixed(2)}ms`)
 
       return {
         data: enrichedReports,

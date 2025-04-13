@@ -1,47 +1,49 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client-Task';
-import { ConfigService } from '@nestjs/config';
-import { Pool } from '@neondatabase/serverless';
-import { PrismaNeon } from '@prisma/adapter-neon';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common'
+import { PrismaClient } from '@prisma/client-Task'
+import { withAccelerate } from '@prisma/extension-accelerate'
+import { ConfigService } from '@nestjs/config'
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  private readonly pool: Pool;
-
   constructor(private configService: ConfigService) {
-    const url = configService.get<string>('DB_TASKS_SERVICE');
-    if (!url) {
-      throw new Error('DATABASE_URL is not defined');
+    const accelerateUrl = configService.get<string>('TASK_PRISMA_ACCELERATE_URL')
+    if (!accelerateUrl) {
+      throw new Error('TASK_PRISMA_ACCELERATE_URL is not defined')
     }
 
-    // Create a connection pool
-    const pool = new Pool({ connectionString: url });
-
-    // Initialize PrismaClient with database URL only
     super({
-      datasourceUrl: url,
-    });
-
-    this.pool = pool;
+      log: ['error', 'warn'],
+      datasources: {
+        db: {
+          url: accelerateUrl
+        }
+      }
+    })
   }
 
   async onModuleInit() {
     try {
-      await this.$connect();
-      console.log('Successfully connected to database');
+      // Pre-warm Prisma Client
+      await Promise.all([
+        this.$connect(),
+        this.$queryRaw`SELECT 1` // Simple query to warm up connection
+      ])
+
+      // Apply Accelerate extension
+      this.$extends(withAccelerate())
+      console.log('Successfully connected to database with Accelerate')
     } catch (error) {
-      console.error('Failed to connect to database:', error);
-      throw error;
+      console.error('Failed to connect to database:', error)
+      throw error
     }
   }
 
   async onModuleDestroy() {
-    await this.$disconnect();
-    await this.pool.end();
+    await this.$disconnect()
   }
 
   async cleanDatabase() {
-    if (process.env.NODE_ENV === 'production') return;
+    if (process.env.NODE_ENV === 'production') return
 
     // teardown logic
     //   return Promise.all([this.user.deleteMany()])
