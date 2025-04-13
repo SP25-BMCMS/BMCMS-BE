@@ -3,7 +3,6 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout, catchError, throwError, lastValueFrom } from 'rxjs';
 import { ChatMessageDto, ChatListQueryDto, ResultModel } from '@app/contracts/chatbot/chatbot.dto';
 import { CHATBOT_PATTERN } from '@app/contracts/chatbot/chatbot.patterns';
-import { SignalRService } from '../signalr/signalr.service';
 import { HttpException, HttpStatus } from '@nestjs/common';
 
 @Injectable()
@@ -13,7 +12,6 @@ export class ChatbotService implements OnModuleInit {
 
   constructor(
     @Inject('CHATBOT_CLIENT') private readonly chatbotClient: ClientProxy,
-    private readonly signalRService: SignalRService,
   ) {
     this.logger.log('ChatbotService initialized');
     this.logger.log(`TEST_CHAT pattern: ${CHATBOT_PATTERN.TEST_CHAT}`);
@@ -115,43 +113,42 @@ export class ChatbotService implements OnModuleInit {
     }
   }
 
-  async generateContent(request: ChatMessageDto): Promise<any> {
-    try {
-      const response = await firstValueFrom(
-        this.chatbotClient.send(CHATBOT_PATTERN.GENERATE_CONTENT, request)
-      );
+  // async generateContent(request: ChatMessageDto): Promise<any> {
+  //   try {
+  //     const response = await firstValueFrom(
+  //       this.chatbotClient.send(CHATBOT_PATTERN.GENERATE_CONTENT, request)
+  //     );
 
-      // Send response via SignalR
-      const message = {
-        messageId: crypto.randomUUID(),
-        sender: 'BuildingAI',
-        content: response,
-      };
+  //     // Send response via SignalR
+  //     const message = {
+  //       messageId: crypto.randomUUID(),
+  //       sender: 'BuildingAI',
+  //       content: response,
+  //     };
 
-      try {
-        await this.signalRService.sendToUser(request.userId, 'ReceiveMessage', message);
-        this.logger.log(`Message sent to user ${request.userId} via SignalR`);
-      } catch (signalrError) {
-        this.logger.error(`Error sending SignalR message: ${signalrError.message}`);
-        // Continue even if SignalR fails
-      }
+  //     try {
+  //       this.logger.log(`Message sent to user ${request.userId} via SignalR`);
+  //     } catch (signalrError) {
+  //       this.logger.error(`Error sending SignalR message: ${signalrError.message}`);
+  //       // Continue even if SignalR fails
+  //     }
 
-      return response;
-    } catch (error) {
-      this.logger.error(`Error generating content: ${error.message}`);
-      throw error;
-    }
-  }
+  //     return response;
+  //   } catch (error) {
+  //     this.logger.error(`Error generating content: ${error.message}`);
+  //     throw error;
+  //   }
+  // }
 
-  async scanImage(image: any): Promise<any> {
-    try {
-      const response = await firstValueFrom(
-        this.chatbotClient.send(CHATBOT_PATTERN.SCAN_IMAGE, image)
-      );
-      return response;
-    } catch (error) {
-      this.logger.error(`Error scanning image: ${error.message}`);
-      throw error;
-    }
-  }
+  // async scanImage(image: any): Promise<any> {
+  //   try {
+  //     const response = await firstValueFrom(
+  //       this.chatbotClient.send(CHATBOT_PATTERN.SCAN_IMAGE, image)
+  //     );
+  //     return response;
+  //   } catch (error) {
+  //     this.logger.error(`Error scanning image: ${error.message}`);
+  //     throw error;
+  //   }
+  // }
 } 
