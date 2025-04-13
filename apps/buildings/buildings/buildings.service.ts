@@ -409,4 +409,53 @@ export class BuildingsService {
       }
     }
   }
+
+  // Get buildings by manager ID
+  async getBuildingsByManagerId(managerId: string) {
+    try {
+
+      if (!managerId) {
+        return {
+          statusCode: 404,
+          message: 'Invalid manager ID provided',
+          data: []
+        }
+      }
+
+      const buildings = await this.prisma.building.findMany({
+        where: {
+          manager_id: managerId
+        },
+        include: {
+          area: true,
+          buildingDetails: {
+            include: {
+              locationDetails: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+
+      if (!buildings || buildings.length === 0) {
+        return {
+          statusCode: 404,
+          message: 'No buildings found for this manager',
+          data: []
+        }
+      }
+      return {
+        statusCode: 200,
+        message: 'Buildings retrieved successfully',
+        data: buildings
+      }
+    } catch (error) {
+
+      return {
+        statusCode: 500,
+        message: 'Internal server error while retrieving buildings for manager',
+        error: error.message
+      }
+    }
+  }
 }

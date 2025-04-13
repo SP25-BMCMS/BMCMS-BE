@@ -197,7 +197,7 @@ export class InspectionService implements OnModuleInit {
 
           if (uploadResponse.isSuccess && uploadResponse.data && uploadResponse.data.InspectionImage) {
             imageUrls = uploadResponse.data.InspectionImage
-            console.log('Uploaded image URLs:', imageUrls)
+              ('Uploaded image URLs:', imageUrls)
           } else {
             console.error('Image upload failed:', uploadResponse)
             // Continue without images
@@ -246,8 +246,8 @@ export class InspectionService implements OnModuleInit {
         try {
           const inspection = response.data
 
-          // Get the buildingDetailId from task_assignment_id via related tables
-          console.log('Retrieving buildingDetailId for task_assignment_id:', dto.task_assignment_id)
+            // Get the buildingDetailId from task_assignment_id via related tables
+            ('Retrieving buildingDetailId for task_assignment_id:', dto.task_assignment_id)
           const buildingDetailResponse = await firstValueFrom(
             this.inspectionClient.send(
               { cmd: 'get-building-detail-id-from-task-assignment' },
@@ -266,7 +266,7 @@ export class InspectionService implements OnModuleInit {
 
           if (buildingDetailResponse && buildingDetailResponse.isSuccess && buildingDetailResponse.data) {
             buildingDetailId = buildingDetailResponse.data.buildingDetailId
-            console.log('Retrieved buildingDetailId:', buildingDetailId)
+              ('Retrieved buildingDetailId:', buildingDetailId)
           } else {
             console.warn('Could not retrieve buildingDetailId, using default UUID')
           }
@@ -277,18 +277,27 @@ export class InspectionService implements OnModuleInit {
           // Fix additionalLocationDetails format if needed
           let additionalLocDetails: any = dto.additionalLocationDetails
 
+          // Handle case when additionalLocationDetails is undefined, null, or an empty string
+          if (!additionalLocDetails || (typeof additionalLocDetails === 'string' && additionalLocDetails.trim() === '')) {
+            ('additionalLocationDetails is empty or not provided')
+            additionalLocDetails = []
+          }
           // Check if additionalLocationDetails exists but isn't an array (common issue with form data)
-          if (additionalLocDetails && !Array.isArray(additionalLocDetails)) {
+          else if (!Array.isArray(additionalLocDetails)) {
             try {
               // Try to parse it if it's a JSON string
               if (typeof additionalLocDetails === 'string') {
+                // Empty JSON array case
+                if (additionalLocDetails.trim() === '[]') {
+                  additionalLocDetails = []
+                }
                 // Handle the case where we get a string with multiple objects separated by commas
                 // but without enclosing square brackets
                 const additionalStr = additionalLocDetails as string
 
                 if (additionalStr.trim().startsWith('{') &&
                   (additionalStr.includes('},{') || additionalStr.includes('},{'))) {
-                  console.log('Detected multiple JSON objects without array wrapper')
+                  ('Detected multiple JSON objects without array wrapper')
 
                   // Try to convert to a valid JSON array string by wrapping with square brackets
                   try {
@@ -304,7 +313,7 @@ export class InspectionService implements OnModuleInit {
                         additionalLocDetails = JSON.parse(wrappedJson)
                       } catch (e2) {
                         // Still not valid, try another approach with regex
-                        console.log('First attempt failed, trying regex approach')
+                        ('First attempt failed, trying regex approach')
 
                         // Split the string into individual JSON objects
                         // This regex finds objects that start with { and end with }
@@ -312,7 +321,6 @@ export class InspectionService implements OnModuleInit {
                         const matches = additionalStr.match(objectsRegex)
 
                         if (matches && matches.length > 0) {
-                          console.log(`Found ${matches.length} JSON objects using regex`)
                           additionalLocDetails = matches.map(obj => {
                             try {
                               return JSON.parse(obj)
@@ -365,7 +373,6 @@ export class InspectionService implements OnModuleInit {
 
           // If additionalLocationDetails is provided in the DTO, add them
           if (additionalLocDetails && Array.isArray(additionalLocDetails) && additionalLocDetails.length > 0) {
-            console.log('Processing additionalLocationDetails:', JSON.stringify(additionalLocDetails, null, 2))
 
             // Map additional location details to proper format and add to array
             additionalLocDetails.forEach(locationDetail => {
@@ -381,12 +388,10 @@ export class InspectionService implements OnModuleInit {
           }
           // Nếu additionalLocationDetails là mảng rỗng có chủ ý, không tạo mặc định
           else if (additionalLocDetails && Array.isArray(additionalLocDetails) && additionalLocDetails.length === 0) {
-            console.log('Empty location details array provided, respecting empty array')
             // Không tạo mặc định, giữ mảng rỗng
           }
           // Trường hợp không có additionalLocationDetails hoặc nó là null/undefined
           else {
-            console.log('No location details provided, creating default')
             locationDetails.push({
               buildingDetailId: buildingDetailId,
               inspection_id: inspection.inspection_id,
@@ -397,11 +402,9 @@ export class InspectionService implements OnModuleInit {
             })
           }
 
-          console.log(`Emitting events to create ${locationDetails.length} LocationDetails:`, JSON.stringify(locationDetails, null, 2))
 
           // Emit a single event with all location details - use CREATE instead of CREATE_MANY to avoid duplication
           if (locationDetails.length > 0) {
-            console.log('Emitting event to create location details one by one to avoid duplication')
 
             // Emit separate events for each location detail to avoid duplication
             locationDetails.forEach(detail => {
@@ -418,10 +421,12 @@ export class InspectionService implements OnModuleInit {
               description: detail.description
             }))
 
-            console.log('Added locationDetails info to response:', response.data.locationDetails)
           } else {
             // Không thêm locationDetails vào response khi không có location details nào
-            console.log('No location details to add to response')
+            // Nếu đã có thuộc tính locationDetails, xóa nó khỏi response data
+            if (response.data.locationDetails) {
+              delete response.data.locationDetails;
+            }
           }
         } catch (error) {
           console.error('Error in LocationDetail creation process:', error)
@@ -491,7 +496,6 @@ export class InspectionService implements OnModuleInit {
   private async validateUserIsStaff(userId: string): Promise<ApiResponse<any>> {
     try {
       // Use the gRPC UserService to get user info
-      console.log(`Validating if user ${userId} is a Staff...`)
 
       // Use the correctly initialized userService from OnModuleInit
       const userInfo = await firstValueFrom(
@@ -505,7 +509,6 @@ export class InspectionService implements OnModuleInit {
           )
       )
 
-      console.log('User info received:', JSON.stringify(userInfo, null, 2))
 
       if (!userInfo) {
         console.error('User info is null or undefined')
@@ -514,10 +517,8 @@ export class InspectionService implements OnModuleInit {
 
       // Check if user has role Staff
       const role = userInfo.role
-      console.log(`User role: ${role}`)
 
       if (role !== 'Staff') {
-        console.log(`User role ${role} is not Staff`)
         return new ApiResponse(
           false,
           `Only Staff can create inspections. Current role: ${role}`,
@@ -525,7 +526,6 @@ export class InspectionService implements OnModuleInit {
         )
       }
 
-      console.log('User is a Staff, validation successful')
       return new ApiResponse(true, 'User is a Staff', { userId })
     } catch (error) {
       console.error('Error in validateUserIsStaff:', error)

@@ -200,4 +200,18 @@ export class BuildingsController {
   async getAllResidentsByBuildingId(@Param('id') id: string) {
     return this.buildingsService.getAllResidentsByBuildingId(id)
   }
+
+  @Get('manager/:managerId')
+  @ApiOperation({ summary: 'Get all buildings managed by a specific manager' })
+  @ApiParam({ name: 'managerId', description: 'Manager ID' })
+  @ApiResponse({ status: 200, description: 'Buildings retrieved successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request - Manager ID is required' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async getBuildingsByManagerId(@Param('managerId') managerId: string) {
+    try {
+      return await this.buildingsService.getBuildingsByManagerId(managerId)
+    } catch (error) {
+      throw new Error(`Error retrieving buildings for manager: ${error.message}`)
+    }
+  }
 }

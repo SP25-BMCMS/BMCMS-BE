@@ -108,4 +108,16 @@ export class BuildingsController {
   async getAllResidentsByBuildingId(@Payload() buildingId: string) {
     return this.buildingsService.getAllResidentsByBuildingId(buildingId);
   }
+
+  @MessagePattern(BUILDINGS_PATTERN.GET_BY_MANAGER_ID)
+  async getBuildingsByManagerId(@Payload() managerId: string) {
+    try {
+      return this.buildingsService.getBuildingsByManagerId(managerId);
+    } catch (error) {
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error retrieving buildings for manager',
+      })
+    }
+  }
 }
