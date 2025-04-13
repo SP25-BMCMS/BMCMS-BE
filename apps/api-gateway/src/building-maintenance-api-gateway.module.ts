@@ -23,6 +23,7 @@ import { MaterialModule } from './Material/Material.module'
 import { ChatbotModule } from './chatbot/chatbot.module'
 import { DashboardModule } from './dashboard/dashboard.module'
 import { ContractsModule } from './contract/contracts.module'
+import { CrackRecordModule } from './CrackRecord/CrackRecord.module'
 
 @Module({
   imports: [
@@ -96,7 +97,8 @@ import { ContractsModule } from './contract/contracts.module'
     MaterialModule,
     ChatbotModule,
     DashboardModule,
-    ContractsModule
+    ContractsModule,
+    CrackRecordModule
   ],
 })
 export class BuildingMaintenanceApiGatewayModule { }
