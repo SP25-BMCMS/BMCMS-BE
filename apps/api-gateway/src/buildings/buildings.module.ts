@@ -37,4 +37,4 @@ import { USERS_CLIENT } from '../constraints';
   controllers: [BuildingsController],
   exports: [BuildingsService],
 })
-export class BuildingsModule {}
+export class BuildingsModule { }

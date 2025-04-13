@@ -1872,4 +1872,41 @@ export class UsersService {
       })
     }
   }
+
+  /**
+   * Check if a user exists with optional role validation
+   * @param userId The user ID to check
+   * @param role Optional role to validate against
+   * @returns The user if found, null otherwise
+   */
+  async checkUserExists(userId: string, role?: string): Promise<any> {
+    try {
+      if (!userId) {
+        return null;
+      }
+
+      // Build the where clause
+      const where: any = { userId };
+
+      // If role is specified, add it to the query
+      if (role) {
+        where.role = role;
+      }
+
+      // Find the user
+      const user = await this.prisma.user.findFirst({
+        where,
+        select: {
+          userId: true,
+          role: true,
+          username: true
+        }
+      });
+
+      return user;
+    } catch (error) {
+      console.error(`Error checking if user exists (userId: ${userId}, role: ${role}):`, error);
+      return null;
+    }
+  }
 }

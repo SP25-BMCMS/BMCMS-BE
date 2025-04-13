@@ -12,11 +12,6 @@ export class BuildingsController {
     return await this.buildingsService.createBuilding(data);
   }
 
-  // @MessagePattern(BUILDINGS_PATTERN.GET)
-  // async getAllBuildings(@Payload() data: any) {
-  //   console.log('Getting all buildings...');
-  //   return await this.buildingsService.readBuilding();
-  // }
   @MessagePattern(BUILDINGS_PATTERN.GET)
   async getAllBuildings(@Payload() paginationParams: PaginationParams) {
     try {

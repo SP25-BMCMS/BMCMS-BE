@@ -166,4 +166,22 @@ export class UsersController {
       throw error;
     }
   }
+
+  @GrpcMethod('UserService', 'CheckUserExists')
+  async checkUserExists(data: { userId: string; role?: string }) {
+    try {
+      const user = await this.usersService.checkUserExists(data.userId, data.role);
+      return {
+        exists: !!user,
+        message: user ? `User with ID ${data.userId} found` : `User with ID ${data.userId} not found${data.role ? ` with role ${data.role}` : ''}`,
+        data: user ? { userId: user.userId, role: user.role } : null
+      };
+    } catch (error) {
+      console.error('Error checking user existence:', error);
+      throw new RpcException({
+        statusCode: 500,
+        message: `Error checking user existence: ${error.message}`,
+      });
+    }
+  }
 }

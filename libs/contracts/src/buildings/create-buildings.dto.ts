@@ -53,7 +53,15 @@ export class CreateBuildingDto {
   @IsUUID()
   areaId?: string;
 
-
+  @ApiProperty({
+    description: 'Manager ID associated with the building (optional)',
+    type: String,
+    example: '8e8c4a45-9c2d-4d2f-a5b6-7e3a9f0d8c1e',
+    required: false,
+  })
+  @IsOptional()
+  @IsUUID()
+  manager_id?: string;
 
   @ApiProperty({
     description: 'Construction date of the building',

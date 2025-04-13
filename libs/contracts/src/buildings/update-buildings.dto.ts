@@ -3,28 +3,7 @@ import { $Enums } from '@prisma/client-building';
 import { IsString, IsInt, IsOptional, IsUUID, IsNotEmpty, IsEnum } from 'class-validator';
 
 export class UpdateBuildingDto {
-  // @IsUUID()
-  // buildingId: string;
 
-  // @IsOptional()
-  // @IsString()
-  // name?: string;
-
-  // @IsOptional()
-  // @IsString()
-  // description?: string;
-
-  // @IsOptional()
-  // @IsInt()
-  // numberFloor?: number;
-
-  // @IsOptional()
-  // @IsString()
-  // imageCover?: string;
-
-  // @IsOptional()
-  // @IsUUID()
-  // areaId?: string;
   @ApiProperty({
     description: 'Unique identifier for the building',
     type: String,
@@ -86,18 +65,29 @@ export class UpdateBuildingDto {
   @IsUUID()
   areaId?: string;
 
-    @ApiProperty()
-    @IsOptional()
-    @IsString()
-    construction_date?: string;
-    @ApiProperty()
-    @IsOptional()
-    @IsString()
-    completion_date?: string;
-  
-  
-      @IsNotEmpty()
-      @IsEnum($Enums.BuildingStatus)
-      @ApiProperty({ description: 'The status of the building', enum: $Enums.BuildingStatus, example :"" +$Enums.BuildingStatus.operational+"|" + $Enums.BuildingStatus.under_construction })  // Enum for status
-      status: $Enums.BuildingStatus;
+  @ApiProperty({
+    description: 'Manager ID associated with the building (optional)',
+    type: String,
+    example: '8e8c4a45-9c2d-4d2f-a5b6-7e3a9f0d8c1e',
+    required: false,
+  })
+  @IsOptional()
+  @IsUUID()
+  manager_id?: string;
+
+  @ApiProperty()
+  @IsOptional()
+  @IsString()
+  construction_date?: string;
+
+  @ApiProperty()
+  @IsOptional()
+  @IsString()
+  completion_date?: string;
+
+
+  @IsNotEmpty()
+  @IsEnum($Enums.BuildingStatus)
+  @ApiProperty({ description: 'The status of the building', enum: $Enums.BuildingStatus, example: "" + $Enums.BuildingStatus.operational + "|" + $Enums.BuildingStatus.under_construction })  // Enum for status
+  status: $Enums.BuildingStatus;
 }

@@ -116,4 +116,11 @@ export interface UserInterface {
     message: string;
     isMatch: boolean;
   }>;
+
+  // User role validation
+  checkUserExists(data: { userId: string; role?: string }): Observable<{
+    exists: boolean;
+    message: string;
+    data?: { userId: string; role: string } | null;
+  }>;
 }

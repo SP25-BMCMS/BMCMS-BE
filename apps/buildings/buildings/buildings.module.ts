@@ -7,7 +7,7 @@ import { join } from 'path'
 import { ConfigService } from '@nestjs/config'
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
-
+const USERS_CLIENT = 'USERS_CLIENT'
 @Module({
   imports: [
     PrismaModule,
@@ -23,6 +23,36 @@ const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
               queue: 'buildings_queue',
               queueOptions: {
                 durable: true,
+              },
+            },
+          }
+        },
+        inject: [ConfigService],
+      },
+      {
+        name: USERS_CLIENT,
+        useFactory: (configService: ConfigService) => {
+          const isLocal = process.env.NODE_ENV !== 'production'
+          const usersHost = isLocal
+            ? configService.get('USERS_SERVICE_HOST', 'localhost')
+            : 'users_service'
+          const usersPort = configService.get('USERS_SERVICE_PORT', '3001')
+
+          return {
+            transport: Transport.GRPC,
+            options: {
+              url: `${usersHost}:${usersPort}`,
+              package: 'users',
+              protoPath: join(
+                process.cwd(),
+                'libs/contracts/src/users/users.proto',
+              ),
+              loader: {
+                keepCase: true,
+                longs: String,
+                enums: String,
+                defaults: true,
+                oneofs: true,
               },
             },
           }

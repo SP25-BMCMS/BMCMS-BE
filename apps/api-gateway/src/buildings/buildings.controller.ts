@@ -36,12 +36,6 @@ export class BuildingsController {
     private apartmentService: ApartmentService,
   ) { }
 
-  // @HttpCode(HttpStatus.OK)
-  // @Post('login')
-  // login(@Body() data: { username: string, password: string }) {
-  //     return this.UsersService.login(data.username, data.password)
-  // }
-
   @Get()
   @ApiOperation({ summary: 'Get all buildings with pagination' })
   @ApiQuery({
@@ -174,11 +168,27 @@ export class BuildingsController {
   }
 
   @Post()
+  @ApiOperation({ summary: 'Create a new building' })
+  @ApiBody({
+    type: CreateBuildingDto,
+    description: 'Building data including optional manager_id field'
+  })
+  @ApiResponse({ status: 201, description: 'Building created successfully' })
+  @ApiResponse({ status: 400, description: 'Bad Request - Invalid input data' })
   async createBuilding(@Body() createBuildingDto: CreateBuildingDto) {
     return await this.buildingsService.createBuilding(createBuildingDto)
   }
 
   @Put(':id')
+  @ApiOperation({ summary: 'Update an existing building' })
+  @ApiParam({ name: 'id', description: 'Building ID' })
+  @ApiBody({
+    type: UpdateBuildingDto,
+    description: 'Building data to update including optional manager_id field'
+  })
+  @ApiResponse({ status: 200, description: 'Building updated successfully' })
+  @ApiResponse({ status: 400, description: 'Bad Request - Invalid input data' })
+  @ApiResponse({ status: 404, description: 'Building not found' })
   async updateBuilding(
     @Param('id') id: string,
     @Body() updateBuildingDto: UpdateBuildingDto,
