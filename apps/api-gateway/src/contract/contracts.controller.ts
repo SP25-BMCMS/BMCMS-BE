@@ -13,25 +13,96 @@ import {
     Req,
     HttpException,
     HttpStatus,
+    Res,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiQuery, ApiTags, ApiBody } from '@nestjs/swagger';
 import { ContractsService } from './contracts.service';
 import { CreateContractDto } from 'libs/contracts/src/contracts/create-contract.dto';
 import { UpdateContractDto } from 'libs/contracts/src/contracts/update-contract.dto';
 import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard';
 import { ContractQueryDto } from '@app/contracts/contracts/contract-query.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @ApiTags('Contracts')
 @Controller('contracts')
 @ApiBearerAuth()
 // @UseGuards(PassportJwtAuthGuard)
 export class ContractsController {
+    private readonly uploadsPath = path.join(process.cwd(), 'uploads');
+
     constructor(private readonly contractsService: ContractsService) { }
 
     @Post()
     @ApiOperation({ summary: 'Create a new contract with a PDF file and devices' })
     @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                start_date: {
+                    type: 'string',
+                    format: 'date',
+                    example: '2023-01-01',
+                    description: 'The start date of the contract'
+                },
+                end_date: {
+                    type: 'string',
+                    format: 'date',
+                    example: '2024-01-01',
+                    description: 'The end date of the contract'
+                },
+                vendor: {
+                    type: 'string',
+                    example: 'ABC Company',
+                    description: 'The vendor of the contract'
+                },
+                contractFile: {
+                    type: 'string',
+                    format: 'binary',
+                    description: 'PDF contract file (maximum 10MB)'
+                },
+                devices: {
+                    type: 'array',
+                    description: 'Array of devices to be associated with this contract',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            name: {
+                                type: 'string',
+                                example: 'Air Conditioner',
+                                description: 'Device name'
+                            },
+                            type: {
+                                type: 'string',
+                                example: 'HVAC',
+                                description: 'Device type'
+                            },
+                            manufacturer: {
+                                type: 'string',
+                                example: 'Samsung',
+                                description: 'Device manufacturer'
+                            },
+                            model: {
+                                type: 'string',
+                                example: 'AC-2000',
+                                description: 'Device model'
+                            },
+                            buildingDetailId: {
+                                type: 'string',
+                                example: '550e8400-e29b-41d4-a716-446655440000',
+                                description: 'Building detail ID where the device is located'
+                            }
+                        },
+                        required: ['name', 'buildingDetailId']
+                    }
+                }
+            },
+            required: ['contractFile']
+        }
+    })
     @UseInterceptors(
         FileInterceptor('contractFile', {
             fileFilter: (req, file, callback) => {
@@ -70,8 +141,12 @@ export class ContractsController {
             // Xử lý trường devices một cách linh hoạt
             if (createContractDto.devices) {
                 try {
-                    // Trường hợp 1: Chuỗi JSON
-                    if (typeof createContractDto.devices === 'string') {
+                    // Trường hợp 1: Đã là mảng object (từ form-data có Content-Type: multipart/form-data)
+                    if (Array.isArray(createContractDto.devices)) {
+                        // Đã là mảng, không cần xử lý gì thêm
+                    }
+                    // Trường hợp 2: Chuỗi JSON (từ form-data truyền text)
+                    else if (typeof createContractDto.devices === 'string') {
                         // Xử lý trường hợp chuỗi rỗng hoặc không hợp lệ
                         if (!createContractDto.devices.trim()) {
                             createContractDto.devices = [];
@@ -127,7 +202,7 @@ export class ContractsController {
                     }
 
                     // Validate dữ liệu devices
-                    createContractDto.devices.forEach(device => {
+                    for (const device of createContractDto.devices) {
                         if (!device.name) {
                             throw new HttpException(
                                 {
@@ -146,7 +221,7 @@ export class ContractsController {
                                 HttpStatus.BAD_REQUEST
                             );
                         }
-                    });
+                    }
                 } catch (error) {
                     if (error instanceof HttpException) throw error;
 
@@ -197,7 +272,24 @@ export class ContractsController {
     @ApiQuery({ name: 'search', required: false, type: String, description: 'Search term to filter vendor name' })
     async getAllContracts(@Query() queryDto: ContractQueryDto) {
         try {
-            return await this.contractsService.getAllContracts(queryDto);
+            const result = await this.contractsService.getAllContracts(queryDto);
+
+            // Thêm đường dẫn file cho mỗi contract
+            if (result?.data && Array.isArray(result.data)) {
+                result.data = result.data.map(contract => {
+                    if (contract.file_name) {
+                        // Thêm đường dẫn tải xuống
+                        contract.fileUrl = `/contracts/download/${contract.contract_id}`;
+                        // Thêm đường dẫn xem trực tiếp trong trình duyệt
+                        contract.viewUrl = `/contracts/view/${contract.contract_id}`;
+                        // Đường dẫn trực tiếp
+                        contract.directFileUrl = `/uploads/contracts/${contract.file_name}`;
+                    }
+                    return contract;
+                });
+            }
+
+            return result;
         } catch (error) {
             this.handleMicroserviceError(error);
         }
@@ -207,9 +299,136 @@ export class ContractsController {
     @ApiOperation({ summary: 'Get a contract by ID' })
     async getContractById(@Param('id') contractId: string) {
         try {
-            return await this.contractsService.getContractById(contractId);
+            const result = await this.contractsService.getContractById(contractId);
+
+            // Thêm baseUrl cho file_name nếu contract có file
+            if (result?.data?.file_name) {
+                // Trả về các URL liên quan đến file
+                result.data.fileUrl = `/contracts/download/${contractId}`; // Tải xuống file
+                result.data.viewUrl = `/contracts/view/${contractId}`;      // Xem file trong trình duyệt
+                result.data.directFileUrl = `/uploads/contracts/${result.data.file_name}`; // URL trực tiếp
+            }
+
+            return result;
         } catch (error) {
             this.handleMicroserviceError(error);
+        }
+    }
+
+    @Get('download/:id')
+    @ApiOperation({
+        summary: 'Download the contract file',
+        description: 'Downloads the PDF file associated with the contract'
+    })
+    async downloadContractFile(@Param('id') contractId: string, @Res() res: Response) {
+        try {
+            const result = await this.contractsService.getContractById(contractId);
+
+            if (!result?.data?.file_name) {
+                throw new HttpException(
+                    {
+                        statusCode: HttpStatus.NOT_FOUND,
+                        message: 'Contract file not found'
+                    },
+                    HttpStatus.NOT_FOUND
+                );
+            }
+
+            const fileName = result.data.file_name;
+            const filePath = path.join(this.uploadsPath, 'contracts', fileName);
+
+            // Kiểm tra nếu file tồn tại
+            if (!fs.existsSync(filePath)) {
+                throw new HttpException(
+                    {
+                        statusCode: HttpStatus.NOT_FOUND,
+                        message: 'Contract file not found on server'
+                    },
+                    HttpStatus.NOT_FOUND
+                );
+            }
+
+            // Sửa tên file để download
+            const originalFilename = fileName.substring(fileName.indexOf('-') + 1);
+
+            // Thiết lập header để tải xuống
+            res.setHeader('Content-Disposition', `attachment; filename="${originalFilename}"`);
+            res.setHeader('Content-Type', 'application/pdf');
+
+            // Stream file về client
+            const fileStream = fs.createReadStream(filePath);
+            fileStream.pipe(res);
+        } catch (error) {
+            console.error('Error downloading file:', error);
+
+            if (error instanceof HttpException) {
+                throw error;
+            }
+
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    message: 'Error downloading contract file'
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    @Get('view/:id')
+    @ApiOperation({
+        summary: 'View the contract file in browser',
+        description: 'Displays the PDF file associated with the contract directly in the browser'
+    })
+    async viewContractFile(@Param('id') contractId: string, @Res() res: Response) {
+        try {
+            const result = await this.contractsService.getContractById(contractId);
+
+            if (!result?.data?.file_name) {
+                throw new HttpException(
+                    {
+                        statusCode: HttpStatus.NOT_FOUND,
+                        message: 'Contract file not found'
+                    },
+                    HttpStatus.NOT_FOUND
+                );
+            }
+
+            const fileName = result.data.file_name;
+            const filePath = path.join(this.uploadsPath, 'contracts', fileName);
+
+            // Kiểm tra nếu file tồn tại
+            if (!fs.existsSync(filePath)) {
+                throw new HttpException(
+                    {
+                        statusCode: HttpStatus.NOT_FOUND,
+                        message: 'Contract file not found on server'
+                    },
+                    HttpStatus.NOT_FOUND
+                );
+            }
+
+            // Thiết lập header để xem trực tiếp trong trình duyệt
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', 'inline');
+
+            // Stream file về client
+            const fileStream = fs.createReadStream(filePath);
+            fileStream.pipe(res);
+        } catch (error) {
+            console.error('Error viewing file:', error);
+
+            if (error instanceof HttpException) {
+                throw error;
+            }
+
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    message: 'Error viewing contract file'
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
     }
 
