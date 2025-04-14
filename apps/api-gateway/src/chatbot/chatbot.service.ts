@@ -45,7 +45,7 @@ export class ChatbotService implements OnModuleInit {
       const response = await this.chatbotClient
         .send<string>(CHATBOT_PATTERN.TEST_CHAT, { message, userId })
         .pipe(
-          timeout(15000),
+          timeout(30000),
           catchError((error) => {
             this.logger.error('Error in testChat:', error);
             throw new HttpException(

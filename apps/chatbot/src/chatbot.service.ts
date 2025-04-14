@@ -120,6 +120,7 @@ export class ChatbotService {
           crackReportsInfo += `- Khu vực: ${buildingName}\n`;
           crackReportsInfo += `  Mô tả: ${report.description}\n`;
           crackReportsInfo += `  Trạng thái: ${report.status}\n`;
+          crackReportsInfo += `  Ngày báo cáo: ${report.created_at}\n`;
           
           if (report.crackDetails && report.crackDetails.length > 0) {
             console.log(`🚀 ~ ChatbotService ~ getCrackReportsInfo ~ crackDetails:`, report.crackDetails);
@@ -149,15 +150,15 @@ export class ChatbotService {
     this.logger.log(`[testChat] Processing message from user ${userId}: "${message}"`);
 
     try {
-      // Lưu message vào database để tracking
-      await this.prisma.chat.create({
-        data: {
-          userId: userId,
-          message: message,
-          isUser: true,
-          type: 'test'
-        },
-      });
+      // // Lưu message vào database để tracking
+      // await this.prisma.chat.create({
+      //   data: {
+      //     userId: userId,
+      //     message: message,
+      //     isUser: true,
+      //     type: 'test'
+      //   },
+      // });
 
       let response: string;
       console.log("🚀 ~ ChatbotService ~ đâsdasdsadsdasdadasdadsdadasdsad ~ response:", response)
@@ -176,7 +177,7 @@ HƯỚNG DẪN PHẢN HỒI:
 - Phản hồi tự nhiên như một cuộc trò chuyện, không phải như một bài thuyết trình
 - Luôn luôn cho họ số điện thoại cần hỗ trợ "0939193974" nhớ ghi là "bạn có thắc mắc gì hay có gì khiếu nại hãy gọi tới ban quan lý Trần Nhật Quang"
 - Nếu người dùng hỏi về tình trạng vết nứt, hãy tham khảo thông tin vết nứt của họ từ phần THÔNG TIN VẾT NỨT CỦA BẠN
-- bởi vì 1 resident có rất nhiều bản report , nên dựa vào  ${crackReportsInfo} created_at mới nhất để trả  
+- bởi vì 1 resident có rất nhiều bản report , nên dựa vào  ${crackReportsInfo} created_at mới nhất để trả về , nhớ trả đường dẫn ảnh AiDetectionUrl  ${crackReportsInfo} 
 
 THÔNG TIN HỆ THỐNG:
 Building Management & Crack Monitoring System là hệ thống quản lý tòa nhà và giám sát vết nứt với nhiều chức năng:
@@ -212,15 +213,15 @@ Câu hỏi của người dùng: ${message}`;
         }
       }
 
-      // Lưu response vào database
-      await this.prisma.chat.create({
-        data: {
-          userId: userId,
-          message: response,
-          isUser: false,
-          type: 'test'
-        },
-      });
+      // // Lưu response vào database
+      // await this.prisma.chat.create({
+      //   data: {
+      //     userId: userId,
+      //     message: response,
+      //     isUser: false,
+      //     type: 'test'
+      //   },
+      // });
 
       this.logger.log(`[testChat] Final response: "${response}"`);
       return response;
