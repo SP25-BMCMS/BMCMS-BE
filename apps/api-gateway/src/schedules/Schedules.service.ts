@@ -11,7 +11,7 @@ import { SCHEDULE_CLIENT } from '../constraints'
 import { CreateScheduleDto } from '@app/contracts/schedules/create-Schedules.dto'
 import { SCHEDULES_PATTERN } from '@app/contracts/schedules/Schedule.patterns'
 import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules'
-import { $Enums } from '@prisma/client-Schedule'
+import { $Enums } from '@prisma/client-schedule'
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
 import { firstValueFrom, timeout } from 'rxjs'
 

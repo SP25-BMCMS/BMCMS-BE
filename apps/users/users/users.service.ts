@@ -26,7 +26,7 @@ import { CreateWorkingPositionDto } from '@app/contracts/users/create-working-po
 import { GrpcMethod } from '@nestjs/microservices'
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
 import { PrismaClient as TasksPrismaClient } from '@prisma/client-Task'
-import { PrismaClient as TasksPrismaClientSchedule } from '@prisma/client-Schedule'
+import { PrismaClient as TasksPrismaClientSchedule } from '@prisma/client-schedule'
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 const CRACKS_CLIENT = 'CRACKS_CLIENT'
@@ -895,7 +895,7 @@ export class UsersService {
         }
       }
 
-      const apartmentsWithWarranty = [];
+      const apartmentsWithWarranty = []
 
       for (const apartment of apartments) {
         try {
@@ -966,15 +966,15 @@ export class UsersService {
             )
 
             if (buildingResponse.statusCode === 200 && buildingResponse.data) {
-              let warrantyDate = null;
+              let warrantyDate = null
 
               if (buildingResponse.data.Warranty_date) {
                 try {
-                  const warDate = buildingResponse.data.Warranty_date;
+                  const warDate = buildingResponse.data.Warranty_date
                   if (typeof warDate === 'string') {
-                    warrantyDate = warDate;
+                    warrantyDate = warDate
                   } else {
-                    warrantyDate = String(warDate);
+                    warrantyDate = String(warDate)
                   }
                 } catch (error) {
                 }
@@ -983,18 +983,18 @@ export class UsersService {
               apartmentsWithWarranty.push({
                 ...apartment,
                 warrantyDate: warrantyDate
-              });
+              })
             } else {
               apartmentsWithWarranty.push({
                 ...apartment,
                 warrantyDate: null
-              });
+              })
             }
           } else {
             apartmentsWithWarranty.push({
               ...apartment,
               warrantyDate: null
-            });
+            })
           }
         } catch (error) {
           return {
@@ -1024,7 +1024,7 @@ export class UsersService {
                 apartmentName: apt.apartmentName,
                 buildingDetailId: apt.buildingDetailId,
                 warrantyDate: apt.warrantyDate || null
-              };
+              }
             }),
           },
         },
@@ -1882,15 +1882,15 @@ export class UsersService {
   async checkUserExists(userId: string, role?: string): Promise<any> {
     try {
       if (!userId) {
-        return null;
+        return null
       }
 
       // Build the where clause
-      const where: any = { userId };
+      const where: any = { userId }
 
       // If role is specified, add it to the query
       if (role) {
-        where.role = role;
+        where.role = role
       }
 
       // Find the user
@@ -1901,12 +1901,12 @@ export class UsersService {
           role: true,
           username: true
         }
-      });
+      })
 
-      return user;
+      return user
     } catch (error) {
-      console.error(`Error checking if user exists (userId: ${userId}, role: ${role}):`, error);
-      return null;
+      console.error(`Error checking if user exists (userId: ${userId}, role: ${role}):`, error)
+      return null
     }
   }
 }

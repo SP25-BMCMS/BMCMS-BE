@@ -2,7 +2,7 @@ import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common'
 import { PrismaClient } from '@prisma/client-users'
 import { withAccelerate } from '@prisma/extension-accelerate'
 import { ConfigService } from '@nestjs/config'
-
+import { withOptimize } from "@prisma/extension-optimize"
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor(private configService: ConfigService) {
@@ -31,6 +31,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
       // Apply Accelerate extension
       this.$extends(withAccelerate())
+      this.$extends(withOptimize({ apiKey: this.configService.get<string>('USER_PRISMA_OPTIMIZE_KEY') }))
       console.log('Successfully connected to database with Accelerate')
     } catch (error) {
       console.error('Failed to connect to database:', error)

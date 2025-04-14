@@ -282,7 +282,7 @@ export class TaskService {
 
         return firstValueFrom(
           this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id).pipe(
-            timeout(3000), // Reduced timeout to 3 seconds
+            timeout(10000), // Reduced timeout to 10 seconds
             catchError(err => {
               console.error(`Error fetching crack info for task ${task.task_id}:`, err)
               return of({

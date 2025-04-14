@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsEnum, IsDateString, IsArray, IsUUID } from 'class-validator'
-import { $Enums } from '@prisma/client-Schedule'
+import { $Enums } from '@prisma/client-schedule'
 import { ApiProperty } from '@nestjs/swagger'
 
 export class UpdateScheduleDto {

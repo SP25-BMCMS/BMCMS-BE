@@ -1,6 +1,6 @@
 // CreateScheduleDto.ts
 import { IsNotEmpty, IsString, IsEnum, IsOptional, IsDateString, IsInt } from 'class-validator'
-import { $Enums } from '@prisma/client-Schedule'
+import { $Enums } from '@prisma/client-schedule'
 import { ApiProperty } from '@nestjs/swagger'
 
 export class CreateScheduleDto {

@@ -1,41 +1,51 @@
-// import { PrismaClient } from '.prisma/client'
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { PrismaClient } from '@prisma/client-building'
 import { withAccelerate } from '@prisma/extension-accelerate'
-//import { PrismaClient } from '@prisma/client';
-import { log } from 'console'
-
+import { withOptimize } from "@prisma/extension-optimize"
 @Injectable()
 export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy {
   constructor(private configService: ConfigService) {
     const accelerateUrl = configService.get<string>('BUILDING_PRISMA_ACCELERATE_URL')
+
+
     if (!accelerateUrl) {
       throw new Error('BUILDING_PRISMA_ACCELERATE_URL is not defined')
     }
 
+    if (!accelerateUrl.startsWith('prisma://')) {
+      throw new Error('BUILDING_PRISMA_ACCELERATE_URL must start with prisma://')
+    }
+
     super({
-      log: ['error', 'warn'],
+      log: ['query', 'error', 'warn', 'info'],
       datasources: {
         db: {
-          url: accelerateUrl,
-        },
-      },
+          url: accelerateUrl
+        }
+      }
     })
   }
 
   async onModuleInit() {
     try {
-      // Pre-warm Prisma Client
-      await Promise.all([
-        this.$connect(),
-        this.$queryRaw`SELECT 1` // Simple query to warm up connection
-      ])
+      console.log('Initializing Prisma Client with Accelerate...')
 
-      // Apply Accelerate extension
+      // Apply Accelerate extension first
       this.$extends(withAccelerate())
+      this.$extends(withOptimize({ apiKey: this.configService.get<string>('BUILDING_PRISMA_OPTIMIZE_KEY') }))
+      console.log('Accelerate extension applied')
+
+      // Then connect
+      await this.$connect()
+      console.log('Connected to database')
+
+      // Test connection
+      await this.$queryRaw`SELECT 1`
+      console.log('Connection test successful')
+
       console.log('Successfully connected to database with Accelerate')
     } catch (error) {
       console.error('Failed to connect to database:', error)

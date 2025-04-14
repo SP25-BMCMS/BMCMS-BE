@@ -1,6 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { $Enums, ScheduleJobStatus } from '@prisma/client-Schedule';
-import { IsString, IsNotEmpty, IsUUID, IsInt, IsOptional, IsDate } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger'
+import { $Enums, ScheduleJobStatus } from '@prisma/client-schedule'
+import { IsString, IsNotEmpty, IsUUID, IsInt, IsOptional, IsDate } from 'class-validator'
 export class CreateScheduleJobDto {
 
   @ApiProperty({
@@ -11,7 +11,7 @@ export class CreateScheduleJobDto {
   })
   @IsOptional()
   @IsUUID()
-  schedule_id?: string;
+  schedule_id?: string
 
   // @ApiProperty({
   //   description: 'The scheduled run date of the job (optional)',
@@ -23,7 +23,7 @@ export class CreateScheduleJobDto {
 
   @IsOptional()
 
-  run_date?: Date;
+  run_date?: Date
 
   @ApiProperty({
     description: 'The status of the schedule job (optional)',
@@ -33,7 +33,7 @@ export class CreateScheduleJobDto {
   })
   @IsOptional()
   @IsString()
-  status?: $Enums.ScheduleJobStatus;
+  status?: $Enums.ScheduleJobStatus
 
   @ApiProperty({
     description: 'The ID of the building associated with the job (optional)',
@@ -43,5 +43,5 @@ export class CreateScheduleJobDto {
   })
   @IsOptional()
   @IsString()
-  buildingDetailId?: string;
+  buildingDetailId?: string
 }
