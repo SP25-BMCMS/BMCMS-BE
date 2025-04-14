@@ -1,16 +1,16 @@
-import { PrismaClient, DeviceType, Frequency, MaintenanceBasis } from '@prisma/client-Schedule';
+import { PrismaClient, DeviceType, Frequency, MaintenanceBasis } from '@prisma/client-schedule'
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient()
 
 async function main() {
-  console.log('Start seeding...');
+  console.log('Start seeding...')
 
   // Delete all existing data
-  console.log('Deleting existing data...');
-  await prisma.scheduleJob.deleteMany();
-  await prisma.schedule.deleteMany();
-  await prisma.maintenanceCycle.deleteMany();
-  console.log('Existing data deleted successfully');
+  console.log('Deleting existing data...')
+  await prisma.scheduleJob.deleteMany()
+  await prisma.schedule.deleteMany()
+  await prisma.maintenanceCycle.deleteMany()
+  console.log('Existing data deleted successfully')
 
   const maintenanceCycles = [
     {
@@ -68,23 +68,23 @@ async function main() {
       frequency: Frequency.Specific,
       basis: MaintenanceBasis.Other,
     },
-  ];
+  ]
 
   for (const cycle of maintenanceCycles) {
     const createdCycle = await prisma.maintenanceCycle.create({
       data: cycle,
-    });
-    console.log(`Created maintenance cycle with id: ${createdCycle.cycle_id}`);
+    })
+    console.log(`Created maintenance cycle with id: ${createdCycle.cycle_id}`)
   }
 
-  console.log('Seeding finished.');
+  console.log('Seeding finished.')
 }
 
 main()
   .catch((e) => {
-    console.error(e);
-    process.exit(1);
+    console.error(e)
+    process.exit(1)
   })
   .finally(async () => {
-    await prisma.$disconnect();
-  }); 
+    await prisma.$disconnect()
+  }) 
