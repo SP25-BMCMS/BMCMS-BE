@@ -7,7 +7,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DB_USER_SERVICE")
-  directUrl = env("USER_PRISMA_ACCELERATE_URL")
+  // directUrl = env("USER_PRISMA_ACCELERATE_URL")
 }
 
 model User {

@@ -6,16 +6,18 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor(private configService: ConfigService) {
-    const accelerateUrl = configService.get<string>('CHATBOT_PRISMA_ACCELERATE_URL');
-    if (!accelerateUrl) {
-      throw new Error('CHATBOT_PRISMA_ACCELERATE_URL is not defined');
-    }
+    // const accelerateUrl = configService.get<string>('CHATBOT_PRISMA_ACCELERATE_URL');
+    // if (!accelerateUrl) {
+    //   throw new Error('CHATBOT_PRISMA_ACCELERATE_URL is not defined');
+    // }
+    const url = configService.get<string>('DB_CHATBOT_SERVICE')
 
     super({
       log: ['error', 'warn'],
       datasources: {
         db: {
-          url: accelerateUrl
+          // url: accelerateUrl
+          url: url
         }
       }
     });
@@ -30,8 +32,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       ]);
       
       // Apply Accelerate extension
-      this.$extends(withAccelerate());
-      console.log('Successfully connected to database with Accelerate');
+      // this.$extends(withAccelerate());
+      // console.log('Successfully connected to database with Accelerate');
     } catch (error) {
       console.error('Failed to connect to database:', error);
       throw error;

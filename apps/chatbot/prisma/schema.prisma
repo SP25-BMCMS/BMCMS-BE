@@ -1,14 +1,14 @@
 generator client {
   provider = "prisma-client-js"
   output   = "../../../node_modules/@prisma/client-chatbot"
-  previewFeatures = ["postgresqlExtensions"]
+  // previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DB_CHATBOT_URL")
-  directUrl = env("CHATBOT_PRISMA_ACCELERATE_URL")
-  relationMode = "prisma"
+  // directUrl = env("CHATBOT_PRISMA_ACCELERATE_URL")
+  // relationMode = "prisma"
 }
 
 model Chat {

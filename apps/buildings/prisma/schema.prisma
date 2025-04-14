@@ -12,7 +12,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DB_BUILDING_SERVICE")
-  directUrl = env("BUILDING_PRISMA_ACCELERATE_URL")
+  // directUrl = env("BUILDING_PRISMA_ACCELERATE_URL")
 }
 
 model Building {

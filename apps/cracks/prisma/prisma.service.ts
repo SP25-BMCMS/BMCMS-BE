@@ -8,16 +8,18 @@ export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy {
   constructor(private configService: ConfigService) {
-    const accelerateUrl = configService.get<string>('CRACK_PRISMA_ACCELERATE_URL')
-    if (!accelerateUrl) {
-      throw new Error('CRACK_PRISMA_ACCELERATE_URL is not defined')
-    }
+    // const accelerateUrl = configService.get<string>('CRACK_PRISMA_ACCELERATE_URL')
+    const url = configService.get<string>('DB_CRACK_SERVICE')
+    // if (!accelerateUrl) {
+    //   throw new Error('CRACK_PRISMA_ACCELERATE_URL is not defined')
+    // }
 
     super({
       log: ['error', 'warn'],
       datasources: {
         db: {
-          url: accelerateUrl
+          // url: accelerateUrl  
+          url: url
         }
       }
     })
@@ -33,9 +35,9 @@ export class PrismaService
 
       await this.$connect()
       // Apply Accelerate extension
-      this.$extends(withAccelerate())
-      this.$extends(withOptimize({ apiKey: this.configService.get<string>('CRACK_PRISMA_OPTIMIZE_KEY') }))
-      console.log('Successfully connected to database with Accelerate')
+      // this.$extends(withAccelerate())
+      // this.$extends(withOptimize({ apiKey: this.configService.get<string>('CRACK_PRISMA_OPTIMIZE_KEY') }))
+      // console.log('Successfully connected to database with Accelerate')
     } catch (error) {
       console.error('Failed to connect to database:', error)
       throw error
