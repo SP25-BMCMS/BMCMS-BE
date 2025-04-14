@@ -233,6 +233,8 @@ export class ScheduleService {
     paginationParams?: PaginationParams,
   ): Promise<PaginationResponseDto<ScheduleResponseDto>> {
     try {
+      console.time('Total getAllSchedules execution')
+
       // Default values if not provided
       const page = Math.max(1, paginationParams?.page || 1)
       const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10))
@@ -240,6 +242,7 @@ export class ScheduleService {
       // Calculate skip value for pagination
       const skip = (page - 1) * limit
 
+      console.time('Database queries')
       // Get paginated data
       const [schedules, total] = await Promise.all([
         this.prisma.schedule.findMany({
@@ -250,7 +253,9 @@ export class ScheduleService {
         }),
         this.prisma.schedule.count(),
       ])
+      console.timeEnd('Database queries')
 
+      console.time('Data transformation')
       // Transform to response DTOs
       const scheduleResponse: ScheduleResponseDto[] = schedules.map(
         (schedule) => ({
@@ -262,9 +267,11 @@ export class ScheduleService {
           schedule_job: schedule.scheduleJobs,
         }),
       )
+      console.timeEnd('Data transformation')
 
+      console.time('Response creation')
       // Use PaginationResponseDto for consistent response formatting
-      return new PaginationResponseDto(
+      const response = new PaginationResponseDto(
         scheduleResponse,
         total,
         page,
@@ -274,6 +281,10 @@ export class ScheduleService {
           ? 'Schedules retrieved successfully'
           : 'No schedules found',
       )
+      console.timeEnd('Response creation')
+
+      console.timeEnd('Total getAllSchedules execution')
+      return response
     } catch (error) {
       console.error('Error retrieving schedules:', error)
       throw new RpcException({
