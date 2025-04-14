@@ -1,14 +1,22 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { CreateCrackRecordDto } from '@app/contracts/CrackRecord/create-CrackRecord.dto';
 import { UpdateCrackRecordDto } from '@app/contracts/CrackRecord/update-CrackRecord.dto';
 import { CrackRecordDto } from '@app/contracts/CrackRecord/CrackRecord.dto';
 import { ApiResponse } from '@app/contracts/ApiResponse/api-response';
 import { PrismaService } from 'apps/buildings/prisma/prisma.service';
+import { PaginationParams, PaginationResponseDto } from '@app/contracts/Pagination/pagination.dto';
+import { ClientProxy } from '@nestjs/microservices';
+import { INSPECTIONS_PATTERN } from '@app/contracts/inspections/inspection.patterns';
 
 @Injectable()
 export class CrackRecordService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(CrackRecordService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    @Inject('TASK_CLIENT') private readonly taskClient: ClientProxy
+  ) {}
 
   async create(createDto: CreateCrackRecordDto): Promise<ApiResponse<CrackRecordDto>> {
     try {
@@ -29,38 +37,36 @@ export class CrackRecordService {
     }
   }
 
-  async findAll(
-    page?: number,
-    limit?: number,
-    search?: string,
-  ): Promise<ApiResponse<CrackRecordDto[]>> {
-    const skip = page ? (page - 1) * (limit || 10) : 0;
-    const take = limit || 10;
+  async findAll(paginationParams?: PaginationParams): Promise<PaginationResponseDto<CrackRecordDto>> {
+    try {
+      const page = Math.max(1, paginationParams?.page || 1);
+      const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10));
+      const skip = (page - 1) * limit;
 
-    const whereSearch = search
-      ? {
-          OR: [
-            { description: { contains: search, mode: 'insensitive' as const } },
-            { locationDetailId: { contains: search, mode: 'insensitive' as const } },
-          ],
-        }
-      : {};
+      const [crackRecords, total] = await Promise.all([
+        this.prisma.crackRecord.findMany({
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.crackRecord.count(),
+      ]);
 
-    const [crackRecords, total] = await Promise.all([
-      this.prisma.crackRecord.findMany({
-        skip,
-        take,
-        where: whereSearch,
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.crackRecord.count({ where: whereSearch }),
-    ]);
-
-    return {
-      isSuccess: true,
-      data: crackRecords,
-      message: 'Crack records retrieved successfully',
-    };
+      return new PaginationResponseDto<CrackRecordDto>(
+        crackRecords,
+        total,
+        page,
+        limit,
+        200,
+        crackRecords.length > 0 ? 'Crack records retrieved successfully' : 'No crack records found',
+      );
+    } catch (error) {
+      this.logger.error('Error retrieving crack records:', error);
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error retrieving crack records',
+      });
+    }
   }
 
   async findOne(crackRecordId: string): Promise<ApiResponse<CrackRecordDto>> {
@@ -132,21 +138,112 @@ export class CrackRecordService {
     }
   }
 
-  async findByLocation(locationDetailId: string): Promise<ApiResponse<CrackRecordDto[]>> {
+  async getByBuildingDetailId(
+    buildingDetailId: string,
+    paginationParams?: PaginationParams
+  ): Promise<PaginationResponseDto<CrackRecordDto>> {
     try {
-      const crackRecords = await this.prisma.crackRecord.findMany({
-        where: { locationDetailId },
-      });
+      this.logger.log(`Getting crack records for building detail: ${buildingDetailId}`);
+      
+      const page = Math.max(1, paginationParams?.page || 1);
+      const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10));
+      const skip = (page - 1) * limit;
 
-      return new ApiResponse<CrackRecordDto[]>(
-        true,
-        'Crack records retrieved successfully',
+      const [crackRecords, total] = await Promise.all([
+        this.prisma.crackRecord.findMany({
+          where: { locationDetail: { buildingDetailId: buildingDetailId } },
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.crackRecord.count({ where: { locationDetail: { buildingDetailId: buildingDetailId } } }),
+      ]);
+
+      return new PaginationResponseDto<CrackRecordDto>(
         crackRecords,
+        total,
+        page,
+        limit,
+        200,
+        crackRecords.length > 0 ? 'Crack records retrieved successfully' : 'No crack records found',
       );
     } catch (error) {
+      this.logger.error(`Error getting crack records for building detail ${buildingDetailId}:`, error);
       throw new RpcException({
         statusCode: 500,
-        message: `Failed to retrieve crack records: ${error.message}`,
+        message: 'Error retrieving crack records',
+      });
+    }
+  }
+
+  async getByInspectionId(
+    inspectionId: string,
+    paginationParams?: PaginationParams
+  ): Promise<PaginationResponseDto<CrackRecordDto>> {
+    try {
+      this.logger.log(`Getting crack records for inspection: ${inspectionId}`);
+      
+      // Tìm tất cả locationDetail dựa trên inspection_id
+      const locationDetails = await this.prisma.locationDetail.findMany({
+        where: { inspection_id: inspectionId }
+      });
+      
+      if (!locationDetails || locationDetails.length === 0) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'No location details found for this inspection',
+        });
+      }
+
+      // này là tạo mảng chứa locationDetialId từ mảng locationDetails
+      const locationDetailIds = locationDetails.map(location => location.locationDetailId);
+      
+      const page = Math.max(1, paginationParams?.page || 1);
+      const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10));
+      const skip = (page - 1) * limit;
+      
+      // Tìm tất cả crackRecord dựa trên danh sách locationDetailId
+      const [crackRecords, total] = await Promise.all([
+        this.prisma.crackRecord.findMany({
+          where: { 
+            locationDetailId: {
+              // này là tìm tất cả crackRecord dựa trên danh sách locationDetailId
+              in: locationDetailIds
+            } 
+          },
+          skip,
+          include: {
+            locationDetail: {
+              include: {
+                buildingDetail: true,
+              },
+            },
+          },
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.crackRecord.count({ 
+          where: { 
+            locationDetailId: {
+              in: locationDetailIds
+            } 
+          } 
+        }),
+      ]);
+
+      return new PaginationResponseDto<CrackRecordDto>(
+        crackRecords,
+        total,
+        page,
+        limit,
+        200,
+        crackRecords.length > 0 ? 'Crack records retrieved successfully' : 'No crack records found',
+      );
+    } catch (error) {
+      this.logger.error(`Error getting crack records for inspection ${inspectionId}:`, error);
+      throw new RpcException({
+        statusCode: error.statusCode || 500,
+        message: error.message || 'Error retrieving crack records',
       });
     }
   }

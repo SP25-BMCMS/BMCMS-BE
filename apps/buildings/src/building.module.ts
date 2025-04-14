@@ -43,7 +43,6 @@ import { CrackRecordService } from '../CrackRecord/CrackRecord.service';
     BuildingDetailsService,
     LocationDetailService,
     ContractsService,
-    CrackRecordService,
   ],
 })
 export class BuildingModule { }
