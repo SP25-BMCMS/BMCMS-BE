@@ -280,6 +280,10 @@ export class TaskAssignmentsService {
     try {
       const assignments = await this.prisma.taskAssignment.findMany({
         where: { employee_id: userId },
+        include: {
+          task: true,
+          // assignedTo: true
+        },
       })
       return {
         statusCode: 200,
