@@ -23,6 +23,8 @@ import { LOCATIONDETAIL_PATTERN } from 'libs/contracts/src/LocationDetails/Locat
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { ConfigService } from '@nestjs/config'
+import { UpdateInspectionPrivateAssetDto } from '@app/contracts/inspections/update-inspection-privateasset.dto'
+import { UpdateInspectionReportStatusDto } from '@app/contracts/inspections/update-inspection-report-status.dto'
 
 @Injectable()
 export class InspectionService implements OnModuleInit {
@@ -546,5 +548,53 @@ export class InspectionService implements OnModuleInit {
 
     // Default to Other
     return "Other"
+  }
+
+  // Add new methods for updating isPrivateAsset and report_status
+
+  async updateInspectionPrivateAsset(
+    inspection_id: string,
+    dto: UpdateInspectionPrivateAssetDto
+  ): Promise<any> {
+    try {
+      return await firstValueFrom(
+        this.inspectionClient.send(INSPECTIONS_PATTERN.UPDATE_PRIVATE_ASSET, {
+          inspection_id,
+          dto
+        })
+      );
+    } catch (error) {
+      console.error(`Failed to update inspection private asset status: ${error.message}`, error.stack);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Failed to update inspection private asset status',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async updateInspectionReportStatus(
+    inspection_id: string,
+    dto: UpdateInspectionReportStatusDto
+  ): Promise<any> {
+    try {
+      return await firstValueFrom(
+        this.inspectionClient.send(INSPECTIONS_PATTERN.UPDATE_REPORT_STATUS, {
+          inspection_id,
+          dto
+        })
+      );
+    } catch (error) {
+      console.error(`Failed to update inspection report status: ${error.message}`, error.stack);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Failed to update inspection report status',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 }

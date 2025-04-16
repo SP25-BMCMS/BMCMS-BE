@@ -9,15 +9,13 @@ import { AreasService } from '../Areas/areas.service';
 import { BuildingDetailsModule } from 'apps/buildings/BuildingDetails/buildingdetails.module';
 import { BuildingDetailsController } from 'apps/buildings/BuildingDetails/buildingdetails.controller';
 import { BuildingDetailsService } from 'apps/buildings/BuildingDetails/buildingdetails.service';
-import { locationDetailsModulee } from '../LocationDetails/locationdetails.module';
+import { LocationDetailsModule } from '../LocationDetails/locationdetails.module';
 import { LocationDetailsController } from '../LocationDetails/locationdetails.controller';
-import { LocationDetailService } from '../LocationDetails/locationdetails.service';
 import { ContractsModule } from '../contract/contracts.module';
 import { ContractsController } from '../contract/contracts.controller';
 import { ContractsService } from '../contract/contracts.service';
 import { CrackRecordModule } from '../CrackRecord/CrackRecord.module';
 import { CrackRecordController } from '../CrackRecord/CrackRecord.controller';
-import { CrackRecordService } from '../CrackRecord/CrackRecord.service';
 
 @Module({
   imports: [
@@ -27,7 +25,7 @@ import { CrackRecordService } from '../CrackRecord/CrackRecord.service';
     PrismaModule,
     AreasModule,
     BuildingDetailsModule,
-    locationDetailsModulee,
+    LocationDetailsModule,
     ContractsModule,
     CrackRecordModule,
   ],
@@ -37,11 +35,11 @@ import { CrackRecordService } from '../CrackRecord/CrackRecord.service';
     LocationDetailsController,
     ContractsController,
     CrackRecordController,
+    LocationDetailsController,
   ],
   providers: [
     AreasService,
     BuildingDetailsService,
-    LocationDetailService,
     ContractsService,
   ],
 })

@@ -12,6 +12,8 @@ import { ApiResponse as ApiResponseDto } from '@app/contracts/ApiResponse/api-re
 import { Inspection } from '@prisma/client-Task'
 import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-inspection-status.dto'
 import { AddImageToInspectionDto } from '@app/contracts/inspections/add-image.dto'
+import { UpdateInspectionPrivateAssetDto } from '@app/contracts/inspections/update-inspection-privateasset.dto'
+import { UpdateInspectionReportStatusDto } from '@app/contracts/inspections/update-inspection-report-status.dto'
 
 @Controller('inspections')
 @ApiTags('inspections')
@@ -84,5 +86,25 @@ export class InspectionsController {
   @MessagePattern({ cmd: 'get-building-detail-id-from-task-assignment' })
   async getBuildingDetailIdFromTaskAssignment(@Payload() payload: { task_assignment_id: string }) {
     return this.inspectionService.getBuildingDetailIdFromTaskAssignment(payload.task_assignment_id)
+  }
+
+  @MessagePattern(INSPECTIONS_PATTERN.UPDATE_PRIVATE_ASSET)
+  async updatePrivateAsset(
+    @Payload() data: { inspection_id: string; dto: UpdateInspectionPrivateAssetDto },
+  ) {
+    return await this.inspectionService.updateInspectionPrivateAsset(
+      data.inspection_id,
+      data.dto,
+    )
+  }
+
+  @MessagePattern(INSPECTIONS_PATTERN.UPDATE_REPORT_STATUS)
+  async updateReportStatus(
+    @Payload() data: { inspection_id: string; dto: UpdateInspectionReportStatusDto },
+  ) {
+    return await this.inspectionService.updateInspectionReportStatus(
+      data.inspection_id,
+      data.dto,
+    )
   }
 }
