@@ -1,4 +1,4 @@
-import { Injectable, Inject, OnModuleInit } from '@nestjs/common'
+import { Injectable, Inject, OnModuleInit, Logger } from '@nestjs/common'
 import { RpcException } from '@nestjs/microservices'
 import { PrismaService } from '../prisma/prisma.service'
 import { ApiResponse } from '../../../libs/contracts/src/ApiResponse/api-response'
@@ -12,9 +12,12 @@ import { catchError, firstValueFrom, Observable, of, timeout } from 'rxjs'
 import { IsUUID } from 'class-validator'
 import { MATERIAL_PATTERN } from '@app/contracts/materials/material.patterns'
 import { TASK_CLIENT } from 'apps/api-gateway/src/constraints'
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { GetObjectCommand, S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { ConfigService } from '@nestjs/config'
+import { TaskAssignmentsService } from '../TaskAssignments/TaskAssignments.service'
+import { AssignmentStatus } from '@prisma/client-Task'
+import { TaskService } from '../Task/Task.service'
 
 const USERS_CLIENT = 'USERS_CLIENT'
 // Define interface for the User service
@@ -43,13 +46,16 @@ export class InspectionsService implements OnModuleInit {
   private userService: UserService
   private s3: S3Client
   private bucketName: string
+  private readonly logger = new Logger(InspectionsService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     @Inject('CRACK_CLIENT') private readonly crackClient: ClientProxy,
     @Inject(USERS_CLIENT) private readonly userClient: ClientGrpc,
     @Inject(TASK_CLIENT) private readonly taskClient: ClientProxy,
-    private configService: ConfigService
+    private configService: ConfigService,
+    private readonly taskAssignmentService: TaskAssignmentsService,
+    private readonly taskService: TaskService
   ) {
     this.s3 = new S3Client({
       region: this.configService.get<string>('AWS_REGION'),
@@ -757,6 +763,142 @@ export class InspectionsService implements OnModuleInit {
     } catch (error) {
       console.error('Tasks microservice - Error in verifyStaffRole:', error)
       return new ApiResponse(false, `Error validating user role: ${error.message}`, false)
+    }
+  }
+
+  async updateInspectionPrivateAsset(
+    inspection_id: string,
+    dto: { isprivateasset: boolean }
+  ) {
+    try {
+      const inspection = await this.prisma.inspection.findUnique({
+        where: { inspection_id },
+        include: {
+          taskAssignment: true
+        }
+      });
+
+      if (!inspection) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Inspection not found',
+        });
+      }
+
+      const updatedInspection = await this.prisma.inspection.update({
+        where: { inspection_id },
+        data: {
+          isprivateasset: dto.isprivateasset
+        },
+        include: {
+          taskAssignment: true,
+          repairMaterials: true
+        }
+      });
+
+      return new ApiResponse(
+        true,
+        'Inspection private asset status updated successfully',
+        updatedInspection
+      );
+    } catch (error) {
+      if (error instanceof RpcException) throw error;
+      throw new RpcException({
+        statusCode: 500,
+        message: `Failed to update inspection private asset status: ${error.message}`,
+      });
+    }
+  }
+
+  async updateInspectionReportStatus(
+    inspection_id: string,
+    dto: { report_status: 'NoPending' | 'Pending' | 'Approved' | 'Rejected' | 'AutoApproved' }
+  ) {
+    try {
+      const inspection = await this.prisma.inspection.findUnique({
+        where: { inspection_id },
+        include: {
+          taskAssignment: true
+        }
+      });
+
+      if (!inspection) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Inspection not found',
+        });
+      }
+
+      // Update the inspection report status
+      const updatedInspection = await this.prisma.inspection.update({
+        where: { inspection_id },
+        data: {
+          report_status: dto.report_status
+        },
+        include: {
+          taskAssignment: true,
+          repairMaterials: true
+        }
+      });
+
+      // Handle special cases for report status changes
+      if (dto.report_status === 'Rejected' && inspection.isprivateasset === true) {
+        // If report is rejected and it's a private asset, mark task as not completed
+        await this.taskAssignmentService.changeTaskAssignmentStatus(
+          inspection.task_assignment_id, 
+          AssignmentStatus.Confirmed
+        );
+
+        if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
+          await this.taskService.changeTaskStatus(
+            inspection.taskAssignment.task_id, 
+            'Completed'
+          );
+        }
+        
+        updatedInspection.taskAssignment.status = AssignmentStatus.Confirmed;
+
+        return new ApiResponse(
+          true,
+          'Đã có trong hệ thống lịch bảo trì của chúng tôi',
+          updatedInspection
+        );
+      } 
+      else if (dto.report_status === 'Approved') {
+        // If report is approved, mark task as completed
+        await this.taskAssignmentService.changeTaskAssignmentStatus(
+          inspection.task_assignment_id, 
+          AssignmentStatus.Confirmed // Using Confirmed status since Completed is not in the enum
+        );
+        
+        // Also update the task status to Completed
+        if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
+          await this.taskService.changeTaskStatus(
+            inspection.taskAssignment.task_id, 
+            'Completed'
+          );
+        }
+        
+        updatedInspection.taskAssignment.status = AssignmentStatus.Confirmed;
+        
+        return new ApiResponse(
+          true,
+          'Chúng tôi xin ghi nhận và sẽ xem xét',
+          updatedInspection
+        );
+      }
+
+      return new ApiResponse(
+        true,
+        'Inspection report status updated successfully',
+        updatedInspection
+      );
+    } catch (error) {
+      if (error instanceof RpcException) throw error;
+      throw new RpcException({
+        statusCode: 500,
+        message: `Failed to update inspection report status: ${error.message}`,
+      });
     }
   }
 }

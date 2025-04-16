@@ -13,10 +13,12 @@ import {
   Put,
   Query,
   Req,
+  Res,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
   ValidationPipe,
+  Logger,
 } from '@nestjs/common'
 import { InspectionService } from './Inspection.service'
 import { catchError, firstValueFrom, NotFoundError } from 'rxjs'
@@ -41,6 +43,9 @@ import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-ins
 import { AddImageToInspectionDto } from '@app/contracts/inspections/add-image.dto'
 import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard'
 import { FilesInterceptor } from '@nestjs/platform-express'
+import { UpdateInspectionPrivateAssetDto } from '@app/contracts/inspections/update-inspection-privateasset.dto'
+import { UpdateInspectionReportStatusDto } from '@app/contracts/inspections/update-inspection-report-status.dto'
+import { Response } from 'express'
 
 @Controller('inspections')
 @ApiTags('inspections')
@@ -182,5 +187,33 @@ export class InspectionController {
   @Get(':id')
   async getInspectionById(@Param('id') id: string) {
     return this.inspectionService.getInspectionById(id)
+  }
+
+  @Patch(':inspection_id/private-asset')
+  @ApiOperation({ summary: 'Update inspection private asset status' })
+  @ApiParam({ name: 'inspection_id', description: 'Inspection ID', type: 'string' })
+  @ApiBody({ type: UpdateInspectionPrivateAssetDto })
+  @ApiResponse({ status: 200, description: 'Inspection private asset status updated successfully' })
+  @ApiResponse({ status: 404, description: 'Inspection not found' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async updateInspectionPrivateAsset(
+    @Param('inspection_id') inspection_id: string,
+    @Body() dto: UpdateInspectionPrivateAssetDto
+  ) {
+    return this.inspectionService.updateInspectionPrivateAsset(inspection_id, dto);
+  }
+
+  @Patch(':inspection_id/report-status')
+  @ApiOperation({ summary: 'Update inspection report status' })
+  @ApiParam({ name: 'inspection_id', description: 'Inspection ID', type: 'string' })
+  @ApiBody({ type: UpdateInspectionReportStatusDto })
+  @ApiResponse({ status: 200, description: 'Inspection report status updated successfully' })
+  @ApiResponse({ status: 404, description: 'Inspection not found' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async updateInspectionReportStatus(
+    @Param('inspection_id') inspection_id: string,
+    @Body() dto: UpdateInspectionReportStatusDto
+  ) {
+    return this.inspectionService.updateInspectionReportStatus(inspection_id, dto);
   }
 }
