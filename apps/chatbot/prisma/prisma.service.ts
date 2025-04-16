@@ -30,7 +30,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         this.$connect(),
         this.$queryRaw`SELECT 1` // Simple query to warm up connection
       ]);
-      
+
       // Apply Accelerate extension
       // this.$extends(withAccelerate());
       // console.log('Successfully connected to database with Accelerate');
