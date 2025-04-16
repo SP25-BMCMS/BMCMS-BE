@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { Payload, RpcException } from '@nestjs/microservices';
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Payload, RpcException, ClientProxy } from '@nestjs/microservices';
 import { PrismaClient } from '@prisma/client-building';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { CreateLocationDetailDto } from 'libs/contracts/src/LocationDetails/create-locationdetails.dto';
@@ -8,10 +8,14 @@ import {
   PaginationParams,
   PaginationResponseDto,
 } from '../../../libs/contracts/src/Pagination/pagination.dto';
+import { INSPECTIONS_PATTERN } from '@app/contracts/inspections/inspection.patterns';
 
 @Injectable()
 export class LocationDetailService {
   private prisma = new PrismaClient();
+  private readonly logger = new Logger(LocationDetailService.name);
+
+  constructor(@Inject('TASK_CLIENT') private readonly taskClient: ClientProxy) {}
 
   async createLocationDetail(createLocationDetailDto: CreateLocationDetailDto) {
     try {
@@ -108,13 +112,56 @@ export class LocationDetailService {
     try {
       const locationDetail = await this.prisma.locationDetail.findUnique({
         where: { locationDetailId },
+        include: {
+          crackRecords: true,
+          buildingDetail: true,
+        },
       });
+
+      if (!locationDetail) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'LocationDetail not found',
+        });
+      }
+
+      // Nếu có inspection_id, lấy thông tin inspection
+      if (locationDetail.inspection_id) {
+        try {
+          // Gọi đến TASK_CLIENT để lấy chi tiết inspection
+          const inspectionResponse = await this.taskClient.send(
+            INSPECTIONS_PATTERN.GET_DETAILS,
+            locationDetail.inspection_id
+          ).toPromise();
+
+          // Thêm dữ liệu inspection vào response
+          return {
+            statusCode: 200,
+            message: 'LocationDetail retrieved successfully',
+            data: {
+              ...locationDetail,
+              inspection: inspectionResponse && inspectionResponse.data ? inspectionResponse.data : null
+            },
+          };
+        } catch (inspectionError) {
+          this.logger.error(`Error fetching inspection data: ${inspectionError.message}`);
+          // Vẫn trả về location detail dù không lấy được inspection
+          return {
+            statusCode: 200,
+            message: 'LocationDetail retrieved successfully (inspection data unavailable)',
+            data: locationDetail,
+          };
+        }
+      }
+
       return {
         statusCode: 200,
         message: 'LocationDetail retrieved successfully',
         data: locationDetail,
       };
     } catch (error) {
+      if (error instanceof RpcException) throw error;
+      
       throw new RpcException({
         statusCode: 404,
         message: 'LocationDetail not found',
