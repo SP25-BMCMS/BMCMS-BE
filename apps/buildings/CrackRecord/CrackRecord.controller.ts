@@ -60,4 +60,12 @@ export class CrackRecordController {
     this.logger.log(`Getting crack records for inspection ${data.inspectionId} with pagination: ${JSON.stringify(data.paginationParams)}`);
     return this.crackRecordService.getByInspectionId(data.inspectionId, data.paginationParams);
   }
+
+  @MessagePattern(CRACK_RECORD_PATTERNS.GET_BY_LOCATION_DETAIL_ID)
+  async getByLocationDetailId(
+    @Payload() data: { locationDetailId: string; paginationParams?: PaginationParams }
+  ): Promise<PaginationResponseDto<CrackRecordDto>> {
+    this.logger.log(`Getting crack records for location detail ${data.locationDetailId} with pagination: ${JSON.stringify(data.paginationParams)}`);
+    return this.crackRecordService.getByLocationDetailId(data.locationDetailId, data.paginationParams);
+  }
 } 
