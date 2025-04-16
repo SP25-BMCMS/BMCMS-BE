@@ -247,4 +247,45 @@ export class CrackRecordService {
       });
     }
   }
+
+  async getByLocationDetailId(
+    locationDetailId: string,
+    paginationParams?: PaginationParams
+  ): Promise<PaginationResponseDto<CrackRecordDto>> {
+    try {
+      this.logger.log(`Getting crack records for location detail: ${locationDetailId}`);
+      
+      const page = Math.max(1, paginationParams?.page || 1);
+      const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10));
+      const skip = (page - 1) * limit;
+
+      const [crackRecords, total] = await Promise.all([
+        this.prisma.crackRecord.findMany({
+          where: { locationDetailId },
+          skip,
+          take: limit,
+          include: {
+            locationDetail: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.crackRecord.count({ where: { locationDetailId } }),
+      ]);
+
+      return new PaginationResponseDto<CrackRecordDto>(
+        crackRecords,
+        total,
+        page,
+        limit,
+        200,
+        crackRecords.length > 0 ? 'Crack records retrieved successfully' : 'No crack records found',
+      );
+    } catch (error) {
+      this.logger.error(`Error getting crack records for location detail ${locationDetailId}:`, error);
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error retrieving crack records',
+      });
+    }
+  }
 } 

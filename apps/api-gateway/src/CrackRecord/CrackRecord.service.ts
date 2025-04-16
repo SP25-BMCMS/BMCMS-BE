@@ -96,4 +96,17 @@ export class CrackRecordService {
       }),
     );
   }
+
+  async getByLocationDetailId(
+    locationDetailId: string,
+    paginationParams?: PaginationParams
+  ): Promise<PaginationResponseDto<CrackRecordDto>> {
+    this.logger.log(`Sending getByLocationDetailId request to microservice: ${locationDetailId}, ${JSON.stringify(paginationParams)}`);
+    return firstValueFrom(
+      this.buildingService.send(CRACK_RECORD_PATTERNS.GET_BY_LOCATION_DETAIL_ID, {
+        locationDetailId,
+        paginationParams
+      }),
+    );
+  }
 } 
