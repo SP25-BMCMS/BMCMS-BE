@@ -120,7 +120,6 @@ services:
     env_file:
       - .env
     environment:
-      SIGNALR_URL: http://chatbot:3007/chatHub
       NODE_ENV: production
       RABBITMQ_URL: 'amqps://oibfiavv:G76Py5t5hullpvg2scvo-rkXmZGBdWhc@leopard.lmq.cloudamqp.com/oibfiavv'
       REDIS_URL: 'rediss://default:AUZEAAIjcDFjMzgxYjUyZDJjMmI0MzA3OTg4ZDZhMmVhOGRhOGRhZnAxMA@massive-gator-17988.upstash.io:6379'
@@ -131,10 +130,6 @@ services:
 networks:
   my_network:
     driver: bridge
-
-
-
-
 # local
 # services:
 #   rabbitmq:
