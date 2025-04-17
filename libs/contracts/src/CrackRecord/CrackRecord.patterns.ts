@@ -7,4 +7,5 @@ export const CRACK_RECORD_PATTERNS = {
   GET_BY_LOCATION: 'get_crack_records_by_location',
   GET_BY_BUILDING_DETAIL_ID: 'get_crack_records_by_building_detail_id',
   GET_BY_INSPECTION_ID: 'get_crack_records_by_inspection_id',
+  GET_BY_LOCATION_DETAIL_ID: 'get_crack_records_by_location_detail_id',
 }; 

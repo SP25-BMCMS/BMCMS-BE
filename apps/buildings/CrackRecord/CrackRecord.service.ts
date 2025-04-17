@@ -20,6 +20,18 @@ export class CrackRecordService {
 
   async create(createDto: CreateCrackRecordDto): Promise<ApiResponse<CrackRecordDto>> {
     try {
+      // Kiểm tra xem đã có CrackRecord với locationDetailId này chưa
+      const existingRecord = await this.prisma.crackRecord.findFirst({
+        where: { locationDetailId: createDto.locationDetailId }
+      });
+
+      if (existingRecord) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `Cannot create crack record: A record already exists for this location (locationDetailId: ${createDto.locationDetailId})`,
+        });
+      }
+
       const crackRecord = await this.prisma.crackRecord.create({
         data: createDto,
       });
@@ -244,6 +256,47 @@ export class CrackRecordService {
       throw new RpcException({
         statusCode: error.statusCode || 500,
         message: error.message || 'Error retrieving crack records',
+      });
+    }
+  }
+
+  async getByLocationDetailId(
+    locationDetailId: string,
+    paginationParams?: PaginationParams
+  ): Promise<PaginationResponseDto<CrackRecordDto>> {
+    try {
+      this.logger.log(`Getting crack records for location detail: ${locationDetailId}`);
+      
+      const page = Math.max(1, paginationParams?.page || 1);
+      const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10));
+      const skip = (page - 1) * limit;
+
+      const [crackRecords, total] = await Promise.all([
+        this.prisma.crackRecord.findMany({
+          where: { locationDetailId },
+          skip,
+          take: limit,
+          include: {
+            locationDetail: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.crackRecord.count({ where: { locationDetailId } }),
+      ]);
+
+      return new PaginationResponseDto<CrackRecordDto>(
+        crackRecords,
+        total,
+        page,
+        limit,
+        200,
+        crackRecords.length > 0 ? 'Crack records retrieved successfully' : 'No crack records found',
+      );
+    } catch (error) {
+      this.logger.error(`Error getting crack records for location detail ${locationDetailId}:`, error);
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error retrieving crack records',
       });
     }
   }
