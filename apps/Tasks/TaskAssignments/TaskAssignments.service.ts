@@ -516,19 +516,8 @@ export class TaskAssignmentsService {
       const unconfirmedTasks = await this.prisma.taskAssignment.findMany({
         where: {
           employee_id: employeeId,
-          status: {
-            notIn: [AssignmentStatus.Confirmed]
-          }
         }
       })
-
-      if (unconfirmedTasks.length > 0) {
-        return {
-          statusCode: 400,
-          message: 'Staff has unconfirmed tasks. Cannot assign new task.',
-          data: null
-        }
-      }
 
       // Check if the task exists
       const task = await this.prisma.task.findUnique({
@@ -559,7 +548,6 @@ export class TaskAssignmentsService {
         data: newAssignment
       }
     } catch (error) {
-      console.error('Error assigning task to employee:', error)
       throw new RpcException({
         statusCode: 500,
         message: 'Failed to assign task to employee',

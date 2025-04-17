@@ -10,7 +10,6 @@ export class CreateScheduleJobDto {
     required: false,
   })
   @IsOptional()
-  @IsUUID()
   schedule_id?: string
 
   // @ApiProperty({
@@ -44,4 +43,14 @@ export class CreateScheduleJobDto {
   @IsOptional()
   @IsString()
   buildingDetailId?: string
+
+  @ApiProperty({
+    description: 'The ID of the Inspection  ',
+    type: String,
+    example: 1,
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  inspectionId?: string
 }

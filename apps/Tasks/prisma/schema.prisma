@@ -88,9 +88,20 @@ model Inspection {
   total_cost         Decimal        @db.Decimal(10, 2)
   // Mối quan hệ N:1 với TaskAssignment
   taskAssignment     TaskAssignment @relation(fields: [task_assignment_id], references: [assignment_id])
-
+  confirmed_by       String?        // Người xác nhận (nullable nếu chưa xác nhận)
+  isprivateasset   Boolean    @default(false)     // Có phải tài sản riêng không?
   // Mối quan hệ 1:N với RepairMaterial
+   report_status    reportStatus @default(NoPending)
   repairMaterials RepairMaterial[]
+}
+
+
+enum reportStatus {
+  NoPending
+  Pending       // Leader đã tạo báo cáo, đang chờ Manager duyệt
+  Approved      // Đã được Manager xác nhận
+  Rejected      // Bị Manager từ chối
+  AutoApproved  // Không cần duyệt, hệ thống log tự động
 }
 
 // enum InspectionStatus {

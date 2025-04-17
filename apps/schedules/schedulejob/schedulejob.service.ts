@@ -14,6 +14,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service'
 import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
 import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
+import { isUUID } from 'class-validator'
 
 const NOTIFICATION_CLIENT = 'NOTIFICATION_CLIENT'
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
@@ -31,12 +32,17 @@ export class ScheduleJobsService {
     createScheduleJobDto: CreateScheduleJobDto,
   ): Promise<ApiResponse<ScheduleJobResponseDto>> {
     try {
+      const validScheduleId = isUUID(createScheduleJobDto.schedule_id)
+      ? createScheduleJobDto.schedule_id
+      : null;
+
       const newScheduleJob = await this.prismaService.scheduleJob.create({
         data: {
-          schedule_id: createScheduleJobDto.schedule_id,
+          schedule_id: validScheduleId,
           run_date: createScheduleJobDto.run_date,
           status: createScheduleJobDto.status,
           buildingDetailId: createScheduleJobDto.buildingDetailId,
+          inspection_id: createScheduleJobDto.inspectionId,
         },
       })
       // Map buildingDetailId to building_id to match ScheduleJobResponseDto

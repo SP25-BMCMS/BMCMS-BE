@@ -22,8 +22,15 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   async onModuleInit() {
     try {
-      await this.$connect()
-      await this.$queryRaw`SELECT 1`
+      // Pre-warm Prisma Client
+      await Promise.all([
+        this.$connect(),
+        this.$queryRaw`SELECT 1` // Simple query to warm up connection
+      ]);
+
+      // Apply Accelerate extension
+      // this.$extends(withAccelerate());
+      // console.log('Successfully connected to database with Accelerate');
     } catch (error) {
       console.error('Failed to connect to database:', error)
       throw error

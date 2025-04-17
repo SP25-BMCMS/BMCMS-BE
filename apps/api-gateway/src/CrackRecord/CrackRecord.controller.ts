@@ -74,6 +74,20 @@ export class CrackRecordController {
     return this.crackRecordService.getByInspectionId(inspectionId, { page, limit });
   }
 
+  @Get('location/:locationDetailId')
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @ApiOperation({ summary: 'Get crack records by location detail ID' })
+  @SwaggerResponse({ type: [CrackRecordDto] })
+  async getByLocationDetailId(
+    @Param('locationDetailId') locationDetailId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number
+  ): Promise<PaginationResponseDto<CrackRecordDto>> {
+    this.logger.log(`Getting crack records for location detail ${locationDetailId} with pagination: ${JSON.stringify({ page, limit })}`);
+    return this.crackRecordService.getByLocationDetailId(locationDetailId, { page, limit });
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a crack record by ID' })
   @SwaggerResponse({ type: CrackRecordDto })

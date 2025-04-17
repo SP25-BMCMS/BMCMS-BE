@@ -23,6 +23,8 @@ import { LOCATIONDETAIL_PATTERN } from 'libs/contracts/src/LocationDetails/Locat
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { ConfigService } from '@nestjs/config'
+import { UpdateInspectionPrivateAssetDto } from '@app/contracts/inspections/update-inspection-privateasset.dto'
+import { UpdateInspectionReportStatusDto } from '@app/contracts/inspections/update-inspection-report-status.dto'
 
 @Injectable()
 export class InspectionService implements OnModuleInit {
@@ -197,7 +199,7 @@ export class InspectionService implements OnModuleInit {
 
           if (uploadResponse.isSuccess && uploadResponse.data && uploadResponse.data.InspectionImage) {
             imageUrls = uploadResponse.data.InspectionImage
-              ('Uploaded image URLs:', imageUrls)
+            console.log('Uploaded image URLs:', imageUrls)
           } else {
             console.error('Image upload failed:', uploadResponse)
             // Continue without images
@@ -246,8 +248,8 @@ export class InspectionService implements OnModuleInit {
         try {
           const inspection = response.data
 
-            // Get the buildingDetailId from task_assignment_id via related tables
-            ('Retrieving buildingDetailId for task_assignment_id:', dto.task_assignment_id)
+          // Get the buildingDetailId from task_assignment_id via related tables
+          console.log('Retrieving buildingDetailId for task_assignment_id:', dto.task_assignment_id)
           const buildingDetailResponse = await firstValueFrom(
             this.inspectionClient.send(
               { cmd: 'get-building-detail-id-from-task-assignment' },
@@ -266,7 +268,7 @@ export class InspectionService implements OnModuleInit {
 
           if (buildingDetailResponse && buildingDetailResponse.isSuccess && buildingDetailResponse.data) {
             buildingDetailId = buildingDetailResponse.data.buildingDetailId
-              ('Retrieved buildingDetailId:', buildingDetailId)
+            console.log('Retrieved buildingDetailId:', buildingDetailId)
           } else {
             console.warn('Could not retrieve buildingDetailId, using default UUID')
           }
@@ -279,7 +281,7 @@ export class InspectionService implements OnModuleInit {
 
           // Handle case when additionalLocationDetails is undefined, null, or an empty string
           if (!additionalLocDetails || (typeof additionalLocDetails === 'string' && additionalLocDetails.trim() === '')) {
-            ('additionalLocationDetails is empty or not provided')
+            console.log('additionalLocationDetails is empty or not provided')
             additionalLocDetails = []
           }
           // Check if additionalLocationDetails exists but isn't an array (common issue with form data)
@@ -297,7 +299,7 @@ export class InspectionService implements OnModuleInit {
 
                 if (additionalStr.trim().startsWith('{') &&
                   (additionalStr.includes('},{') || additionalStr.includes('},{'))) {
-                  ('Detected multiple JSON objects without array wrapper')
+                  console.log('Detected multiple JSON objects without array wrapper')
 
                   // Try to convert to a valid JSON array string by wrapping with square brackets
                   try {
@@ -313,7 +315,7 @@ export class InspectionService implements OnModuleInit {
                         additionalLocDetails = JSON.parse(wrappedJson)
                       } catch (e2) {
                         // Still not valid, try another approach with regex
-                        ('First attempt failed, trying regex approach')
+                        console.log('First attempt failed, trying regex approach')
 
                         // Split the string into individual JSON objects
                         // This regex finds objects that start with { and end with }
@@ -403,30 +405,28 @@ export class InspectionService implements OnModuleInit {
           }
 
 
-          // Emit a single event with all location details - use CREATE instead of CREATE_MANY to avoid duplication
-          if (locationDetails.length > 0) {
+          // Emit separate events for each location detail to avoid duplication
+          locationDetails.forEach(detail => {
+            this.buildingClient.emit(LOCATIONDETAIL_PATTERN.CREATE, detail)
+          })
 
-            // Emit separate events for each location detail to avoid duplication
-            locationDetails.forEach(detail => {
-              this.buildingClient.emit(LOCATIONDETAIL_PATTERN.CREATE, detail)
-            })
-
-            // Add locationDetail info to the response ONLY if we have location details
-            response.data.locationDetails = locationDetails.map(detail => ({
+          // Add locationDetail info to the response ONLY if we have location details
+          if (response && response.data && typeof response.data === 'object') {
+            // Create a new object to avoid modifying the original response directly
+            const locationDetailsData = locationDetails.map(detail => ({
               inspection_id: detail.inspection_id,
               buildingDetailId: detail.buildingDetailId,
               roomNumber: detail.roomNumber,
               floorNumber: detail.floorNumber,
               areaType: detail.areaType,
               description: detail.description
-            }))
+            }));
 
+            // Assign the location details to the response data object
+            Object.assign(response.data, { locationDetails: locationDetailsData });
           } else {
-            // Không thêm locationDetails vào response khi không có location details nào
-            // Nếu đã có thuộc tính locationDetails, xóa nó khỏi response data
-            if (response.data.locationDetails) {
-              delete response.data.locationDetails;
-            }
+            console.error('Cannot add locationDetails to response: invalid response structure',
+              response ? typeof response.data : 'response is null')
           }
         } catch (error) {
           console.error('Error in LocationDetail creation process:', error)
@@ -548,5 +548,53 @@ export class InspectionService implements OnModuleInit {
 
     // Default to Other
     return "Other"
+  }
+
+  // Add new methods for updating isPrivateAsset and report_status
+
+  async updateInspectionPrivateAsset(
+    inspection_id: string,
+    dto: UpdateInspectionPrivateAssetDto
+  ): Promise<any> {
+    try {
+      return await firstValueFrom(
+        this.inspectionClient.send(INSPECTIONS_PATTERN.UPDATE_PRIVATE_ASSET, {
+          inspection_id,
+          dto
+        })
+      );
+    } catch (error) {
+      console.error(`Failed to update inspection private asset status: ${error.message}`, error.stack);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Failed to update inspection private asset status',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async updateInspectionReportStatus(
+    inspection_id: string,
+    dto: UpdateInspectionReportStatusDto
+  ): Promise<any> {
+    try {
+      return await firstValueFrom(
+        this.inspectionClient.send(INSPECTIONS_PATTERN.UPDATE_REPORT_STATUS, {
+          inspection_id,
+          dto
+        })
+      );
+    } catch (error) {
+      console.error(`Failed to update inspection report status: ${error.message}`, error.stack);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Failed to update inspection report status',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 }

@@ -6,43 +6,42 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DB_SCHEDULE_SERVICE")
-  // directUrl = env("SCHEDULE_PRISMA_ACCELERATE_URL")
 }
 
 model MaintenanceCycle {
   cycle_id    String           @id @default(uuid())
-  device_type DeviceType       @default(Other)
   frequency   Frequency
   basis       MaintenanceBasis @default(OperationalExperience)
+  device_type DeviceType       @default(Other)
   schedules   Schedule[]
 }
 
 model Schedule {
   schedule_id     String           @id @default(uuid())
   schedule_name   String           @db.VarChar(100)
-  cycle_id        String
   description     String?
   start_date      DateTime?        @db.Date
   end_date        DateTime?        @db.Date
-  created_at      DateTime         @default(now()) @db.Timestamp
-  updated_at      DateTime         @default(now()) @updatedAt @db.Timestamp
+  created_at      DateTime         @default(now()) @db.Timestamp(6)
+  updated_at      DateTime         @default(now()) @updatedAt @db.Timestamp(6)
   schedule_status ScheduleStatus   @default(InProgress)
+  cycle_id        String
   cycle           MaintenanceCycle @relation(fields: [cycle_id], references: [cycle_id])
   scheduleJobs    ScheduleJob[]
 }
 
 model ScheduleJob {
   schedule_job_id  String            @id @default(uuid())
-  schedule_id      String
+  schedule_id      String?
   start_date       DateTime?         @db.Date
   end_date         DateTime?         @db.Date
   run_date         DateTime          @db.Date
   status           ScheduleJobStatus
-  created_at       DateTime          @default(now()) @db.Timestamp
-  updated_at       DateTime          @default(now()) @updatedAt @db.Timestamp
-  buildingDetailId String
-
-  schedule Schedule @relation(fields: [schedule_id], references: [schedule_id])
+  created_at       DateTime          @default(now()) @db.Timestamp(6)
+  updated_at       DateTime          @default(now()) @updatedAt @db.Timestamp(6)
+  buildingDetailId String?
+  inspection_id    String?
+  schedule         Schedule?         @relation(fields: [schedule_id], references: [schedule_id])
 }
 
 enum Frequency {
@@ -74,15 +73,15 @@ enum MaintenanceBasis {
 }
 
 enum DeviceType {
-  Elevator // Thang máy
-  FireProtection // PCCC
-  Electrical // Hệ thống điện
-  Plumbing // Cấp thoát nước
-  HVAC // Điều hòa thông gió
-  CCTV // Camera giám sát
-  Generator // Máy phát điện
-  Lighting // Chiếu sáng
-  AutomaticDoor // Cửa cuốn / barrier
-  FireExtinguisher // Bình chữa cháy
-  Other // Thiết bị khác
+  Elevator
+  FireProtection
+  Electrical
+  Plumbing
+  HVAC
+  CCTV
+  Generator
+  Lighting
+  AutomaticDoor
+  FireExtinguisher
+  Other
 }

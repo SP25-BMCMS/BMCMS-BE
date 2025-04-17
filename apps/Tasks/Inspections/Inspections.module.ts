@@ -8,6 +8,8 @@ import { ClientConfigService } from 'apps/configs/client-config.service'
 import { ClientConfigModule } from 'apps/configs/client-config.module'
 import { join } from 'path'
 import { TASK_CLIENT } from '../../../apps/api-gateway/src/constraints'
+import { TaskAssignmentsModule } from '../TaskAssignments/TaskAssignments.module'
+import { TasksModule } from '../Task/Task.module'
 
 const USERS_CLIENT = 'USERS_CLIENT'
 
@@ -16,6 +18,8 @@ const USERS_CLIENT = 'USERS_CLIENT'
     PrismaModule,
     ConfigModule,
     ClientConfigModule,
+    TaskAssignmentsModule,
+    TasksModule,
     ClientsModule.registerAsync([
       {
         name: USERS_CLIENT,
