@@ -2,231 +2,57 @@ import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { ScheduleResponseDto } from '@app/contracts/schedules/Schedule.dto'
 import { CreateScheduleDto } from '@app/contracts/schedules/create-Schedules.dto'
 import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules'
-import { Injectable } from '@nestjs/common'
+import { Injectable, Inject, Logger } from '@nestjs/common'
 import { RpcException } from '@nestjs/microservices'
 import { $Enums, PrismaClient, ScheduleJobStatus } from '@prisma/client-schedule'
 import {
   PaginationParams,
   PaginationResponseDto,
 } from '../../../libs/contracts/src/Pagination/pagination.dto'
+import { AutoMaintenanceScheduleDto } from '@app/contracts/schedules/auto-maintenance-schedule.dto'
+import { ClientProxy } from '@nestjs/microservices'
+import { TASKS_PATTERN } from '@app/contracts/tasks/task.patterns'
+import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
+import { firstValueFrom, catchError, retry, throwError, of, Observable, lastValueFrom } from 'rxjs'
+import { timeout } from 'rxjs/operators'
+import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
+
+// Định nghĩa constants cho microservice clients
+const TASK_CLIENT = 'TASK_CLIENT'
+const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
+
+// Các giá trị timeout tối ưu hơn
+const MICROSERVICE_TIMEOUT = 10000; // 10 seconds
+const TASK_CREATION_TIMEOUT = 20000; // 20 seconds
+const MAX_RETRY_ATTEMPTS = 3;
+
+// Định nghĩa task status
+enum TaskStatus {
+  PENDING = 'Pending',
+  CREATED = 'Created',
+  FAILED = 'Failed'
+}
+
+// Phần bổ sung: Task Queue để xử lý bất đồng bộ
+interface TaskQueueItem {
+  scheduleJobId: string;
+  attempt: number;
+  lastAttempt: Date;
+}
 
 @Injectable()
 export class ScheduleService {
   private prisma = new PrismaClient();
+  private taskQueue: TaskQueueItem[] = [];
+  private isProcessingQueue = false;
+  private readonly logger = new Logger(ScheduleService.name);
 
-  // Create Schedule
-  // async createSchedule(
-  //   createScheduleDto: CreateScheduleDto,
-  // ): Promise<ApiResponse<ScheduleResponseDto>> {
-  //   const { buildingId, ...scheduleData } = createScheduleDto
+  constructor(
+    @Inject(TASK_CLIENT) private readonly taskClient: ClientProxy,
+    @Inject(BUILDINGS_CLIENT) private readonly buildingClient: ClientProxy,
+  ) {
 
-  //   try {
-  //     const newSchedule = await this.prisma.$transaction(async (prisma) => {
-  //       const schedule = await prisma.schedule.create({
-  //         data: {
-  //           ...scheduleData,
-  //           cycle: scheduleData.cycle || 'Daily',
-  //           start_date: createScheduleDto.start_date,
-  //           end_date: createScheduleDto.end_date,
-  //         },
-  //       })
-
-  //       if (buildingId && buildingId.length > 0) {
-  //         const scheduleJobs = buildingId.map((id) => ({
-  //           schedule_id: schedule.schedule_id,
-  //           run_date: new Date(),
-  //           status: ScheduleJobStatus.InProgress, // Use the correct enum value
-  //           building_id: id,
-  //         }))
-
-  //         await prisma.scheduleJob.createMany({
-  //           data: scheduleJobs,
-  //         })
-  //       }
-
-  //       return schedule
-  //     })
-
-  //     return new ApiResponse<ScheduleResponseDto>(
-  //       true,
-  //       'Schedule created successfully',
-  //       newSchedule,
-  //     )
-  //   } catch (error) {
-  //     throw new RpcException({
-  //       statusCode: 400,
-  //       message: 'Schedule creation failed',
-  //     })
-  //   }
-  // }
-  // Update Schedule
-  // async updateSchedule(
-  //   schedule_id: string,
-  //   updateScheduleDto: UpdateScheduleDto,
-  // ): Promise<ApiResponse<ScheduleResponseDto>> {
-  //   const { buildingId, ...scheduleData } = updateScheduleDto
-
-  //   try {
-  //     // First check if the schedule exists
-  //     const existingSchedule = await this.prisma.schedule.findUnique({
-  //       where: { schedule_id },
-  //       include: { scheduleJobs: true }, // Include schedule jobs to check existing buildings
-  //     })
-
-  //     if (!existingSchedule) {
-  //       throw new RpcException({
-  //         statusCode: 404,
-  //         message: `Schedule with ID ${schedule_id} not found`,
-  //       })
-  //     }
-
-  //     // Check if any of the new building IDs already exist in schedule jobs
-  //     if (buildingId && buildingId.length > 0) {
-  //       const existingBuildingIds = existingSchedule.scheduleJobs.map(job => job.building_id)
-  //       const duplicateBuildingIds = buildingId.filter(id => existingBuildingIds.includes(id))
-
-  //       if (duplicateBuildingIds.length > 0) {
-  //         // Kiểm tra xem các building đã tồn tại có status là Cancel không
-  //         const existingJobs = existingSchedule.scheduleJobs.filter(job =>
-  //           duplicateBuildingIds.includes(job.building_id)
-  //         )
-
-  //         // Lọc ra các building có status không phải Cancel
-  //         const activeBuildingIds = existingJobs
-  //           .filter(job => job.status !== ScheduleJobStatus.Cancel)
-  //           .map(job => job.building_id)
-
-  //         if (activeBuildingIds.length > 0) {
-  //           // Chỉ báo lỗi với các building có status không phải Cancel
-  //           return new ApiResponse<ScheduleResponseDto>(
-  //             false,
-  //             `Schedule already has active jobs for buildings: ${activeBuildingIds.join(', ')}`,
-  //             null
-  //           )
-  //         }
-
-  //         // Nếu tất cả các building đã tồn tại đều có status là Cancel, tiếp tục xử lý
-  //         console.log(`All duplicate buildings have Cancel status, proceeding with update`)
-  //       }
-  //     }
-
-  //     const updatedSchedule = await this.prisma.$transaction(async (prisma) => {
-  //       // Update schedule data
-  //       const schedule = await prisma.schedule.update({
-  //         where: { schedule_id },
-  //         data: {
-  //           ...scheduleData,
-  //           start_date: updateScheduleDto.start_date,
-  //           end_date: updateScheduleDto.end_date,
-  //         },
-  //       })
-
-  //       // If buildingId is empty or null, update all existing schedule jobs to Cancel
-  //       if (!buildingId || buildingId.length === 0) {
-  //         // Thay vì xóa, cập nhật status sang Cancel
-  //         await prisma.scheduleJob.updateMany({
-  //           where: { schedule_id },
-  //           data: { status: ScheduleJobStatus.Cancel },
-  //         })
-  //         console.log(`Updated all schedule jobs to Cancel status for schedule ${schedule_id}`)
-  //       } else {
-  //         // Xử lý các building mới
-  //         const existingBuildingIds = existingSchedule.scheduleJobs.map(job => job.building_id)
-
-  //         // Tạo danh sách các building cần tạo mới (chưa tồn tại hoặc có tất cả status là Cancel)
-  //         const buildingsToCreate = buildingId.filter(id => {
-  //           const existingJob = existingSchedule.scheduleJobs.find(job => job.building_id === id)
-  //           // Nếu không tồn tại hoặc tất cả các job của building đó đều có status Cancel
-  //           return !existingJob || existingSchedule.scheduleJobs
-  //             .filter(job => job.building_id === id)
-  //             .every(job => job.status === ScheduleJobStatus.Cancel)
-  //         })
-
-  //         // Tạo schedule jobs mới cho các building chưa tồn tại hoặc có tất cả status là Cancel
-  //         if (buildingsToCreate.length > 0) {
-  //           const scheduleJobs = buildingsToCreate.map((id) => ({
-  //             schedule_id: schedule.schedule_id,
-  //             run_date: new Date(),
-  //             status: ScheduleJobStatus.InProgress,
-  //             building_id: id,
-  //           }))
-
-  //           await prisma.scheduleJob.createMany({
-  //             data: scheduleJobs,
-  //           })
-  //           console.log(`Created ${scheduleJobs.length} new schedule jobs for schedule ${schedule_id}`)
-  //         }
-
-  //         // Cập nhật status Cancel cho các building không còn trong danh sách mới
-  //         const buildingsToCancel = existingBuildingIds.filter(id => !buildingId.includes(id))
-  //         if (buildingsToCancel.length > 0) {
-  //           await prisma.scheduleJob.updateMany({
-  //             where: {
-  //               schedule_id,
-  //               building_id: { in: buildingsToCancel }
-  //             },
-  //             data: { status: ScheduleJobStatus.Cancel },
-  //           })
-  //           console.log(`Updated ${buildingsToCancel.length} schedule jobs to Cancel status for schedule ${schedule_id}`)
-  //         }
-  //       }
-
-  //       return schedule
-  //     })
-
-  //     // Convert Prisma response to ScheduleResponseDto
-  //     const scheduleResponse: ScheduleResponseDto = {
-  //       ...updatedSchedule,
-  //       start_date: updatedSchedule.start_date ? updatedSchedule.start_date : null,
-  //       end_date: updatedSchedule.end_date ? updatedSchedule.end_date : null,
-  //       created_at: updatedSchedule.created_at,
-  //       updated_at: updatedSchedule.updated_at,
-  //     }
-
-  //     return new ApiResponse<ScheduleResponseDto>(
-  //       true,
-  //       'Schedule updated successfully',
-  //       scheduleResponse,
-  //     )
-  //   } catch (error) {
-  //     console.error('Schedule update error:', error)
-
-  //     // Provide more specific error messages based on the error type
-  //     if (error.code === 'P2025') {
-  //       return new ApiResponse<ScheduleResponseDto>(
-  //         false,
-  //         `Schedule with ID ${schedule_id} not found`,
-  //         null
-  //       )
-  //     } else if (error.code === 'P2002') {
-  //       return new ApiResponse<ScheduleResponseDto>(
-  //         false,
-  //         'A schedule with this name already exists',
-  //         null
-  //       )
-  //     } else if (error.code === 'P2003') {
-  //       return new ApiResponse<ScheduleResponseDto>(
-  //         false,
-  //         'Foreign key constraint violation. Check if all building IDs exist.',
-  //         null
-  //       )
-  //     } else if (error instanceof RpcException) {
-  //       // Chuyển đổi RpcException thành ApiResponse
-  //       return new ApiResponse<ScheduleResponseDto>(
-  //         false,
-  //         error.message,
-  //         null
-  //       )
-  //     } else {
-  //       return new ApiResponse<ScheduleResponseDto>(
-  //         false,
-  //         `Schedule update failed: ${error.message}`,
-  //         null
-  //       )
-  //     }
-  //   }
-  // }
-
+  }
 
   // Get all schedules
   async getAllSchedules(
@@ -393,6 +219,399 @@ export class ScheduleService {
         `Failed to soft delete schedule: ${error.message}`,
         null
       )
+    }
+  }
+
+  // Phương thức để tạo task và task assignment tự động cho các schedule jobs
+  async createTasksForScheduleJobs(scheduleJobs: any[]): Promise<void> {
+    const logger = new Logger('CreateTasksForScheduleJobs');
+
+    for (const [index, job] of scheduleJobs.entries()) {
+      try {
+
+        const createTaskResponse = await firstValueFrom(
+          this.taskClient.send({ cmd: 'create-task-for-schedule-job' }, {
+            scheduleJobId: job.schedule_job_id
+          }).pipe(
+            timeout(TASK_CREATION_TIMEOUT),
+            catchError(err => {
+              return of({
+                isSuccess: false,
+                message: err.message || 'Unknown error',
+                data: null
+              });
+            })
+          )
+        );
+
+      } catch (error) {
+      }
+    }
+  }
+
+  // Cập nhật method createAutoMaintenanceSchedule để tạo tasks tự động
+  async createAutoMaintenanceSchedule(
+    dto: AutoMaintenanceScheduleDto
+  ): Promise<ApiResponse<ScheduleResponseDto>> {
+    try {
+      // 1. First, get the maintenance cycle to understand the frequency
+      const maintenanceCycle = await this.prisma.maintenanceCycle.findUnique({
+        where: { cycle_id: dto.cycle_id }
+      });
+
+      if (!maintenanceCycle) {
+        throw new RpcException({
+          statusCode: 404,
+          message: `Maintenance cycle with ID ${dto.cycle_id} not found`,
+        });
+      }
+
+      // Validate all building detail IDs exist before proceeding
+      if (dto.buildingDetailIds && dto.buildingDetailIds.length > 0) {
+        try {
+          const invalidBuildingDetailIds = [];
+
+          for (const buildingDetailId of dto.buildingDetailIds) {
+            try {
+              console.log(`Validating building detail ID: ${buildingDetailId}`);
+
+              // Use a longer timeout and proper error handling
+              const buildingResponse = await firstValueFrom(
+                this.buildingClient
+                  .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId })
+                  .pipe(
+                    timeout(15000),  // Increase timeout to 15 seconds
+                    catchError(err => {
+                      console.error(`Error checking building detail ${buildingDetailId}:`, err.message || err);
+                      // For timeout errors, return a structured response rather than throwing
+                      return of({
+                        statusCode: 404,
+                        message: `Building detail check timed out`,
+                        isTimeout: true
+                      });
+                    })
+                  )
+              );
+
+              // Proper validation of the response
+              console.log(`Building detail response for ${buildingDetailId}:`,
+                typeof buildingResponse === 'object' ?
+                  `statusCode=${buildingResponse.statusCode}, message=${buildingResponse.message}` :
+                  'invalid response format');
+
+              // Only consider a building detail valid if we get a 200 response with data
+              if (!buildingResponse ||
+                buildingResponse.statusCode !== 200 ||
+                !buildingResponse.data ||
+                buildingResponse.isTimeout) {
+                console.log(`Building detail ID ${buildingDetailId} is invalid. Adding to invalid list.`);
+                invalidBuildingDetailIds.push(buildingDetailId);
+              } else {
+                console.log(`Building detail ID ${buildingDetailId} validated successfully`);
+              }
+            } catch (error) {
+              // Any unexpected error means we couldn't validate the building detail
+              console.error(`Unexpected error validating building detail ${buildingDetailId}:`, error);
+              invalidBuildingDetailIds.push(buildingDetailId);
+            }
+          }
+
+          // If any building details are invalid, throw a 404 exception
+          if (invalidBuildingDetailIds.length > 0) {
+            console.error(`Found ${invalidBuildingDetailIds.length} invalid building detail IDs:`, invalidBuildingDetailIds);
+            throw new RpcException({
+              statusCode: 404,
+              message: `The following building detail IDs do not exist: ${invalidBuildingDetailIds.join(', ')}`,
+            });
+          }
+
+          console.log('All building detail IDs validated successfully');
+        } catch (error) {
+          // Rethrow RPC exceptions
+          if (error instanceof RpcException) {
+            throw error;
+          }
+
+          // For any other errors in the validation process, throw a generic error
+          console.error('Error validating building detail IDs:', error);
+          throw new RpcException({
+            statusCode: 500,
+            message: `Error validating building detail IDs: ${error.message}`,
+          });
+        }
+      }
+
+      // 2. Calculate dates based on maintenance cycle frequency
+      const now = new Date();
+      let startDate = dto.start_date ? new Date(dto.start_date) : now;
+      let endDate: Date | null = null;
+
+      if (dto.end_date) {
+        endDate = new Date(dto.end_date);
+      } else {
+        // Set default end date based on cycle frequency if not provided
+        endDate = new Date(startDate);
+        switch (maintenanceCycle.frequency) {
+          case 'Daily':
+            endDate.setDate(endDate.getDate() + 30); // 30 days for daily
+            break;
+          case 'Weekly':
+            endDate.setDate(endDate.getDate() + 90); // ~3 months for weekly
+            break;
+          case 'Monthly':
+            endDate.setFullYear(endDate.getFullYear() + 1); // 1 year for monthly
+            break;
+          case 'Yearly':
+            endDate.setFullYear(endDate.getFullYear() + 3); // 3 years for yearly
+            break;
+          default:
+            endDate.setFullYear(endDate.getFullYear() + 1); // Default to 1 year
+        }
+      }
+
+      // 3. Create the schedule
+      const newSchedule = await this.prisma.$transaction(async (prisma) => {
+        // Create the main schedule
+        const schedule = await prisma.schedule.create({
+          data: {
+            schedule_name: dto.schedule_name,
+            description: dto.description || `Auto-generated maintenance schedule for ${maintenanceCycle.device_type}`,
+            cycle_id: dto.cycle_id,
+            start_date: startDate,
+            end_date: endDate,
+            schedule_status: $Enums.ScheduleStatus.InProgress,
+          },
+        });
+
+        // Calculate the first maintenance date for each building
+        const createdJobs = [];
+        if (dto.buildingDetailIds && dto.buildingDetailIds.length > 0) {
+          // Calculate the run date based on frequency
+          const calcRunDate = (baseDate: Date, frequency: string): Date => {
+            const result = new Date(baseDate);
+            switch (frequency) {
+              case 'Daily':
+                result.setDate(result.getDate() + 1);
+                break;
+              case 'Weekly':
+                result.setDate(result.getDate() + 7);
+                break;
+              case 'Monthly':
+                result.setMonth(result.getMonth() + 1);
+                break;
+              case 'Yearly':
+                result.setFullYear(result.getFullYear() + 1);
+                break;
+              default:
+                result.setMonth(result.getMonth() + 1); // Default to monthly
+            }
+            return result;
+          };
+
+          // Create schedule jobs for each building
+          const scheduleJobs = dto.buildingDetailIds.map((buildingDetailId) => ({
+            schedule_id: schedule.schedule_id,
+            run_date: calcRunDate(startDate, maintenanceCycle.frequency),
+            status: $Enums.ScheduleJobStatus.InProgress,
+            buildingDetailId: buildingDetailId,
+          }));
+
+          // Create schedule jobs
+          const createdJobsResult = await prisma.scheduleJob.createMany({
+            data: scheduleJobs,
+          });
+
+          // Lấy thông tin đầy đủ của các jobs vừa tạo
+          const fullScheduleJobs = await prisma.scheduleJob.findMany({
+            where: {
+              schedule_id: schedule.schedule_id,
+            },
+            include: {
+              schedule: true,
+            },
+          });
+
+          createdJobs.push(...fullScheduleJobs);
+        }
+
+        return { schedule, createdJobs };
+      });
+
+      // Tạo tasks cho mỗi job đã tạo
+      if (newSchedule.createdJobs && newSchedule.createdJobs.length > 0) {
+        // Tạo task và task assignment cho mỗi job
+        await this.createTasksForScheduleJobs(newSchedule.createdJobs);
+      }
+
+      // Return the newly created schedule
+      return new ApiResponse<ScheduleResponseDto>(
+        true,
+        'Automated maintenance schedule created successfully',
+        {
+          ...newSchedule.schedule,
+          start_date: newSchedule.schedule.start_date,
+          end_date: newSchedule.schedule.end_date,
+          created_at: newSchedule.schedule.created_at,
+          updated_at: newSchedule.schedule.updated_at,
+        }
+      );
+    } catch (error) {
+      console.error('Error creating automated maintenance schedule:', error);
+      if (error instanceof RpcException) {
+        throw error;
+      }
+      throw new RpcException({
+        statusCode: 500,
+        message: `Failed to create automated maintenance schedule: ${error.message}`,
+      });
+    }
+  }
+
+  // Cập nhật method triggerAutoMaintenanceSchedule để tạo tasks tự động
+  async triggerAutoMaintenanceSchedule(): Promise<ApiResponse<string>> {
+    try {
+      // Lấy tất cả các MaintenanceCycle
+      const maintenanceCycles = await this.prisma.maintenanceCycle.findMany();
+
+      if (!maintenanceCycles || maintenanceCycles.length === 0) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'No maintenance cycles found to create schedules',
+        });
+      }
+
+      // Lấy tất cả các tòa nhà
+      const buildings: { buildingDetailId: string }[] = await this.prisma.$queryRaw`
+        SELECT DISTINCT "buildingDetailId" FROM "ScheduleJob"
+      `;
+
+      if (!buildings || buildings.length === 0) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'No buildings found to create maintenance schedules',
+        });
+      }
+
+      // Số lượng lịch được tạo
+      let createdSchedulesCount = 0;
+
+      // Lưu lại các jobs đã tạo để tạo task
+      const allCreatedJobs = [];
+
+      // Duyệt qua từng cycle để tạo lịch bảo trì
+      for (const cycle of maintenanceCycles) {
+        // Tính toán ngày bắt đầu và kết thúc dựa trên tần suất
+        const now = new Date();
+        let endDate = new Date(now);
+
+        switch (cycle.frequency) {
+          case 'Daily':
+            endDate.setDate(endDate.getDate() + 30);
+            break;
+          case 'Weekly':
+            endDate.setDate(endDate.getDate() + 90);
+            break;
+          case 'Monthly':
+            endDate.setFullYear(endDate.getFullYear() + 1);
+            break;
+          case 'Yearly':
+            endDate.setFullYear(endDate.getFullYear() + 3);
+            break;
+          default:
+            endDate.setFullYear(endDate.getFullYear() + 1);
+        }
+
+        try {
+          // Tạo một lịch bảo trì mới
+          const schedule = await this.prisma.schedule.create({
+            data: {
+              schedule_name: `Auto ${cycle.device_type} Maintenance - ${now.toISOString().slice(0, 10)}`,
+              description: `Automatically generated maintenance schedule for ${cycle.device_type}`,
+              cycle_id: cycle.cycle_id,
+              start_date: now,
+              end_date: endDate,
+              schedule_status: $Enums.ScheduleStatus.InProgress,
+            },
+          });
+
+          // Tạo các ScheduleJob cho mỗi tòa nhà
+          const buildingDetailIds = buildings.map(b => b.buildingDetailId);
+
+          // Calcular run date dựa trên tần suất
+          const calcRunDate = (baseDate: Date, frequency: string): Date => {
+            const result = new Date(baseDate);
+            switch (frequency) {
+              case 'Daily':
+                result.setDate(result.getDate() + 1);
+                break;
+              case 'Weekly':
+                result.setDate(result.getDate() + 7);
+                break;
+              case 'Monthly':
+                result.setMonth(result.getMonth() + 1);
+                break;
+              case 'Yearly':
+                result.setFullYear(result.getFullYear() + 1);
+                break;
+              default:
+                result.setMonth(result.getMonth() + 1); // Default to monthly
+            }
+            return result;
+          };
+
+          // Tạo các job cho mỗi tòa nhà
+          const scheduleJobs = buildingDetailIds.map(buildingDetailId => ({
+            schedule_id: schedule.schedule_id,
+            run_date: calcRunDate(now, cycle.frequency),
+            status: $Enums.ScheduleJobStatus.Pending,
+            buildingDetailId: buildingDetailId,
+          }));
+
+          // Thêm các công việc bảo trì vào DB
+          await this.prisma.scheduleJob.createMany({
+            data: scheduleJobs,
+          });
+
+          // Lấy thông tin đầy đủ của các jobs vừa tạo
+          const fullScheduleJobs = await this.prisma.scheduleJob.findMany({
+            where: {
+              schedule_id: schedule.schedule_id,
+            },
+            include: {
+              schedule: true,
+            },
+          });
+
+          // Thêm vào danh sách để tạo task
+          allCreatedJobs.push(...fullScheduleJobs);
+
+          createdSchedulesCount++;
+        } catch (error) {
+          console.error(`Error creating schedule for cycle ${cycle.cycle_id}:`, error);
+        }
+      }
+
+      // Tạo task và task assignment cho tất cả jobs đã tạo
+      if (allCreatedJobs.length > 0) {
+        await this.createTasksForScheduleJobs(allCreatedJobs);
+      }
+
+      return new ApiResponse<string>(
+        true,
+        `Successfully created ${createdSchedulesCount} maintenance schedules with task assignments`,
+        `Created ${createdSchedulesCount} schedules from ${maintenanceCycles.length} maintenance cycles with ${allCreatedJobs.length} task assignments`
+      );
+    } catch (error) {
+      console.error('Error triggering auto maintenance schedules:', error);
+
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      throw new RpcException({
+        statusCode: 500,
+        message: `Failed to trigger automated maintenance schedules: ${error.message}`,
+      });
     }
   }
 }

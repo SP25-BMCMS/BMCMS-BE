@@ -845,17 +845,17 @@ export class InspectionsService implements OnModuleInit {
       if (dto.report_status === 'Rejected' && inspection.isprivateasset === true) {
         // If report is rejected and it's a private asset, mark task as not completed
         await this.taskAssignmentService.changeTaskAssignmentStatus(
-          inspection.task_assignment_id, 
+          inspection.task_assignment_id,
           AssignmentStatus.Confirmed
         );
 
         if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
           await this.taskService.changeTaskStatus(
-            inspection.taskAssignment.task_id, 
+            inspection.taskAssignment.task_id,
             'Completed'
           );
         }
-        
+
         updatedInspection.taskAssignment.status = AssignmentStatus.Confirmed;
 
         return new ApiResponse(
@@ -863,24 +863,24 @@ export class InspectionsService implements OnModuleInit {
           'Đã có trong hệ thống lịch bảo trì của chúng tôi',
           updatedInspection
         );
-      } 
+      }
       else if (dto.report_status === 'Approved') {
         // If report is approved, mark task as completed
         await this.taskAssignmentService.changeTaskAssignmentStatus(
-          inspection.task_assignment_id, 
+          inspection.task_assignment_id,
           AssignmentStatus.Confirmed // Using Confirmed status since Completed is not in the enum
         );
-        
+
         // Also update the task status to Completed
         if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
           await this.taskService.changeTaskStatus(
-            inspection.taskAssignment.task_id, 
+            inspection.taskAssignment.task_id,
             'Completed'
           );
         }
-        
+
         updatedInspection.taskAssignment.status = AssignmentStatus.Confirmed;
-        
+
         return new ApiResponse(
           true,
           'Chúng tôi xin ghi nhận và sẽ xem xét',
