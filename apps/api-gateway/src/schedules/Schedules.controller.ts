@@ -28,6 +28,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger'
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
+import { AutoMaintenanceScheduleDto } from '@app/contracts/schedules/auto-maintenance-schedule.dto'
 
 @Controller('schedules')
 @ApiTags('schedules')
@@ -66,7 +67,33 @@ export class SchedulesController {
     return this.schedulesService.updateSchedule(schedule_id, updateScheduleDto)
   }
 
+  @Post('auto-maintenance')
+  @ApiOperation({ summary: 'Create an automated maintenance schedule based on maintenance cycles' })
+  @ApiBody({ type: AutoMaintenanceScheduleDto })
+  @SwaggerResponse({
+    status: 201,
+    description: 'Automated maintenance schedule created successfully',
+  })
+  @SwaggerResponse({ status: 400, description: 'Bad request' })
+  @SwaggerResponse({ status: 404, description: 'Maintenance cycle not found' })
+  async createAutoMaintenanceSchedule(
+    @Body() autoMaintenanceDto: AutoMaintenanceScheduleDto,
+  ): Promise<ApiResponse<ScheduleResponseDto>> {
+    return this.schedulesService.createAutoMaintenanceSchedule(autoMaintenanceDto);
+  }
 
+  @Post('trigger-auto-maintenance')
+  @ApiOperation({ summary: 'Trigger automatic creation of maintenance schedules from all maintenance cycles' })
+  @SwaggerResponse({
+    status: 201,
+    description: 'Automated maintenance schedules creation triggered successfully',
+  })
+  @SwaggerResponse({ status: 404, description: 'No maintenance cycles or buildings found' })
+  @SwaggerResponse({ status: 500, description: 'Server error' })
+  @SwaggerResponse({ status: 408, description: 'Request timeout - operation may still be processing' })
+  async triggerAutoMaintenanceSchedule(): Promise<ApiResponse<string>> {
+    return this.schedulesService.triggerAutoMaintenanceSchedule();
+  }
 
   // Get all schedules
   @Get()
