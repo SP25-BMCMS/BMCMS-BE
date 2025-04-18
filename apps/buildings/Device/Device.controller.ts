@@ -4,6 +4,7 @@ import { DeviceService } from './Device.service';
 import { CreateDeviceDto } from '@app/contracts/Device/create-Device.dto';
 import { DEVICE_PATTERNS } from '@app/contracts/Device/Device.patterns';
 import { UpdateDeviceDto } from '@app/contracts/Device/update-Device.dto';
+import { DeviceType } from '@prisma/client-building';
 
 @Controller()
 export class DeviceController {
@@ -23,10 +24,10 @@ export class DeviceController {
   }
 
   @MessagePattern(DEVICE_PATTERNS.FIND_ALL)
-  async findAll() {
+  async findAll(params: { page?: number; limit?: number; type?: DeviceType; search?: string }) {
     try {
-      this.logger.log('Received find all devices request');
-      return await this.deviceService.findAll();
+      this.logger.log('Received find all devices request', params);
+      return await this.deviceService.findAll(params);
     } catch (error) {
       this.logger.error(`Error in find all devices: ${error.message}`);
       throw error;

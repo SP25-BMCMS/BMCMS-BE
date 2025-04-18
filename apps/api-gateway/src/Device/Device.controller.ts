@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Logger, Query } from '@nestjs/common';
 import { DeviceService } from './Device.service';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { UpdateDeviceDto } from '@app/contracts/Device/update-Device.dto';
 import { CreateDeviceDto } from '@app/contracts/Device/create-Device.dto';
+import { DeviceType } from '@prisma/client-building';
 
 @ApiTags('Devices')
 @Controller('devices')
@@ -25,14 +26,22 @@ export class DeviceController {
   }
 
   @Get()
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @ApiQuery({ name: 'type', required: false, example: '' })
+  @ApiQuery({ name: 'search', required: false, example: '' })
   @ApiOperation({ summary: 'Get all devices' })
   @ApiResponse({ status: 200, description: 'Return all devices' })
-  async findAll() {
+  async findAll(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('type') type?: DeviceType,
+    @Query('search') search?: string
+  ) {
     try {
-
-
       this.logger.log('Received find all devices request');
-      return await this.deviceService.findAll();
+      console.log(page, limit, type, search);
+      return await this.deviceService.findAll({ page, limit, type, search });
     } catch (error) {
       this.logger.error(`Error in find all devices: ${error.message}`);
       throw error;

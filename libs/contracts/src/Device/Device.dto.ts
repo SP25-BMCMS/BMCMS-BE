@@ -1,11 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-
-export enum DeviceType {
-  SENSOR = 'SENSOR',
-  CAMERA = 'CAMERA',
-  CONTROLLER = 'CONTROLLER',
-  OTHER = 'OTHER'
-}
+import { DeviceType } from '@prisma/client-building';
 
 export class DeviceResponseDto {
   @ApiProperty()

@@ -5,6 +5,7 @@ import { BUILDING_CLIENT } from '../constraints';
 import { DEVICE_PATTERNS } from '@app/contracts/Device/Device.patterns';
 import { CreateDeviceDto } from '@app/contracts/contracts/create-device.dto';
 import { UpdateDeviceDto } from '@app/contracts/Device/update-Device.dto';
+import { DeviceType } from '@prisma/client-building';
 
 @Injectable()
 export class DeviceService {
@@ -22,11 +23,12 @@ export class DeviceService {
     }
   }
 
-  async findAll() {
+  async findAll(params: { page?: number; limit?: number; type?: DeviceType; search?: string }) {
     try {
       this.logger.log('Sending find all devices request');
       console.log(DEVICE_PATTERNS.FIND_ALL);
-      return await firstValueFrom(this.Deviceclient.send(DEVICE_PATTERNS.FIND_ALL, {}));
+      console.log(params);
+      return await firstValueFrom(this.Deviceclient.send(DEVICE_PATTERNS.FIND_ALL, params));
     } catch (error) {
       this.logger.error(`Error in find all devices: ${error.message}`);
       throw error;

@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UpdateDeviceDto } from '@app/contracts/Device/update-Device.dto';
 import { CreateDeviceDto } from '@app/contracts/Device/create-Device.dto';
 import { RpcException } from '@nestjs/microservices';
-
+import { DeviceType } from '@prisma/client-building';
 @Injectable()
 export class DeviceService {
   private readonly logger = new Logger(DeviceService.name);
@@ -32,15 +32,48 @@ export class DeviceService {
     }
   }
 
-  async findAll() {
+  async findAll(params: { page?: number, limit?: number, type?: DeviceType, search?: string }) {
+    console.log("🚀 ~ DeviceService ~ findAll ~ search:", params)
     try {
-      this.logger.log('Finding all devices');
-      const devices = await this.prisma.device.findMany();
+      const pageNum = Math.max(1, params?.page || 1);
+      const limitNum = Math.min(50, Math.max(1, params?.limit || 10));
+      const skip = (pageNum - 1) * limitNum;
+      this.logger.log(`Finding all devices with search: ${params?.search || 'none'}`);
+      
+      
+      const where = {
+        ...(params?.search ? {
+          name: {
+            contains: params?.search,
+            mode: 'insensitive' as const
+          }
+        } : {}),
+        ...(params?.type ? { type: params?.type } : {})
+      };
+      
+      const [devices, total] = await Promise.all([
+        this.prisma.device.findMany({
+          where,
+          skip,
+          take: limitNum,
+          orderBy: {
+            device_id: 'desc'
+          }
+        }),
+        this.prisma.device.count({ where })
+      ]);
+      
       this.logger.log(`Found ${devices.length} devices`);
       return {
         statusCode: 200,
         message: 'Devices retrieved successfully',
         data: devices,
+        meta: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(total / limitNum)
+        }
       };
     } catch (error) {
       this.logger.error(`Error finding all devices: ${error.message}`);
