@@ -27,7 +27,7 @@ import { CrackRecordModule } from './CrackRecord/CrackRecord.module'
 import { MaintenanceCycleModule } from './MaintenanceCycle/MaintenanceCycle.module'
 import { MaintenancehistoryModule } from './maintenancehistory/maintenancehistory.module'
 import { DeviceModule } from './Device/Device.module'
-
+import { TechnicalRecordModule } from './technicalrecord/technicalrecord.module'
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -105,6 +105,7 @@ import { DeviceModule } from './Device/Device.module'
     MaintenanceCycleModule,
     MaintenancehistoryModule,
     DeviceModule,
+    TechnicalRecordModule,
   ],
 })
 export class BuildingMaintenanceApiGatewayModule { }

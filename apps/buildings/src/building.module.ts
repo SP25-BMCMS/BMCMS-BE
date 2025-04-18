@@ -20,6 +20,8 @@ import { S3UploaderService } from '../contract/s3-uploader.service'
 import { DeviceModule } from '../Device/Device.module'
 import { DeviceController } from '../Device/Device.controller'
 import { MaintenancehistorysModule } from '../maintenancehistory/maintenancehistorys.module'
+import { TechnicalRecordsModule } from '../technicalrecord/technicalrecords.module'
+import { TechnicalRecordsController } from '../technicalrecord/technicalrecords.controller'
 
 @Module({
   imports: [
@@ -34,6 +36,7 @@ import { MaintenancehistorysModule } from '../maintenancehistory/maintenancehist
     CrackRecordModule,
     MaintenancehistorysModule,
     DeviceModule,
+    TechnicalRecordsModule,
   ],
   controllers: [
     AreasController,
@@ -43,6 +46,7 @@ import { MaintenancehistorysModule } from '../maintenancehistory/maintenancehist
     CrackRecordController,
     LocationDetailsController,
     DeviceController,
+    TechnicalRecordsController,
   ],
   providers: [
     AreasService,
