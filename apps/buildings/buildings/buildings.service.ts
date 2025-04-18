@@ -576,9 +576,8 @@ export class BuildingsService {
   }
 
   // Get buildings by manager ID
-  async getBuildingsByManagerId(managerId: string) {
+  async getBuildingsByManagerId(managerId: string, params?: { page?: number; limit?: number; search?: string }) {
     try {
-
       if (!managerId) {
         return {
           statusCode: 404,
@@ -587,35 +586,64 @@ export class BuildingsService {
         }
       }
 
-      const buildings = await this.prisma.building.findMany({
-        where: {
-          manager_id: managerId
-        },
-        include: {
-          area: true,
-          buildingDetails: {
-            include: {
-              locationDetails: true
-            }
+      const pageNum = Math.max(1, params?.page || 1);
+      const limitNum = Math.min(50, Math.max(1, params?.limit || 10));
+      const skip = (pageNum - 1) * limitNum;
+      
+      const where = {
+        manager_id: managerId,
+        ...(params?.search ? {
+          name: {
+            contains: params?.search,
+            mode: 'insensitive' as const
           }
-        },
-        orderBy: { createdAt: 'desc' }
-      })
+        } : {})
+      };
+
+      const [buildings, total] = await Promise.all([
+        this.prisma.building.findMany({
+          where,
+          include: {
+            area: true,
+            buildingDetails: {
+              include: {
+                locationDetails: true
+              }
+            }
+          },
+          skip,
+          take: limitNum,
+          orderBy: { createdAt: 'desc' }
+        }),
+        this.prisma.building.count({ where })
+      ]);
 
       if (!buildings || buildings.length === 0) {
         return {
           statusCode: 404,
           message: 'No buildings found for this manager',
-          data: []
+          data: [],
+          meta: {
+            total: 0,
+            page: pageNum,
+            limit: limitNum,
+            totalPages: 0
+          }
         }
       }
+      
       return {
         statusCode: 200,
         message: 'Buildings retrieved successfully',
-        data: buildings
+        data: buildings,
+        meta: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(total / limitNum)
+        }
       }
     } catch (error) {
-
       return {
         statusCode: 500,
         message: 'Internal server error while retrieving buildings for manager',
