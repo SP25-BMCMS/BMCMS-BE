@@ -114,7 +114,6 @@ export class BuildingDetailsService {
           },
           //locationDetails: true
           device : true,
-
         }
       })
 
