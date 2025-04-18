@@ -16,6 +16,8 @@ import { ContractsController } from '../contract/contracts.controller';
 import { ContractsService } from '../contract/contracts.service';
 import { CrackRecordModule } from '../CrackRecord/CrackRecord.module';
 import { CrackRecordController } from '../CrackRecord/CrackRecord.controller';
+import { DeviceModule } from '../Device/Device.module';
+import { DeviceController } from '../Device/Device.controller';
 
 @Module({
   imports: [
@@ -28,6 +30,7 @@ import { CrackRecordController } from '../CrackRecord/CrackRecord.controller';
     LocationDetailsModule,
     ContractsModule,
     CrackRecordModule,
+    DeviceModule,
   ],
   controllers: [
     AreasController,
@@ -36,6 +39,7 @@ import { CrackRecordController } from '../CrackRecord/CrackRecord.controller';
     ContractsController,
     CrackRecordController,
     LocationDetailsController,
+    DeviceController,
   ],
   providers: [
     AreasService,
