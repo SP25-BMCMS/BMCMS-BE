@@ -1,5 +1,5 @@
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
-import { Controller } from '@nestjs/common'
+import { Controller, Query } from '@nestjs/common'
 import { MessagePattern, Payload, RpcException } from '@nestjs/microservices'
 import { BUILDINGS_PATTERN } from 'libs/contracts/src/buildings/buildings.patterns'
 import { BuildingsService } from './buildings.service'
@@ -105,9 +105,10 @@ export class BuildingsController {
   }
 
   @MessagePattern(BUILDINGS_PATTERN.GET_BY_MANAGER_ID)
-  async getBuildingsByManagerId(@Payload() managerId: string) {
+  async getBuildingsByManagerId(@Payload() data: { managerId: string; params?: { page?: number; limit?: number; search?: string } }) {
     try {
-      return this.buildingsService.getBuildingsByManagerId(managerId);
+      console.log('Received data:', data);
+      return this.buildingsService.getBuildingsByManagerId(data.managerId, data.params);
     } catch (error) {
       throw new RpcException({
         statusCode: 500,

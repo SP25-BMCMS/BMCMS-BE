@@ -17,6 +17,8 @@ import { ContractsService } from '../contract/contracts.service';
 import { CrackRecordModule } from '../CrackRecord/CrackRecord.module';
 import { CrackRecordController } from '../CrackRecord/CrackRecord.controller';
 import { MaintenancehistorysModule } from '../maintenancehistory/maintenancehistorys.module';
+import { DeviceController } from '../Device/Device.controller';
+import { DeviceModule } from 'apps/api-gateway/src/Device/Device.module';
 
 @Module({
   imports: [
@@ -30,6 +32,7 @@ import { MaintenancehistorysModule } from '../maintenancehistory/maintenancehist
     ContractsModule,
     CrackRecordModule,
     MaintenancehistorysModule,
+    DeviceModule,
   ],
   controllers: [
     AreasController,
@@ -38,6 +41,7 @@ import { MaintenancehistorysModule } from '../maintenancehistory/maintenancehist
     ContractsController,
     CrackRecordController,
     LocationDetailsController,
+    DeviceController,
   ],
   providers: [
     AreasService,

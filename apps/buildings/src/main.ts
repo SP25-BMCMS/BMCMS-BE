@@ -15,10 +15,13 @@ async function bootstrap() {
       queue: 'buildings_queue',
       queueOptions: {
         durable: true,
+        prefetchCount: 1,
       },
     },
   })
 
   await app.startAllMicroservices()
+  await app.listen(3002)
+  console.log('Buildings service is running on port 3002')
 }
 bootstrap()

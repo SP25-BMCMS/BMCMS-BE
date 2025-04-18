@@ -214,12 +214,16 @@ export class BuildingsController {
   @Get('manager/:managerId')
   @ApiOperation({ summary: 'Get all buildings managed by a specific manager' })
   @ApiParam({ name: 'managerId', description: 'Manager ID' })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @ApiQuery({ name: 'search', required: false, example: '' })
   @ApiResponse({ status: 200, description: 'Buildings retrieved successfully' })
   @ApiResponse({ status: 400, description: 'Bad request - Manager ID is required' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  async getBuildingsByManagerId(@Param('managerId') managerId: string) {
+  async getBuildingsByManagerId(@Param('managerId') managerId: string, @Query('page') page?: number, @Query('limit') limit?: number, @Query('search') search?: string) {
     try {
-      return await this.buildingsService.getBuildingsByManagerId(managerId)
+      console.log(page, limit, search);
+      return await this.buildingsService.getBuildingsByManagerId(managerId, { page, limit, search })
     } catch (error) {
       throw new Error(`Error retrieving buildings for manager: ${error.message}`)
     }

@@ -204,7 +204,7 @@ export class BuildingsService {
   }
 
   // Get buildings by manager ID
-  async getBuildingsByManagerId(managerId: string) {
+  async getBuildingsByManagerId(managerId: string, params?: { page?: number; limit?: number; search?: string }) {
     try {
       if (!managerId) {
         throw new HttpException(
@@ -212,10 +212,11 @@ export class BuildingsService {
           HttpStatus.BAD_REQUEST,
         )
       }
+      console.log(params);
       // Call the microservice via ClientProxy to get buildings by manager ID
       const buildingsObservable = this.buildingsClient.send(
         BUILDINGS_PATTERN.GET_BY_MANAGER_ID,
-        managerId
+        { managerId, params }
       )
       const buildings = await firstValueFrom(buildingsObservable)
       return buildings
