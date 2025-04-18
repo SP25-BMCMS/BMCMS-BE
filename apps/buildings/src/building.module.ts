@@ -17,8 +17,8 @@ import { ContractsService } from '../contract/contracts.service'
 import { CrackRecordModule } from '../CrackRecord/CrackRecord.module'
 import { CrackRecordController } from '../CrackRecord/CrackRecord.controller'
 import { S3UploaderService } from '../contract/s3-uploader.service'
-import { DeviceModule } from '../Device/Device.module';
-import { DeviceController } from '../Device/Device.controller';
+import { DeviceModule } from '../Device/Device.module'
+import { DeviceController } from '../Device/Device.controller'
 
 @Module({
   imports: [
