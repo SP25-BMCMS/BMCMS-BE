@@ -3,6 +3,7 @@ import { Device } from '@prisma/client-building';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateDeviceDto } from '@app/contracts/Device/update-Device.dto';
 import { CreateDeviceDto } from '@app/contracts/Device/create-Device.dto';
+import { RpcException } from '@nestjs/microservices';
 
 @Injectable()
 export class DeviceService {
@@ -10,33 +11,47 @@ export class DeviceService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createDeviceDto: CreateDeviceDto): Promise<Device> {
+  async create(createDeviceDto: CreateDeviceDto) {
     try {
       this.logger.log(`Creating device: ${JSON.stringify(createDeviceDto)}`);
       const device = await this.prisma.device.create({
         data: createDeviceDto,
       });
       this.logger.log(`Device created successfully: ${device.device_id}`);
-      return device;
+      return {
+        statusCode: 201,
+        message: 'Device created successfully',
+        data: device,
+      };
     } catch (error) {
       this.logger.error(`Error creating device: ${error.message}`);
-      throw error;
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Device creation failed: ' + error.message,
+      });
     }
   }
 
-  async findAll(): Promise<Device[]> {
+  async findAll() {
     try {
       this.logger.log('Finding all devices');
       const devices = await this.prisma.device.findMany();
       this.logger.log(`Found ${devices.length} devices`);
-      return devices;
+      return {
+        statusCode: 200,
+        message: 'Devices retrieved successfully',
+        data: devices,
+      };
     } catch (error) {
       this.logger.error(`Error finding all devices: ${error.message}`);
-      throw error;
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error retrieving devices: ' + error.message,
+      });
     }
   }
 
-  async findOne(id: string): Promise<Device> {
+  async findOne(id: string) {
     try {
       this.logger.log(`Finding device with id: ${id}`);
       const device = await this.prisma.device.findUnique({
@@ -44,17 +59,28 @@ export class DeviceService {
       });
       if (!device) {
         this.logger.warn(`Device not found with id: ${id}`);
-        throw new Error('Device not found');
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Device not found',
+        });
       }
       this.logger.log(`Device found: ${device.device_id}`);
-      return device;
+      return {
+        statusCode: 200,
+        message: 'Device retrieved successfully',
+        data: device,
+      };
     } catch (error) {
       this.logger.error(`Error finding device: ${error.message}`);
-      throw error;
+      if (error instanceof RpcException) throw error;
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error retrieving device: ' + error.message,
+      });
     }
   }
 
-  async update(id: string, updateDeviceDto: UpdateDeviceDto): Promise<Device> {
+  async update(id: string, updateDeviceDto: UpdateDeviceDto) {
     try {
       this.logger.log(`Updating device with id: ${id}`);
       const device = await this.prisma.device.update({
@@ -62,52 +88,80 @@ export class DeviceService {
         data: updateDeviceDto,
       });
       this.logger.log(`Device updated successfully: ${device.device_id}`);
-      return device;
+      return {
+        statusCode: 200,
+        message: 'Device updated successfully',
+        data: device,
+      };
     } catch (error) {
       this.logger.error(`Error updating device: ${error.message}`);
-      throw error;
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Device update failed: ' + error.message,
+      });
     }
   }
 
-  async remove(id: string): Promise<Device> {
+  async remove(id: string) {
     try {
       this.logger.log(`Removing device with id: ${id}`);
       const device = await this.prisma.device.delete({
         where: { device_id: id },
       });
       this.logger.log(`Device removed successfully: ${device.device_id}`);
-      return device;
+      return {
+        statusCode: 200,
+        message: 'Device deleted successfully',
+        data: device,
+      };
     } catch (error) {
       this.logger.error(`Error removing device: ${error.message}`);
-      throw error;
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Device deletion failed: ' + error.message,
+      });
     }
   }
 
-  async getByBuildingDetailId(buildingDetailId: string): Promise<Device[]> {
+  async getByBuildingDetailId(buildingDetailId: string) {
     try {
       this.logger.log(`Finding devices by building detail id: ${buildingDetailId}`);
       const devices = await this.prisma.device.findMany({
         where: { buildingDetailId },
       });
       this.logger.log(`Found ${devices.length} devices for building detail: ${buildingDetailId}`);
-      return devices;
+      return {
+        statusCode: 200,
+        message: 'Devices retrieved successfully',
+        data: devices,
+      };
     } catch (error) {
       this.logger.error(`Error finding devices by building detail: ${error.message}`);
-      throw error;
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error retrieving devices by building detail: ' + error.message,
+      });
     }
   }
 
-  async getByContractId(contractId: string): Promise<Device[]> {
+  async getByContractId(contractId: string) {
     try {
       this.logger.log(`Finding devices by contract id: ${contractId}`);
       const devices = await this.prisma.device.findMany({
         where: { contract_id: contractId },
       });
       this.logger.log(`Found ${devices.length} devices for contract: ${contractId}`);
-      return devices;
+      return {
+        statusCode: 200,
+        message: 'Devices retrieved successfully',
+        data: devices,
+      };
     } catch (error) {
       this.logger.error(`Error finding devices by contract: ${error.message}`);
-      throw error;
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error retrieving devices by contract: ' + error.message,
+      });
     }
   }
 } 
