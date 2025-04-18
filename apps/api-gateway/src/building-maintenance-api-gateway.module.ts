@@ -25,6 +25,7 @@ import { DashboardModule } from './dashboard/dashboard.module'
 import { ContractsModule } from './contract/contracts.module'
 import { CrackRecordModule } from './CrackRecord/CrackRecord.module'
 import { MaintenanceCycleModule } from './MaintenanceCycle/MaintenanceCycle.module'
+import { MaintenancehistoryModule } from './maintenancehistory/maintenancehistory.module'
 
 @Module({
   imports: [
@@ -100,7 +101,8 @@ import { MaintenanceCycleModule } from './MaintenanceCycle/MaintenanceCycle.modu
     DashboardModule,
     ContractsModule,
     CrackRecordModule,
-    MaintenanceCycleModule
+    MaintenanceCycleModule,
+    MaintenancehistoryModule
   ],
 })
 export class BuildingMaintenanceApiGatewayModule { }

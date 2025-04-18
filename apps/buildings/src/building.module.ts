@@ -16,6 +16,7 @@ import { ContractsController } from '../contract/contracts.controller';
 import { ContractsService } from '../contract/contracts.service';
 import { CrackRecordModule } from '../CrackRecord/CrackRecord.module';
 import { CrackRecordController } from '../CrackRecord/CrackRecord.controller';
+import { MaintenancehistorysModule } from '../maintenancehistory/maintenancehistorys.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { CrackRecordController } from '../CrackRecord/CrackRecord.controller';
     LocationDetailsModule,
     ContractsModule,
     CrackRecordModule,
+    MaintenancehistorysModule,
   ],
   controllers: [
     AreasController,
