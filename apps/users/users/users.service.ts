@@ -917,7 +917,7 @@ export class UsersService {
               ),
           )
 
-          if (!buildingDetailResponse.exists) {
+          if (buildingDetailResponse.exists) {
             return {
               isSuccess: false,
               message: `Không tìm thấy tòa nhà với ID ${apartment.buildingDetailId}`,
