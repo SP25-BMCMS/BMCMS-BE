@@ -917,13 +917,13 @@ export class UsersService {
               ),
           )
 
-          if (!buildingDetailResponse.exists) {
-            return {
-              isSuccess: false,
-              message: `Không tìm thấy tòa nhà với ID ${apartment.buildingDetailId}`,
-              data: null
-            }
-          }
+          // if (!buildingDetailResponse.exists) {
+          //   return {
+          //     isSuccess: false,
+          //     message: `Không tìm thấy tòa nhà với ID ${apartment.buildingDetailId}`,
+          //     data: null
+          //   }
+          // }
 
           const buildingDetailInfo = await firstValueFrom(
             this.buildingsClient
