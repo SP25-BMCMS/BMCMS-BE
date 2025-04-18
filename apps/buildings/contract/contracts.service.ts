@@ -65,6 +65,29 @@ export class ContractsService {
         }
     }
 
+    // Hàm tạo presigned URL with content disposition
+    async getPreSignedUrlWithDisposition(fileKey: string, contentDisposition: string): Promise<string> {
+        try {
+            const command = new GetObjectCommand({
+                Bucket: this.bucketName,
+                Key: fileKey,
+                ResponseContentType: 'application/pdf',
+                ResponseContentDisposition: contentDisposition
+            });
+
+            // Create presigned URL with 1 hour expiration
+            const presignedUrl = await getSignedUrl(this.s3, command, {
+                expiresIn: 3600
+            });
+
+            console.log(`Generated presigned URL with ${contentDisposition}:`, presignedUrl);
+            return presignedUrl;
+        } catch (error) {
+            console.error('Error generating presigned URL:', error);
+            throw error;
+        }
+    }
+
     // Create a new contract with devices
     async createContract(createContractDto: CreateContractDto, file: any) {
         try {
@@ -242,28 +265,9 @@ export class ContractsService {
                 } : undefined
             })
 
-            // Convert S3 URLs to presigned URLs
-            const contractsWithPresignedUrls = await Promise.all(
-                contracts.map(async (contract) => {
-                    try {
-                        const fileKey = this.extractFileKey(contract.file_name)
-                        const presignedUrl = await this.getPreSignedUrl(fileKey)
-                        return {
-                            ...contract,
-                            file_name: presignedUrl,
-                            fileUrl: `/contracts/download/${contract.contract_id}`,
-                            viewUrl: `/contracts/view/${contract.contract_id}`,
-                            directFileUrl: `/uploads/contracts/${contract.file_name}`
-                        }
-                    } catch (error) {
-                        console.error('Error creating presigned URL:', error)
-                        return contract // Return original contract if presigned URL creation fails
-                    }
-                })
-            )
-
+            // Return contracts without generating presigned URLs for better performance
             return {
-                data: contractsWithPresignedUrls,
+                data: contracts,
                 pagination: {
                     total,
                     page,
@@ -288,32 +292,47 @@ export class ContractsService {
                 include: {
                     devices: true,
                 },
-            })
+            });
 
             if (!contract) {
                 throw new RpcException({
                     statusCode: 404,
                     message: 'Contract not found',
-                })
+                });
             }
 
-            try {
-                const fileKey = this.extractFileKey(contract.file_name)
-                const presignedUrl = await this.getPreSignedUrl(fileKey)
-                return {
-                    ...contract,
-                    file_name: presignedUrl,
+            // Add presigned URLs if contract has a file
+            if (contract.file_name) {
+                try {
+                    const fileKey = this.extractFileKey(contract.file_name);
+                    const fileName = fileKey.split('/').pop() || 'document.pdf';
+
+                    // Generate different presigned URLs for different use cases
+                    const directFileUrl = await this.getPreSignedUrl(fileKey); // For direct access without attachment
+                    const fileUrl = await this.getPreSignedUrlWithDisposition(fileKey, `attachment; filename="${fileName}"`); // For downloading
+                    const viewUrl = await this.getPreSignedUrlWithDisposition(fileKey, 'inline'); // For inline viewing in browser
+
+                    return {
+                        data: {
+                            ...contract,
+                            fileUrl,
+                            viewUrl,
+                            directFileUrl
+                        }
+                    };
+                } catch (error) {
+                    console.error('Error creating presigned URLs:', error);
+                    return { data: contract }; // Return original contract if presigned URL creation fails
                 }
-            } catch (error) {
-                console.error('Error creating presigned URL:', error)
-                return contract // Return original contract if presigned URL creation fails
             }
+
+            return { data: contract };
         } catch (error) {
-            console.error('Error getting contract:', error)
+            console.error('Error getting contract:', error);
             throw new RpcException({
                 statusCode: 500,
                 message: 'Error getting contract',
-            })
+            });
         }
     }
 

@@ -305,26 +305,10 @@ export class ContractsController {
     @ApiQuery({ name: 'search', required: false, type: String, description: 'Search term to filter vendor name' })
     async getAllContracts(@Query() queryDto: ContractQueryDto) {
         try {
-            const result = await this.contractsService.getAllContracts(queryDto)
-
-            // Thêm đường dẫn file cho mỗi contract
-            if (result?.data && Array.isArray(result.data)) {
-                result.data = result.data.map(contract => {
-                    if (contract.file_name) {
-                        // Thêm đường dẫn tải xuống
-                        contract.fileUrl = `/contracts/download/${contract.contract_id}`
-                        // Thêm đường dẫn xem trực tiếp trong trình duyệt
-                        contract.viewUrl = `/contracts/view/${contract.contract_id}`
-                        // Đường dẫn trực tiếp
-                        contract.directFileUrl = `/uploads/contracts/${contract.file_name}`
-                    }
-                    return contract
-                })
-            }
-
-            return result
+            // Simply return the data from the microservice without adding URLs
+            return await this.contractsService.getAllContracts(queryDto);
         } catch (error) {
-            this.handleMicroserviceError(error)
+            this.handleMicroserviceError(error);
         }
     }
 
@@ -332,70 +316,40 @@ export class ContractsController {
     @ApiOperation({ summary: 'Get a contract by ID' })
     async getContractById(@Param('id') contractId: string) {
         try {
-            const result = await this.contractsService.getContractById(contractId)
-
-            // Thêm baseUrl cho file_name nếu contract có file
-            if (result?.data?.file_name) {
-                // Trả về các URL liên quan đến file
-                result.data.fileUrl = `/contracts/download/${contractId}` // Tải xuống file
-                result.data.viewUrl = `/contracts/view/${contractId}`      // Xem file trong trình duyệt
-                result.data.directFileUrl = `/uploads/contracts/${result.data.file_name}` // URL trực tiếp
-            }
-
-            return result
+            const result = await this.contractsService.getContractById(contractId);
+            // URLs are now added by the microservice, no need to process them here
+            return result;
         } catch (error) {
-            this.handleMicroserviceError(error)
+            this.handleMicroserviceError(error);
         }
     }
 
     @Get('download/:id')
     @ApiOperation({
         summary: 'Download the contract file',
-        description: 'Downloads the PDF file associated with the contract'
+        description: 'Redirects to a presigned S3 URL for downloading the PDF file associated with the contract'
     })
     async downloadContractFile(@Param('id') contractId: string, @Res() res: Response) {
         try {
-            const result = await this.contractsService.getContractById(contractId)
+            const result = await this.contractsService.getContractById(contractId);
 
-            if (!result?.data?.file_name) {
+            if (!result?.data?.fileUrl) {
                 throw new HttpException(
                     {
                         statusCode: HttpStatus.NOT_FOUND,
                         message: 'Contract file not found'
                     },
                     HttpStatus.NOT_FOUND
-                )
+                );
             }
 
-            const fileName = result.data.file_name
-            const filePath = path.join(this.uploadsPath, 'contracts', fileName)
-
-            // Kiểm tra nếu file tồn tại
-            if (!fs.existsSync(filePath)) {
-                throw new HttpException(
-                    {
-                        statusCode: HttpStatus.NOT_FOUND,
-                        message: 'Contract file not found on server'
-                    },
-                    HttpStatus.NOT_FOUND
-                )
-            }
-
-            // Sửa tên file để download
-            const originalFilename = fileName.substring(fileName.indexOf('-') + 1)
-
-            // Thiết lập header để tải xuống
-            res.setHeader('Content-Disposition', `attachment; filename="${originalFilename}"`)
-            res.setHeader('Content-Type', 'application/pdf')
-
-            // Stream file về client
-            const fileStream = fs.createReadStream(filePath)
-            fileStream.pipe(res)
+            // Redirect to the presigned S3 URL for downloading
+            return res.redirect(result.data.fileUrl);
         } catch (error) {
-            console.error('Error downloading file:', error)
+            console.error('Error downloading file:', error);
 
             if (error instanceof HttpException) {
-                throw error
+                throw error;
             }
 
             throw new HttpException(
@@ -404,55 +358,36 @@ export class ContractsController {
                     message: 'Error downloading contract file'
                 },
                 HttpStatus.INTERNAL_SERVER_ERROR
-            )
+            );
         }
     }
 
     @Get('view/:id')
     @ApiOperation({
         summary: 'View the contract file in browser',
-        description: 'Displays the PDF file associated with the contract directly in the browser'
+        description: 'Redirects to a presigned S3 URL for viewing the PDF file directly in the browser'
     })
     async viewContractFile(@Param('id') contractId: string, @Res() res: Response) {
         try {
-            const result = await this.contractsService.getContractById(contractId)
+            const result = await this.contractsService.getContractById(contractId);
 
-            if (!result?.data?.file_name) {
+            if (!result?.data?.viewUrl) {
                 throw new HttpException(
                     {
                         statusCode: HttpStatus.NOT_FOUND,
                         message: 'Contract file not found'
                     },
                     HttpStatus.NOT_FOUND
-                )
+                );
             }
 
-            const fileName = result.data.file_name
-            const filePath = path.join(this.uploadsPath, 'contracts', fileName)
-
-            // Kiểm tra nếu file tồn tại
-            if (!fs.existsSync(filePath)) {
-                throw new HttpException(
-                    {
-                        statusCode: HttpStatus.NOT_FOUND,
-                        message: 'Contract file not found on server'
-                    },
-                    HttpStatus.NOT_FOUND
-                )
-            }
-
-            // Thiết lập header để xem trực tiếp trong trình duyệt
-            res.setHeader('Content-Type', 'application/pdf')
-            res.setHeader('Content-Disposition', 'inline')
-
-            // Stream file về client
-            const fileStream = fs.createReadStream(filePath)
-            fileStream.pipe(res)
+            // Redirect to the presigned S3 URL for inline viewing
+            return res.redirect(result.data.viewUrl);
         } catch (error) {
-            console.error('Error viewing file:', error)
+            console.error('Error viewing file:', error);
 
             if (error instanceof HttpException) {
-                throw error
+                throw error;
             }
 
             throw new HttpException(
@@ -461,7 +396,7 @@ export class ContractsController {
                     message: 'Error viewing contract file'
                 },
                 HttpStatus.INTERNAL_SERVER_ERROR
-            )
+            );
         }
     }
 
