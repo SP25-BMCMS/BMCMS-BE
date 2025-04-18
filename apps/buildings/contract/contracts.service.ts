@@ -4,9 +4,10 @@ import { RpcException } from '@nestjs/microservices'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateContractDto } from 'libs/contracts/src/contracts/create-contract.dto'
 import { UpdateContractDto } from 'libs/contracts/src/contracts/update-contract.dto'
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
-import { v4 as uuidv4 } from 'uuid'
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
 import { ConfigService } from '@nestjs/config'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { S3UploaderService } from './s3-uploader.service'
 
 @Injectable()
 export class ContractsService {
@@ -16,6 +17,7 @@ export class ContractsService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly configService: ConfigService,
+        private readonly s3UploaderService: S3UploaderService,
     ) {
         this.s3 = new S3Client({
             region: this.configService.get<string>('AWS_REGION'),
@@ -27,36 +29,47 @@ export class ContractsService {
         this.bucketName = this.configService.get<string>('AWS_S3_BUCKET')
     }
 
-    private async uploadToS3(file: any): Promise<string> {
+    // Hàm trích xuất file key từ URL
+    private extractFileKey(urlString: string): string {
         try {
-            const fileName = `${uuidv4()}-${file.originalname}`
-
-            const command = new PutObjectCommand({
-                Bucket: this.bucketName,
-                Key: `contracts/${fileName}`,
-                Body: file.buffer,
-                ContentType: file.mimetype,
-            })
-
-            await this.s3.send(command)
-
-            // Return the S3 URL
-            return `https://${this.bucketName}.s3.${this.configService.get<string>('AWS_REGION')}.amazonaws.com/contracts/${fileName}`
+            const url = new URL(urlString)
+            // Lấy pathname và bỏ dấu '/' đầu tiên
+            const pathname = url.pathname.substring(1)
+            console.log('Extracted file key:', pathname)
+            return pathname
         } catch (error) {
-            console.error('Error uploading to S3:', error)
-            throw new RpcException({
-                statusCode: 500,
-                message: 'Error uploading contract file to S3',
+            console.error('Invalid URL:', urlString)
+            throw new Error('Invalid URL format')
+        }
+    }
+
+    // Hàm tạo presigned URL
+    async getPreSignedUrl(fileKey: string): Promise<string> {
+        try {
+            const command = new GetObjectCommand({
+                Bucket: this.bucketName,
+                Key: fileKey,
+                ResponseContentType: 'application/pdf' // Thêm content type để đảm bảo file được trả về đúng định dạng
             })
+
+            // Tạo presigned URL với thời hạn 1 giờ
+            const presignedUrl = await getSignedUrl(this.s3, command, {
+                expiresIn: 3600
+            })
+
+            console.log('Generated presigned URL:', presignedUrl)
+            return presignedUrl
+        } catch (error) {
+            console.error('Error generating presigned URL:', error)
+            throw error
         }
     }
 
     // Create a new contract with devices
     async createContract(createContractDto: CreateContractDto, file: any) {
-        let fileUrl = null
         try {
             // Upload the file to S3 and get URL
-            fileUrl = await this.uploadToS3(file)
+            const s3Url = await this.s3UploaderService.uploadFile(file)
 
             // Use transaction to ensure data consistency
             const result = await this.prisma.$transaction(async (tx) => {
@@ -66,7 +79,7 @@ export class ContractsService {
                         start_date: createContractDto.start_date ? new Date(createContractDto.start_date) : null,
                         end_date: createContractDto.end_date ? new Date(createContractDto.end_date) : null,
                         vendor: createContractDto.vendor || null,
-                        file_name: fileUrl,
+                        file_name: s3Url, // Store full S3 URL
                     },
                 })
 
@@ -202,65 +215,67 @@ export class ContractsService {
         }
     }
 
-    // Get all contracts with pagination, filtering, searching, and auto-sorting by newest
-    async getAllContracts(queryDto: ContractQueryDto) {
+    // Get all contracts with pagination and search
+    async getAllContracts(query: ContractQueryDto) {
         try {
-            console.log('Query parameters:', queryDto)
-
-            // Default values if not provided
-            const page = queryDto?.page || 1
-            const limit = queryDto?.limit || 10
-            const search = queryDto?.search || ''
-
-            // Calculate skip value for pagination
+            const page = query.page || 1
+            const limit = query.limit || 10
             const skip = (page - 1) * limit
 
-            // Create where condition for filtering
-            const where: any = {}
+            const contracts = await this.prisma.contract.findMany({
+                where: query.search ? {
+                    vendor: { contains: query.search, mode: 'insensitive' }
+                } : undefined,
+                skip,
+                take: limit,
+                include: {
+                    devices: true,
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                }
+            })
 
-            // Search in vendor field
-            if (search) {
-                where.OR = [
-                    { vendor: { contains: search, mode: 'insensitive' } },
-                ]
-            }
+            const total = await this.prisma.contract.count({
+                where: query.search ? {
+                    vendor: { contains: query.search, mode: 'insensitive' }
+                } : undefined
+            })
 
-            // Get paginated data with auto-sorting by newest first (assuming contract_id is sequential)
-            const [contracts, total] = await Promise.all([
-                this.prisma.contract.findMany({
-                    where,
-                    skip,
-                    take: limit,
-                    include: {
-                        devices: true,
-                    },
-                    orderBy: {
-                        createdAt: 'desc', // Sort by most recent contract_id in descending order
-                    },
-                }),
-                this.prisma.contract.count({ where }),
-            ])
+            // Convert S3 URLs to presigned URLs
+            const contractsWithPresignedUrls = await Promise.all(
+                contracts.map(async (contract) => {
+                    try {
+                        const fileKey = this.extractFileKey(contract.file_name)
+                        const presignedUrl = await this.getPreSignedUrl(fileKey)
+                        return {
+                            ...contract,
+                            file_name: presignedUrl,
+                            fileUrl: `/contracts/download/${contract.contract_id}`,
+                            viewUrl: `/contracts/view/${contract.contract_id}`,
+                            directFileUrl: `/uploads/contracts/${contract.file_name}`
+                        }
+                    } catch (error) {
+                        console.error('Error creating presigned URL:', error)
+                        return contract // Return original contract if presigned URL creation fails
+                    }
+                })
+            )
 
             return {
-                statusCode: 200,
-                message: 'Contracts retrieved successfully',
-                data: contracts,
+                data: contractsWithPresignedUrls,
                 pagination: {
                     total,
                     page,
                     limit,
-                    totalPages: Math.max(1, Math.ceil(total / limit)),
-                },
-                filters: {
-                    search,
-                },
+                    totalPages: Math.ceil(total / limit)
+                }
             }
         } catch (error) {
-            console.error('Error retrieving contracts:', error)
+            console.error('Error getting contracts:', error)
             throw new RpcException({
                 statusCode: 500,
-                message: 'Error retrieving contracts',
-                error: error.message,
+                message: 'Error getting contracts',
             })
         }
     }
@@ -276,22 +291,28 @@ export class ContractsService {
             })
 
             if (!contract) {
-                return {
+                throw new RpcException({
                     statusCode: 404,
                     message: 'Contract not found',
-                }
+                })
             }
 
-            return {
-                statusCode: 200,
-                message: 'Contract retrieved successfully',
-                data: contract,
+            try {
+                const fileKey = this.extractFileKey(contract.file_name)
+                const presignedUrl = await this.getPreSignedUrl(fileKey)
+                return {
+                    ...contract,
+                    file_name: presignedUrl,
+                }
+            } catch (error) {
+                console.error('Error creating presigned URL:', error)
+                return contract // Return original contract if presigned URL creation fails
             }
         } catch (error) {
-            console.error('Error retrieving contract:', error)
+            console.error('Error getting contract:', error)
             throw new RpcException({
                 statusCode: 500,
-                message: 'Error retrieving contract',
+                message: 'Error getting contract',
             })
         }
     }
