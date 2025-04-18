@@ -21,16 +21,16 @@ export class CrackRecordService {
   async create(createDto: CreateCrackRecordDto): Promise<ApiResponse<CrackRecordDto>> {
     try {
       // Kiểm tra xem đã có CrackRecord với locationDetailId này chưa
-      const existingRecord = await this.prisma.crackRecord.findFirst({
-        where: { locationDetailId: createDto.locationDetailId }
-      });
+      // const existingRecord = await this.prisma.crackRecord.findFirst({
+      //   where: { locationDetailId: createDto.locationDetailId }
+      // });
 
-      if (existingRecord) {
-        throw new RpcException({
-          statusCode: 400,
-          message: `Cannot create crack record: A record already exists for this location (locationDetailId: ${createDto.locationDetailId})`,
-        });
-      }
+      // if (existingRecord) {
+      //   throw new RpcException({
+      //     statusCode: 400,
+      //     message: `Cannot create crack record: A record already exists for this location (locationDetailId: ${createDto.locationDetailId})`,
+      //   });
+      // }
 
       const crackRecord = await this.prisma.crackRecord.create({
         data: createDto,
