@@ -614,4 +614,237 @@ export class ScheduleService {
       });
     }
   }
+
+  // Create a new schedule
+  async createSchedule(
+    createScheduleDto: CreateScheduleDto,
+  ): Promise<ApiResponse<ScheduleResponseDto>> {
+    try {
+      // Validate maintenance cycle existence
+      const maintenanceCycle = await this.prisma.maintenanceCycle.findUnique({
+        where: { cycle_id: createScheduleDto.cycle_id }
+      });
+
+      if (!maintenanceCycle) {
+        throw new RpcException({
+          statusCode: 404,
+          message: `Maintenance cycle with ID ${createScheduleDto.cycle_id} not found`,
+        });
+      }
+
+      // Validate all building detail IDs exist before proceeding
+      if (createScheduleDto.buildingDetailIds && createScheduleDto.buildingDetailIds.length > 0) {
+        try {
+          const invalidBuildingDetailIds = [];
+
+          for (const buildingDetailId of createScheduleDto.buildingDetailIds) {
+            try {
+              console.log(`Validating building detail ID: ${buildingDetailId}`);
+
+              // Use a longer timeout and proper error handling
+              const buildingResponse = await firstValueFrom(
+                this.buildingClient
+                  .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId })
+                  .pipe(
+                    timeout(15000),  // Increase timeout to 15 seconds
+                    catchError(err => {
+                      console.error(`Error checking building detail ${buildingDetailId}:`, err.message || err);
+                      // For timeout errors, return a structured response rather than throwing
+                      return of({
+                        statusCode: 404,
+                        message: `Building detail check timed out`,
+                        isTimeout: true
+                      });
+                    })
+                  )
+              );
+
+              // Proper validation of the response
+              console.log(`Building detail response for ${buildingDetailId}:`,
+                typeof buildingResponse === 'object' ?
+                  `statusCode=${buildingResponse.statusCode}, message=${buildingResponse.message}` :
+                  'invalid response format');
+
+              // Only consider a building detail valid if we get a 200 response with data
+              if (!buildingResponse ||
+                buildingResponse.statusCode !== 200 ||
+                !buildingResponse.data ||
+                buildingResponse.isTimeout) {
+                console.log(`Building detail ID ${buildingDetailId} is invalid. Adding to invalid list.`);
+                invalidBuildingDetailIds.push(buildingDetailId);
+              } else {
+                console.log(`Building detail ID ${buildingDetailId} validated successfully`);
+              }
+            } catch (error) {
+              // Any unexpected error means we couldn't validate the building detail
+              console.error(`Unexpected error validating building detail ${buildingDetailId}:`, error);
+              invalidBuildingDetailIds.push(buildingDetailId);
+            }
+          }
+
+          // If any building details are invalid, throw a 404 exception
+          if (invalidBuildingDetailIds.length > 0) {
+            console.error(`Found ${invalidBuildingDetailIds.length} invalid building detail IDs:`, invalidBuildingDetailIds);
+            throw new RpcException({
+              statusCode: 404,
+              message: `The following building detail IDs do not exist: ${invalidBuildingDetailIds.join(', ')}`,
+            });
+          }
+
+          console.log('All building detail IDs validated successfully');
+        } catch (error) {
+          // Rethrow RPC exceptions
+          if (error instanceof RpcException) {
+            throw error;
+          }
+
+          // For any other errors in the validation process, throw a generic error
+          console.error('Error validating building detail IDs:', error);
+          throw new RpcException({
+            statusCode: 500,
+            message: `Error validating building detail IDs: ${error.message}`,
+          });
+        }
+      }
+
+      // Create the schedule
+      const newSchedule = await this.prisma.schedule.create({
+        data: {
+          schedule_name: createScheduleDto.schedule_name,
+          description: createScheduleDto.description,
+          start_date: createScheduleDto.start_date ? new Date(createScheduleDto.start_date) : null,
+          end_date: createScheduleDto.end_date ? new Date(createScheduleDto.end_date) : null,
+          schedule_status: createScheduleDto.schedule_status || $Enums.ScheduleStatus.InProgress,
+          cycle_id: createScheduleDto.cycle_id,
+        },
+      });
+
+      // Create schedule jobs if building detail IDs are provided
+      let scheduleJobs = [];
+
+      if (createScheduleDto.buildingDetailIds && createScheduleDto.buildingDetailIds.length > 0) {
+        // Create schedule jobs data
+        const scheduleJobsData = createScheduleDto.buildingDetailIds.map(buildingDetailId => ({
+          schedule_id: newSchedule.schedule_id,
+          run_date: new Date(),
+          status: $Enums.ScheduleJobStatus.Pending,
+          buildingDetailId: buildingDetailId,
+        }));
+
+        // Create jobs
+        await this.prisma.scheduleJob.createMany({
+          data: scheduleJobsData,
+        });
+
+        // Get the created jobs
+        scheduleJobs = await this.prisma.scheduleJob.findMany({
+          where: { schedule_id: newSchedule.schedule_id },
+        });
+      }
+
+      // Format the response
+      const scheduleResponse: ScheduleResponseDto = {
+        ...newSchedule,
+        schedule_job: scheduleJobs,
+      };
+
+      return new ApiResponse<ScheduleResponseDto>(
+        true,
+        'Schedule created successfully',
+        scheduleResponse,
+      );
+    } catch (error) {
+      console.error('Error creating schedule:', error);
+
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      throw new RpcException({
+        statusCode: 500,
+        message: `Failed to create schedule: ${error.message}`,
+      });
+    }
+  }
+
+  // Update an existing schedule
+  async updateSchedule(
+    schedule_id: string,
+    updateScheduleDto: UpdateScheduleDto,
+  ): Promise<ApiResponse<ScheduleResponseDto>> {
+    try {
+      // Check if schedule exists
+      const existingSchedule = await this.prisma.schedule.findUnique({
+        where: { schedule_id },
+      });
+
+      if (!existingSchedule) {
+        throw new RpcException({
+          statusCode: 404,
+          message: `Schedule with ID ${schedule_id} not found`,
+        });
+      }
+
+      // Prepare update data
+      const updateData: any = {};
+
+      if (updateScheduleDto.schedule_name) updateData.schedule_name = updateScheduleDto.schedule_name;
+      if (updateScheduleDto.description !== undefined) updateData.description = updateScheduleDto.description;
+      if (updateScheduleDto.start_date) updateData.start_date = new Date(updateScheduleDto.start_date);
+      if (updateScheduleDto.end_date) updateData.end_date = new Date(updateScheduleDto.end_date);
+      if (updateScheduleDto.schedule_status) updateData.schedule_status = updateScheduleDto.schedule_status;
+      if (updateScheduleDto.cycle_id) updateData.cycle_id = updateScheduleDto.cycle_id;
+
+      // Update the schedule
+      const updatedSchedule = await this.prisma.schedule.update({
+        where: { schedule_id },
+        data: updateData,
+      });
+
+      // Handle building detail IDs if provided
+      if (updateScheduleDto.buildingDetailIds && updateScheduleDto.buildingDetailIds.length > 0) {
+        // Create schedule jobs for new building detail IDs
+        const scheduleJobsData = updateScheduleDto.buildingDetailIds.map(buildingDetailId => ({
+          schedule_id: schedule_id,
+          run_date: new Date(),
+          status: $Enums.ScheduleJobStatus.Pending,
+          buildingDetailId: buildingDetailId,
+        }));
+
+        // Create jobs (will ignore duplicates due to unique constraints)
+        await this.prisma.scheduleJob.createMany({
+          data: scheduleJobsData,
+          skipDuplicates: true,
+        });
+      }
+
+      // Get all schedule jobs
+      const scheduleJobs = await this.prisma.scheduleJob.findMany({
+        where: { schedule_id },
+      });
+
+      // Format the response
+      const scheduleResponse: ScheduleResponseDto = {
+        ...updatedSchedule,
+        schedule_job: scheduleJobs,
+      };
+
+      return new ApiResponse<ScheduleResponseDto>(
+        true,
+        'Schedule updated successfully',
+        scheduleResponse,
+      );
+    } catch (error) {
+      console.error('Error updating schedule:', error);
+
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      throw new RpcException({
+        statusCode: 500,
+        message: `Failed to update schedule: ${error.message}`,
+      });
+    }
+  }
 }

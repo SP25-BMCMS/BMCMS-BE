@@ -21,27 +21,26 @@ import { AutoMaintenanceScheduleDto } from '@app/contracts/schedules/auto-mainte
 export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) { }
 
-  // @MessagePattern(SCHEDULES_PATTERN.CREATE)
-  // async createSchedule(
-  //   @Payload() createScheduleDto: CreateScheduleDto,
-  // ): Promise<ApiResponse<ScheduleResponseDto>> {
-  //   return this.scheduleService.createSchedule(createScheduleDto)
-  // }
+  @MessagePattern(SCHEDULES_PATTERN.CREATE)
+  async createSchedule(
+    @Payload() createScheduleDto: CreateScheduleDto,
+  ): Promise<ApiResponse<ScheduleResponseDto>> {
+    return this.scheduleService.createSchedule(createScheduleDto)
+  }
 
-  // @MessagePattern(SCHEDULES_PATTERN.UPDATE)
-  // async updateSchedule(
-  //   @Payload()
-  //   {
-  //     schedule_id,
-  //     updateScheduleDto,
-  //   }: {
-  //     schedule_id: string
-  //     updateScheduleDto: UpdateScheduleDto
-  //   },
-  // ): Promise<ApiResponse<ScheduleResponseDto>> {
-  //   return this.scheduleService.updateSchedule(schedule_id, updateScheduleDto)
-  // }
-
+  @MessagePattern(SCHEDULES_PATTERN.UPDATE)
+  async updateSchedule(
+    @Payload()
+    {
+      schedule_id,
+      updateScheduleDto,
+    }: {
+      schedule_id: string
+      updateScheduleDto: UpdateScheduleDto
+    },
+  ): Promise<ApiResponse<ScheduleResponseDto>> {
+    return this.scheduleService.updateSchedule(schedule_id, updateScheduleDto)
+  }
 
   @MessagePattern(SCHEDULES_PATTERN.GET)
   async getAllSchedulesMicro(

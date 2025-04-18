@@ -33,18 +33,132 @@ export class SchedulesService {
     this.buildingsClient = buildingsClient;
   }
 
+  // Phương thức tiện ích để xử lý lỗi từ microservice một cách nhất quán
+  private handleMicroserviceError(error: any, defaultMessage: string = 'An error occurred'): never {
+    console.error('Handling microservice error:', error);
+    console.log('Error type:', typeof error, 'Constructor:', error?.constructor?.name);
+
+    // 1. Check pattern for RpcException
+    if (error instanceof Object && error.constructor && error.constructor.name === 'RpcException') {
+      console.log('Detected RpcException, properly forwarding status code');
+      if (error.error && error.error.statusCode) {
+        const statusCode = error.error.statusCode;
+        const message = error.error.message || 'Unknown microservice error';
+
+        let httpStatus: HttpStatus;
+        switch (statusCode) {
+          case 404:
+            httpStatus = HttpStatus.NOT_FOUND;
+            break;
+          case 400:
+            httpStatus = HttpStatus.BAD_REQUEST;
+            break;
+          case 403:
+            httpStatus = HttpStatus.FORBIDDEN;
+            break;
+          default:
+            httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+        }
+
+        throw new HttpException(message, httpStatus);
+      }
+    }
+
+    // 2. Check error object structure directly
+    if (error && typeof error === 'object') {
+      console.log('Checking detailed error structure:', JSON.stringify(error, null, 2));
+
+      // Look for statusCode in nested error object
+      if (error.error && (error.error.statusCode === 404 || error.error.status === 404)) {
+        console.log('Found 404 status code in nested error object');
+        throw new HttpException(
+          error.error.message || 'Resource not found',
+          HttpStatus.NOT_FOUND
+        );
+      }
+
+      // Check for status code directly on the error object
+      if (error.status === 404 || error.statusCode === 404) {
+        console.log('Found 404 status code directly on error object');
+        throw new HttpException(
+          error.message || 'Resource not found',
+          HttpStatus.NOT_FOUND
+        );
+      }
+
+      // Check for message patterns that suggest 404
+      if (error.message && (
+        error.message.includes('not found') ||
+        error.message.includes('Not found') ||
+        error.message.includes('do not exist') ||
+        error.message.includes('không tồn tại')
+      )) {
+        console.log('Message pattern suggests 404 error');
+        throw new HttpException(
+          error.message,
+          HttpStatus.NOT_FOUND
+        );
+      }
+    }
+
+    // Handle timeout errors specifically
+    if (error.name === 'TimeoutError') {
+      throw new HttpException(
+        'Request timed out. The microservice might be down or not responding.',
+        HttpStatus.REQUEST_TIMEOUT,
+      );
+    }
+
+    // Handle existing HttpExceptions
+    if (error instanceof HttpException) {
+      throw error;
+    }
+
+    // Default error handling
+    console.log('Falling back to default error handling');
+    throw new HttpException(
+      `${defaultMessage}: ${error.message || 'Unknown error'}`,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
+
   // Create schedule (Microservice)
   async createSchedule(createScheduleDto: CreateScheduleDto): Promise<any> {
     try {
-      return await this.scheduleClient.send(
-        SCHEDULES_PATTERN.CREATE,
-        createScheduleDto,
-      )
+      console.log('Creating new schedule:', createScheduleDto);
+
+      // Validate required fields
+      if (!createScheduleDto.schedule_name) {
+        throw new HttpException(
+          'Schedule name is required',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (!createScheduleDto.cycle_id) {
+        throw new HttpException(
+          'Maintenance cycle ID is required',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Send request to microservice with timeout
+      const response = await firstValueFrom(
+        this.scheduleClient.send(
+          SCHEDULES_PATTERN.CREATE,
+          createScheduleDto,
+        ).pipe(
+          timeout(15000), // 15 second timeout
+          catchError(err => {
+            console.error('Error in createSchedule microservice call:', err);
+            throw err; // Let the catch block handle this error
+          })
+        )
+      );
+
+      return response;
     } catch (error) {
-      throw new HttpException(
-        'Error occurred while creating schedule',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      )
+      return this.handleMicroserviceError(error, 'Error occurred while creating schedule');
     }
   }
 
@@ -79,37 +193,20 @@ export class SchedulesService {
         this.scheduleClient.send(SCHEDULES_PATTERN.UPDATE, {
           schedule_id,
           updateScheduleDto,
-        }).pipe(timeout(10000)) // 10 second timeout
+        }).pipe(
+          timeout(15000), // 15 second timeout
+          catchError(err => {
+            console.error('Error in updateSchedule microservice call:', err);
+            throw err; // Let the catch block handle this error
+          })
+        )
       )
 
       return response
     } catch (error) {
-      console.error('Error updating schedule:', error)
-
-      if (error.name === 'TimeoutError') {
-        throw new HttpException(
-          'Request timed out. The microservice might be down or not responding.',
-          HttpStatus.REQUEST_TIMEOUT,
-        )
-      } else if (error.status === 404) {
-        throw new HttpException(
-          error.message || 'Schedule not found',
-          HttpStatus.NOT_FOUND,
-        )
-      } else if (error.status === 400) {
-        throw new HttpException(
-          error.message || 'Invalid update data',
-          HttpStatus.BAD_REQUEST,
-        )
-      } else {
-        throw new HttpException(
-          `Error occurred while updating schedule: ${error.message || 'Unknown error'}`,
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        )
-      }
+      return this.handleMicroserviceError(error, 'Error occurred while updating schedule');
     }
   }
-
 
   // Get schedule by ID (Microservice)
   async getScheduleById(schedule_id: string): Promise<any> {
@@ -118,30 +215,40 @@ export class SchedulesService {
       schedule_id,
     )
     try {
-      return await this.scheduleClient.send(
-        SCHEDULES_PATTERN.GET_BY_ID,
-        schedule_id,
+      return await firstValueFrom(
+        this.scheduleClient.send(
+          SCHEDULES_PATTERN.GET_BY_ID,
+          schedule_id,
+        ).pipe(
+          timeout(10000), // 10 second timeout
+          catchError(err => {
+            console.error('Error in getScheduleById microservice call:', err);
+            throw err; // Let the catch block handle this error
+          })
+        )
       )
     } catch (error) {
-      throw new HttpException(
-        'Error occurred while fetching schedule by ID',
-        HttpStatus.NOT_FOUND,
-      )
+      return this.handleMicroserviceError(error, 'Error occurred while fetching schedule by ID');
     }
   }
 
   // Get all schedules (Microservice)
   async getAllSchedules(paginationParams: PaginationParams = {}): Promise<any> {
     try {
-      return await this.scheduleClient.send(
-        SCHEDULES_PATTERN.GET,
-        paginationParams,
+      return await firstValueFrom(
+        this.scheduleClient.send(
+          SCHEDULES_PATTERN.GET,
+          paginationParams,
+        ).pipe(
+          timeout(15000), // 15 second timeout
+          catchError(err => {
+            console.error('Error in getAllSchedules microservice call:', err);
+            throw err; // Let the catch block handle this error
+          })
+        )
       )
     } catch (error) {
-      throw new HttpException(
-        'Error occurred while fetching all schedules',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      )
+      return this.handleMicroserviceError(error, 'Error occurred while fetching all schedules');
     }
   }
 
@@ -186,23 +293,18 @@ export class SchedulesService {
       // Send request to microservice
       const response = await firstValueFrom(
         this.scheduleClient.send(SCHEDULES_PATTERN.DELELTE, schedule_id)
+          .pipe(
+            timeout(10000), // 10 second timeout
+            catchError(err => {
+              console.error('Error in deleteSchedule microservice call:', err);
+              throw err; // Let the catch block handle this error
+            })
+          )
       )
 
       return response
     } catch (error) {
-      console.error('Error deleting schedule:', error)
-
-      if (error.status === 404) {
-        throw new HttpException(
-          error.message || 'Schedule not found',
-          HttpStatus.NOT_FOUND,
-        )
-      } else {
-        throw new HttpException(
-          `Error occurred while deleting schedule: ${error.message || 'Unknown error'}`,
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        )
-      }
+      return this.handleMicroserviceError(error, 'Error occurred while deleting schedule');
     }
   }
 
@@ -223,23 +325,27 @@ export class SchedulesService {
       const response = await firstValueFrom(
         this.scheduleClient
           .send(SCHEDULES_PATTERN.CREATE_AUTO_MAINTENANCE, dto)
-          .pipe(timeout(60000)) // 60 second timeout
+          .pipe(
+            timeout(60000), // 60 second timeout
+            catchError(err => {
+              console.error('Error in createAutoMaintenanceSchedule microservice call:', err);
+              if (err.name === 'TimeoutError') {
+                throw new HttpException(
+                  'Request timed out. The microservice might be down or not responding.',
+                  HttpStatus.REQUEST_TIMEOUT,
+                );
+              }
+              throw err;
+            })
+          )
       );
 
       return response;
     } catch (error) {
       console.error('Error creating automated maintenance schedule:', error);
 
-      // Handle timeout errors
-      if (error.name === 'TimeoutError') {
-        throw new HttpException(
-          'Request timed out. Kiểm tra xem microservice schedule có đang chạy không và RabbitMQ queue đã được cấu hình đúng.',
-          HttpStatus.REQUEST_TIMEOUT,
-        );
-      }
-
-      // Handle RPC exceptions with status codes
-      else if (error.error && error.error.statusCode) {
+      // Handle specific error codes from the microservice
+      if (error.error && error.error.statusCode) {
         const statusCode = error.error.statusCode;
         const message = error.error.message || 'Unknown microservice error';
 
@@ -261,37 +367,35 @@ export class SchedulesService {
         throw new HttpException(message, httpStatus);
       }
 
+      // Handle timeout errors specifically
+      if (error.name === 'TimeoutError') {
+        throw new HttpException(
+          'Request timed out. Kiểm tra xem microservice schedule có đang chạy không và RabbitMQ queue đã được cấu hình đúng.',
+          HttpStatus.REQUEST_TIMEOUT,
+        );
+      }
+
       // Handle existing HttpExceptions
-      else if (error instanceof HttpException) {
+      if (error instanceof HttpException) {
         throw error;
       }
 
       // Handle error with message patterns
-      else if (error.message) {
-        // Special case for "not found" errors
-        if (error.message.includes('not found') ||
-          error.message.includes('Not found') ||
-          error.message.includes('do not exist')) {
-          throw new HttpException(
-            error.message,
-            HttpStatus.NOT_FOUND
-          );
-        }
-
-        // Default error
+      if (error.message && (
+        error.message.includes('not found') ||
+        error.message.includes('Not found') ||
+        error.message.includes('do not exist'))) {
         throw new HttpException(
-          `Error occurred while creating automated maintenance schedule: ${error.message}`,
-          HttpStatus.INTERNAL_SERVER_ERROR,
+          error.message,
+          HttpStatus.NOT_FOUND
         );
       }
 
-      // Default catch-all error
-      else {
-        throw new HttpException(
-          'An unexpected error occurred while creating automated maintenance schedule',
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
+      // Default error
+      throw new HttpException(
+        `Error occurred while creating automated maintenance schedule: ${error.message || 'Unknown error'}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -304,26 +408,30 @@ export class SchedulesService {
       const response = await firstValueFrom(
         this.scheduleClient
           .send(SCHEDULES_PATTERN.TRIGGER_AUTO_MAINTENANCE, {})
-          .pipe(timeout(60000)) // Tăng timeout lên 60 giây thay vì 30 giây
+          .pipe(
+            timeout(60000), // 60 second timeout
+            catchError(err => {
+              console.error('Error in triggerAutoMaintenanceSchedule microservice call:', err);
+              if (err.name === 'TimeoutError') {
+                throw new HttpException(
+                  'Request timed out. The operation may still be processing on the server.',
+                  HttpStatus.REQUEST_TIMEOUT,
+                );
+              }
+              throw err;
+            })
+          )
       );
 
       return response;
     } catch (error) {
       console.error('Error triggering automated maintenance schedule creation:', error);
 
-      if (error.name === 'TimeoutError') {
-        throw new HttpException(
-          'Request timed out. The operation may still be processing on the server. Kiểm tra logs của microservice schedule.',
-          HttpStatus.REQUEST_TIMEOUT,
-        );
-      }
-      // Check if error is from RPC exception and handle status code appropriately
-      else if (error.error && error.error.statusCode) {
-        // Extract status code and message from RPC error
+      // Handle specific error codes from the microservice
+      if (error.error && error.error.statusCode) {
         const statusCode = error.error.statusCode;
         const message = error.error.message || 'Unknown microservice error';
 
-        // Map microservice status codes to HTTP status codes
         let httpStatus: HttpStatus;
         switch (statusCode) {
           case 404:
@@ -341,21 +449,35 @@ export class SchedulesService {
 
         throw new HttpException(message, httpStatus);
       }
+
+      // Handle timeout errors specifically
+      if (error.name === 'TimeoutError') {
+        throw new HttpException(
+          'Request timed out. The operation may still be processing on the server. Kiểm tra logs của microservice schedule.',
+          HttpStatus.REQUEST_TIMEOUT,
+        );
+      }
+
+      // Handle existing HttpExceptions
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       // Check for specific error messages that indicate "not found"
-      else if (error.message && (
+      if (error.message && (
         error.message.includes('not found') ||
-        error.message.includes('No maintenance cycles')
-      )) {
+        error.message.includes('No maintenance cycles'))) {
         throw new HttpException(
           error.message,
           HttpStatus.NOT_FOUND
         );
-      } else {
-        throw new HttpException(
-          `Error occurred while triggering automated maintenance schedules: ${error.message || 'Unknown error'}. Kiểm tra kết nối RabbitMQ và logs của microservice.`,
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
       }
+
+      // Default catch-all error
+      throw new HttpException(
+        `Error occurred while triggering automated maintenance schedules: ${error.message || 'Unknown error'}. Kiểm tra kết nối RabbitMQ và logs của microservice.`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }

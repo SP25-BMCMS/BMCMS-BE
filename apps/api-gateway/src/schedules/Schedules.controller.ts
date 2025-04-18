@@ -12,6 +12,7 @@ import {
   Req,
   UseGuards,
   Query,
+  Patch,
 } from '@nestjs/common'
 import { SchedulesService } from './Schedules.service'
 import { catchError, firstValueFrom, NotFoundError } from 'rxjs'
@@ -43,7 +44,11 @@ export class SchedulesController {
     status: 201,
     description: 'Schedule created successfully',
   })
-  @SwaggerResponse({ status: 400, description: 'Bad request' })
+  @SwaggerResponse({ status: 400, description: 'Bad request - Missing required fields or invalid data' })
+  @SwaggerResponse({ status: 404, description: 'Maintenance cycle or building details not found' })
+  @SwaggerResponse({ status: 408, description: 'Request timeout - Service may be unavailable' })
+  @SwaggerResponse({ status: 500, description: 'Internal server error' })
+  @HttpCode(HttpStatus.CREATED)
   async createSchedule(
     @Body() createScheduleDto: CreateScheduleDto,
   ): Promise<ApiResponse<ScheduleResponseDto>> {
@@ -59,8 +64,31 @@ export class SchedulesController {
     status: 200,
     description: 'Schedule updated successfully',
   })
-  @SwaggerResponse({ status: 404, description: 'Schedule not found' })
+  @SwaggerResponse({ status: 400, description: 'Bad request - Invalid input data' })
+  @SwaggerResponse({ status: 404, description: 'Schedule, maintenance cycle, or building details not found' })
+  @SwaggerResponse({ status: 408, description: 'Request timeout - Service may be unavailable' })
+  @SwaggerResponse({ status: 500, description: 'Internal server error' })
   async updateSchedule(
+    @Param('schedule_id') schedule_id: string,
+    @Body() updateScheduleDto: UpdateScheduleDto,
+  ): Promise<ApiResponse<ScheduleResponseDto>> {
+    return this.schedulesService.updateSchedule(schedule_id, updateScheduleDto)
+  }
+
+  // Partial update schedule (PATCH)
+  @Patch(':schedule_id')
+  @ApiOperation({ summary: 'Partially update a schedule' })
+  @ApiParam({ name: 'schedule_id', description: 'Schedule ID' })
+  @ApiBody({ type: UpdateScheduleDto })
+  @SwaggerResponse({
+    status: 200,
+    description: 'Schedule partially updated successfully',
+  })
+  @SwaggerResponse({ status: 400, description: 'Bad request - Invalid input data' })
+  @SwaggerResponse({ status: 404, description: 'Schedule, maintenance cycle, or building details not found' })
+  @SwaggerResponse({ status: 408, description: 'Request timeout - Service may be unavailable' })
+  @SwaggerResponse({ status: 500, description: 'Internal server error' })
+  async partialUpdateSchedule(
     @Param('schedule_id') schedule_id: string,
     @Body() updateScheduleDto: UpdateScheduleDto,
   ): Promise<ApiResponse<ScheduleResponseDto>> {
