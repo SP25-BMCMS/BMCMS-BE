@@ -25,6 +25,7 @@ import { Response } from 'express';
 
 @ApiTags('Technical Records')
 @Controller('technical-records')
+@ApiBearerAuth()
 export class TechnicalRecordController {
     constructor(private readonly technicalRecordService: TechnicalRecordService) { }
 
@@ -139,33 +140,54 @@ export class TechnicalRecordController {
     @ApiOperation({ summary: 'Get all technical records with pagination' })
     @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (optional)' })
     @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Records per page (optional)' })
-    @ApiQuery({ name: 'deviceId', required: false, type: String, description: 'Filter by device ID (optional)' })
-    @ApiQuery({ name: 'buildingId', required: false, type: String, description: 'Filter by building ID (optional)' })
     async findAll(
         @Query('page') page?: number,
-        @Query('limit') limit?: number,
-        @Query('deviceId') deviceId?: string,
-        @Query('buildingId') buildingId?: string
+        @Query('limit') limit?: number
     ) {
         try {
-            let result;
-            if (deviceId) {
-                result = await this.technicalRecordService.findByDeviceId(deviceId, page, limit);
-            } else if (buildingId) {
-                result = await this.technicalRecordService.findByBuildingId(buildingId, page, limit);
-            } else {
-                result = await this.technicalRecordService.findAll(page, limit);
-            }
-
-            // Thêm các URL cho mỗi bản ghi dựa trên S3 URL
-            if (result?.data && Array.isArray(result.data)) {
-                // Các URL đã được tạo từ service, không cần xử lý ở đây nữa
-                return result;
-            }
-
+            console.log(`Finding all technical records, page: ${page}, limit: ${limit}`);
+            const result = await this.technicalRecordService.findAll(page, limit);
             return result;
         } catch (error) {
             console.error('Error getting technical records:', error);
+            throw error;
+        }
+    }
+
+    @Get('by-device/:deviceId')
+    @ApiOperation({ summary: 'Get technical records by device ID' })
+    @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (optional)' })
+    @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Records per page (optional)' })
+    async findByDeviceId(
+        @Param('deviceId') deviceId: string,
+        @Query('page') page?: number,
+        @Query('limit') limit?: number
+    ) {
+        try {
+            console.log(`Finding technical records for device: ${deviceId}, page: ${page}, limit: ${limit}`);
+            const result = await this.technicalRecordService.findByDeviceId(deviceId, page, limit);
+            return result;
+        } catch (error) {
+            console.error('Error getting technical records by device ID:', error);
+            throw error;
+        }
+    }
+
+    @Get('by-building/:buildingId')
+    @ApiOperation({ summary: 'Get technical records by building ID' })
+    @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (optional)' })
+    @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Records per page (optional)' })
+    async findByBuildingId(
+        @Param('buildingId') buildingId: string,
+        @Query('page') page?: number,
+        @Query('limit') limit?: number
+    ) {
+        try {
+            console.log(`Finding technical records for building: ${buildingId}, page: ${page}, limit: ${limit}`);
+            const result = await this.technicalRecordService.findByBuildingId(buildingId, page, limit);
+            return result;
+        } catch (error) {
+            console.error('Error getting technical records by building ID:', error);
             throw error;
         }
     }

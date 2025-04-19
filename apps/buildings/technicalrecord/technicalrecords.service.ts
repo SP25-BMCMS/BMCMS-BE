@@ -108,7 +108,7 @@ export class TechnicalRecordsService {
             const take = limit || (page ? 10 : undefined); // Nếu có page mà không có limit, dùng 10. Nếu không có page, không giới hạn.
 
             // Truy vấn dữ liệu
-            const [data, total] = await Promise.all([
+            const [records, total] = await Promise.all([
                 this.prisma.technicalRecord.findMany({
                     skip: skip,
                     ...(take && { take }), // Chỉ áp dụng take nếu được cung cấp
@@ -140,8 +140,21 @@ export class TechnicalRecordsService {
                 this.prisma.technicalRecord.count()
             ]);
 
+            // Enhance records with URLs for direct access, download, and viewing
+            const enhancedRecords = records.map(record => {
+                if (record.file_name) {
+                    return {
+                        ...record,
+                        directFileUrl: record.file_name, // Direct S3 URL
+                        fileUrl: record.file_name,       // Will be used for downloading
+                        viewUrl: record.file_name        // Will be used for inline viewing
+                    };
+                }
+                return record;
+            });
+
             return {
-                data,
+                data: enhancedRecords,
                 meta: {
                     total,
                     page: page || 1,
@@ -212,7 +225,7 @@ export class TechnicalRecordsService {
             const skip = page ? (page - 1) * (limit || 10) : 0;
             const take = limit || (page ? 10 : undefined); // Nếu có page mà không có limit, dùng 10. Nếu không có page, không giới hạn.
 
-            const [data, total] = await Promise.all([
+            const [records, total] = await Promise.all([
                 this.prisma.technicalRecord.findMany({
                     where: {
                         device_id: deviceId
@@ -251,8 +264,21 @@ export class TechnicalRecordsService {
                 })
             ]);
 
+            // Enhance records with URLs for direct access, download, and viewing
+            const enhancedRecords = records.map(record => {
+                if (record.file_name) {
+                    return {
+                        ...record,
+                        directFileUrl: record.file_name, // Direct S3 URL
+                        fileUrl: record.file_name,       // Will be used for downloading
+                        viewUrl: record.file_name        // Will be used for inline viewing
+                    };
+                }
+                return record;
+            });
+
             return {
-                data,
+                data: enhancedRecords,
                 meta: {
                     total,
                     page: page || 1,
@@ -312,7 +338,7 @@ export class TechnicalRecordsService {
             const deviceIds = buildingDevices.map(device => device.device_id);
 
             // Then get technical records for these devices
-            const [data, total] = await Promise.all([
+            const [records, total] = await Promise.all([
                 this.prisma.technicalRecord.findMany({
                     where: {
                         device_id: {
@@ -355,8 +381,21 @@ export class TechnicalRecordsService {
                 })
             ]);
 
+            // Enhance records with URLs for direct access, download, and viewing
+            const enhancedRecords = records.map(record => {
+                if (record.file_name) {
+                    return {
+                        ...record,
+                        directFileUrl: record.file_name, // Direct S3 URL
+                        fileUrl: record.file_name,       // Will be used for downloading
+                        viewUrl: record.file_name        // Will be used for inline viewing
+                    };
+                }
+                return record;
+            });
+
             return {
-                data,
+                data: enhancedRecords,
                 meta: {
                     total,
                     page: page || 1,

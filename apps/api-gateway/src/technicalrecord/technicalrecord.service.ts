@@ -107,10 +107,27 @@ export class TechnicalRecordService {
     }
 
     async findAll(page?: number, limit?: number) {
-        return await firstValueFrom(
-            this.buildingsClient.send(TECHNICALRECORD_PATTERN.GET_ALL, { page, limit })
-                .pipe(catchError(error => this.handleError(error)))
-        );
+        try {
+            const result = await firstValueFrom(
+                this.buildingsClient.send(TECHNICALRECORD_PATTERN.GET_ALL, { page, limit })
+                    .pipe(catchError(error => this.handleError(error)))
+            );
+
+            // Generate presigned URLs for each record if data is an array
+            if (result?.data && Array.isArray(result.data)) {
+                for (const record of result.data) {
+                    if (record.file_name) {
+                        record.fileUrl = await this.getPresignedUrl(record.file_name, 'attachment; filename="' + record.file_name.split('/').pop() + '"');
+                        record.viewUrl = await this.getPresignedUrl(record.file_name, 'inline');
+                    }
+                }
+            }
+
+            return result;
+        } catch (error) {
+            console.error('Error processing technical records:', error);
+            throw error;
+        }
     }
 
     async findOne(id: string) {

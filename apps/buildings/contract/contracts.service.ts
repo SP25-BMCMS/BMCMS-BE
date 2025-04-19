@@ -265,9 +265,37 @@ export class ContractsService {
                 } : undefined
             })
 
-            // Return contracts without generating presigned URLs for better performance
+            // Convert S3 URLs to presigned URLs
+            const contractsWithPresignedUrls = await Promise.all(
+                contracts.map(async (contract) => {
+                    try {
+                        if (!contract.file_name) {
+                            return contract;
+                        }
+
+                        const fileKey = this.extractFileKey(contract.file_name);
+                        const fileName = fileKey.split('/').pop() || 'document.pdf';
+
+                        // Generate different presigned URLs for different use cases
+                        const directFileUrl = await this.getPreSignedUrl(fileKey); // For direct access without attachment
+                        const fileUrl = await this.getPreSignedUrlWithDisposition(fileKey, `attachment; filename="${fileName}"`); // For downloading
+                        const viewUrl = await this.getPreSignedUrlWithDisposition(fileKey, 'inline'); // For inline viewing in browser
+
+                        return {
+                            ...contract,
+                            directFileUrl,
+                            fileUrl,
+                            viewUrl
+                        };
+                    } catch (error) {
+                        console.error('Error creating presigned URLs:', error);
+                        return contract; // Return original contract if presigned URL creation fails
+                    }
+                })
+            )
+
             return {
-                data: contracts,
+                data: contractsWithPresignedUrls,
                 pagination: {
                     total,
                     page,
