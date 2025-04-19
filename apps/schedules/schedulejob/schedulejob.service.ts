@@ -419,7 +419,7 @@ export class ScheduleJobsService {
         console.log(`Sending email to resident: ${residentName} (${resident.email}) for maintenance from ${startTime} to ${endTime}`);
 
         return firstValueFrom(
-          this.notificationsClient.send(NOTIFICATIONS_PATTERN.SEND_EMAIL, {
+          this.notificationsClient.emit(NOTIFICATIONS_PATTERN.SEND_EMAIL, {
             to: resident.email,
             residentName: residentName,
             buildingName: buildingDetail.name,

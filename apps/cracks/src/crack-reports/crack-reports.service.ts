@@ -902,7 +902,7 @@ export class CrackReportsService {
             try {
               // Use message pattern for guaranteed delivery
               const response = await firstValueFrom(
-                this.notificationsClient.send(notificationPattern, notificationData).pipe(
+                this.notificationsClient.emit(notificationPattern, notificationData).pipe(
                   timeout(15000),
                   catchError(err => {
                     return of({ success: false, error: err.message });
