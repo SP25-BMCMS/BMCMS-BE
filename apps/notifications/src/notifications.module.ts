@@ -1,5 +1,5 @@
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter'
-import { Module } from '@nestjs/common'
+import { Module, Logger, OnModuleInit } from '@nestjs/common'
 import { NotificationsController } from './notifications.controller'
 import { OtpService } from './otp/otp.service'
 import { EmailService } from './email/email.service'
@@ -15,6 +15,9 @@ import { NotificationModule } from './notification/notification.module'
     RedisModule,
     ClientConfigModule,
     NotificationModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
@@ -45,7 +48,21 @@ import { NotificationModule } from './notification/notification.module'
     }),
   ],
   controllers: [NotificationsController],
-  providers: [OtpService, EmailService],
+  providers: [
+    OtpService,
+    EmailService,
+    {
+      provide: 'APP_INIT_LOGGER',
+      useFactory: () => {
+        const logger = new Logger('NotificationsApp');
+        logger.log('Notifications microservice initializing...');
+        logger.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+        logger.log(`Database URL defined: ${process.env.DB_NOTIFICATION_SERVICE ? 'Yes' : 'No'}`);
+        logger.log(`Redis URL defined: ${process.env.REDIS_URL ? 'Yes' : 'No'}`);
+        return logger;
+      }
+    }
+  ],
   exports: [OtpService, EmailService],
 })
 export class NotificationsModule { }

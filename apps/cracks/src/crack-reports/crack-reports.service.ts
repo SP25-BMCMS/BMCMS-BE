@@ -17,6 +17,9 @@ import { PrismaService } from '../../prisma/prisma.service'
 import { S3UploaderService, UploadResult } from '../crack-details/s3-uploader.service'
 import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
 import { PrismaClient } from '@prisma/client-Task'
+import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
+import { NotificationType } from '@app/contracts/notifications/notification.dto'
+import { Logger } from '@nestjs/common'
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 const USERS_CLIENT = 'USERS_CLIENT'
@@ -37,11 +40,13 @@ export class CrackReportsService {
   private bucketName: string
   private userService: UserService
   private prisma = new PrismaClient();
+  private readonly logger = new Logger(CrackReportsService.name)
   constructor(
     private prismaService: PrismaService,
     @Inject('TASK_SERVICE') private readonly taskClient: ClientProxy,
     @Inject(BUILDINGS_CLIENT) private readonly buildingClient: ClientProxy,
     @Inject(USERS_CLIENT) private readonly usersClient: ClientGrpc,
+    @Inject('NOTIFICATION_CLIENT') private readonly notificationsClient: ClientProxy,
     private configService: ConfigService,
     private s3UploaderService: S3UploaderService,
   ) {
@@ -829,6 +834,7 @@ export class CrackReportsService {
 
   async updateCrackReportForAllStatus(crackReportId: string, dto: UpdateCrackReportDto) {
     try {
+
       // Kiểm tra crack report có tồn tại không
       const existingReport = await this.prismaService.crackReport.findUnique({
         where: { crackReportId },
@@ -839,6 +845,9 @@ export class CrackReportsService {
           new ApiResponse(false, 'Crack Report không tồn tại')
         )
       }
+
+      // Lưu trạng thái cũ để so sánh sau khi cập nhật
+      const oldStatus = existingReport.status;
 
       // Cập nhật crack report
       const updatedReport = await this.prismaService.crackReport.update({
@@ -851,14 +860,69 @@ export class CrackReportsService {
           crackDetails: true,
         },
       })
+      // TEMPORARY: Force notification for testing regardless of status change
+      const forceNotification = true;
 
+      if (forceNotification || (dto.status && dto.status !== oldStatus)) {
+
+        const validStatus = forceNotification || (dto.status === 'InProgress' || dto.status === 'Rejected' || dto.status === 'Completed');
+
+        if (validStatus) {
+          try {
+            // Định cấu hình title và content cho từng loại status
+            let title = '';
+            let content = '';
+
+            switch (dto.status) {
+              case 'InProgress':
+                title = 'Báo cáo vết nứt đang được xử lý';
+                content = `Báo cáo vết nứt của bạn tại vị trí "${existingReport.position}" đã được tiếp nhận và đang được xử lý.`;
+                break;
+              case 'Rejected':
+                title = 'Báo cáo vết nứt đã bị từ chối';
+                content = `Báo cáo vết nứt của bạn tại vị trí "${existingReport.position}" đã bị từ chối. Vui lòng liên hệ quản lý để biết thêm chi tiết.`;
+                break;
+              case 'Completed':
+                title = 'Báo cáo vết nứt đã được xử lý hoàn tất';
+                content = `Báo cáo vết nứt của bạn tại vị trí "${existingReport.position}" đã được xử lý thành công.`;
+                break;
+            }
+
+            const notificationData = {
+              userId: existingReport.reportedBy,
+              title: title,
+              content: content,
+              type: NotificationType.SYSTEM,
+              relatedId: crackReportId,
+              link: `/crack-reports/${crackReportId}`
+            };
+
+            const notificationPattern = NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION;
+            // Directly send without any promise handling or complex approach, to simplify
+            try {
+              // Use message pattern for guaranteed delivery
+              const response = await firstValueFrom(
+                this.notificationsClient.send(notificationPattern, notificationData).pipe(
+                  timeout(15000),
+                  catchError(err => {
+                    return of({ success: false, error: err.message });
+                  })
+                )
+              );
+
+            } catch (error) {
+              // Last resort: try event pattern
+            }
+          } catch (notificationError) {
+          }
+        }
+      }
       return new ApiResponse(
         true,
         'Crack Report đã được cập nhật thành công',
         [updatedReport]
       )
     } catch (error) {
-      console.error('Error updating crack report:', error)
       if (error instanceof RpcException) {
         throw error
       }

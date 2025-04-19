@@ -1,57 +1,96 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client-notifications';
-import { CreateNotificationDto, NotificationResponseDto, NotificationType } from '@app/contracts/notifications/notification.dto';
+import { NotificationResponseDto, NotificationType, CreateNotificationDto } from '@app/contracts/notifications/notification.dto';
 import { RedisClientType } from 'redis';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class NotificationService {
     private readonly logger = new Logger(NotificationService.name);
-    private prisma = new PrismaClient();
 
     constructor(
         @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType,
-    ) { }
+        private readonly prisma: PrismaService
+    ) {
+        this.logger.log('NotificationService initialized');
+    }
 
     // Tạo thông báo mới và lưu vào cả DB và Redis
     async createNotification(createDto: CreateNotificationDto): Promise<NotificationResponseDto> {
         try {
-            this.logger.log(`Creating notification: ${JSON.stringify(createDto)}`);
+            this.logger.log(`==== NOTIFICATION CREATION START ====`);
+            this.logger.log(`Creating notification for user: ${createDto.userId}`);
+            this.logger.log(`Full notification data: ${JSON.stringify(createDto)}`);
+            this.logger.log(`Notification type: ${createDto.type} (${typeof createDto.type})`);
+
+            // Log environment variables
+            this.logger.log(`DB_NOTIFICATION_SERVICE is ${process.env.DB_NOTIFICATION_SERVICE ? 'set' : 'NOT SET'}`);
 
             // 1. Lưu vào DB để lưu trữ lâu dài
-            this.logger.log(`Saving notification to database...`);
-            const notification = await this.prisma.notification.create({
-                data: {
+            this.logger.log(`[1/3] Saving notification to database...`);
+
+            try {
+                this.logger.log(`Creating notification in database with data structure: ${JSON.stringify({
                     userId: createDto.userId,
-                    title: createDto.title,
-                    content: createDto.content,
-                    link: createDto.link,
-                    type: createDto.type,
-                    relatedId: createDto.relatedId,
-                },
-            });
-            this.logger.log(`Notification saved to database successfully: ${notification.id}`);
+                    title: createDto.title?.substring(0, 20) + '...',
+                    content: createDto.content?.substring(0, 20) + '...',
+                    type: createDto.type
+                })}`);
 
-            // 2. Tạo response DTO
-            const responseDto: NotificationResponseDto = {
-                id: notification.id,
-                userId: notification.userId,
-                title: notification.title,
-                content: notification.content,
-                link: notification.link,
-                isRead: notification.isRead,
-                type: notification.type as NotificationType,
-                relatedId: notification.relatedId,
-                createdAt: notification.createdAt,
-            };
+                const notification = await this.prisma.notification.create({
+                    data: {
+                        userId: createDto.userId,
+                        title: createDto.title,
+                        content: createDto.content,
+                        link: createDto.link,
+                        type: createDto.type,
+                        relatedId: createDto.relatedId,
+                    },
+                });
+                this.logger.log(`[DB] Notification saved to database successfully with ID: ${notification.id}`);
+                this.logger.log(`[DB] Full notification object from database: ${JSON.stringify(notification)}`);
 
-            // 3. Publish thông báo đến Redis để realtime
-            this.logger.log(`Publishing notification to Redis: ${notification.id}`);
-            await this.publishNotification(responseDto);
-            this.logger.log(`Notification published to Redis successfully: ${notification.id}`);
+                // 2. Tạo response DTO
+                this.logger.log(`[2/3] Creating response DTO...`);
+                const responseDto: NotificationResponseDto = {
+                    id: notification.id,
+                    userId: notification.userId,
+                    title: notification.title,
+                    content: notification.content,
+                    link: notification.link,
+                    isRead: notification.isRead,
+                    type: notification.type as NotificationType,
+                    relatedId: notification.relatedId,
+                    createdAt: notification.createdAt,
+                };
+                this.logger.log(`Response DTO created: ${JSON.stringify(responseDto)}`);
 
-            return responseDto;
+                // 3. Publish thông báo đến Redis để realtime
+                this.logger.log(`[3/3] Publishing notification to Redis...`);
+                try {
+                    await this.publishNotification(responseDto);
+                    this.logger.log(`Notification published to Redis successfully`);
+                } catch (redisError) {
+                    this.logger.error(`Failed to publish to Redis but database write was successful: ${redisError.message}`);
+                    // Continue even if Redis publish fails
+                }
+
+                this.logger.log(`==== NOTIFICATION CREATION COMPLETE ====`);
+                return responseDto;
+            } catch (dbError) {
+                this.logger.error(`Database error while creating notification:`);
+                this.logger.error(`- Error message: ${dbError.message}`);
+                this.logger.error(`- Error name: ${dbError.name}`);
+                this.logger.error(`- Error code: ${dbError.code}`);
+                this.logger.error(`- Stack: ${dbError.stack}`);
+                if (dbError.meta) {
+                    this.logger.error(`- Meta: ${JSON.stringify(dbError.meta)}`);
+                }
+                throw dbError;
+            }
         } catch (error) {
-            this.logger.error(`Failed to create notification: ${error.message}`, error.stack);
+            this.logger.error(`==== NOTIFICATION CREATION FAILED ====`);
+            this.logger.error(`Failed to create notification: ${error.message}`);
+            this.logger.error(`Error stack: ${error.stack}`);
             throw error;
         }
     }
