@@ -104,6 +104,11 @@ export class BuildingsController {
     return this.buildingsService.getAllResidentsByBuildingId(buildingId);
   }
 
+  @MessagePattern(BUILDINGS_PATTERN.GET_RESIDENTS_BY_BUILDING_DETAIL_ID)
+  async getAllResidentsByBuildingDetailId(@Payload() buildingDetailId: string) {
+    return this.buildingsService.getAllResidentsByBuildingDetailId(buildingDetailId);
+  }
+
   @MessagePattern(BUILDINGS_PATTERN.GET_BY_MANAGER_ID)
   async getBuildingsByManagerId(@Payload() data: { managerId: string; params?: { page?: number; limit?: number; search?: string } }) {
     try {

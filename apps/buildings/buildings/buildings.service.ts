@@ -575,6 +575,75 @@ export class BuildingsService {
     }
   }
 
+  async getAllResidentsByBuildingDetailId(buildingDetailId: string) {
+    console.log(`[BuildingsService] Getting residents for building detail ID: ${buildingDetailId}`)
+    try {
+      if (!buildingDetailId) {
+        console.error('[BuildingsService] Building detail ID is null or undefined')
+        return {
+          statusCode: 400,
+          message: 'Building detail ID is required',
+          data: []
+        }
+      }
+
+      // Get all apartments directly with the buildingDetailId
+      try {
+        const apartments = await this.prismaUsers.apartment.findMany({
+          where: {
+            buildingDetailId: buildingDetailId
+          },
+          include: {
+            owner: true
+          }
+        })
+
+        console.log(`[BuildingsService] Found ${apartments.length} apartments for building detail ID: ${buildingDetailId}`)
+
+        if (apartments.length === 0) {
+          console.log(`[BuildingsService] No apartments found for building detail ID: ${buildingDetailId}`)
+          return {
+            statusCode: 200,
+            message: 'No apartments found',
+            data: []
+          }
+        }
+
+        // Extract unique owners and remove the password field
+        const residents = new Map()
+        apartments.forEach(apartment => {
+          if (apartment.owner) {
+            const { password, ...ownerWithoutPassword } = apartment.owner
+            residents.set(ownerWithoutPassword.userId, ownerWithoutPassword)
+          }
+        })
+
+        const uniqueResidents = Array.from(residents.values())
+        console.log(`[BuildingsService] Found ${uniqueResidents.length} unique residents`)
+
+        return {
+          statusCode: 200,
+          message: 'Residents retrieved successfully',
+          data: uniqueResidents
+        }
+      } catch (error) {
+        console.error('[BuildingsService] Error fetching apartments by building detail ID:', error)
+        return {
+          statusCode: 500,
+          message: 'Error retrieving apartments',
+          data: []
+        }
+      }
+    } catch (error) {
+      console.error('[BuildingsService] Error getting residents by building detail ID:', error)
+      return {
+        statusCode: 500,
+        message: 'Error retrieving residents',
+        data: []
+      }
+    }
+  }
+
   // Get buildings by manager ID
   async getBuildingsByManagerId(managerId: string, params?: { page?: number; limit?: number; search?: string }) {
     try {
@@ -589,7 +658,7 @@ export class BuildingsService {
       const pageNum = Math.max(1, params?.page || 1);
       const limitNum = Math.min(50, Math.max(1, params?.limit || 10));
       const skip = (pageNum - 1) * limitNum;
-      
+
       const where = {
         manager_id: managerId,
         ...(params?.search ? {
@@ -631,7 +700,7 @@ export class BuildingsService {
           }
         }
       }
-      
+
       return {
         statusCode: 200,
         message: 'Buildings retrieved successfully',

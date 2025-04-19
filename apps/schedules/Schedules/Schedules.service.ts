@@ -346,27 +346,23 @@ export class ScheduleService {
       let startDate = dto.start_date ? new Date(dto.start_date) : now;
       let endDate: Date | null = null;
 
-      if (dto.end_date) {
-        endDate = new Date(dto.end_date);
-      } else {
-        // Set default end date based on cycle frequency if not provided
-        endDate = new Date(startDate);
-        switch (maintenanceCycle.frequency) {
-          case 'Daily':
-            endDate.setDate(endDate.getDate() + 30); // 30 days for daily
-            break;
-          case 'Weekly':
-            endDate.setDate(endDate.getDate() + 90); // ~3 months for weekly
-            break;
-          case 'Monthly':
-            endDate.setFullYear(endDate.getFullYear() + 1); // 1 year for monthly
-            break;
-          case 'Yearly':
-            endDate.setFullYear(endDate.getFullYear() + 3); // 3 years for yearly
-            break;
-          default:
-            endDate.setFullYear(endDate.getFullYear() + 1); // Default to 1 year
-        }
+      // Set default end date based on cycle frequency - always calculate this since end_date is removed from DTO
+      endDate = new Date(startDate);
+      switch (maintenanceCycle.frequency) {
+        case 'Daily':
+          endDate.setDate(endDate.getDate() + 30); // 30 days for daily
+          break;
+        case 'Weekly':
+          endDate.setDate(endDate.getDate() + 90); // ~3 months for weekly
+          break;
+        case 'Monthly':
+          endDate.setFullYear(endDate.getFullYear() + 1); // 1 year for monthly
+          break;
+        case 'Yearly':
+          endDate.setFullYear(endDate.getFullYear() + 3); // 3 years for yearly
+          break;
+        default:
+          endDate.setFullYear(endDate.getFullYear() + 1); // Default to 1 year
       }
 
       // 3. Create the schedule
@@ -383,41 +379,75 @@ export class ScheduleService {
           },
         });
 
-        // Calculate the first maintenance date for each building
+        // Phân bổ run_date dựa trên frequency của cycle và số lượng building
         const createdJobs = [];
         if (dto.buildingDetailIds && dto.buildingDetailIds.length > 0) {
-          // Calculate the run date based on frequency
-          const calcRunDate = (baseDate: Date, frequency: string): Date => {
+          const totalBuildings = dto.buildingDetailIds.length;
+
+          // Hàm tính toán tăng run_date dựa trên frequency
+          const calcNextDate = (baseDate: Date, frequency: string, steps: number = 1): Date => {
             const result = new Date(baseDate);
             switch (frequency) {
               case 'Daily':
-                result.setDate(result.getDate() + 1);
+                result.setDate(result.getDate() + (steps * 1));
                 break;
               case 'Weekly':
-                result.setDate(result.getDate() + 7);
+                result.setDate(result.getDate() + (steps * 7));
                 break;
               case 'Monthly':
-                result.setMonth(result.getMonth() + 1);
+                result.setMonth(result.getMonth() + steps);
                 break;
               case 'Yearly':
-                result.setFullYear(result.getFullYear() + 1);
+                result.setFullYear(result.getFullYear() + steps);
                 break;
               default:
-                result.setMonth(result.getMonth() + 1); // Default to monthly
+                result.setMonth(result.getMonth() + steps);
             }
             return result;
           };
 
-          // Create schedule jobs for each building
-          const scheduleJobs = dto.buildingDetailIds.map((buildingDetailId) => ({
-            schedule_id: schedule.schedule_id,
-            run_date: calcRunDate(startDate, maintenanceCycle.frequency),
-            status: $Enums.ScheduleJobStatus.InProgress,
-            buildingDetailId: buildingDetailId,
-          }));
+          // Hàm tính toán thời gian kết thúc dựa trên run_date và frequency
+          const calcEndDate = (runDate: Date, frequency: string): Date => {
+            const result = new Date(runDate);
+            switch (frequency) {
+              case 'Daily':
+                result.setDate(result.getDate() + 1); // Kết thúc sau 1 ngày
+                break;
+              case 'Weekly':
+                result.setDate(result.getDate() + 7); // Kết thúc sau 1 tuần
+                break;
+              case 'Monthly':
+                result.setMonth(result.getMonth() + 1); // Kết thúc sau 1 tháng
+                break;
+              case 'Yearly':
+                result.setFullYear(result.getFullYear() + 1); // Kết thúc sau 1 năm
+                break;
+              default:
+                result.setMonth(result.getMonth() + 1); // Mặc định kết thúc sau 1 tháng
+            }
+            return result;
+          };
+
+          // Tạo schedule jobs cho mỗi building với run_date tăng dần theo frequency
+          const scheduleJobs = dto.buildingDetailIds.map((buildingDetailId, index) => {
+            // Tính run_date dựa vào vị trí của building và frequency
+            const buildingRunDate = calcNextDate(startDate, maintenanceCycle.frequency, index);
+
+            // Tính endDate dựa trên run_date và frequency
+            const buildingEndDate = calcEndDate(buildingRunDate, maintenanceCycle.frequency);
+
+            return {
+              schedule_id: schedule.schedule_id,
+              run_date: buildingRunDate,
+              status: $Enums.ScheduleJobStatus.InProgress,
+              buildingDetailId: buildingDetailId,
+              start_date: buildingRunDate, // startDate là chính run_date
+              end_date: buildingEndDate // endDate tính từ run_date theo frequency
+            };
+          });
 
           // Create schedule jobs
-          const createdJobsResult = await prisma.scheduleJob.createMany({
+          await prisma.scheduleJob.createMany({
             data: scheduleJobs,
           });
 
@@ -537,35 +567,67 @@ export class ScheduleService {
           // Tạo các ScheduleJob cho mỗi tòa nhà
           const buildingDetailIds = buildings.map(b => b.buildingDetailId);
 
-          // Calcular run date dựa trên tần suất
-          const calcRunDate = (baseDate: Date, frequency: string): Date => {
+          // Hàm tính toán tăng run_date dựa trên frequency
+          const calcNextDate = (baseDate: Date, frequency: string, steps: number = 1): Date => {
             const result = new Date(baseDate);
             switch (frequency) {
               case 'Daily':
-                result.setDate(result.getDate() + 1);
+                result.setDate(result.getDate() + (steps * 1));
                 break;
               case 'Weekly':
-                result.setDate(result.getDate() + 7);
+                result.setDate(result.getDate() + (steps * 7));
                 break;
               case 'Monthly':
-                result.setMonth(result.getMonth() + 1);
+                result.setMonth(result.getMonth() + steps);
                 break;
               case 'Yearly':
-                result.setFullYear(result.getFullYear() + 1);
+                result.setFullYear(result.getFullYear() + steps);
                 break;
               default:
-                result.setMonth(result.getMonth() + 1); // Default to monthly
+                result.setMonth(result.getMonth() + steps);
             }
             return result;
           };
 
-          // Tạo các job cho mỗi tòa nhà
-          const scheduleJobs = buildingDetailIds.map(buildingDetailId => ({
-            schedule_id: schedule.schedule_id,
-            run_date: calcRunDate(now, cycle.frequency),
-            status: $Enums.ScheduleJobStatus.Pending,
-            buildingDetailId: buildingDetailId,
-          }));
+          // Hàm tính toán thời gian kết thúc dựa trên run_date và frequency
+          const calcEndDate = (runDate: Date, frequency: string): Date => {
+            const result = new Date(runDate);
+            switch (frequency) {
+              case 'Daily':
+                result.setDate(result.getDate() + 1); // Kết thúc sau 1 ngày
+                break;
+              case 'Weekly':
+                result.setDate(result.getDate() + 7); // Kết thúc sau 1 tuần
+                break;
+              case 'Monthly':
+                result.setMonth(result.getMonth() + 1); // Kết thúc sau 1 tháng
+                break;
+              case 'Yearly':
+                result.setFullYear(result.getFullYear() + 1); // Kết thúc sau 1 năm
+                break;
+              default:
+                result.setMonth(result.getMonth() + 1); // Mặc định kết thúc sau 1 tháng
+            }
+            return result;
+          };
+
+          // Tạo schedule jobs cho mỗi building với run_date tăng dần theo frequency
+          const scheduleJobs = buildingDetailIds.map((buildingDetailId, index) => {
+            // Tính run_date dựa vào vị trí của building và frequency
+            const buildingRunDate = calcNextDate(now, cycle.frequency, index);
+
+            // Tính endDate dựa trên run_date và frequency
+            const buildingEndDate = calcEndDate(buildingRunDate, cycle.frequency);
+
+            return {
+              schedule_id: schedule.schedule_id,
+              run_date: buildingRunDate,
+              status: $Enums.ScheduleJobStatus.Pending,
+              buildingDetailId: buildingDetailId,
+              start_date: buildingRunDate, // startDate là chính run_date
+              end_date: buildingEndDate // endDate tính từ run_date theo frequency
+            };
+          });
 
           // Thêm các công việc bảo trì vào DB
           await this.prisma.scheduleJob.createMany({
@@ -723,13 +785,69 @@ export class ScheduleService {
       let scheduleJobs = [];
 
       if (createScheduleDto.buildingDetailIds && createScheduleDto.buildingDetailIds.length > 0) {
-        // Create schedule jobs data
-        const scheduleJobsData = createScheduleDto.buildingDetailIds.map(buildingDetailId => ({
-          schedule_id: newSchedule.schedule_id,
-          run_date: new Date(),
-          status: $Enums.ScheduleJobStatus.Pending,
-          buildingDetailId: buildingDetailId,
-        }));
+        const startDate = newSchedule.start_date || new Date();
+
+        // Hàm tính toán tăng run_date dựa trên frequency
+        const calcNextDate = (baseDate: Date, frequency: string, steps: number = 1): Date => {
+          const result = new Date(baseDate);
+          switch (frequency) {
+            case 'Daily':
+              result.setDate(result.getDate() + (steps * 1));
+              break;
+            case 'Weekly':
+              result.setDate(result.getDate() + (steps * 7));
+              break;
+            case 'Monthly':
+              result.setMonth(result.getMonth() + steps);
+              break;
+            case 'Yearly':
+              result.setFullYear(result.getFullYear() + steps);
+              break;
+            default:
+              result.setMonth(result.getMonth() + steps);
+          }
+          return result;
+        };
+
+        // Hàm tính toán thời gian kết thúc dựa trên run_date và frequency
+        const calcEndDate = (runDate: Date, frequency: string): Date => {
+          const result = new Date(runDate);
+          switch (frequency) {
+            case 'Daily':
+              result.setDate(result.getDate() + 1); // Kết thúc sau 1 ngày
+              break;
+            case 'Weekly':
+              result.setDate(result.getDate() + 7); // Kết thúc sau 1 tuần
+              break;
+            case 'Monthly':
+              result.setMonth(result.getMonth() + 1); // Kết thúc sau 1 tháng
+              break;
+            case 'Yearly':
+              result.setFullYear(result.getFullYear() + 1); // Kết thúc sau 1 năm
+              break;
+            default:
+              result.setMonth(result.getMonth() + 1); // Mặc định kết thúc sau 1 tháng
+          }
+          return result;
+        };
+
+        // Tạo schedule jobs cho mỗi building với run_date tăng dần theo frequency
+        const scheduleJobsData = createScheduleDto.buildingDetailIds.map((buildingDetailId, index) => {
+          // Tính run_date dựa vào vị trí của building và frequency
+          const buildingRunDate = calcNextDate(startDate, maintenanceCycle.frequency, index);
+
+          // Tính endDate dựa trên run_date và frequency
+          const buildingEndDate = calcEndDate(buildingRunDate, maintenanceCycle.frequency);
+
+          return {
+            schedule_id: newSchedule.schedule_id,
+            run_date: buildingRunDate,
+            status: $Enums.ScheduleJobStatus.Pending,
+            buildingDetailId: buildingDetailId,
+            start_date: buildingRunDate, // startDate là chính run_date
+            end_date: buildingEndDate // endDate tính từ run_date theo frequency
+          };
+        });
 
         // Create jobs
         await this.prisma.scheduleJob.createMany({

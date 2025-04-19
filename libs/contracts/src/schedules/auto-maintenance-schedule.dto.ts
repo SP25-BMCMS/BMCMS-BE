@@ -44,12 +44,4 @@ export class AutoMaintenanceScheduleDto {
         required: false
     })
     start_date?: Date;
-
-    @IsOptional()
-    @ApiProperty({
-        description: 'End date of the maintenance schedule',
-        example: '2025-12-31T23:59:59.999Z',
-        required: false
-    })
-    end_date?: Date;
 } 

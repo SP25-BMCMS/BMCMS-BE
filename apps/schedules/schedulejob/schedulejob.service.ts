@@ -33,8 +33,8 @@ export class ScheduleJobsService {
   ): Promise<ApiResponse<ScheduleJobResponseDto>> {
     try {
       const validScheduleId = isUUID(createScheduleJobDto.schedule_id)
-      ? createScheduleJobDto.schedule_id
-      : null;
+        ? createScheduleJobDto.schedule_id
+        : null;
 
       const newScheduleJob = await this.prismaService.scheduleJob.create({
         data: {
@@ -318,65 +318,118 @@ export class ScheduleJobsService {
         return new ApiResponse(false, 'Schedule job not found', null)
       }
 
-      console.log(`Fetching building with ID: ${scheduleJob.buildingDetailId}`)
-      // Get building details
-      const buildingResponse = await firstValueFrom(
-        this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: scheduleJob.buildingDetailId })
-      )
-
-      if (!buildingResponse || !buildingResponse.data) {
-        console.error(`Building not found with ID: ${scheduleJob.buildingDetailId}`)
-        return new ApiResponse(false, 'Building not found', null)
-      }
-
-      const building = buildingResponse.data
-      console.log(`Building details:`, {
-        name: building.name,
-        description: building.description,
-        numberFloor: building.numberFloor,
-        area: building.area,
-        buildingDetails: building.buildingDetails
-      })
-
-      // Get building details with location information
-      const buildingDetailsResponse = await firstValueFrom(
+      console.log(`Fetching building detail with ID: ${scheduleJob.buildingDetailId}`)
+      // Get building details with location information in a single call
+      const buildingDetailResponse = await firstValueFrom(
         this.buildingClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, {
-          buildingDetailId: building.buildingDetails?.[0]?.buildingDetailId
+          buildingDetailId: scheduleJob.buildingDetailId
         })
       )
 
-      console.log(`Fetching residents for building ID: ${scheduleJob.buildingDetailId}`)
-      // Get residents for the building
+      if (!buildingDetailResponse || !buildingDetailResponse.data) {
+        console.error(`Building detail not found with ID: ${scheduleJob.buildingDetailId}`)
+        return new ApiResponse(false, 'Building detail not found', null)
+      }
+
+      const buildingDetail = buildingDetailResponse.data
+      console.log(`Building details:`, {
+        name: buildingDetail.name,
+        description: buildingDetail.description,
+        numberFloor: buildingDetail.numberFloor,
+        area: buildingDetail.area,
+        locationDetails: buildingDetail.locationDetails?.length || 0
+      })
+
+      console.log(`Fetching residents for building detail ID: ${scheduleJob.buildingDetailId}`)
+      // Get residents for the building detail directly using the new endpoint
       const residentsResponse = await firstValueFrom(
-        this.buildingClient.send(BUILDINGS_PATTERN.GET_RESIDENTS_BY_BUILDING_ID, building.buildingId)
+        this.buildingClient.send(BUILDINGS_PATTERN.GET_RESIDENTS_BY_BUILDING_DETAIL_ID, scheduleJob.buildingDetailId)
       )
 
+      // Check if we got any residents
+      if (!residentsResponse.data || residentsResponse.data.length === 0) {
+        console.log(`No residents found for building detail ID: ${scheduleJob.buildingDetailId}`)
+        return new ApiResponse(
+          true,
+          'No residents found to send emails to',
+          { message: 'No emails sent' }
+        )
+      }
+
       console.log(`Found ${residentsResponse.data.length} residents to send emails to`)
-      // Send email to each resident using notifications service
-      const emailPromises = residentsResponse.data.map(resident => {
-        if (!resident.email) {
-          console.log(`Skipping resident ${resident.name} - no email address`)
-          return Promise.resolve()
+
+      // Detailed logging to debug resident data structure
+      console.log('Sample resident data:', residentsResponse.data.length > 0 ?
+        JSON.stringify(residentsResponse.data[0], null, 2) : 'No residents found');
+
+      // Create a map to track residents by email to ensure no duplicates
+      const emailMap = new Map()
+
+      // Process each resident
+      residentsResponse.data.forEach(resident => {
+        // Debug each resident
+        console.log(`Processing resident: ${JSON.stringify({
+          id: resident.userId,
+          name: resident.name,
+          username: resident.username,
+          email: resident.email,
+          firstName: resident.firstName,
+          lastName: resident.lastName
+        })}`);
+
+        // Skip if already processed this email
+        if (!resident.email || emailMap.has(resident.email)) {
+          console.log(`Skipping resident ${resident.name || resident.username || resident.userId} - ${!resident.email ? 'no email address' : 'duplicate email'}`)
+          return
         }
 
+        // Add to map to prevent duplicates
+        emailMap.set(resident.email, resident)
+      })
+
+      // Send email to each unique resident using notifications service
+      const emailPromises = Array.from(emailMap.values()).map(resident => {
+        // Get resident's name using username, name, or firstName+lastName
+        const residentName = resident.username || resident.name ||
+          (resident.firstName && resident.lastName ? `${resident.firstName} ${resident.lastName}` : null) ||
+          'Quý cư dân';
+
         // Get location details for the resident
-        const locationDetails = buildingDetailsResponse?.data?.locationDetails?.find(
+        const locationDetails = buildingDetail.locationDetails?.find(
           loc => loc.roomNumber === resident.apartmentNumber
         )
 
-        console.log(`Sending email to resident: ${resident.name} (${resident.email})`)
+        // Format times for display
+        const startTime = scheduleJob.start_date
+          ? new Date(scheduleJob.start_date).toLocaleDateString('vi-VN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })
+          : 'Không xác định';
+
+        const endTime = scheduleJob.end_date
+          ? new Date(scheduleJob.end_date).toLocaleDateString('vi-VN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })
+          : 'Không xác định';
+
+        console.log(`Sending email to resident: ${residentName} (${resident.email}) for maintenance from ${startTime} to ${endTime}`);
+
         return firstValueFrom(
-          this.notificationsClient.emit(NOTIFICATIONS_PATTERN.SEND_MAINTENANCE_SCHEDULE_EMAIL, {
+          this.notificationsClient.send(NOTIFICATIONS_PATTERN.SEND_EMAIL, {
             to: resident.email,
-            residentName: resident.name,
-            buildingName: building.name,
+            residentName: residentName,
+            buildingName: buildingDetail.name,
             maintenanceDate: scheduleJob.run_date,
-            startTime: '08:00', // Default start time
-            endTime: '17:00', // Default end time
+            startTime: startTime,
+            endTime: endTime,
             maintenanceType: scheduleJob.schedule.schedule_name,
-            description: scheduleJob.schedule.description || 'No additional details provided',
-            floor: locationDetails?.floorNumber?.toString() || building.numberFloor?.toString() || 'Không xác định',
-            area: building.area?.name || 'Không xác định',
+            description: scheduleJob.schedule.description || 'Không có mô tả chi tiết',
+            floor: locationDetails?.floorNumber?.toString() || buildingDetail.numberFloor?.toString() || 'Không xác định',
+            area: buildingDetail.area?.name || 'Không xác định',
             unit: locationDetails?.roomNumber || resident.apartmentNumber || 'Không xác định'
           })
         )
@@ -388,7 +441,7 @@ export class ScheduleJobsService {
       return new ApiResponse(
         true,
         'Maintenance schedule emails sent successfully',
-        { message: `Emails sent to ${residentsResponse.data.length} residents` }
+        { message: `Emails sent to ${emailMap.size} residents` }
       )
     } catch (error) {
       console.error('Error sending maintenance emails:', error)

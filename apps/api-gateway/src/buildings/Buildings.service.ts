@@ -203,6 +203,24 @@ export class BuildingsService {
     }
   }
 
+  // Get all residents by building detail ID
+  async getAllResidentsByBuildingDetailId(buildingDetailId: string) {
+    try {
+      const residentsObservable = this.buildingsClient.send(
+        BUILDINGS_PATTERN.GET_RESIDENTS_BY_BUILDING_DETAIL_ID,
+        buildingDetailId
+      );
+      const residents = await firstValueFrom(residentsObservable);
+      return residents;
+    } catch (error) {
+      console.error('Error in getAllResidentsByBuildingDetailId:', error);
+      throw new HttpException(
+        'Error occurred while fetching residents by building detail ID.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   // Get buildings by manager ID
   async getBuildingsByManagerId(managerId: string, params?: { page?: number; limit?: number; search?: string }) {
     try {

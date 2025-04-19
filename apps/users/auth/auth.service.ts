@@ -7,6 +7,7 @@ import { ApiResponse } from '../../../libs/contracts/src/ApiResponse/api-respons
 import { createUserDto } from '../../../libs/contracts/src/users/create-user.dto'
 import { CreateWorkingPositionDto } from '../../../libs/contracts/src/users/create-working-position.dto'
 import { UsersService } from '../users/users.service'
+import { firstValueFrom } from 'rxjs'
 
 type AuthInput = { username: string; password: string }
 type SignInData = { userId: string; username: string; role: string }
@@ -194,12 +195,12 @@ export class AuthService {
 
       // For Resident role, generate and send OTP first
       if (data.role === 'Resident') {
-        // Generate and send OTP via email
-        // await this.otpService.createOTP(data.email);
-        await this.client.emit('send_otp', { email: data.email })
+        // Use emit() with event pattern
+        this.client.emit('send_otp_message', { email: data.email });
+
         return new ApiResponse(true, 'Mã OTP đã được gửi đến email của bạn', {
           email: data.email,
-        })
+        });
       }
       // For other roles, proceed with normal signup
       return await this.usersService.signup(data)

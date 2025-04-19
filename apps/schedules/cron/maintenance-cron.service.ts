@@ -416,34 +416,68 @@ export class MaintenanceCronService {
 
             // Lấy danh sách cư dân trong tòa nhà
             const residentsResponse = await firstValueFrom(
-                this.buildingClient.send(BUILDINGS_PATTERN.GET_RESIDENTS_BY_BUILDING_ID, building.buildingId)
+                this.buildingClient.send(BUILDINGS_PATTERN.GET_RESIDENTS_BY_BUILDING_DETAIL_ID, job.buildingDetailId)
             );
 
             if (!residentsResponse || !residentsResponse.data) {
-                this.logger.error(`Failed to fetch residents for building ${building.buildingId}`);
+                this.logger.error(`Failed to fetch residents for building ${job.buildingDetailId}`);
                 return;
             }
 
+            // Format times for display
+            const startTime = job.start_date
+                ? new Date(job.start_date).toLocaleDateString('vi-VN', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                })
+                : 'Không xác định';
+
+            const endTime = job.end_date
+                ? new Date(job.end_date).toLocaleDateString('vi-VN', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                })
+                : 'Không xác định';
+
+            // Create map to track unique residents by email
+            const residentMap = new Map();
+
+            // Process unique residents
+            residentsResponse.data.forEach(resident => {
+                if (resident.email && !residentMap.has(resident.email)) {
+                    residentMap.set(resident.email, resident);
+                }
+            });
+
             // Gửi thông báo đến từng cư dân
-            residentsResponse.data.forEach(async (resident) => {
+            for (const resident of residentMap.values()) {
                 if (resident.email) {
+                    // Get the best available name for the resident
+                    const residentName = resident.username || resident.name ||
+                        (resident.firstName && resident.lastName ? `${resident.firstName} ${resident.lastName}` : null) ||
+                        'Quý cư dân';
+
+                    this.logger.log(`Sending notification to: ${residentName} (${resident.email}) for maintenance from ${startTime} to ${endTime}`);
+
                     await firstValueFrom(
-                        this.notificationsClient.emit(NOTIFICATIONS_PATTERN.SEND_MAINTENANCE_SCHEDULE_EMAIL, {
+                        this.notificationsClient.send(NOTIFICATIONS_PATTERN.SEND_EMAIL, {
                             to: resident.email,
-                            residentName: resident.name,
+                            residentName: residentName,
                             buildingName: building.name,
                             maintenanceDate: job.run_date,
-                            startTime: '08:00',
-                            endTime: '17:00',
+                            startTime: startTime,
+                            endTime: endTime,
                             maintenanceType: job.schedule.schedule_name,
-                            description: job.schedule.description || 'No additional details provided',
+                            description: job.schedule.description || 'Không có mô tả chi tiết',
                             floor: resident.floor || 'Không xác định',
                             area: building.area?.name || 'Không xác định',
                             unit: resident.apartmentNumber || 'Không xác định'
                         })
                     );
                 }
-            });
+            }
         } catch (error) {
             this.logger.error(`Error sending maintenance notification for job ${job.schedule_job_id}:`, error);
         }
@@ -452,8 +486,87 @@ export class MaintenanceCronService {
     // Gửi email nhắc nhở về lịch bảo trì sắp tới
     private async sendMaintenanceReminder(job: any) {
         try {
-            // Tương tự như sendMaintenanceNotification nhưng thay đổi nội dung email
-            // ...
+            // Lấy thông tin tòa nhà
+            const buildingResponse = await firstValueFrom(
+                this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: job.buildingDetailId })
+            );
+
+            if (!buildingResponse || !buildingResponse.data) {
+                this.logger.error(`Failed to fetch building info for job ${job.schedule_job_id}`);
+                return;
+            }
+
+            const building = buildingResponse.data;
+
+            // Lấy danh sách cư dân trong tòa nhà
+            const residentsResponse = await firstValueFrom(
+                this.buildingClient.send(BUILDINGS_PATTERN.GET_RESIDENTS_BY_BUILDING_DETAIL_ID, job.buildingDetailId)
+            );
+
+            if (!residentsResponse || !residentsResponse.data) {
+                this.logger.error(`Failed to fetch residents for building detail ${job.buildingDetailId}`);
+                return;
+            }
+
+            // Format times for display
+            const startTime = job.start_date
+                ? new Date(job.start_date).toLocaleDateString('vi-VN', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                })
+                : 'Không xác định';
+
+            const endTime = job.end_date
+                ? new Date(job.end_date).toLocaleDateString('vi-VN', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                })
+                : 'Không xác định';
+
+            // Create a map to track residents by email to ensure no duplicates
+            const emailMap = new Map();
+
+            // Process each resident
+            residentsResponse.data.forEach(resident => {
+                if (!resident.email || emailMap.has(resident.email)) {
+                    return;
+                }
+                emailMap.set(resident.email, resident);
+            });
+
+            // Calculate days until maintenance
+            const today = new Date();
+            const maintenanceDate = new Date(job.run_date);
+            const daysUntil = Math.ceil((maintenanceDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+            // Send reminder email to each unique resident
+            for (const resident of emailMap.values()) {
+                // Get the best available name for the resident
+                const residentName = resident.username || resident.name ||
+                    (resident.firstName && resident.lastName ? `${resident.firstName} ${resident.lastName}` : null) ||
+                    'Quý cư dân';
+
+                this.logger.log(`Sending reminder to: ${residentName} (${resident.email}) for maintenance from ${startTime} to ${endTime}`);
+
+                await firstValueFrom(
+                    this.notificationsClient.send(NOTIFICATIONS_PATTERN.SEND_EMAIL, {
+                        to: resident.email,
+                        residentName: residentName,
+                        buildingName: building.name,
+                        maintenanceDate: job.run_date,
+                        startTime: startTime,
+                        endTime: endTime,
+                        maintenanceType: job.schedule.schedule_name,
+                        description: `NHẮC NHỞ: Lịch bảo trì sẽ diễn ra sau ${daysUntil} ngày. ${job.schedule.description || 'Không có mô tả chi tiết'}`,
+                        floor: resident.floor || 'Không xác định',
+                        area: building.area?.name || 'Không xác định',
+                        unit: resident.apartmentNumber || 'Không xác định'
+                    })
+                );
+                this.logger.log(`Sent reminder email to ${resident.email}`);
+            }
         } catch (error) {
             this.logger.error(`Error sending maintenance reminder for job ${job.schedule_job_id}:`, error);
         }

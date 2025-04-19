@@ -211,6 +211,13 @@ export class BuildingsController {
     return this.buildingsService.getAllResidentsByBuildingId(id)
   }
 
+  @Get('building-detail/:detailId/residents')
+  @ApiOperation({ summary: 'Get all residents by building detail ID' })
+  @ApiParam({ name: 'detailId', description: 'Building Detail ID' })
+  async getAllResidentsByBuildingDetailId(@Param('detailId') detailId: string) {
+    return this.buildingsService.getAllResidentsByBuildingDetailId(detailId)
+  }
+
   @Get('manager/:managerId')
   @ApiOperation({ summary: 'Get all buildings managed by a specific manager' })
   @ApiParam({ name: 'managerId', description: 'Manager ID' })
