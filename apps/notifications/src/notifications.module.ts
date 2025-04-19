@@ -8,9 +8,13 @@ import { ClientConfigModule } from 'apps/configs/client-config.module'
 import { join } from 'path'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { MailerModule } from '@nestjs-modules/mailer'
+import { NotificationModule } from './notification/notification.module'
 
 @Module({
-  imports: [RedisModule, ClientConfigModule,
+  imports: [
+    RedisModule,
+    ClientConfigModule,
+    NotificationModule,
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {

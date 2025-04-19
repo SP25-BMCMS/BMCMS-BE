@@ -47,10 +47,29 @@ async function bootstrap() {
   }
 
   try {
+    // Kết nối Redis microservice
     app.connectMicroservice<MicroserviceOptions>({
       transport: Transport.REDIS,
       options: redisOptions,
     })
+
+    // Kết nối thêm RabbitMQ microservice
+    const rabbitUrl = configService.get<string>('RABBITMQ_URL')
+    if (rabbitUrl) {
+      app.connectMicroservice<MicroserviceOptions>({
+        transport: Transport.RMQ,
+        options: {
+          urls: [rabbitUrl],
+          queue: 'notifications_queue',
+          queueOptions: {
+            durable: true,
+            prefetchCount: 1,
+          },
+        },
+      })
+      console.log('✅ RabbitMQ configuration added')
+    }
+
     await app.startAllMicroservices()
     console.log(`✅ Microservices started successfully!`)
   } catch (error) {

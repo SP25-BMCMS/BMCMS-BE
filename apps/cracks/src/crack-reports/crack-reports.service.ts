@@ -10,7 +10,7 @@ import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { TASKS_PATTERN } from 'libs/contracts/src/tasks/task.patterns'
 import { BUILDINGDETAIL_PATTERN } from 'libs/contracts/src/BuildingDetails/buildingdetails.patterns'
 import { firstValueFrom, Observable, of } from 'rxjs'
-import { catchError, timeout } from 'rxjs/operators'
+import { catchError, timeout, retry } from 'rxjs/operators'
 import { AddCrackReportDto } from '../../../../libs/contracts/src/cracks/add-crack-report.dto'
 import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/update-crack-report.dto'
 import { PrismaService } from '../../prisma/prisma.service'
@@ -563,22 +563,6 @@ export class CrackReportsService {
             new ApiResponse(false, 'Nhân viên không thuộc khu vực của báo cáo nứt này')
           )
         }
-        const unconfirmedTasks = await this.prisma.taskAssignment.findMany({
-          where: {
-            employee_id: staffId,
-            status: {
-              notIn: [AssignmentStatus.Confirmed]
-            }
-          }
-        })
-
-        if (unconfirmedTasks.length > 0) {
-          return {
-            statusCode: 400,
-            message: 'Staff has unconfirmed tasks. Cannot assign new task.',
-            data: null
-          }
-        }
 
         // Step 3: Create task first - do this before updating report status
         createTaskResponse = await firstValueFrom(
@@ -590,11 +574,12 @@ export class CrackReportsService {
               schedule_job_id: '',
             })
             .pipe(
-              timeout(10000), // Add timeout to prevent hanging
+              timeout(30000), // Tăng timeout từ 10s lên 30s
+              retry(3), // Thêm retry tối đa 3 lần
               catchError((error) => {
-                console.error('Task creation error:', error)
+                console.error('Task creation error:', error);
                 throw new RpcException(
-                  new ApiResponse(false, 'Không thể tạo task')
+                  new ApiResponse(false, 'Không thể tạo task, vui lòng thử lại sau')
                 )
               })
             )
@@ -617,11 +602,12 @@ export class CrackReportsService {
               status: AssignmentStatus.Pending,
             })
             .pipe(
-              timeout(10000), // Add timeout to prevent hanging
+              timeout(30000), // Tăng timeout từ 10s lên 30s
+              retry(2), // Thêm retry tối đa 2 lần
               catchError((error) => {
-                console.error('Task assignment error:', error)
+                console.error('Task assignment error:', error);
                 throw new RpcException(
-                  new ApiResponse(false, error.message || 'Không thể tạo phân công task')
+                  new ApiResponse(false, error.message || 'Không thể tạo phân công task, vui lòng thử lại sau')
                 )
               }),
             ),

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import { ClientGrpc, ClientProxy, RpcException } from '@nestjs/microservices'
 import { AssignmentStatus, PrismaClient } from '@prisma/client-Task'
 import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create-taskAssigment.dto'
@@ -9,12 +9,15 @@ import {
   PaginationResponseDto,
 } from '../../../libs/contracts/src/Pagination/pagination.dto'
 import { ApiResponse } from '@nestjs/swagger'
-import { firstValueFrom, Observable } from 'rxjs'
+import { firstValueFrom, Observable, of } from 'rxjs'
 import { ConfigService } from '@nestjs/config'
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import * as https from 'https'
 import axios from 'axios'
+import { catchError } from 'rxjs/operators'
+import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
+import { NotificationType } from '@app/contracts/notifications/notification.dto'
 const PDFDocument = require('pdfkit')
 const CRACK_PATTERNS = {
   GET_DETAILS: { cmd: 'get-crack-report-by-id' }
@@ -37,12 +40,14 @@ export class TaskAssignmentsService {
   private userService: UserService
   private s3: S3Client
   private bucketName: string
-  // Cache cho presigned URLs để tránh tạo lại nhiều lần
+  private readonly logger = new Logger(TaskAssignmentsService.name);
+
   private urlCache: Map<string, { url: string, expiry: number }> = new Map();
 
   constructor(
     @Inject('USERS_CLIENT') private readonly usersClient: ClientGrpc,
     @Inject('CRACK_CLIENT') private readonly crackClient: ClientProxy,
+    @Inject('NOTIFICATION_CLIENT') private readonly notificationsClient: ClientProxy,
     private readonly configService: ConfigService,
   ) {
     this.userService = this.usersClient.getService<UserService>('UserService')
@@ -154,7 +159,7 @@ export class TaskAssignmentsService {
     const createErrorImageBuffer = () => {
       // Tạo một buffer cơ bản chứa hình ảnh placeholder đơn giản
       // Đây là một pixel 1x1 màu trắng trong định dạng PNG - nhẹ nhất có thể
-      return Buffer.from('iVBORw0KGgoAAAANSUhEUgAAASwAAAEsCAIAAAD2HxkiAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyNpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTQ4IDc5LjE2NDAzNiwgMjAxOS8wOC8xMy0wMTowNjo1NyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIDIxLjAgKFdpbmRvd3MpIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkI5MDJDRDIzNTcwQjExRUJCMkE0OEIxQkY3QTcyNUVEIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkI5MDJDRDI0NTcwQjExRUJCMkE0OEIxQkY3QTcyNUVEIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6QjkwMkNEMjE1NzBCMTFFQkIyQTQ4QjFCRjdBNzI1RUQiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6QjkwMkNEMjI1NzBCMTFFQkIyQTQ4QjFCRjdBNzI1RUQiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz7/7gAOQWRvYmUAZMAAAAAB/9sAhAAGBAQEBQQGBQUGCQYFBgkLCAYGCAsMCgoLCgoMEAwMDAwMDBAMDg8QDw4MExMUFBMTHBsbGxwfHx8fHx8fHx8fAQcHBw0MDRgQEBgaFREVGh8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx//wAARCABiAGIDAREAAhEBAxEB/8QAGgABAQEAAwEAAAAAAAAAAAAAAAEGAgMEBQEBAAAAAAAAAAAAAAAAAAAAABAAAQMCAwUECQIHAAAAAAAAAQACAwQFEQYhMRNRYRJBUhRxgZGhIjJCkkNyFTOzI1NisrMkNBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8A+TsbYLVMYj4lSMGIw+V/itH3YeHLoQdVv1Q6nmjp6SgpGzVUohheJJnDmkcGgEsGrgCdiDXbO20Wu201upAeRSwtibyjAuw2knZie1BzoCAgICAgICAg4auKKWmqIZmlkckT2PbxDmkNcD2jDag/PoGqq7bd4jRTujqaZ76aaB/yuY+N5a4EfaCNuGKD9HQaAgICAgICAgIKfMX8QuvDi/qIIN/03XUdwtMM1PK17uQCSNpBfHIM2OaR2gjFBpSAgICAgICAgIKfMX8QuvDi/qIIN90zUxVFkpTFI17RG2N2BxDZGfK4HsI3IPdQEBAQEBAQEBAQU+Yv4hdeHF/UQQfpuiqGVtn4FQ0OikjhDQdha5gOB8OhBpCAgICAgICAgIKfMX8QuvDi/qIIN/0xx0xP7zfsoD9lBPUEBAQEBAQEBAQU+Yv4hdeHF/UQQdFBeKO3aXud5rj5ehoWGSaQAnlGwAADFzicGtG0lB8Z5nvlVK8UtvlpKc54Rx8NkoH1PccXnwwQb/pLUNNe7YySMtZVRYR1MD/mjkG7Eb2uG8H9hQelQEBAQEBAQEFPmL+IXXhxf1EEGu6VtP73cXSyNxoaInzDx/UkO2NvgBtPgN6D6sqaoqKqaeeV8s0ri+SWRxc97jvcSdpKDGqVs9ounC4QitdmD/MKEjBwA/NiB2HA7W9OGGKDYdD3l17sVPUyHGohPk6jEbXPaMHHHe4Yt9OxB71AQEBAQEBBV5fpI7vbr5ZZ25wVLOVwb1LXteDsO48pQb7p63xWu0UNuh+SnhZGDj1OIGLj4nE+lBYING0Lp2O1U77nVsDrhVtHyEYiniOPK0cXH5j7N6CzutfdKO701uoKuCn86wvmfLA2TyUYcG4Y4j9QtIw6dhQdmn9SV9ZdqW2XOOETVGPl56ch0U5aCSMCcWuwGw+zrQaPQEBAQEBAQEBAQEBBn+obD5uX9yobhRXFvzjDGOQD6XNGOB6HYUHnrLrdbnZHW+3QshukkgijlqG8UUQLgZJXA7S0DBo60HCzUeqLT8kUJ+MJjjlABSSOa3rTuc4DA/V79iDTKCogrKeOpp5BJDKwPjeOhB6HgekIOdAQEBAQEBAQEGS3Wgu1qvdeK6EysgqqiWGohGMkOLyei0gdDhtQWGnLZLb4JJalsclbUvL5RGMWQtGxjAeg6nrj7EFmgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIP/Z', 'base64')
+      return Buffer.from('iVBORw0KGgoAAAANSUhEUgAAASwAAAEsCAIAAAD2HxkiAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyNpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTQ4IDc5LjE2NDAzNiwgMjAxOS8wOC8xMy0wMTowNjo1NyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIDIxLjAgKFdpbmRvd3MpIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkI5MDJDRDIzNTcwQjExRUJCMkE0OEIxQkY3QTcyNUVEIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkI5MDJDRDI0NTcwQjExRUJCMkE0OEIxQkY3QTcyNUVEIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6QjkwMkNEMjE1NzBCMTFFQkIyQTQ4QjFCRjdBNzI1RUQiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6QjkwMkNEMjI1NzBCMTFFQkIyQTQ4QjFCRjdBNzI1RUQiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz7/7gAOQWRvYmUAZMAAAAAB/9sAhAAGBAQEBQQGBQUGCQYFBgkLCAYGCAsMCgoLCgoMEAwMDAwMDBAMDg8QDw4MExMUFBMTHBsbGxwfHx8fHx8fHx8fAQcHBw0MDRgQEBgaFREVGh8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx//wAARCABiAGIDAREAAhEBAxEB/8QAGgABAQEAAwEAAAAAAAAAAAAAAAEGAgMEBQEBAAAAAAAAAAAAAAAAAAAAABAAAQMCAwUECQIHAAAAAAAAAQACAwQFEQYhMRNRYRJBUhRxgZGhIjJCkkNyFTOzI1NisrMkNBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8A+TsbYLVMYj4lSMGIw+V/itH3YeHLoQdVv1Q6nmjp6SgpGzVUohheJJnDmkcGgEsGrgCdiDXbO20Wu201upAeRSwtibyjAuw2knZie1BzoCAgICAgICAg4auKKWmqIZmlkckT2PbxDmkNcD2jDag/PoGqq7bd4jRTujqaZ76aaB/yuY+N5a4EfaCNuGKD9HQaAgICAgICAgIKfMX8QuvDi/qIIN/03XUdwtMM1PK17uQCSNpBfHIM2OaR2gjFBpSAgICAgICAgIKfMX8QuvDi/qIIN90zUxVFkpTFI17RG2N2BxDZGfK4HsI3IPdQEBAQEBAQEBAQU+Yv4hdeHF/UQQfpuiqGVtn4FQ0OikjhDQdha5gOB8OhBpCAgICAgICAgIKfMX8QuvDi/qIIN/0xx0xP7zfsoD9lBPUEBAQEBAQEBAQU+Yv4hdeHF/UQQdFBeKO3aXud5rj5ehoWGSaQAnlGwAADFzicGtG0lB8Z5nvlVK8UtvlpKc54Rx8NkoH1PccXnwwQb/pLUNNe7YySMtZVRYR1MD/mjkG7Eb2uG8H9hQelQEBAQEBAQEFPmL+IXXhxf1EEGu6VtP73cXSyNxoaInzDx/UkO2NvgBtPgN6D6sqaoqKqaeeV8s0ri+SWRxc97jvcSdpKDGqVs9ounC4QitdmD/MKEjBwA/NiB2HA7W9OGGKDYdD3l17sVPUyHGohPk6jEbXPaMHHHe4Yt9OxB71AQEBAQEBBV5fpI7vbr5ZZ25wVLOVwb1LXteDsO48pQb7p63xWu0UNuh+SnhZGDj1OIGLj4nE+lBYNG0Lp2O1U77nVsDrhVtHyEYiniOPK0cXH5j7N6CzutfdKO701uoKuCn86wvmfLA2TyUYcG4Y4j9QtIw6dhQdmn9SV9ZdqW2XOOETVGPl56ch0U5aCSMCcWuwGw+zrQaPQEBAQEBAQEBAQEBBn+obD5uX9yobhRXFvzjDGOQD6XNGOB6HYUHnrLrdbnZHW+3QshukkgijlqG8UUQLgZJXA7S0DBo60HCzUeqLT8kUJ+MJjjlABSSOa3rTuc4DA/V79iDTKCogrKeOpp5BJDKwPjeOhB6HgekIOdAQEBAQEBAQEGS3Wgu1qvdeK6EysgqqiWGohGMkOLyei0gdDhtQWGnLZLb4JJalsclbUvL5RGMWQtGxjAeg6nrj7EFmgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIP/Z', 'base64')
     }
 
     try {
@@ -217,7 +222,32 @@ export class TaskAssignmentsService {
           description: createTaskAssignmentDto.description,
           status: createTaskAssignmentDto.status,
         },
+        include: {
+          task: true, // Bao gồm thông tin của task
+        },
       })
+
+      // Gửi thông báo cho nhân viên được phân công
+      try {
+        // Lấy thông tin task 
+        const taskName = newAssignment.task?.description || 'Công việc mới';
+
+        // Tạo notification cho user - sử dụng emit() thay vì send()
+        this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, {
+          userId: createTaskAssignmentDto.employee_id,
+          title: 'Bạn được phân công một công việc mới',
+          content: `Bạn đã được phân công: ${taskName}`,
+          type: NotificationType.TASK_ASSIGNMENT,
+          relatedId: newAssignment.assignment_id,
+          link: `/tasks/assignments/${newAssignment.assignment_id}`
+        });
+
+        this.logger.log(`Notification emitted for employee ${createTaskAssignmentDto.employee_id} for task ${createTaskAssignmentDto.task_id}`);
+      } catch (notificationError) {
+        // Log lỗi nhưng không làm ảnh hưởng đến việc tạo task
+        this.logger.error(`Error emitting notification: ${notificationError.message}`, notificationError.stack);
+      }
+
       return {
         statusCode: 201,
         message: 'Task assignment created successfully',
@@ -539,8 +569,38 @@ export class TaskAssignmentsService {
           employee_id: employeeId,
           description: description,
           status: AssignmentStatus.Pending
-        }
+        },
+        include: {
+          task: true, // Bao gồm thông tin task để có thêm thông tin khi gửi thông báo
+        },
       })
+
+      // Gửi thông báo cho nhân viên được phân công
+      try {
+        // Lấy thông tin task để hiển thị trong thông báo
+        const taskName = newAssignment.task?.description || 'Công việc mới';
+
+        // Đảm bảo dữ liệu notification đầy đủ và đúng định dạng
+        const notificationData = {
+          userId: employeeId,
+          title: 'Bạn được phân công một công việc mới',
+          content: `Bạn đã được phân công: ${taskName}`,
+          type: NotificationType.TASK_ASSIGNMENT, // Đảm bảo dùng đúng enum
+          relatedId: newAssignment.assignment_id,
+          link: `/tasks/assignments/${newAssignment.assignment_id}`
+        };
+
+        // Log chi tiết dữ liệu trước khi gửi
+        this.logger.log(`Preparing to emit notification: ${JSON.stringify(notificationData)}`);
+
+        // Sử dụng emit để tránh timeout
+        this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, notificationData);
+
+        this.logger.log(`Notification emitted to employee ${employeeId} for task ${taskId}`);
+      } catch (notificationError) {
+        // Log lỗi nhưng không làm ảnh hưởng đến việc phân công task
+        this.logger.error(`Error emitting notification: ${notificationError.message}`, notificationError.stack);
+      }
 
       return {
         statusCode: 201,

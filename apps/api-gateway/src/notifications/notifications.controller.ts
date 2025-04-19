@@ -1,8 +1,13 @@
-import { Body, Controller, Inject, Post } from '@nestjs/common'
+import { Body, Controller, Get, Inject, Param, Post, Put, Query, UseGuards } from '@nestjs/common'
 import { ClientProxy } from '@nestjs/microservices'
-import { ApiOperation, ApiTags, ApiBody, ApiResponse } from '@nestjs/swagger'
+import { ApiOperation, ApiParam, ApiQuery, ApiTags, ApiBody, ApiResponse } from '@nestjs/swagger'
 import { NOTIFICATION_CLIENT } from '../constraints'
-import { IsEmail, IsNotEmpty, Length } from 'class-validator'
+import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
+import { CreateNotificationDto, MarkNotificationReadDto } from '@app/contracts/notifications/notification.dto'
+import { firstValueFrom } from 'rxjs'
+import { IsNotEmpty, Length } from 'class-validator'
+import { IsEmail } from 'class-validator'
+import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard'
 
 class SendOtpDto {
   email: string
@@ -27,6 +32,63 @@ class OtpResponse {
 @ApiTags('notifications')
 export class NotificationsController {
   constructor(@Inject(NOTIFICATION_CLIENT) private client: ClientProxy) { }
+
+  @Get('user/:userId')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiOperation({ summary: 'Lấy danh sách thông báo của người dùng' })
+  @ApiParam({ name: 'userId', type: 'string', description: 'ID của người dùng' })
+  async getUserNotifications(@Param('userId') userId: string) {
+    try {
+      const response = await firstValueFrom(
+        this.client.send(NOTIFICATIONS_PATTERN.GET_USER_NOTIFICATIONS, { userId })
+      );
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Failed to fetch notifications',
+        data: null
+      };
+    }
+  }
+
+  @Put('read/:notificationId')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiOperation({ summary: 'Đánh dấu thông báo đã đọc' })
+  @ApiParam({ name: 'notificationId', type: 'string', description: 'ID của thông báo' })
+  async markNotificationRead(@Param('notificationId') notificationId: string) {
+    try {
+      const data: MarkNotificationReadDto = { notificationId };
+      const response = await firstValueFrom(
+        this.client.send(NOTIFICATIONS_PATTERN.MARK_NOTIFICATION_READ, data)
+      );
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Failed to mark notification as read',
+        data: null
+      };
+    }
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Tạo thông báo mới (debug only)' })
+  @ApiBody({ type: CreateNotificationDto })
+  async createNotification(@Body() createDto: CreateNotificationDto) {
+    try {
+      const response = await firstValueFrom(
+        this.client.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, createDto)
+      );
+      return response;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Failed to create notification',
+        data: null
+      };
+    }
+  }
 
   @Post('send-otp')
   @ApiOperation({ summary: 'Request OTP verification' })

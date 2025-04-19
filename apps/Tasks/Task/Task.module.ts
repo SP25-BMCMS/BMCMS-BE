@@ -15,6 +15,7 @@ const USERS_CLIENT = 'USERS_CLIENT'
 const CRACK_CLIENT = 'CRACK_CLIENT'
 const SCHEDULE_CLIENT = 'SCHEDULE_CLIENT'
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
+const NOTIFICATION_CLIENT = 'NOTIFICATION_CLIENT'
 
 @Module({
   imports: [
@@ -113,6 +114,24 @@ const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
             options: {
               urls: [rabbitUrl],
               queue: 'tasks_queue',
+              queueOptions: {
+                durable: true,
+                prefetchCount: 1,
+              },
+            },
+          }
+        },
+        inject: [ConfigService],
+      },
+      {
+        name: NOTIFICATION_CLIENT,
+        useFactory: (configService: ConfigService) => {
+          const rabbitUrl = configService.get('RABBITMQ_URL')
+          return {
+            transport: Transport.RMQ,
+            options: {
+              urls: [rabbitUrl],
+              queue: 'notifications_queue',
               queueOptions: {
                 durable: true,
                 prefetchCount: 1,

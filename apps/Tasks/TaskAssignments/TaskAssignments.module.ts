@@ -11,6 +11,7 @@ import { join } from 'path'
 const USERS_CLIENT = 'USERS_CLIENT'
 const TASK_CLIENT = 'TASK_CLIENT'
 const CRACK_CLIENT = 'CRACK_CLIENT'
+const NOTIFICATION_CLIENT = 'NOTIFICATION_CLIENT'
 
 @Module({
   imports: [
@@ -78,6 +79,32 @@ const CRACK_CLIENT = 'CRACK_CLIENT'
                 durable: true,
                 prefetchCount: 1,
               },
+            },
+          }
+        },
+        inject: [ConfigService],
+      },
+      {
+        name: NOTIFICATION_CLIENT,
+        useFactory: async (configService: ConfigService) => {
+          const redisUrl = configService.get<string>('REDIS_URL')
+          if (!redisUrl) {
+            throw new Error('REDIS_URL environment variable is not set')
+          }
+
+          const url = new URL(redisUrl)
+          return {
+            transport: Transport.REDIS,
+            options: {
+              host: url.hostname,
+              port: parseInt(url.port),
+              username: url.username,
+              password: url.password,
+              retryAttempts: 5,
+              retryDelay: 3000,
+              tls: {
+                rejectUnauthorized: false
+              }
             },
           }
         },
