@@ -9,13 +9,14 @@ export enum NotificationType {
 }
 
 export class CreateNotificationDto {
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
     @ApiProperty({
-        description: 'ID của người dùng nhận thông báo',
-        example: 'd290f1ee-6c54-4b01-90e6-d701748f0851'
+        description: 'ID của người dùng nhận thông báo (có thể bỏ qua nếu broadcastToAll=true)',
+        example: 'd290f1ee-6c54-4b01-90e6-d701748f0851',
+        required: false
     })
-    userId: string;
+    userId?: string;
 
     @IsNotEmpty()
     @IsString()
@@ -59,6 +60,23 @@ export class CreateNotificationDto {
         required: false
     })
     relatedId?: string;
+
+    @IsOptional()
+    @IsBoolean()
+    @ApiProperty({
+        description: 'Gửi thông báo cho tất cả người dùng',
+        example: false,
+        required: false
+    })
+    broadcastToAll?: boolean;
+
+    @IsOptional()
+    @ApiProperty({
+        description: 'Danh sách ID người dùng để gửi thông báo (thay vì gửi cho một người)',
+        type: [String],
+        required: false
+    })
+    userIds?: string[];
 }
 
 export class NotificationResponseDto {

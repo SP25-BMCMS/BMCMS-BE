@@ -16,10 +16,13 @@ import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
 import { firstValueFrom, catchError, retry, throwError, of, Observable, lastValueFrom } from 'rxjs'
 import { timeout } from 'rxjs/operators'
 import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
+import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
+import { NotificationType } from '@app/contracts/notifications/notification.dto'
 
 // Định nghĩa constants cho microservice clients
 const TASK_CLIENT = 'TASK_CLIENT'
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
+const NOTIFICATION_CLIENT = 'NOTIFICATION_CLIENT'
 
 // Các giá trị timeout tối ưu hơn
 const MICROSERVICE_TIMEOUT = 10000; // 10 seconds
@@ -50,6 +53,7 @@ export class ScheduleService {
   constructor(
     @Inject(TASK_CLIENT) private readonly taskClient: ClientProxy,
     @Inject(BUILDINGS_CLIENT) private readonly buildingClient: ClientProxy,
+    @Inject(NOTIFICATION_CLIENT) private readonly notificationsClient: ClientProxy,
   ) {
 
   }
@@ -471,6 +475,68 @@ export class ScheduleService {
       if (newSchedule.createdJobs && newSchedule.createdJobs.length > 0) {
         // Tạo task và task assignment cho mỗi job
         await this.createTasksForScheduleJobs(newSchedule.createdJobs);
+
+        // Lấy thông tin các tòa nhà để hiển thị trong thông báo
+        try {
+          // Lấy thông tin tòa nhà cho thông báo
+          const buildingDetailIds = dto.buildingDetailIds;
+          const buildingPromises = buildingDetailIds.map(buildingDetailId =>
+            firstValueFrom(
+              this.buildingClient
+                .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId })
+                .pipe(
+                  timeout(10000),
+                  catchError(error => {
+                    this.logger.error(`Error getting building detail ${buildingDetailId}: ${error.message}`);
+                    return of(null);
+                  })
+                )
+            )
+          );
+
+          const buildingResults = await Promise.all(buildingPromises);
+          const buildingNames = buildingResults
+            .filter(result => result && result.data)
+            .map(result => result.data.name || 'Unnamed Building')
+            .join(', ');
+
+          // Format lịch trình bảo trì
+          const formattedStartDate = startDate.toLocaleDateString('vi-VN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          });
+
+          const formattedEndDate = endDate.toLocaleDateString('vi-VN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          });
+
+          // Tạo thông báo hệ thống cho tất cả người dùng về lịch bảo trì mới
+          const notificationData = {
+            title: `Lịch bảo trì ${maintenanceCycle.device_type} mới được tạo`,
+            content: `Lịch bảo trì ${dto.schedule_name} cho ${maintenanceCycle.device_type} tại ${buildingNames} đã được lên lịch từ ${formattedStartDate} đến ${formattedEndDate}.`,
+            type: NotificationType.SYSTEM,
+            broadcastToAll: true, // Gửi cho tất cả người dùng
+            link: `/schedules/${newSchedule.schedule.schedule_id}`
+          };
+
+          // Gửi thông báo đến tất cả người dùng
+          this.logger.log(`Sending system-wide notification about new maintenance schedule: ${dto.schedule_name}`);
+          await firstValueFrom(
+            this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, notificationData)
+              .pipe(
+                timeout(10000),
+                catchError(error => {
+                  this.logger.error(`Error sending system-wide notification: ${error.message}`);
+                  return of({ success: false });
+                })
+              )
+          );
+        } catch (notifyError) {
+          this.logger.error(`Error sending notifications about new maintenance schedule: ${notifyError.message}`);
+        }
       }
 
       // Return the newly created schedule
@@ -528,6 +594,9 @@ export class ScheduleService {
       // Lưu lại các jobs đã tạo để tạo task
       const allCreatedJobs = [];
 
+      // Lưu thông tin các lịch bảo trì đã tạo để gửi thông báo
+      const createdSchedules = [];
+
       // Duyệt qua từng cycle để tạo lịch bảo trì
       for (const cycle of maintenanceCycles) {
         // Tính toán ngày bắt đầu và kết thúc dựa trên tần suất
@@ -562,6 +631,14 @@ export class ScheduleService {
               end_date: endDate,
               schedule_status: $Enums.ScheduleStatus.InProgress,
             },
+          });
+
+          // Lưu lại thông tin lịch bảo trì để gửi thông báo
+          createdSchedules.push({
+            schedule,
+            cycle,
+            startDate: now,
+            endDate
           });
 
           // Tạo các ScheduleJob cho mỗi tòa nhà
@@ -649,7 +726,7 @@ export class ScheduleService {
 
           createdSchedulesCount++;
         } catch (error) {
-          console.error(`Error creating schedule for cycle ${cycle.cycle_id}:`, error);
+          this.logger.error(`Error creating schedule for cycle ${cycle.cycle_id}:`, error);
         }
       }
 
@@ -658,21 +735,86 @@ export class ScheduleService {
         await this.createTasksForScheduleJobs(allCreatedJobs);
       }
 
+      // Gửi thông báo về các lịch bảo trì tự động đã được tạo
+      if (createdSchedules.length > 0) {
+        try {
+          // Lấy thông tin các tòa nhà cho thông báo
+          const buildingDetailIds = buildings.map(b => b.buildingDetailId);
+          const buildingPromises = buildingDetailIds.map(buildingDetailId =>
+            firstValueFrom(
+              this.buildingClient
+                .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId })
+                .pipe(
+                  timeout(10000),
+                  catchError(error => {
+                    this.logger.error(`Error getting building detail ${buildingDetailId}: ${error.message}`);
+                    return of(null);
+                  })
+                )
+            )
+          );
+
+          const buildingResults = await Promise.all(buildingPromises);
+          const buildingNames = buildingResults
+            .filter(result => result && result.data)
+            .map(result => result.data.name || 'Unnamed Building')
+            .join(', ');
+
+          // Tạo thông báo hệ thống về các lịch bảo trì tự động mới
+          const formattedSchedules = createdSchedules.map(schedule => {
+            const formattedStartDate = schedule.startDate.toLocaleDateString('vi-VN', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+
+            const formattedEndDate = schedule.endDate.toLocaleDateString('vi-VN', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+
+            return `${schedule.cycle.device_type} (${formattedStartDate} - ${formattedEndDate})`;
+          }).join(', ');
+
+          // Tạo và gửi thông báo cho tất cả người dùng
+          const notificationData = {
+            title: `Lịch bảo trì tự động mới được tạo`,
+            content: `Hệ thống đã tự động tạo ${createdSchedules.length} lịch bảo trì mới: ${formattedSchedules} cho các tòa nhà: ${buildingNames}.`,
+            type: NotificationType.SYSTEM,
+            broadcastToAll: true,
+            link: `/schedules`
+          };
+
+          this.logger.log(`Sending system-wide notification about ${createdSchedules.length} new auto maintenance schedules`);
+          await firstValueFrom(
+            this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, notificationData)
+              .pipe(
+                timeout(10000),
+                catchError(error => {
+                  this.logger.error(`Error sending system-wide notification: ${error.message}`);
+                  return of({ success: false });
+                })
+              )
+          );
+        } catch (notifyError) {
+          this.logger.error(`Error sending notifications about auto maintenance schedules: ${notifyError.message}`);
+        }
+      }
+
       return new ApiResponse<string>(
         true,
-        `Successfully created ${createdSchedulesCount} maintenance schedules with task assignments`,
+        `Successfully triggered auto maintenance schedule creation. Created ${createdSchedulesCount} schedules.`,
         `Created ${createdSchedulesCount} schedules from ${maintenanceCycles.length} maintenance cycles with ${allCreatedJobs.length} task assignments`
       );
     } catch (error) {
       console.error('Error triggering auto maintenance schedules:', error);
-
       if (error instanceof RpcException) {
         throw error;
       }
-
       throw new RpcException({
         statusCode: 500,
-        message: `Failed to trigger automated maintenance schedules: ${error.message}`,
+        message: 'Error triggering auto maintenance schedules',
       });
     }
   }
@@ -786,6 +928,71 @@ export class ScheduleService {
 
       if (createScheduleDto.buildingDetailIds && createScheduleDto.buildingDetailIds.length > 0) {
         const startDate = newSchedule.start_date || new Date();
+
+        // Send notification about the new schedule
+        try {
+          // Fetch building details to include their names in the notification
+          const buildingPromises = createScheduleDto.buildingDetailIds.map(buildingDetailId =>
+            firstValueFrom(
+              this.buildingClient
+                .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId })
+                .pipe(
+                  timeout(10000),
+                  catchError(error => {
+                    this.logger.error(`Error getting building detail ${buildingDetailId}: ${error.message}`);
+                    return of(null);
+                  })
+                )
+            )
+          );
+
+          const buildingResults = await Promise.all(buildingPromises);
+          const buildingNames = buildingResults
+            .filter(result => result && result.data)
+            .map(result => result.data.name || 'Unnamed Building')
+            .join(', ');
+
+          // Format dates for notification
+          const formattedStartDate = newSchedule.start_date?.toLocaleDateString('vi-VN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          }) || 'N/A';
+
+          const formattedEndDate = newSchedule.end_date?.toLocaleDateString('vi-VN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          }) || 'N/A';
+
+          // Fetch cycle information
+          const cycle = await this.prisma.maintenanceCycle.findUnique({
+            where: { cycle_id: newSchedule.cycle_id }
+          });
+
+          // Create and send notification for all users
+          const notificationData = {
+            title: `Lịch bảo trì mới được tạo`,
+            content: `Lịch bảo trì mới "${newSchedule.schedule_name}" đã được tạo cho ${cycle?.device_type || 'thiết bị'} từ ${formattedStartDate} đến ${formattedEndDate} cho các tòa nhà: ${buildingNames}.`,
+            type: NotificationType.SYSTEM,
+            broadcastToAll: true,
+            link: `/schedules/${newSchedule.schedule_id}`
+          };
+
+          this.logger.log(`Sending system-wide notification about new maintenance schedule: ${newSchedule.schedule_name}`);
+          await firstValueFrom(
+            this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, notificationData)
+              .pipe(
+                timeout(10000),
+                catchError(error => {
+                  this.logger.error(`Error sending system-wide notification: ${error.message}`);
+                  return of({ success: false });
+                })
+              )
+          );
+        } catch (notifyError) {
+          this.logger.error(`Error sending notification about new maintenance schedule: ${notifyError.message}`);
+        }
 
         // Hàm tính toán tăng run_date dựa trên frequency
         const calcNextDate = (baseDate: Date, frequency: string, steps: number = 1): Date => {
