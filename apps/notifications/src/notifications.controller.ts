@@ -95,14 +95,32 @@ export class NotificationsController {
   @EventPattern(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION)
   async handleCreateNotification(data: CreateNotificationDto) {
     this.logger.log(`[EventPattern] INCOMING NOTIFICATION REQUEST: user=${data.userId || 'BROADCAST'}, type=${data.type}, title=${data.title?.substring(0, 15)}...`);
-    this.logger.log(`[EventPattern] Complete notification data: ${JSON.stringify(data)}`);
+
+    // Tạo key duy nhất từ dữ liệu thông báo KHÔNG bao gồm timestamp để có thể phát hiện trùng lặp
+    const notificationKey = `${data.userId || 'broadcast'}-${data.type}-${data.relatedId || ''}`;
+
+    this.logger.log(`[EventPattern] Notification key generated: ${notificationKey}`);
+
+    // Kiểm tra xem thông báo này đã được xử lý chưa
+    if (this.notificationService.isDuplicateNotification(notificationKey)) {
+      this.logger.warn(`[EventPattern] Duplicate notification detected: ${notificationKey} - skipping`);
+      return { success: false, message: 'Duplicate notification' };
+    }
+
+    // Đánh dấu thông báo này đang được xử lý
+    this.notificationService.markNotificationProcessing(notificationKey);
 
     try {
+      // Còn lại của phương thức giữ nguyên...
+      this.logger.log(`[EventPattern] Complete notification data: ${JSON.stringify(data)}`);
+
       // Validate data
       if ((!data.userId && !data.broadcastToAll && !data.userIds) || !data.title || !data.content || !data.type) {
         this.logger.error(`[EventPattern] Invalid notification data: ${JSON.stringify(data)}`);
         return { success: false, message: 'Invalid notification data' };
       }
+
+      let result;
 
       // For broadcast notifications, create a system-wide notification
       if (data.broadcastToAll) {
@@ -121,15 +139,14 @@ export class NotificationsController {
           // For example, you might want to push this to a special Redis channel
 
           this.logger.log(`[EventPattern] Broadcast notification created successfully with ID: ${notification.id}`);
-          return { success: true, data: notification };
+          result = { success: true, data: notification };
         } catch (broadcastError) {
           this.logger.error(`[EventPattern] Error creating broadcast notification: ${broadcastError.message}`);
-          return { success: false, message: broadcastError.message };
+          result = { success: false, message: broadcastError.message };
         }
       }
-
       // For multiple user IDs, create multiple notifications
-      if (data.userIds && data.userIds.length > 0) {
+      else if (data.userIds && data.userIds.length > 0) {
         this.logger.log(`[EventPattern] Creating notification for multiple users: ${data.userIds.length} users`);
         const notificationPromises = data.userIds.map(userId => {
           const userData = {
@@ -142,107 +159,51 @@ export class NotificationsController {
         try {
           const notifications = await Promise.all(notificationPromises);
           this.logger.log(`[EventPattern] Created ${notifications.length} notifications successfully`);
-          return { success: true, data: notifications };
+          result = { success: true, data: notifications };
         } catch (multiUserError) {
           this.logger.error(`[EventPattern] Error creating notifications for multiple users: ${multiUserError.message}`);
-          return { success: false, message: multiUserError.message };
+          result = { success: false, message: multiUserError.message };
+        }
+      }
+      // For single user notification (traditional flow)
+      else {
+        this.logger.log(`[EventPattern] Calling notification service to create notification for user: ${data.userId}`);
+
+        try {
+          const notification = await this.notificationService.createNotification(data);
+
+          // Log after createNotification  
+          this.logger.log(`[EventPattern] Notification created successfully with ID: ${notification.id}`);
+          this.logger.log(`[EventPattern] Full notification details: ${JSON.stringify(notification)}`);
+
+          result = { success: true, data: notification };
+        } catch (serviceError) {
+          this.logger.error(`[EventPattern] Service error creating notification: ${serviceError.message}`, serviceError.stack);
+          this.logger.error(`[EventPattern] Error details: ${JSON.stringify(serviceError)}`);
+          result = { success: false, message: serviceError.message };
         }
       }
 
-      // For single user notification (traditional flow)
-      this.logger.log(`[EventPattern] Calling notification service to create notification for user: ${data.userId}`);
-
-      try {
-        const notification = await this.notificationService.createNotification(data);
-
-        // Log after createNotification  
-        this.logger.log(`[EventPattern] Notification created successfully with ID: ${notification.id}`);
-        this.logger.log(`[EventPattern] Full notification details: ${JSON.stringify(notification)}`);
-
-        return { success: true, data: notification };
-      } catch (serviceError) {
-        this.logger.error(`[EventPattern] Service error creating notification: ${serviceError.message}`, serviceError.stack);
-        this.logger.error(`[EventPattern] Error details: ${JSON.stringify(serviceError)}`);
-        return { success: false, message: serviceError.message };
-      }
+      // Giải phóng key khi hoàn thành
+      this.notificationService.completeNotificationProcessing(notificationKey);
+      return result;
     } catch (error) {
+      // Giải phóng key nếu có lỗi
+      this.notificationService.completeNotificationProcessing(notificationKey);
       this.logger.error(`[EventPattern] Error creating notification: ${error.message}`, error.stack);
       return { success: false, message: error.message };
     }
   }
 
-  @MessagePattern(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION)
+  // IMPORTANT: MessagePattern handler bị vô hiệu hóa để tránh trùng lặp
+  // Chúng ta vẫn giữ code nhưng đổi tên pattern để không nhận message
+  @MessagePattern('notification.create.disabled')
   async handleCreateNotificationMessage(data: CreateNotificationDto) {
-    this.logger.log(`[MessagePattern] Creating notification for user: ${data.userId || 'BROADCAST'}, type: ${data.type}, data: ${JSON.stringify(data)}`);
-    try {
-      // Validate data
-      if ((!data.userId && !data.broadcastToAll && !data.userIds) || !data.title || !data.content || !data.type) {
-        this.logger.error(`[MessagePattern] Invalid notification data: ${JSON.stringify(data)}`);
-        return { success: false, message: 'Invalid notification data' };
-      }
-
-      // For broadcast notifications, create a system-wide notification
-      if (data.broadcastToAll) {
-        this.logger.log(`[MessagePattern] Broadcasting notification to all users`);
-
-        // Use a system user ID for broadcast notifications
-        const broadcastData = {
-          ...data,
-          userId: 'system' // Use a system user ID for the database record
-        };
-
-        try {
-          const notification = await this.notificationService.createNotification(broadcastData);
-
-          this.logger.log(`[MessagePattern] Broadcast notification created successfully with ID: ${notification.id}`);
-          return { success: true, data: notification };
-        } catch (broadcastError) {
-          this.logger.error(`[MessagePattern] Error creating broadcast notification: ${broadcastError.message}`);
-          return { success: false, message: broadcastError.message };
-        }
-      }
-
-      // For multiple user IDs, create multiple notifications
-      if (data.userIds && data.userIds.length > 0) {
-        this.logger.log(`[MessagePattern] Creating notification for multiple users: ${data.userIds.length} users`);
-        const notificationPromises = data.userIds.map(userId => {
-          const userData = {
-            ...data,
-            userId
-          };
-          return this.notificationService.createNotification(userData);
-        });
-
-        try {
-          const notifications = await Promise.all(notificationPromises);
-          this.logger.log(`[MessagePattern] Created ${notifications.length} notifications successfully`);
-          return { success: true, data: notifications };
-        } catch (multiUserError) {
-          this.logger.error(`[MessagePattern] Error creating notifications for multiple users: ${multiUserError.message}`);
-          return { success: false, message: multiUserError.message };
-        }
-      }
-
-      // For single user notification (traditional flow)
-      this.logger.log(`[MessagePattern] Calling notification service to create notification for user: ${data.userId}`);
-
-      try {
-        const notification = await this.notificationService.createNotification(data);
-
-        // Log after createNotification
-        this.logger.log(`[MessagePattern] Notification created successfully with ID: ${notification.id}`);
-        this.logger.log(`[MessagePattern] Full notification details: ${JSON.stringify(notification)}`);
-
-        return { success: true, data: notification };
-      } catch (serviceError) {
-        this.logger.error(`[MessagePattern] Service error creating notification: ${serviceError.message}`, serviceError.stack);
-        this.logger.error(`[MessagePattern] Error details: ${JSON.stringify(serviceError)}`);
-        return { success: false, message: serviceError.message };
-      }
-    } catch (error) {
-      this.logger.error(`[MessagePattern] Error creating notification: ${error.message}`, error.stack);
-      return { success: false, message: error.message };
-    }
+    this.logger.warn(`[MessagePattern] This handler is disabled to prevent duplicate notifications. Using EventPattern instead.`);
+    return {
+      success: false,
+      message: 'This message pattern is disabled. Please use event pattern for creating notifications.'
+    };
   }
 
   @MessagePattern(NOTIFICATIONS_PATTERN.GET_USER_NOTIFICATIONS)

@@ -347,7 +347,7 @@ export class CrackReportsService {
                 data: {
                   crackReportId: newCrackReport.crackReportId,
                   photoUrl: photoUrl,
-                  severity: $Enums.Severity.Medium, // Hardcode severity as Medium
+                  severity: $Enums.Severity.Low,
                   aiDetectionUrl: (uploadResult.data as UploadResult).annotatedImage[index],
                 },
               })
@@ -357,11 +357,155 @@ export class CrackReportsService {
 
         console.log('🚀 CrackDetails created:', newCrackDetails)
 
+        // 🔹 3. Send notification to managers about the new crack report
+        try {
+          // Get building details to include in notification if available
+          let buildingName = "Unknown Building";
+          let managerId = null;
+          let retryCount = 0;
+          const maxRetries = 3;
+
+          // Bắt buộc phải có buildingDetailId và phải lấy được managerId
+          if (!dto.buildingDetailId) {
+            this.logger.error(`Missing buildingDetailId in crack report. Cannot send notification to manager.`);
+            throw new Error('Missing buildingDetailId for notification');
+          }
+
+          // Lấy buildingDetail với retry logic
+          while (!managerId && retryCount < maxRetries) {
+            try {
+              this.logger.log(`Attempt ${retryCount + 1} to get building info for buildingDetailId: ${dto.buildingDetailId}`);
+
+              // Step 1: Get buildingDetail to get buildingId
+              const buildingDetailResponse = await firstValueFrom(
+                this.buildingClient
+                  .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId: dto.buildingDetailId })
+                  .pipe(
+                    timeout(10000),
+                    retry(2),
+                    catchError(error => {
+                      this.logger.error(`Error getting building detail: ${error.message}`);
+                      return of(null);
+                    })
+                  )
+              );
+
+              if (!buildingDetailResponse || !buildingDetailResponse.data) {
+                throw new Error(`Failed to get building detail data for ID: ${dto.buildingDetailId}`);
+              }
+
+              buildingName = buildingDetailResponse.data.name || "Unknown Building";
+              const buildingId = buildingDetailResponse.data.buildingId;
+
+              if (!buildingId) {
+                throw new Error(`Building detail ${dto.buildingDetailId} has no associated buildingId`);
+              }
+
+              this.logger.log(`Found buildingId: ${buildingId} for buildingDetail: ${dto.buildingDetailId}`);
+
+              // Step 2: Get building info to get managerId
+              const buildingResponse = await firstValueFrom(
+                this.buildingClient
+                  .send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: buildingId })
+                  .pipe(
+                    timeout(10000),
+                    retry(2),
+                    catchError(error => {
+                      this.logger.error(`Error getting building info: ${error.message}`);
+                      return of(null);
+                    })
+                  )
+              );
+
+              if (!buildingResponse || !buildingResponse.data) {
+                throw new Error(`Failed to get building data for ID: ${buildingId}`);
+              }
+
+              // Log full response để xem cấu trúc dữ liệu thực tế
+              this.logger.log(`Building response data: ${JSON.stringify(buildingResponse.data)}`);
+
+              // Kiểm tra nhiều tên trường khác nhau
+              managerId = buildingResponse.data.managerId ||
+                buildingResponse.data.manager_id ||
+                buildingResponse.data.managerID ||
+                buildingResponse.data.ManagerId ||
+                buildingResponse.data.manager?.id ||
+                (buildingResponse.data.manager && buildingResponse.data.manager.id);
+
+              if (!managerId && buildingResponse.data) {
+                this.logger.log(`Could not find manager ID in keys: ${Object.keys(buildingResponse.data).join(', ')}`);
+
+                // Fallback: Nếu không tìm thấy manager từ tên trường, thử lấy từ response raw
+                if (buildingResponse.data instanceof Object) {
+                  for (const key of Object.keys(buildingResponse.data)) {
+                    if (key.toLowerCase().includes('manager') && buildingResponse.data[key]) {
+                      this.logger.log(`Found potential manager field: ${key} = ${buildingResponse.data[key]}`);
+                      if (typeof buildingResponse.data[key] === 'string') {
+                        managerId = buildingResponse.data[key];
+                        this.logger.log(`Using ${key} as managerId: ${managerId}`);
+                        break;
+                      }
+                    }
+                  }
+                }
+              }
+
+              if (!managerId) {
+                throw new Error(`Building ${buildingId} has no assigned manager in response`);
+              }
+
+              this.logger.log(`Successfully found manager ID: ${managerId} for building: ${buildingId}`);
+
+            } catch (error) {
+              retryCount++;
+              this.logger.error(`Attempt ${retryCount} failed: ${error.message}`);
+              if (retryCount < maxRetries) {
+                this.logger.log(`Will retry in 1 second...`);
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Đợi 1 giây trước khi retry
+              }
+            }
+          }
+
+          // Bắt buộc phải có managerId
+          if (!managerId) {
+            this.logger.error(`Failed to find manager after ${maxRetries} attempts. Cannot send notification for crack report ${newCrackReport.crackReportId}`);
+            throw new Error('Could not determine managerId for notification');
+          }
+
+          // Tạo và gửi thông báo - lúc này chắc chắn có managerId
+          const notificationData = {
+            title: 'Báo cáo vết nứt mới',
+            content: `Có một báo cáo vết nứt mới tại vị trí "${newCrackReport.position}" ${buildingName ? `tại ${buildingName}` : ''} cần được xử lý.`,
+            type: NotificationType.SYSTEM,
+            link: `/crack-reports/${newCrackReport.crackReportId}`,
+            relatedId: newCrackReport.crackReportId,
+            userId: managerId
+          };
+
+          this.logger.log(`Sending notification about new crack report to manager: ${managerId}`);
+          this.logger.log(`Notification data: ${JSON.stringify(notificationData)}`);
+
+          // Chỉ sử dụng emit (event pattern) để gửi thông báo
+          try {
+            // Emit notification mà KHÔNG đợi response (không cần firstValueFrom)
+            this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, notificationData);
+            this.logger.log(`Notification about new crack report emitted successfully`);
+          } catch (error) {
+            this.logger.error(`Error emitting notification: ${error.message}`);
+          }
+
+        } catch (notifyError) {
+          // Log error but don't fail the transaction
+          this.logger.error(`Error in notification process for new crack report: ${notifyError.message}`);
+        }
+
         return new ApiResponse(
           true,
           'Crack Report and Crack Details created successfully',
           [{ crackReport: newCrackReport, crackDetails: newCrackDetails }],
         )
+      }, {
+        timeout: 30000, // Tăng timeout từ 5000ms mặc định lên 30000ms (30 giây)
       })
     } catch (error) {
 

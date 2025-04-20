@@ -519,7 +519,8 @@ export class ScheduleService {
             content: `Lịch bảo trì ${dto.schedule_name} cho ${maintenanceCycle.device_type} tại ${buildingNames} đã được lên lịch từ ${formattedStartDate} đến ${formattedEndDate}.`,
             type: NotificationType.SYSTEM,
             broadcastToAll: true, // Gửi cho tất cả người dùng
-            link: `/schedules/${newSchedule.schedule.schedule_id}`
+            link: `/schedules/${newSchedule.schedule.schedule_id}`,
+            relatedId: newSchedule.schedule.schedule_id
           };
 
           // Gửi thông báo đến tất cả người dùng

@@ -6,12 +6,46 @@ import { PrismaService } from '../../prisma/prisma.service';
 @Injectable()
 export class NotificationService {
     private readonly logger = new Logger(NotificationService.name);
+    // Map để theo dõi các thông báo đang được xử lý
+    private processingNotifications = new Map<string, number>();
 
     constructor(
         @Inject('REDIS_CLIENT') private readonly redisClient: RedisClientType,
         private readonly prisma: PrismaService
     ) {
         this.logger.log('NotificationService initialized');
+        // Định kỳ dọn dẹp các thông báo quá hạn
+        setInterval(() => this.cleanupExpiredNotifications(), 60000); // Mỗi phút
+    }
+
+    // Kiểm tra xem thông báo có phải là trùng lặp không
+    isDuplicateNotification(notificationKey: string): boolean {
+        return this.processingNotifications.has(notificationKey);
+    }
+
+    // Đánh dấu thông báo đang được xử lý
+    markNotificationProcessing(notificationKey: string): void {
+        this.processingNotifications.set(notificationKey, Date.now());
+        this.logger.log(`Marked notification as processing: ${notificationKey}`);
+    }
+
+    // Đánh dấu thông báo đã xử lý xong
+    completeNotificationProcessing(notificationKey: string): void {
+        this.processingNotifications.delete(notificationKey);
+        this.logger.log(`Completed notification processing: ${notificationKey}`);
+    }
+
+    // Dọn dẹp các thông báo quá hạn (quá 30 giây)
+    private cleanupExpiredNotifications(): void {
+        const now = Date.now();
+        const expiryTime = 30 * 1000; // 30 giây, thay vì 5 phút
+
+        for (const [key, timestamp] of this.processingNotifications.entries()) {
+            if (now - timestamp > expiryTime) {
+                this.processingNotifications.delete(key);
+                this.logger.log(`Cleaned up expired notification: ${key}`);
+            }
+        }
     }
 
     // Tạo thông báo mới và lưu vào cả DB và Redis
@@ -21,6 +55,42 @@ export class NotificationService {
             this.logger.log(`Creating notification for user: ${createDto.userId}`);
             this.logger.log(`Full notification data: ${JSON.stringify(createDto)}`);
             this.logger.log(`Notification type: ${createDto.type} (${typeof createDto.type})`);
+
+            // Kiểm tra xem relatedId đã tồn tại trong DB chưa (trong vòng 30 giây)
+            if (createDto.relatedId) {
+                this.logger.log(`Checking for duplicate notification with relatedId: ${createDto.relatedId}`);
+
+                // Kiểm tra trong DB xem có notification cùng relatedId được tạo trong vòng 30 giây không
+                const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
+                const existingNotification = await this.prisma.notification.findFirst({
+                    where: {
+                        relatedId: createDto.relatedId,
+                        createdAt: {
+                            gte: thirtySecondsAgo
+                        }
+                    }
+                });
+
+                if (existingNotification) {
+                    this.logger.warn(`Found duplicate notification with relatedId: ${createDto.relatedId}, id: ${existingNotification.id}, created at: ${existingNotification.createdAt}`);
+
+                    // Trả về thông báo hiện có thay vì tạo mới
+                    const responseDto: NotificationResponseDto = {
+                        id: existingNotification.id,
+                        userId: existingNotification.userId,
+                        title: existingNotification.title,
+                        content: existingNotification.content,
+                        link: existingNotification.link,
+                        isRead: existingNotification.isRead,
+                        type: existingNotification.type as NotificationType,
+                        relatedId: existingNotification.relatedId,
+                        createdAt: existingNotification.createdAt,
+                    };
+
+                    this.logger.log(`Returning existing notification instead of creating a duplicate`);
+                    return responseDto;
+                }
+            }
 
             // Log environment variables
             this.logger.log(`DB_NOTIFICATION_SERVICE is ${process.env.DB_NOTIFICATION_SERVICE ? 'set' : 'NOT SET'}`);
