@@ -138,9 +138,24 @@ export class ScheduleJobsService {
         })
       }
 
+      // Get building detail information if buildingDetailId exists
+      let buildingDetail = null;
+      if (scheduleJob.buildingDetailId) {
+        try {
+          buildingDetail = await firstValueFrom(
+            this.buildingClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, {
+              buildingDetailId: scheduleJob.buildingDetailId,
+            })
+          );
+        } catch (error) {
+          console.error('Error fetching building detail:', error);
+          // Continue without building detail if there's an error
+        }
+      }
+
       const responseDto: ScheduleJobResponseDto = {
         ...scheduleJob,
-        building_id: scheduleJob.buildingDetailId,
+        building_id: buildingDetail?.data || null,
       }
 
       return new ApiResponse<ScheduleJobResponseDto>(
