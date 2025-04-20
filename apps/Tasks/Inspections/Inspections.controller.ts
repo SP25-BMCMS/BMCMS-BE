@@ -107,4 +107,17 @@ export class InspectionsController {
       data.dto,
     )
   }
+
+  @MessagePattern(INSPECTIONS_PATTERN.UPDATE_REPORT_STATUS_BY_MANAGER)
+  async updateInspectionReportStatusByManager(
+    @Payload() data: UpdateInspectionReportStatusDto
+  ) {
+    console.log(data)
+    return await this.inspectionService.updateInspectionReportStatusByManager(
+      data.inspection_id,
+      data.report_status,
+      data.userId,
+      data.reason
+    );
+  }
 }

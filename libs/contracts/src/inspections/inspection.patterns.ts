@@ -11,5 +11,6 @@ export const INSPECTIONS_PATTERN = {
   GET_BY_ID: 'inspection.get.by.id',
   VERIFY_LEADER: 'inspection.verify.leader',
   UPDATE_PRIVATE_ASSET: 'inspection.update.private.asset',
-  UPDATE_REPORT_STATUS: 'inspection.update.report.status'
+  UPDATE_REPORT_STATUS: 'inspection.update.report.status',
+  UPDATE_REPORT_STATUS_BY_MANAGER: 'update_inspection_report_status_by_manager'
 };

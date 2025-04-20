@@ -89,6 +89,7 @@ model Inspection {
   // Mối quan hệ N:1 với TaskAssignment
   taskAssignment     TaskAssignment @relation(fields: [task_assignment_id], references: [assignment_id])
   confirmed_by       String?        // Người xác nhận (nullable nếu chưa xác nhận)
+  reason             String?        // Lý do (nullable nếu không có)
   isprivateasset   Boolean    @default(false)     // Có phải tài sản riêng không?
   // Mối quan hệ 1:N với RepairMaterial
    report_status    reportStatus @default(NoPending)
