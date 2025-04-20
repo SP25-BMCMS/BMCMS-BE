@@ -584,17 +584,55 @@ export class InspectionService implements OnModuleInit {
         this.inspectionClient.send(INSPECTIONS_PATTERN.UPDATE_REPORT_STATUS, {
           inspection_id,
           dto
-        })
+        }).pipe(
+          timeout(10000),
+          catchError(err => {
+            console.error('Error updating inspection report status:', err);
+            return of(new ApiResponse(false, 'Error updating inspection report status', null));
+          })
+        )
       );
     } catch (error) {
-      console.error(`Failed to update inspection report status: ${error.message}`, error.stack);
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException(
-        'Failed to update inspection report status',
-        HttpStatus.INTERNAL_SERVER_ERROR
+      console.error('Error in updateInspectionReportStatus:', error);
+      return new ApiResponse(false, 'Error updating inspection report status', null);
+    }
+  }
+
+  async updateInspectionReportStatusByManager(
+    dto: UpdateInspectionReportStatusDto
+  ): Promise<any> {
+    try {
+      return await firstValueFrom(
+        this.inspectionClient.send(INSPECTIONS_PATTERN.UPDATE_REPORT_STATUS_BY_MANAGER, dto)
+          .pipe(
+            timeout(10000),
+            catchError(err => {
+              console.error('Error updating inspection report status by manager:', err);
+              return of(new ApiResponse(false, 'Error updating inspection report status by manager', null));
+            })
+          )
       );
+    } catch (error) {
+      console.error('Error in updateInspectionReportStatusByManager:', error);
+      return new ApiResponse(false, 'Error updating inspection report status by manager', null);
+    }
+  }
+
+  async getBuildingDetailIdFromTaskAssignment(task_assignment_id: string): Promise<any> {
+    try {
+      return await firstValueFrom(
+        this.inspectionClient.send({ cmd: 'get-building-detail-id-from-task-assignment' }, { task_assignment_id })
+          .pipe(
+            timeout(10000),
+            catchError(err => {
+              console.error('Error getting building detail ID from task assignment:', err);
+              return of(new ApiResponse(false, 'Error getting building detail ID from task assignment', null));
+            })
+          )
+      );
+    } catch (error) {
+      console.error('Error in getBuildingDetailIdFromTaskAssignment:', error);
+      return new ApiResponse(false, 'Error getting building detail ID from task assignment', null);
     }
   }
 }

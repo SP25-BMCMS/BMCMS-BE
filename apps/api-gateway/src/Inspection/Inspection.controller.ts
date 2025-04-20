@@ -216,4 +216,16 @@ export class InspectionController {
   ) {
     return this.inspectionService.updateInspectionReportStatus(inspection_id, dto);
   }
+
+  @Put('report-status/manager')
+  @ApiOperation({ summary: 'Update inspection report status by manager' })
+  @ApiResponse({ status: 200, description: 'Report status updated by manager successfully' })
+  // @ApiBearerAuth()
+  // @UseGuards(PassportJwtAuthGuard)
+  async updateInspectionReportStatusByManager(
+    @Body() dto: UpdateInspectionReportStatusDto
+  ) {
+    return this.inspectionService.updateInspectionReportStatusByManager(dto);
+  }
+
 }

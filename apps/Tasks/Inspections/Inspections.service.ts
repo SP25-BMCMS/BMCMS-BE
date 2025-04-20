@@ -18,6 +18,7 @@ import { ConfigService } from '@nestjs/config'
 import { TaskAssignmentsService } from '../TaskAssignments/TaskAssignments.service'
 import { AssignmentStatus } from '@prisma/client-Task'
 import { TaskService } from '../Task/Task.service'
+import { UpdateInspectionReportStatusDto, ReportStatus } from '@app/contracts/inspections/update-inspection-report-status.dto'
 
 const USERS_CLIENT = 'USERS_CLIENT'
 // Define interface for the User service
@@ -844,19 +845,19 @@ export class InspectionsService implements OnModuleInit {
       // Handle special cases for report status changes
       if (dto.report_status === 'Rejected' && inspection.isprivateasset === true) {
         // If report is rejected and it's a private asset, mark task as not completed
-        await this.taskAssignmentService.changeTaskAssignmentStatus(
-          inspection.task_assignment_id,
-          AssignmentStatus.Confirmed
-        );
+        // await this.taskAssignmentService.changeTaskAssignmentStatus(
+        //   inspection.task_assignment_id,
+        //   AssignmentStatus.Confirmed
+        // );
 
-        if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
-          await this.taskService.changeTaskStatus(
-            inspection.taskAssignment.task_id,
-            'Completed'
-          );
-        }
+        // if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
+        //   await this.taskService.changeTaskStatus(
+        //     inspection.taskAssignment.task_id,
+        //     'Completed'
+        //   );
+        // }
 
-        updatedInspection.taskAssignment.status = AssignmentStatus.Confirmed;
+        // updatedInspection.taskAssignment.status = AssignmentStatus.Confirmed;
 
         return new ApiResponse(
           true,
@@ -866,20 +867,150 @@ export class InspectionsService implements OnModuleInit {
       }
       else if (dto.report_status === 'Approved') {
         // If report is approved, mark task as completed
-        await this.taskAssignmentService.changeTaskAssignmentStatus(
-          inspection.task_assignment_id,
-          AssignmentStatus.Confirmed // Using Confirmed status since Completed is not in the enum
+        // await this.taskAssignmentService.changeTaskAssignmentStatus(
+        //   inspection.task_assignment_id,
+        //   AssignmentStatus.Confirmed // Using Confirmed status since Completed is not in the enum
+        // );
+
+        // // Also update the task status to Completed
+        // if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
+        //   await this.taskService.changeTaskStatus(
+        //     inspection.taskAssignment.task_id,
+        //     'Completed'
+        //   );
+        // }
+
+        // updatedInspection.taskAssignment.status = AssignmentStatus.Confirmed;
+
+        return new ApiResponse(
+          true,
+          'Chúng tôi xin ghi nhận và sẽ xem xét',
+          updatedInspection
         );
+      }
 
-        // Also update the task status to Completed
-        if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
-          await this.taskService.changeTaskStatus(
-            inspection.taskAssignment.task_id,
-            'Completed'
-          );
+      return new ApiResponse(
+        true,
+        'Inspection report status updated successfully',
+        updatedInspection
+      );
+    } catch (error) {
+      if (error instanceof RpcException) throw error;
+      throw new RpcException({
+        statusCode: 500,
+        message: `Failed to update inspection report status: ${error.message}`,
+      });
+    }
+  }
+
+  async updateInspectionReportStatusByManager(
+    inspection_id: string,
+    report_status: ReportStatus,
+    userId: string,
+    reason: string
+  ) {
+    try {
+      // Kiểm tra inspection có tồn tại không
+      const inspection = await this.prisma.inspection.findUnique({
+        where: { inspection_id },
+        include: {
+          taskAssignment: true
         }
+      });
 
-        updatedInspection.taskAssignment.status = AssignmentStatus.Confirmed;
+      if (!inspection) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Inspection not found',
+        });
+      }
+      console.log(inspection)
+
+      // Kiểm tra user có phải là manager không
+      // const userInfo = await firstValueFrom(
+      //   this.userService.getUserInfo({ userId, username: '' } as UserRequest)
+      //     .pipe(
+      //       timeout(10000),
+      //       catchError(err => {
+      //         console.error('Error fetching user info:', err);
+      //         return of(null);
+      //       })
+      //     )
+      // );
+      // console.log(userInfo)
+      // if (!userInfo || userInfo.role !== 'Manager') {
+      //   throw new RpcException({
+      //     statusCode: 403,
+      //     message: 'Only managers can update inspection report status',
+      //   });
+      // }
+      console.log(inspection)
+      // Cập nhật trạng thái báo cáo kiểm tra
+      const updatedInspection = await this.prisma.inspection.update({
+        where: { inspection_id },
+        data: {
+          confirmed_by: userId,
+          report_status: report_status,
+          updated_at: new Date(),
+          reason: reason
+        },
+        include: {
+          taskAssignment: true,
+          repairMaterials: true
+        }
+      });
+      console.log(updatedInspection)
+      // Xử lý các trường hợp đặc biệt cho thay đổi trạng thái báo cáo
+      if (report_status === 'Rejected' && inspection.isprivateasset === true) {
+        // Nếu báo cáo bị từ chối và là tài sản riêng, đánh dấu task là chưa hoàn thành
+        // await this.taskAssignmentService.changeTaskAssignmentStatus(
+        //   inspection.task_assignment_id,
+        //   AssignmentStatus.Confirmed
+        // );
+
+        // if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
+        //   await this.taskService.changeTaskStatus(
+        //     inspection.taskAssignment.task_id,
+        //     'Completed'
+        //   );
+        // }
+
+        // const taskAssignment = await this.prisma.taskAssignment.findUnique({
+        //   where: { assignment_id: inspection.task_assignment_id }
+        // });
+
+        // if (taskAssignment) {
+        //   taskAssignment.status = AssignmentStatus.Confirmed;
+        // }
+
+        return new ApiResponse(
+          true,
+          'Đã có trong hệ thống lịch bảo trì của chúng tôi',
+          updatedInspection
+        );
+      }
+      else if (report_status === 'Approved') {
+        // Nếu báo cáo được phê duyệt, đánh dấu task là đã hoàn thành
+        // await this.taskAssignmentService.changeTaskAssignmentStatus(
+        //   inspection.task_assignment_id,
+        //   AssignmentStatus.Confirmed
+        // );
+
+        // // Cập nhật trạng thái task thành Completed
+        // if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
+        //   await this.taskService.changeTaskStatus(
+        //     inspection.taskAssignment.task_id,
+        //     'Completed'
+        //   );
+        // }
+
+        // const taskAssignment = await this.prisma.taskAssignment.findUnique({
+        //   where: { assignment_id: inspection.task_assignment_id }
+        // });
+
+        // if (taskAssignment) {
+        //   taskAssignment.status = AssignmentStatus.Confirmed;
+        // }
 
         return new ApiResponse(
           true,
