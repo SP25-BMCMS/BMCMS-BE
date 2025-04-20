@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common'
+import { Body, Controller, Get, Param, Post, Put, Query, UseGuards, Patch } from '@nestjs/common'
 import { schedulejobsService } from './schedulejobs.service'
 import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status'
@@ -145,4 +145,15 @@ export class ScheduleJobsController {
   async sendMaintenanceEmail(@Param('id') scheduleJobId: string) {
     return this.scheduleJobsService.sendMaintenanceEmail(scheduleJobId)
   }
+
+  // @Patch(':id/status')
+  // @ApiOperation({ summary: 'Change schedule job status' })
+ 
+  // async changeStatus(
+  //   @Param('id') id: string,
+  //   @Body() status: UpdateScheduleJobStatusDto,
+  // ) {
+  //   return this.scheduleJobsService.changeStatus(id, status.status)
+  // }
 }
+// UpdateScheduleJobStatusDto

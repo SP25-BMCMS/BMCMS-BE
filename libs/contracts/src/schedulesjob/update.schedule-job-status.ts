@@ -8,7 +8,7 @@ export class UpdateScheduleJobStatusDto {
 
   @IsUUID()
   @IsOptional()
-  schedule_job_id: string
+  schedulejobs_id: string
 
   @ApiProperty({
     description: 'The status of the schedule job',

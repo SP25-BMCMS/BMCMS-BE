@@ -185,12 +185,15 @@ export class ScheduleJobsService {
     updateScheduleJobStatusDto: UpdateScheduleJobStatusDto,
   ): Promise<ApiResponse<ScheduleJobResponseDto>> {
     try {
-      const { schedule_job_id, status } = updateScheduleJobStatusDto
+      console.log('🚀 ~ ScheduleJobsService ~ updateScheduleJobStatus ~ updateScheduleJobStatusDto:', updateScheduleJobStatusDto)
+      const { schedulejobs_id, status } = updateScheduleJobStatusDto
+      console.log('🚀 ~ ScheduleJobsService ~ updateScheduleJobStatus ~ schedulejobs_id:', updateScheduleJobStatusDto.schedulejobs_id)
+      console.log('🚀 ~ ScheduleJobsService ~ updateScheduleJobStatus ~ status:', updateScheduleJobStatusDto.status)
 
       const updatedScheduleJob = await this.prismaService.scheduleJob.update({
-        where: { schedule_job_id },
+        where: { schedule_job_id: schedulejobs_id },
         data: {
-          status,
+            status,
         },
       })
 
@@ -494,4 +497,49 @@ if (job.buildingDetailId) {
       )
     }
   }
+
+  // async changeStatus(schedule_job_id: string, status: string) {
+  //   console.log('🚀 ~ ScheduleJobsService ~ changeStatus ~ schedule_job_id:', schedule_job_id)
+  //   try {
+  //     console.log('🚀 ~ ScheduleJobsService ~ changeStatus ~ status:', status)
+
+  //     // Check if the schedule job exists before trying to update
+  //     const scheduleJob = await this.prismaService.scheduleJob.findUnique({
+  //       where: { schedule_job_id },
+  //     })
+
+  //     // If schedule job does not exist, throw an exception
+  //     if (!scheduleJob) {
+  //       throw new RpcException({
+  //         statusCode: 404,
+  //         message: 'Schedule job not found',
+  //       })
+  //     }
+
+  //     const scheduleJobStatus: ScheduleJobStatus = status as ScheduleJobStatus
+
+  //     // Proceed to update the status
+  //     const updatedScheduleJob = await this.prismaService.scheduleJob.update({
+  //       where: { schedule_job_id },
+  //       data: {
+  //         status: scheduleJobStatus,
+  //       },
+  //     })
+
+  //     return new ApiResponse<ScheduleJobResponseDto>(
+  //       true,
+  //       'Schedule job status updated successfully',
+  //       updatedScheduleJob,
+  //     )
+  //   } catch (error) {
+  //     console.error('Error updating schedule job status:', error)
+
+  //     // Return a meaningful response for the error
+  //     throw new RpcException({
+  //       statusCode: 400,
+  //       message: 'Error updating schedule job status',
+  //       error: error.message,
+  //     })
+  //   }
+  // }
 }

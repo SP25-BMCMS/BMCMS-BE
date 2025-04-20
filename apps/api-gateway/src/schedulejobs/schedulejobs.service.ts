@@ -13,6 +13,7 @@ import { ClientProxy } from '@nestjs/microservices'
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto'
 import { firstValueFrom } from 'rxjs'
 import { SCHEDULE_CLIENT } from '../constraints'
+import { RpcException } from '@nestjs/microservices'
 
 @Injectable()
 export class schedulejobsService {
@@ -131,4 +132,21 @@ export class schedulejobsService {
       )
     }
   }
+
+  // async changeStatus(schedule_job_id: string, status: string) {
+  //   try {
+  //     const response = await firstValueFrom(
+  //       this.scheduleJobClient.send(SCHEDULEJOB_PATTERN.CHANGE_STATUS, {
+  //         schedule_job_id,
+  //         status,
+  //       })
+  //     )
+  //     return response
+  //   } catch (error) {
+  //     throw new RpcException({
+  //       statusCode: 500,
+  //       message: 'Error changing schedule job status',
+  //     })
+  //   }
+  // }
 }
