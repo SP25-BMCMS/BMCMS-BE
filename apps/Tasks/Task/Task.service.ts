@@ -180,7 +180,7 @@ export class TaskService {
         promises.push(
           firstValueFrom(
             this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id).pipe(
-              timeout(10000),
+              timeout(15000),
               catchError(err => {
                 console.error(`Error fetching crack info for task ${task.task_id}:`, err)
                 return of({
@@ -198,7 +198,7 @@ export class TaskService {
         promises.push(
           firstValueFrom(
             this.scheduleClient.send(SCHEDULEJOB_PATTERN.GET_BY_ID, { schedule_job_id: task.schedule_job_id }).pipe(
-              timeout(10000),
+              timeout(15000),
               catchError(err => {
                 console.error(`Error fetching schedule job info for task ${task.task_id}:`, err)
                 return of({
@@ -369,7 +369,7 @@ export class TaskService {
           promises.push(
             firstValueFrom(
               this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id).pipe(
-                timeout(10000),
+                timeout(15000),
                 catchError(err => {
                   console.error(`Error fetching crack info for task ${task.task_id}:`, err)
                   return of({
@@ -387,7 +387,7 @@ export class TaskService {
           promises.push(
             firstValueFrom(
               this.scheduleClient.send(SCHEDULEJOB_PATTERN.GET_BY_ID, { schedule_job_id: task.schedule_job_id }).pipe(
-                timeout(10000),
+                timeout(15000),
                 catchError(err => {
                   console.error(`Error fetching schedule job info for task ${task.task_id}:`, err)
                   return of({
