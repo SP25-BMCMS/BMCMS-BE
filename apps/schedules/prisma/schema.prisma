@@ -53,6 +53,8 @@ enum Frequency {
 }
 
 enum ScheduleJobStatus {
+  Reviewing
+  Rejected 
   Pending
   InProgress
   Completed

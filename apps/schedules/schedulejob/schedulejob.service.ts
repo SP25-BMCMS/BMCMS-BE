@@ -128,8 +128,16 @@ export class ScheduleJobsService {
     schedule_job_id: string,
   ): Promise<ApiResponse<ScheduleJobResponseDto>> {
     try {
+      console.log('schedule_job_idschedule_job_idschedule_job_idschedule_job_idschedule_job_idschedule_job_idschedule_job_id', schedule_job_id)
       const scheduleJob = await this.prismaService.scheduleJob.findUnique({
         where: { schedule_job_id },
+        include: {
+          schedule: {
+            include: {
+              cycle: true
+            }
+          }
+        },
       })
       if (!scheduleJob) {
         throw new RpcException({
@@ -155,7 +163,8 @@ export class ScheduleJobsService {
 
       const responseDto: ScheduleJobResponseDto = {
         ...scheduleJob,
-        building_id: buildingDetail?.data || null,
+        building_id: scheduleJob.buildingDetailId,
+        buildingDetail: buildingDetail?.data || null
       }
 
       return new ApiResponse<ScheduleJobResponseDto>(

@@ -19,6 +19,10 @@ import { AREAS_PATTERN } from '@app/contracts/Areas/Areas.patterns'
 import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
 import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
 
+const CRACK_PATTERNS = {
+  GET_DETAILS: { cmd: 'get-crack-report-by-id' }
+}
+
 interface UserService {
   checkStaffAreaMatchWithScheduleJob(data: { staffId: string; scheduleJobId: string }): Observable<{
     isSuccess: boolean
@@ -70,9 +74,6 @@ interface BuildingResponse {
   };
 }
 
-const CRACK_PATTERNS = {
-  GET_DETAILS: { cmd: 'get-crack-report-by-id' }
-}
 @Injectable()
 export class TaskService {
   private userService: UserService
@@ -172,25 +173,57 @@ export class TaskService {
 
       const result = { task }
 
-      // If crack_id exists, get crack info
+      // Fetch both crack info and schedule job info if they exist
+      const promises = [];
+        
       if (task.crack_id) {
-
-        try {
-          console.log("🚀 ~ TaskService ~ getTaskById ~ task.crack_id:", task.crack_id)
-          const crackInfo = await firstValueFrom(
-            this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
-          )
-          result['crackInfo'] = crackInfo
-        } catch (error) {
-          task['crackInfo'] = {
-            statusCode: 400,
-            message: 'No crackReport find á',
-            data: null,
-          }
-        }
-
-
+        promises.push(
+          firstValueFrom(
+            this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id).pipe(
+              timeout(10000),
+              catchError(err => {
+                console.error(`Error fetching crack info for task ${task.task_id}:`, err)
+                return of({
+                  statusCode: 400,
+                  message: 'No crackReport found',
+                  data: null,
+                })
+              })
+            )
+          ).then(response => ({ type: 'crack', data: response }))
+        );
       }
+        
+      if (task.schedule_job_id) {
+        promises.push(
+          firstValueFrom(
+            this.scheduleClient.send(SCHEDULEJOB_PATTERN.GET_BY_ID, { schedule_job_id: task.schedule_job_id }).pipe(
+              timeout(10000),
+              catchError(err => {
+                console.error(`Error fetching schedule job info for task ${task.task_id}:`, err)
+                return of({
+                  statusCode: 400,
+                  message: 'No schedule job found',
+                  data: null,
+                })
+              })
+            )
+          ).then(response => ({ type: 'scheduleJob', data: response }))
+        );
+      }
+
+      // Wait for all promises to resolve
+      const infos = await Promise.all(promises);
+      
+      // Attach all available info to the result
+      infos.forEach(info => {
+        if (info?.type === 'crack') {
+          result['crackInfo'] = info.data;
+        }
+        if (info?.type === 'scheduleJob') {
+          result['schedulesjobInfo'] = info.data;
+        }
+      });
 
       return {
         statusCode: 200,
@@ -328,33 +361,65 @@ export class TaskService {
       const dbQueryTime = performance.now() - startTime
       console.log(`Database query time: ${dbQueryTime.toFixed(2)}ms`)
 
-      // Fetch crack info in parallel with a reasonable timeout
-      const crackInfoPromises = tasks.map(task => {
-        if (!task.crack_id) return Promise.resolve(null)
+      // Fetch both crack info and schedule job info for each task
+      const additionalInfoPromises = tasks.map(task => {
+        const promises = [];
+        
+        if (task.crack_id) {
+          promises.push(
+            firstValueFrom(
+              this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id).pipe(
+                timeout(10000),
+                catchError(err => {
+                  console.error(`Error fetching crack info for task ${task.task_id}:`, err)
+                  return of({
+                    statusCode: 400,
+                    message: 'No crackReport found',
+                    data: null,
+                  })
+                })
+              )
+            ).then(response => ({ type: 'crack', data: response }))
+          );
+        }
+        
+        if (task.schedule_job_id) {
+          promises.push(
+            firstValueFrom(
+              this.scheduleClient.send(SCHEDULEJOB_PATTERN.GET_BY_ID, { schedule_job_id: task.schedule_job_id }).pipe(
+                timeout(10000),
+                catchError(err => {
+                  console.error(`Error fetching schedule job info for task ${task.task_id}:`, err)
+                  return of({
+                    statusCode: 400,
+                    message: 'No schedule job found',
+                    data: null,
+                  })
+                })
+              )
+            ).then(response => ({ type: 'scheduleJob', data: response }))
+          );
+        }
 
-        return firstValueFrom(
-          this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id).pipe(
-            timeout(10000), // Reduced timeout to 10 seconds
-            catchError(err => {
-              console.error(`Error fetching crack info for task ${task.task_id}:`, err)
-              return of({
-                statusCode: 400,
-                message: 'No crackReport found',
-                data: null,
-              })
-            })
-          )
-        )
+        return Promise.all(promises);
       })
 
-      const crackInfoStartTime = performance.now()
-      const crackInfos = await Promise.all(crackInfoPromises)
-      const crackInfoTime = performance.now() - crackInfoStartTime
-      console.log(`Crack info fetch time: ${crackInfoTime.toFixed(2)}ms`)
+      const additionalInfoStartTime = performance.now()
+      const additionalInfos = await Promise.all(additionalInfoPromises)
+      const additionalInfoTime = performance.now() - additionalInfoStartTime
+      console.log(`Additional info fetch time: ${additionalInfoTime.toFixed(2)}ms`)
 
-      // Attach crack info to tasks
+      // Attach all available info to tasks
       tasks.forEach((task, index) => {
-        task['crackInfo'] = crackInfos[index]
+        const infos = additionalInfos[index];
+        infos.forEach(info => {
+          if (info?.type === 'crack') {
+            task['crackInfo'] = info.data;
+          }
+          if (info?.type === 'scheduleJob') {
+            task['schedulesjobInfo'] = info.data;
+          }
+        });
       })
 
       const totalTime = performance.now() - startTime

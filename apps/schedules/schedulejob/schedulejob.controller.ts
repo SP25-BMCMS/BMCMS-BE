@@ -36,6 +36,7 @@ export class ScheduleJobController {
   async getScheduleJobById(
     @Payload() payload: { schedule_job_id: string },
   ): Promise<ApiResponse<ScheduleJobResponseDto>> {
+    console.log('paypayloadpayloadpayloadpayloadpayloadpayloadpayloadload', payload.schedule_job_id)
     return this.ScheduleJobsService.getScheduleJobById(payload.schedule_job_id)
   }
 
