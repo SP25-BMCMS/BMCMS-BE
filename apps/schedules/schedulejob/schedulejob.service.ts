@@ -271,6 +271,20 @@ export class ScheduleJobsService {
                 building_id: job.buildingDetailId,
               }
             }
+// Get building detail information if buildingDetailId exists
+let buildingDetail = null;
+if (job.buildingDetailId) {
+  try {
+    buildingDetail = await firstValueFrom(
+      this.buildingClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, {
+        buildingDetailId: job.buildingDetailId,
+      })
+    );
+  } catch (error) {
+    console.error('Error fetching building detail:', error);
+    // Continue without building detail if there's an error
+  }
+}
 
             console.log(`Fetching building with ID: ${job.buildingDetailId}`)
             const building = await firstValueFrom(
@@ -281,6 +295,8 @@ export class ScheduleJobsService {
               ...job,
               building: building.data,
               building_id: job.buildingDetailId,
+              buildingDetail: buildingDetail?.data || null,
+
             }
           } catch (error) {
             console.error(`Error fetching building for job ${job.schedule_job_id}:`, error)
@@ -288,6 +304,8 @@ export class ScheduleJobsService {
               ...job,
               building: null,
               building_id: job.buildingDetailId,
+              //buildingDetail: buildingDetail?.data || null,
+
             }
           }
         })
