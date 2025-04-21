@@ -137,6 +137,7 @@ export class InspectionsService implements OnModuleInit {
 
       // Xử lý presignedUrl cho mỗi inspection
       for (const inspection of inspections) {
+        // Process image URLs
         if (inspection.image_urls && inspection.image_urls.length > 0) {
           inspection.image_urls = await Promise.all(
             inspection.image_urls.map(async (url: string) => {
@@ -149,6 +150,17 @@ export class InspectionsService implements OnModuleInit {
               }
             })
           )
+        }
+
+        // Process PDF file URL if exists
+        if (inspection.uploadFile) {
+          try {
+            const fileKey = this.extractFileKey(inspection.uploadFile)
+            inspection.uploadFile = await this.getPreSignedUrl(fileKey)
+          } catch (error) {
+            console.error(`Error getting pre-signed URL for PDF file:`, error)
+            // Keep original URL as fallback
+          }
         }
       }
 
@@ -235,8 +247,9 @@ export class InspectionsService implements OnModuleInit {
         }
       }
 
-      // Process image URLs for each inspection
+      // Process image URLs and PDF files for each inspection
       for (const inspection of inspections) {
+        // Process image URLs
         if (inspection.image_urls && inspection.image_urls.length > 0) {
           inspection.image_urls = await Promise.all(
             inspection.image_urls.map(async (url: string) => {
@@ -249,6 +262,17 @@ export class InspectionsService implements OnModuleInit {
               }
             })
           )
+        }
+
+        // Process PDF file URL if exists
+        if (inspection.uploadFile) {
+          try {
+            const fileKey = this.extractFileKey(inspection.uploadFile)
+            inspection.uploadFile = await this.getPreSignedUrl(fileKey)
+          } catch (error) {
+            console.error(`Error getting pre-signed URL for PDF file:`, error)
+            // Keep original URL as fallback
+          }
         }
       }
 
@@ -378,6 +402,7 @@ export class InspectionsService implements OnModuleInit {
               image_urls: dto.image_urls || [],
               description: dto.description || "",
               total_cost: totalCost,
+              uploadFile: dto.uploadFile || null,
             },
           })
 
@@ -428,6 +453,7 @@ export class InspectionsService implements OnModuleInit {
             image_urls: dto.image_urls || [],
             description: dto.description || "",
             total_cost: 0,
+            uploadFile: dto.uploadFile || null,
           },
         })
 
@@ -526,6 +552,17 @@ export class InspectionsService implements OnModuleInit {
         )
       }
 
+      // Process PDF file URL if exists
+      if (result.uploadFile) {
+        try {
+          const fileKey = this.extractFileKey(result.uploadFile)
+          result.uploadFile = await this.getPreSignedUrl(fileKey)
+        } catch (error) {
+          console.error(`Error getting pre-signed URL for PDF file:`, error)
+          // Keep original URL as fallback
+        }
+      }
+
       // 2. Get task info
       const task = inspection.taskAssignment.task
       console.log(task)
@@ -620,6 +657,17 @@ export class InspectionsService implements OnModuleInit {
             }
           })
         )
+      }
+
+      // Process PDF file URL if exists
+      if (inspection.uploadFile) {
+        try {
+          const fileKey = this.extractFileKey(inspection.uploadFile)
+          inspection.uploadFile = await this.getPreSignedUrl(fileKey)
+        } catch (error) {
+          console.error(`Error getting pre-signed URL for PDF file:`, error)
+          // Keep original URL as fallback
+        }
       }
 
       return new ApiResponse(true, 'Inspection retrieved successfully', inspection)

@@ -83,6 +83,7 @@ model Inspection {
   task_assignment_id String
   inspected_by       String
   image_urls         String[] // Đã sử dụng array cho hình ảnh
+  uploadFile         String? // New field for PDF file URL
   description        String
   created_at         DateTime         @default(now())
   updated_at         DateTime         @updatedAt

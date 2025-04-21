@@ -20,7 +20,7 @@ import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-ins
 import { AddImageToInspectionDto } from '@app/contracts/inspections/add-image.dto'
 import { UserInterface } from '../users/user/users.interface'
 import { LOCATIONDETAIL_PATTERN } from 'libs/contracts/src/LocationDetails/Locationdetails.patterns'
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { ConfigService } from '@nestjs/config'
 import { UpdateInspectionPrivateAssetDto } from '@app/contracts/inspections/update-inspection-privateasset.dto'
@@ -175,38 +175,110 @@ export class InspectionService implements OnModuleInit {
 
       // If files are provided, upload them to S3 via Crack service
       let imageUrls: string[] = []
+      let pdfUrl: string = null
+
       if (files && files.length > 0) {
         try {
-          // Convert file buffers to base64 for transport over RabbitMQ
-          const processedFiles = files.map(file => ({
-            ...file,
-            buffer: file.buffer.toString('base64')
-          }))
+          // Log detailed file information for debugging
+          console.log('======= FILE PROCESSING STARTED =======')
+          console.log(`Total files received: ${files.length}`)
+          files.forEach((file, index) => {
+            console.log(`File ${index + 1}: ${file.originalname}, fieldname: ${file.fieldname}, mimetype: ${file.mimetype}, size: ${file.size} bytes`)
+          })
 
-          // Call the crack service to upload the images
-          const uploadResponse = await firstValueFrom(
-            this.crackClient.send(
-              { cmd: 'upload-inspection-images' },
-              { files: processedFiles }
-            ).pipe(
-              timeout(30000),
-              catchError(err => {
-                console.error('Error uploading images:', err)
-                return of(new ApiResponse(false, 'Error uploading images', null))
+          // Group files by their origins
+          const pdfFiles = files.filter(file => file.fieldname === 'pdfFile')
+          const imageFiles = files.filter(file => file.fieldname === 'files')
+
+          console.log(`Grouped files: ${pdfFiles.length} PDF files, ${imageFiles.length} image files`)
+
+          // Handle PDF file upload if provided (take only the first PDF file if multiple are uploaded)
+          if (pdfFiles.length > 0) {
+            const pdfFile = pdfFiles[0]
+            console.log(`Processing PDF file: ${pdfFile.originalname}, fieldname: ${pdfFile.fieldname}, mimetype: ${pdfFile.mimetype}`)
+
+            // Check if the file is actually a PDF by mimetype or file extension
+            const isPdf = pdfFile.mimetype === 'application/pdf' ||
+              pdfFile.originalname.toLowerCase().endsWith('.pdf');
+
+            if (!isPdf) {
+              console.error(`Error: Non-PDF file uploaded through pdfFile field: ${pdfFile.originalname}, mimetype: ${pdfFile.mimetype}`);
+              return new ApiResponse(
+                false,
+                'Invalid file type for PDF upload. Only PDF files are allowed in the pdfFile field.',
+                null
+              );
+            }
+
+            // Generate a unique filename with timestamp and original extension
+            const fileExt = pdfFile.originalname.split('.').pop()
+            const uniqueFileName = `inspections/reports/${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`
+
+            try {
+              // Upload the PDF file directly to S3
+              const command = new PutObjectCommand({
+                Bucket: this.bucketName,
+                Key: uniqueFileName,
+                Body: pdfFile.buffer,
+                ContentType: 'application/pdf'  // Always set PDF content type
               })
-            )
-          )
 
-          if (uploadResponse.isSuccess && uploadResponse.data && uploadResponse.data.InspectionImage) {
-            imageUrls = uploadResponse.data.InspectionImage
-            console.log('Uploaded image URLs:', imageUrls)
+              await this.s3.send(command)
+
+              // Store the full S3 URL, not just the file key
+              const s3BaseUrl = `https://${this.bucketName}.s3.amazonaws.com/`
+              pdfUrl = s3BaseUrl + uniqueFileName
+              console.log('PDF uploaded successfully, URL:', pdfUrl)
+            } catch (uploadError) {
+              console.error('Error uploading PDF to S3:', uploadError)
+              // Continue without PDF
+            }
           } else {
-            console.error('Image upload failed:', uploadResponse)
-            // Continue without images
+            console.log('No PDF files to process')
           }
+
+          // Handle image files upload if any
+          if (imageFiles.length > 0) {
+            console.log(`Processing ${imageFiles.length} image files`)
+
+            // Convert file buffers to base64 for transport over RabbitMQ
+            const processedFiles = imageFiles.map(file => ({
+              ...file,
+              buffer: file.buffer.toString('base64')
+            }))
+
+            // Call the crack service to upload the images
+            const uploadResponse = await firstValueFrom(
+              this.crackClient.send(
+                { cmd: 'upload-inspection-images' },
+                { files: processedFiles }
+              ).pipe(
+                timeout(30000),
+                catchError(err => {
+                  console.error('Error uploading images:', err)
+                  return of(new ApiResponse(false, 'Error uploading images', null))
+                })
+              )
+            )
+
+            if (uploadResponse.isSuccess && uploadResponse.data && uploadResponse.data.InspectionImage) {
+              imageUrls = uploadResponse.data.InspectionImage
+              console.log(`Successfully uploaded ${imageUrls.length} images:`, imageUrls)
+            } else {
+              console.error('Image upload failed:', uploadResponse)
+              // Continue without images
+            }
+          } else {
+            console.log('No image files to process')
+          }
+
+          console.log('======= FILE PROCESSING FINISHED =======')
+          console.log('Final results:')
+          console.log(`- Images: ${imageUrls.length > 0 ? imageUrls.length + ' files uploaded' : 'None'}`)
+          console.log(`- PDF: ${pdfUrl ? 'Uploaded successfully' : 'None'}`)
         } catch (error) {
-          console.error('Error in image upload process:', error)
-          // Continue without images
+          console.error('Error in file upload process:', error)
+          // Continue without files
         }
       }
 
@@ -215,6 +287,7 @@ export class InspectionService implements OnModuleInit {
         ...dto,
         inspected_by: userId, // Override any value in the DTO with the authenticated user's ID
         image_urls: imageUrls, // Add the image URLs from S3
+        uploadFile: pdfUrl, // Add the PDF URL from S3
         location_details: {
           // Add location details
           // This is a placeholder and should be replaced with actual implementation
@@ -468,6 +541,16 @@ export class InspectionService implements OnModuleInit {
         this.inspectionClient.send(INSPECTIONS_PATTERN.GET_DETAILS, inspection_id)
       )
 
+      // Nếu cần, tạo pre-signed URL cho uploadFile nếu có
+      if (response.isSuccess && response.data && response.data.uploadFile) {
+        try {
+          const fileKey = this.extractFileKey(response.data.uploadFile)
+          response.data.uploadFile = await this.getPreSignedUrl(fileKey)
+        } catch (error) {
+          console.error('Error generating pre-signed URL for PDF:', error)
+        }
+      }
+
       return response;
     } catch (error) {
       return new ApiResponse(false, 'Error getting inspection details', error.message)
@@ -481,6 +564,16 @@ export class InspectionService implements OnModuleInit {
       const response = await firstValueFrom(
         this.inspectionClient.send(INSPECTIONS_PATTERN.GET_BY_ID, { inspection_id })
       )
+
+      // Tạo pre-signed URL cho uploadFile nếu có
+      if (response.isSuccess && response.data && response.data.uploadFile) {
+        try {
+          const fileKey = this.extractFileKey(response.data.uploadFile)
+          response.data.uploadFile = await this.getPreSignedUrl(fileKey)
+        } catch (error) {
+          console.error('Error generating pre-signed URL for PDF:', error)
+        }
+      }
 
       return response;
     } catch (error) {

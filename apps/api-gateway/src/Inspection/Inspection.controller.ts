@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  HttpException,
   HttpStatus,
   Inject,
   NotFoundException,
@@ -14,6 +15,7 @@ import {
   Query,
   Req,
   Res,
+  UploadedFile,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -42,10 +44,27 @@ import { Inspection } from '@prisma/client-Task'
 import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-inspection-status.dto'
 import { AddImageToInspectionDto } from '@app/contracts/inspections/add-image.dto'
 import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard'
-import { FilesInterceptor } from '@nestjs/platform-express'
+import { FileFieldsInterceptor, FilesInterceptor } from '@nestjs/platform-express'
 import { UpdateInspectionPrivateAssetDto } from '@app/contracts/inspections/update-inspection-privateasset.dto'
 import { UpdateInspectionReportStatusDto } from '@app/contracts/inspections/update-inspection-report-status.dto'
 import { Response } from 'express'
+import { diskStorage } from 'multer'
+import * as path from 'path'
+
+// File filter function to check file types
+const pdfFileFilter = (req, file, callback) => {
+  if (file.fieldname === 'pdfFile') {
+    // For pdfFile field, check if it's a PDF file, but let it pass anyway with a warning
+    if (file.mimetype !== 'application/pdf' && !file.originalname.toLowerCase().endsWith('.pdf')) {
+      console.warn(`Warning: Non-PDF file uploaded in pdfFile field: ${file.originalname}, type: ${file.mimetype}`);
+      // Attach a warning flag to the file for service layer to handle
+      file.isPdfValidationWarning = true;
+    }
+  }
+
+  // Accept all files regardless of type
+  callback(null, true);
+}
 
 @Controller('inspections')
 @ApiTags('inspections')
@@ -99,35 +118,57 @@ export class InspectionController {
   @ApiBearerAuth('access-token')
   @ApiOperation({
     summary: 'Create a new inspection',
-    description: 'Creates a new inspection. The inspected_by field is automatically set to the authenticated user\'s ID. Only users with Staff role can create inspections.'
+    description: `Creates a new inspection with images and PDF uploads.
+- The inspected_by field is automatically set to the authenticated user's ID
+- Only users with Staff role can create inspections
+- Upload images using the 'files' form field (supports multiple files, any image format)
+- Upload a PDF report using the 'pdfFile' form field (single file only, STRICTLY PDF FORMAT ONLY)
+- The uploaded PDF will be stored in the 'uploadFile' field in the database
+- IMPORTANT: Make sure to name your form fields exactly 'files' and 'pdfFile'
+- IMPORTANT: The 'pdfFile' field ONLY accepts actual PDF files (.pdf extension and/or application/pdf MIME type)
+- If a non-PDF file is uploaded to the 'pdfFile' field, the request will be rejected with an error message`
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    type: CreateInspectionDto,
-    description: 'Create a new inspection with optional images upload and location details',
-    examples: {
-      full_example: {
-        summary: 'Complete example with location details',
-        value: {
-          task_assignment_id: '123e4567-e89b-12d3-a456-426614174000',
-          description: 'This is a detailed inspection of the building',
-          roomNumber: 'Room 101',
-          floorNumber: 1,
-          areaType: 'Floor',
-          additionalLocationDetails: [
-            {
-              roomNumber: 'Room 102',
-              floorNumber: 1,
-              areaType: 'Wall',
-              description: 'Kitchen wall with water damage'
-            },
-            {
-              roomNumber: 'Room 103',
-              floorNumber: 2,
-              areaType: 'Ceiling',
-              description: 'Ceiling with cracks'
+    schema: {
+      type: 'object',
+      required: ['task_assignment_id'],
+      properties: {
+        task_assignment_id: {
+          type: 'string',
+          example: '123e4567-e89b-12d3-a456-426614174000',
+          description: 'ID of the task assignment'
+        },
+        description: {
+          type: 'string',
+          example: 'This is a detailed inspection of the building',
+          description: 'Description of the inspection'
+        },
+        files: {
+          type: 'array',
+          items: {
+            type: 'string',
+            format: 'binary'
+          },
+          description: 'Image files to upload - IMPORTANT: Use exactly this field name "files"'
+        },
+        pdfFile: {
+          type: 'string',
+          format: 'binary',
+          description: 'PDF file to upload - IMPORTANT: Use exactly this field name "pdfFile" and ONLY upload PDF files'
+        },
+        additionalLocationDetails: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              roomNumber: { type: 'string', example: 'Room 102' },
+              floorNumber: { type: 'number', example: 1 },
+              areaType: { type: 'string', example: 'Wall' },
+              description: { type: 'string', example: 'Kitchen wall with water damage' }
             }
-          ]
+          },
+          description: 'Additional location details for this inspection'
         }
       }
     }
@@ -135,7 +176,17 @@ export class InspectionController {
   @ApiResponse({ status: 201, description: 'Inspection created successfully', type: ApiResponseDto })
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 403, description: 'Forbidden - Only Staff can create inspections' })
-  @UseInterceptors(FilesInterceptor('files', 10))
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'files', maxCount: 10 },
+        { name: 'pdfFile', maxCount: 1 },
+      ],
+      {
+        fileFilter: pdfFileFilter
+      }
+    )
+  )
   async createInspection(
     @Body(new ValidationPipe({
       transform: true,
@@ -143,19 +194,48 @@ export class InspectionController {
       forbidNonWhitelisted: false
     })) dto: CreateInspectionDto,
     @Req() req: any,
-    @UploadedFiles() files: Express.Multer.File[]
+    @UploadedFiles() files: { files?: Express.Multer.File[], pdfFile?: Express.Multer.File[] }
   ): Promise<ApiResponseDto<Inspection>> {
     // Get staff ID from token
     console.log('Request user object:', JSON.stringify(req.user, null, 2))
     console.log('Request body:', JSON.stringify(dto, null, 2))
+
+    if (files) {
+      console.log('Received files:')
+      if (files.files && files.files.length > 0) {
+        console.log(`- ${files.files.length} image files:`)
+        files.files.forEach((file, index) => {
+          console.log(`  Image ${index + 1}: ${file.originalname}, type: ${file.mimetype}, size: ${file.size} bytes`)
+        })
+      }
+
+      if (files.pdfFile && files.pdfFile.length > 0) {
+        console.log(`- PDF file: ${files.pdfFile[0].originalname}, type: ${files.pdfFile[0].mimetype}, size: ${files.pdfFile[0].size} bytes`)
+      }
+    }
 
     const userId = req.user?.userId
     if (!userId) {
       return new ApiResponseDto(false, 'User not authenticated or invalid token', null)
     }
 
+    // Combine all files for processing in the service
+    const allFiles: Express.Multer.File[] = [];
+
+    // Add files from 'files' field
+    if (files.files && files.files.length > 0) {
+      // Make sure fieldname is preserved
+      allFiles.push(...files.files.map(file => ({ ...file, fieldname: 'files' })));
+    }
+
+    // Add files from 'pdfFile' field
+    if (files.pdfFile && files.pdfFile.length > 0) {
+      // Make sure fieldname is preserved
+      allFiles.push(...files.pdfFile.map(file => ({ ...file, fieldname: 'pdfFile' })));
+    }
+
     // The userId from the token will be used as inspected_by
-    return this.inspectionService.createInspection(dto, userId, files)
+    return this.inspectionService.createInspection(dto, userId, allFiles)
   }
 
   @Patch('status')
