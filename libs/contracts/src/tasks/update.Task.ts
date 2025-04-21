@@ -6,6 +6,11 @@ import { ApiProperty } from '@nestjs/swagger';
 export class UpdateTaskDto {
   @IsOptional()
   @IsString()
+  @ApiProperty({ description: 'Optional title for the task', required: false, type: String })  // Optional title field
+  title?: string;
+
+  @IsOptional()
+  @IsString()
   @ApiProperty({ description: 'Optional description for the task', required: false, type: String })  // Optional description field
   description?: string;
 

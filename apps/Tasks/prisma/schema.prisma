@@ -20,6 +20,7 @@ datasource db {
 
 model Task {
   task_id         String    @id @default(uuid()) // Changed to UUID
+  title           String // Added title field
   description     String
   status          Status
   created_at      DateTime  @default(now())
@@ -78,31 +79,30 @@ model TaskAssignment {
 }
 
 model Inspection {
-  inspection_id      String         @id @default(uuid())
+  inspection_id      String           @id @default(uuid())
   task_assignment_id String
   inspected_by       String
   image_urls         String[] // Đã sử dụng array cho hình ảnh
   description        String
-  created_at         DateTime       @default(now())
-  updated_at         DateTime       @updatedAt
-  total_cost         Decimal        @db.Decimal(10, 2)
+  created_at         DateTime         @default(now())
+  updated_at         DateTime         @updatedAt
+  total_cost         Decimal          @db.Decimal(10, 2)
   // Mối quan hệ N:1 với TaskAssignment
-  taskAssignment     TaskAssignment @relation(fields: [task_assignment_id], references: [assignment_id])
-  confirmed_by       String?        // Người xác nhận (nullable nếu chưa xác nhận)
-  reason             String?        // Lý do (nullable nếu không có)
-  isprivateasset   Boolean    @default(false)     // Có phải tài sản riêng không?
+  taskAssignment     TaskAssignment   @relation(fields: [task_assignment_id], references: [assignment_id])
+  confirmed_by       String? // Người xác nhận (nullable nếu chưa xác nhận)
+  reason             String? // Lý do (nullable nếu không có)
+  isprivateasset     Boolean          @default(false) // Có phải tài sản riêng không?
   // Mối quan hệ 1:N với RepairMaterial
-   report_status    reportStatus @default(NoPending)
-  repairMaterials RepairMaterial[]
+  report_status      reportStatus     @default(NoPending)
+  repairMaterials    RepairMaterial[]
 }
-
 
 enum reportStatus {
   NoPending
-  Pending       // Leader đã tạo báo cáo, đang chờ Manager duyệt
-  Approved      // Đã được Manager xác nhận
-  Rejected      // Bị Manager từ chối
-  AutoApproved  // Không cần duyệt, hệ thống log tự động
+  Pending // Leader đã tạo báo cáo, đang chờ Manager duyệt
+  Approved // Đã được Manager xác nhận
+  Rejected // Bị Manager từ chối
+  AutoApproved // Không cần duyệt, hệ thống log tự động
 }
 
 // enum InspectionStatus {

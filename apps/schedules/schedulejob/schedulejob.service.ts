@@ -193,7 +193,7 @@ export class ScheduleJobsService {
       const updatedScheduleJob = await this.prismaService.scheduleJob.update({
         where: { schedule_job_id: schedulejobs_id },
         data: {
-            status,
+          status,
         },
       })
 
@@ -283,20 +283,20 @@ export class ScheduleJobsService {
                 building_id: job.buildingDetailId,
               }
             }
-// Get building detail information if buildingDetailId exists
-let buildingDetail = null;
-if (job.buildingDetailId) {
-  try {
-    buildingDetail = await firstValueFrom(
-      this.buildingClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, {
-        buildingDetailId: job.buildingDetailId,
-      })
-    );
-  } catch (error) {
-    console.error('Error fetching building detail:', error);
-    // Continue without building detail if there's an error
-  }
-}
+            // Get building detail information if buildingDetailId exists
+            let buildingDetail = null;
+            if (job.buildingDetailId) {
+              try {
+                buildingDetail = await firstValueFrom(
+                  this.buildingClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, {
+                    buildingDetailId: job.buildingDetailId,
+                  })
+                );
+              } catch (error) {
+                console.error('Error fetching building detail:', error);
+                // Continue without building detail if there's an error
+              }
+            }
 
             console.log(`Fetching building with ID: ${job.buildingDetailId}`)
             const building = await firstValueFrom(
@@ -437,7 +437,7 @@ if (job.buildingDetailId) {
         // Get resident's name using username, name, or firstName+lastName
         const residentName = resident.username || resident.name ||
           (resident.firstName && resident.lastName ? `${resident.firstName} ${resident.lastName}` : null) ||
-          'Quý cư dân';
+          'Valued Resident';
 
         // Get location details for the resident
         const locationDetails = buildingDetail.locationDetails?.find(
@@ -451,7 +451,7 @@ if (job.buildingDetailId) {
             month: 'long',
             day: 'numeric'
           })
-          : 'Không xác định';
+          : 'Not specified';
 
         const endTime = scheduleJob.end_date
           ? new Date(scheduleJob.end_date).toLocaleDateString('vi-VN', {
@@ -459,7 +459,7 @@ if (job.buildingDetailId) {
             month: 'long',
             day: 'numeric'
           })
-          : 'Không xác định';
+          : 'Not specified';
 
         console.log(`Sending email to resident: ${residentName} (${resident.email}) for maintenance from ${startTime} to ${endTime}`);
 
@@ -472,10 +472,10 @@ if (job.buildingDetailId) {
             startTime: startTime,
             endTime: endTime,
             maintenanceType: scheduleJob.schedule.schedule_name,
-            description: scheduleJob.schedule.description || 'Không có mô tả chi tiết',
-            floor: locationDetails?.floorNumber?.toString() || buildingDetail.numberFloor?.toString() || 'Không xác định',
-            area: buildingDetail.area?.name || 'Không xác định',
-            unit: locationDetails?.roomNumber || resident.apartmentNumber || 'Không xác định'
+            description: scheduleJob.schedule.description || 'No detailed description',
+            floor: locationDetails?.floorNumber?.toString() || buildingDetail.numberFloor?.toString() || 'Not specified',
+            area: buildingDetail.area?.name || 'Not specified',
+            unit: locationDetails?.roomNumber || resident.apartmentNumber || 'Not specified'
           })
         )
       })

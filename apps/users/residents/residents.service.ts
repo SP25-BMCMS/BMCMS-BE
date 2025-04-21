@@ -201,7 +201,7 @@ export class ResidentsService {
 
       return {
         isSuccess: true,
-        message: 'Danh sách cư dân',
+        message: 'Resident list',
         data: residentsWithBuildingDetails,
         pagination: paginationData
       }
@@ -209,7 +209,7 @@ export class ResidentsService {
       console.error('Error in getAllResidents:', error)
       return {
         isSuccess: false,
-        message: error.message || 'Lỗi khi lấy danh sách cư dân',
+        message: error.message || 'Error when retrieving the resident list',
         data: [],
         pagination: {
           total: 0,

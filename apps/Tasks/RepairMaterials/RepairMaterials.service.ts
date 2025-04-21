@@ -19,7 +19,7 @@ export class RepairMaterialsService {
       })
 
       if (!existingInspection) {
-        return new ApiResponse(false, 'Inspection không tồn tại')
+        return new ApiResponse(false, 'Inspection does not exist')
       }
 
       // Kiểm tra tính hợp lệ của material
@@ -28,7 +28,7 @@ export class RepairMaterialsService {
       })
 
       if (!existingMaterial) {
-        return new ApiResponse(false, 'Vật liệu không tồn tại')
+        return new ApiResponse(false, 'Material does not exist')
       }
 
       // Tạo repair material
@@ -52,13 +52,13 @@ export class RepairMaterialsService {
         },
       })
 
-      return new ApiResponse(true, 'Repair Material đã được tạo thành công', [
+      return new ApiResponse(true, 'Repair Material has been created successfully', [
         repairMaterial,
       ])
     } catch (error) {
       console.error('Error creating repair material:', error)
       throw new RpcException(
-        new ApiResponse(false, 'Lỗi khi tạo repair material', [error.message]),
+        new ApiResponse(false, 'Error when creating repair material', [error.message]),
       )
     }
   }

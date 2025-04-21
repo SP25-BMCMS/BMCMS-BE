@@ -116,6 +116,7 @@ export class TaskService {
     try {
       const newTask = await this.prisma.task.create({
         data: {
+          title: createTaskDto.title,
           description: createTaskDto.description,
           status: createTaskDto.status,
           crack_id: createTaskDto.crack_id,
@@ -140,6 +141,7 @@ export class TaskService {
       const updatedTask = await this.prisma.task.update({
         where: { task_id },
         data: {
+          title: updateTaskDto.title,
           description: updateTaskDto.description,
           status: updateTaskDto.status,
           crack_id: updateTaskDto.crack_id,
@@ -175,7 +177,7 @@ export class TaskService {
 
       // Fetch both crack info and schedule job info if they exist
       const promises = [];
-        
+
       if (task.crack_id) {
         promises.push(
           firstValueFrom(
@@ -193,7 +195,7 @@ export class TaskService {
           ).then(response => ({ type: 'crack', data: response }))
         );
       }
-        
+
       if (task.schedule_job_id) {
         promises.push(
           firstValueFrom(
@@ -214,7 +216,7 @@ export class TaskService {
 
       // Wait for all promises to resolve
       const infos = await Promise.all(promises);
-      
+
       // Attach all available info to the result
       infos.forEach(info => {
         if (info?.type === 'crack') {
@@ -364,7 +366,7 @@ export class TaskService {
       // Fetch both crack info and schedule job info for each task
       const additionalInfoPromises = tasks.map(task => {
         const promises = [];
-        
+
         if (task.crack_id) {
           promises.push(
             firstValueFrom(
@@ -382,7 +384,7 @@ export class TaskService {
             ).then(response => ({ type: 'crack', data: response }))
           );
         }
-        
+
         if (task.schedule_job_id) {
           promises.push(
             firstValueFrom(
@@ -705,6 +707,7 @@ export class TaskService {
 
         // BƯỚC 5: Tạo task cho schedule job
         const createTaskResponse = await this.createTask({
+          title: `Bảo trì định kỳ tòa nhà ${buildingName}`,
           description: `Phân công bảo trì định kỳ cho tòa nhà ${buildingName}`,
           status: Status.Assigned,
           crack_id: "",

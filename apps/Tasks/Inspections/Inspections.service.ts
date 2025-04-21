@@ -172,7 +172,7 @@ export class InspectionsService implements OnModuleInit {
 
     if (!existingInspection) {
       throw new RpcException(
-        new ApiResponse(false, 'Inspection không tồn tại'),
+        new ApiResponse(false, 'Inspection does not exist'),
       )
     }
 
@@ -181,11 +181,11 @@ export class InspectionsService implements OnModuleInit {
         where: { inspection_id },
         data: { ...dto },
       })
-      return new ApiResponse(true, 'Inspection đã được cập nhật thành công', [
+      return new ApiResponse(true, 'Inspection has been updated successfully', [
         updatedInspection,
       ])
     } catch (error) {
-      throw new RpcException(new ApiResponse(false, 'Dữ liệu không hợp lệ'))
+      throw new RpcException(new ApiResponse(false, 'Invalid data'))
     }
   }
 
@@ -861,7 +861,7 @@ export class InspectionsService implements OnModuleInit {
 
         return new ApiResponse(
           true,
-          'Đã có trong hệ thống lịch bảo trì của chúng tôi',
+          'It is already in our maintenance schedule system',
           updatedInspection
         );
       }
@@ -884,7 +884,7 @@ export class InspectionsService implements OnModuleInit {
 
         return new ApiResponse(
           true,
-          'Chúng tôi xin ghi nhận và sẽ xem xét',
+          'We acknowledge and will review',
           updatedInspection
         );
       }
@@ -985,7 +985,7 @@ export class InspectionsService implements OnModuleInit {
 
         return new ApiResponse(
           true,
-          'Đã có trong hệ thống lịch bảo trì của chúng tôi',
+          'It is already in our maintenance schedule system',
           updatedInspection
         );
       }
@@ -1014,7 +1014,7 @@ export class InspectionsService implements OnModuleInit {
 
         return new ApiResponse(
           true,
-          'Chúng tôi xin ghi nhận và sẽ xem xét',
+          'We acknowledge and will review',
           updatedInspection
         );
       }

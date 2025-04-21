@@ -55,7 +55,7 @@ export class UsersService {
     if (!user)
       throw new RpcException({
         statusCode: 401,
-        message: 'Sai số điện thoại hoặc mật khẩu',
+        message: 'Incorrect phone number or password',
       })
     return user
   }
@@ -65,7 +65,7 @@ export class UsersService {
     if (!user)
       throw new RpcException({
         statusCode: 401,
-        message: 'Sai số điện thoại hoặc mật khẩu',
+        message: 'Incorrect phone number or password',
       })
     return user
   }
@@ -75,7 +75,7 @@ export class UsersService {
     if (!user)
       throw new RpcException({
         statusCode: 401,
-        message: 'Email không tồn tại',
+        message: 'Email does not exist',
       })
     return user
   }
@@ -203,7 +203,7 @@ export class UsersService {
       })
 
       if (existingUser) {
-        return new ApiResponse(false, 'Username hoặc Email đã tồn tại', null)
+        return new ApiResponse(false, 'Username or Email already exists', null)
       }
 
       const hashedPassword = await bcrypt.hash(userData.password, 10)
@@ -278,7 +278,7 @@ export class UsersService {
         },
       })
 
-      return new ApiResponse(true, 'User đã được tạo thành công', {
+      return new ApiResponse(true, 'User has been created successfully', {
         userId: fullUser?.userId,
         username: fullUser?.username,
         email: fullUser?.email,
@@ -305,7 +305,7 @@ export class UsersService {
       })
     } catch (error) {
       console.error('🔥 Lỗi trong UsersService:', error)
-      return new ApiResponse(false, 'Lỗi không xác định khi tạo user', null)
+      return new ApiResponse(false, 'Unknown error when creating user', null)
     }
   }
 
@@ -869,7 +869,7 @@ export class UsersService {
       if (!user) {
         return {
           isSuccess: false,
-          message: 'Không tìm thấy cư dân',
+          message: 'Resident not found',
           data: null
         }
       }
@@ -890,7 +890,7 @@ export class UsersService {
           .join(', ')
         return {
           isSuccess: false,
-          message: `Cư dân đã sở hữu các căn hộ sau: ${duplicateNames}`,
+          message: `Resident already owns the following apartments: ${duplicateNames}`,
           data: null
         }
       }
@@ -917,13 +917,13 @@ export class UsersService {
               ),
           )
 
-          // if (!buildingDetailResponse.exists) {
-          //   return {
-          //     isSuccess: false,
-          //     message: `Không tìm thấy tòa nhà với ID ${apartment.buildingDetailId}`,
-          //     data: null
-          //   }
-          // }
+          if (!buildingDetailResponse.exists) {
+            return {
+              isSuccess: false,
+              message: `Building with ID ${apartment.buildingDetailId} not found`,
+              data: null
+            }
+          }
 
           const buildingDetailInfo = await firstValueFrom(
             this.buildingsClient
@@ -1045,7 +1045,7 @@ export class UsersService {
 
       return {
         isSuccess: true,
-        message: 'Cập nhật căn hộ thành công',
+        message: 'Apartments updated successfully',
         data: {
           userId: updatedUser.userId,
           username: updatedUser.username,
@@ -1055,7 +1055,7 @@ export class UsersService {
     } catch (error) {
       return {
         isSuccess: false,
-        message: error.message || 'Lỗi khi cập nhật căn hộ',
+        message: error.message || 'Error updating apartments',
         data: null,
       }
     }
@@ -1074,7 +1074,7 @@ export class UsersService {
       if (!user) {
         return {
           isSuccess: false,
-          message: `Không tìm thấy người dùng với ID: ${userId}`,
+          message: `User with ID: ${userId} not found`,
           data: null,
         }
       }
@@ -1112,14 +1112,14 @@ export class UsersService {
 
       return {
         isSuccess: true,
-        message: `Cập nhật trạng thái tài khoản thành ${accountStatus}`,
+        message: `Account status updated to ${accountStatus}`,
         data: formattedResponse,
       }
     } catch (error) {
       console.error('Error updating account status:', error)
       return {
         isSuccess: false,
-        message: `Lỗi khi cập nhật trạng thái tài khoản: ${error.message}`,
+        message: `Error updating account status: ${error.message}`,
         data: null,
       }
     }
@@ -1223,8 +1223,8 @@ export class UsersService {
       return {
         isSuccess: true,
         message: isMatch
-          ? `Nhân viên thuộc khu vực ${staffAreaName} phù hợp với khu vực ${areaName} của công việc`
-          : `Nhân viên thuộc khu vực ${staffAreaName} không phù hợp với khu vực ${areaName} của công việc`,
+          ? `Staff from area ${staffAreaName} matches the area ${areaName} of the task`
+          : `Staff from area ${staffAreaName} does not match the area ${areaName} of the task`,
         isMatch
       }
     } catch (error) {
@@ -1483,11 +1483,10 @@ export class UsersService {
         }
       })
 
-
       if (!staff) {
         return {
           isSuccess: false,
-          message: 'Nhân viên không tồn tại hoặc không phải là Staff/Manager',
+          message: 'Staff does not exist or is not a Staff/Manager',
           data: null
         }
       }
@@ -1500,7 +1499,7 @@ export class UsersService {
       if (!department) {
         return {
           isSuccess: false,
-          message: 'Phòng ban không tồn tại',
+          message: 'Department does not exist',
           data: null
         }
       }
@@ -1513,7 +1512,7 @@ export class UsersService {
       if (!position) {
         return {
           isSuccess: false,
-          message: 'Vị trí công việc không tồn tại',
+          message: 'Working position does not exist',
           data: null
         }
       }
@@ -1559,7 +1558,7 @@ export class UsersService {
       // Prepare response
       return {
         isSuccess: true,
-        message: 'Cập nhật phòng ban và vị trí công việc thành công',
+        message: 'Department and working position updated successfully',
         data: {
           staffId: staff.userId,
           username: staff.username,
@@ -1583,7 +1582,7 @@ export class UsersService {
     } catch (error) {
       return {
         isSuccess: false,
-        message: `Lỗi khi cập nhật phòng ban và vị trí công việc: ${error.message}`,
+        message: `Error updating department and working position: ${error.message}`,
         data: null
       }
     }
@@ -1621,7 +1620,7 @@ export class UsersService {
       if (!staff) {
         return {
           isSuccess: false,
-          message: `Không tìm thấy nhân viên (${data.staffId})`,
+          message: `Staff not found (${data.staffId})`,
           isMatch: false,
           statusCode: 404
         }
@@ -1630,7 +1629,7 @@ export class UsersService {
       if (!staff.userDetails) {
         return {
           isSuccess: false,
-          message: 'Nhân viên chưa được phân công phòng ban và vị trí công việc',
+          message: 'Staff has not been assigned a department and working position',
           isMatch: false
         }
       }
@@ -1638,7 +1637,7 @@ export class UsersService {
       if (!staff.userDetails.position) {
         return {
           isSuccess: false,
-          message: 'Nhân viên chưa được phân công vị trí công việc',
+          message: 'Staff has not been assigned a working position',
           isMatch: false
         }
       }
@@ -1646,7 +1645,7 @@ export class UsersService {
       if (!staff.userDetails.department) {
         return {
           isSuccess: false,
-          message: 'Nhân viên chưa được phân công phòng ban',
+          message: 'Staff has not been assigned a department',
           isMatch: false
         }
       }
@@ -1655,7 +1654,7 @@ export class UsersService {
       if (staff.userDetails.position.positionName !== 'Maintenance_Technician') {
         return {
           isSuccess: false,
-          message: `Chỉ nhân viên kỹ thuật bảo trì (Maintenance Technician) mới có thể thực hiện công việc này. Vị trí hiện tại: ${staff.userDetails.position.positionName}`,
+          message: `Only maintenance technicians (Maintenance Technician) can perform this task. Current position: ${staff.userDetails.position.positionName}`,
           isMatch: false
         }
       }
@@ -1676,7 +1675,7 @@ export class UsersService {
       if (!scheduleJob) {
         return {
           isSuccess: false,
-          message: `Không tìm thấy lịch công việc với ID: ${data.scheduleJobId}`,
+          message: `Schedule job with ID: ${data.scheduleJobId} not found`,
           isMatch: false,
           statusCode: 404
         }
@@ -1689,7 +1688,7 @@ export class UsersService {
       if (!scheduleJob.buildingDetailId) {
         return {
           isSuccess: false,
-          message: 'Lịch công việc không có thông tin tòa nhà',
+          message: 'Schedule job does not have building information',
           isMatch: false
         }
       }
@@ -1825,15 +1824,15 @@ export class UsersService {
       return {
         isSuccess: true,
         message: isMatch
-          ? `Nhân viên thuộc khu vực ${staffAreaName} phù hợp với khu vực ${areaName} của công việc`
-          : `Nhân viên thuộc khu vực ${staffAreaName} không phù hợp với khu vực ${areaName} của công việc`,
+          ? `Staff from area ${staffAreaName} matches the area ${areaName} of the task`
+          : `Staff from area ${staffAreaName} does not match the area ${areaName} of the task`,
         isMatch
       }
     } catch (error) {
       console.error(`[users.service] Error in checkStaffAreaMatchWithScheduleJob:`, error)
       return {
         isSuccess: false,
-        message: `        Lỗi khi kiểm tra khu vực: ${error.message}`,
+        message: `Error when checking area: ${error.message}`,
         isMatch: false
       }
     }

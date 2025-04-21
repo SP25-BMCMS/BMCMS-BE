@@ -197,7 +197,7 @@ export class CrackReportsService {
 
       // Đo thời gian lấy presigned URLs
       const presignedUrlStartTime = performance.now()
-      const enrichedReports = await Promise.all(crackReports.map(async report => {
+      const enhancedDetails = await Promise.all(crackReports.map(async report => {
         const userData = userMap.get(report.reportedBy)
         const verifierData = userMap.get(report.verifiedBy)
 
@@ -225,7 +225,7 @@ export class CrackReportsService {
       console.log(`Total execution time: ${totalTime.toFixed(2)}ms`)
 
       return {
-        data: enrichedReports,
+        data: enhancedDetails,
         pagination: {
           total: totalCount,
           page,
@@ -256,7 +256,7 @@ export class CrackReportsService {
   }
 
   private generateUniqueId(): string {
-    return Math.random().toString(36).substring(2, 15) // Tạo ID duy nhất cho correlationId
+    return Math.random().toString(36).substring(2, 15) // Generate unique ID for correlationId
   }
 
   async addCrackReport(dto: AddCrackReportDto, userId: string) {
@@ -435,7 +435,7 @@ export class CrackReportsService {
               if (!managerId && buildingResponse.data) {
                 this.logger.log(`Could not find manager ID in keys: ${Object.keys(buildingResponse.data).join(', ')}`);
 
-                // Fallback: Nếu không tìm thấy manager từ tên trường, thử lấy từ response raw
+                // Fallback: If manager not found from field names, try to get from raw response
                 if (buildingResponse.data instanceof Object) {
                   for (const key of Object.keys(buildingResponse.data)) {
                     if (key.toLowerCase().includes('manager') && buildingResponse.data[key]) {
@@ -474,8 +474,8 @@ export class CrackReportsService {
 
           // Tạo và gửi thông báo - lúc này chắc chắn có managerId
           const notificationData = {
-            title: 'Báo cáo vết nứt mới',
-            content: `Có một báo cáo vết nứt mới tại vị trí "${newCrackReport.position}" ${buildingName ? `tại ${buildingName}` : ''} cần được xử lý.`,
+            title: 'New crack report',
+            content: `There is a new crack report at location "${newCrackReport.position}" ${buildingName ? `at ${buildingName}` : ''} that needs to be processed.`,
             type: NotificationType.SYSTEM,
             link: `/crack-reports/${newCrackReport.crackReportId}`,
             relatedId: newCrackReport.crackReportId,
@@ -485,9 +485,9 @@ export class CrackReportsService {
           this.logger.log(`Sending notification about new crack report to manager: ${managerId}`);
           this.logger.log(`Notification data: ${JSON.stringify(notificationData)}`);
 
-          // Chỉ sử dụng emit (event pattern) để gửi thông báo
+          // Only use emit (event pattern) to send notification
           try {
-            // Emit notification mà KHÔNG đợi response (không cần firstValueFrom)
+            // Emit notification WITHOUT waiting for response (no need for firstValueFrom)
             this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, notificationData);
             this.logger.log(`Notification about new crack report emitted successfully`);
           } catch (error) {
@@ -505,7 +505,7 @@ export class CrackReportsService {
           [{ crackReport: newCrackReport, crackDetails: newCrackDetails }],
         )
       }, {
-        timeout: 30000, // Tăng timeout từ 5000ms mặc định lên 30000ms (30 giây)
+        timeout: 30000, // Increase timeout from default 5000ms to 30000ms (30 seconds)
       })
     } catch (error) {
 
@@ -542,7 +542,7 @@ export class CrackReportsService {
 
     if (!report) {
       throw new RpcException(
-        new ApiResponse(false, 'Crack Report không tồn tại'),
+        new ApiResponse(false, 'Crack Report does not exist'),
       )
     }
 
@@ -572,6 +572,7 @@ export class CrackReportsService {
       }
 
       // Thêm presigned URL cho từng crackDetail
+      // Add presigned URL for each crackDetail
       const enhancedDetails = await Promise.all(
         report.crackDetails.map(async (detail) => ({
           ...detail,
@@ -600,13 +601,13 @@ export class CrackReportsService {
           userId: report.verifiedBy,
           username: 'Unknown'
         },
-        crackDetails: enhancedDetails // Sử dụng details đã xử lý
+        crackDetails: enhancedDetails // Use processed details
       }
 
-      return new ApiResponse(true, 'Crack Report đã tìm thấy', [enhancedReport])
+      return new ApiResponse(true, 'Crack Report found', [enhancedReport])
     } catch (error) {
       // If we encounter an error while enhancing the data, return the original report
-      return new ApiResponse(true, 'Crack Report đã tìm thấy', [report])
+      return new ApiResponse(true, 'Crack Report found', [report])
     }
   }
 
@@ -616,7 +617,7 @@ export class CrackReportsService {
     })
     if (!existingReport) {
       throw new RpcException(
-        new ApiResponse(false, 'Crack Report không tồn tại'),
+        new ApiResponse(false, 'Crack Report does not exist'),
       )
     }
 
@@ -625,19 +626,19 @@ export class CrackReportsService {
         where: { crackReportId },
         data: { ...dto },
       })
-      return new ApiResponse(true, 'Crack Report đã được cập nhật thành công', [
+      return new ApiResponse(true, 'Crack Report has been updated successfully', [
         updatedReport,
       ])
     } catch (error) {
-      throw new RpcException(new ApiResponse(false, 'Dữ liệu không hợp lệ'))
+      throw new RpcException(new ApiResponse(false, 'Invalid data'))
     }
   }
 
   async deleteCrackReport(crackReportId: string) {
     try {
-      // Sử dụng transaction để đảm bảo tính toàn vẹn dữ liệu
+      // Use transaction to ensure data integrity
       return await this.prismaService.$transaction(async (prisma) => {
-        // Kiểm tra báo cáo tồn tại
+        // Check if report exists
         const existingReport = await prisma.crackReport.findUnique({
           where: { crackReportId },
           include: { crackDetails: true }
@@ -645,27 +646,24 @@ export class CrackReportsService {
 
         if (!existingReport) {
           throw new RpcException(
-            new ApiResponse(false, 'Crack Report không tồn tại'),
+            new ApiResponse(false, 'Crack Report does not exist'),
           )
         }
 
-        // Lấy tất cả ID của CrackDetail
+        // Get all CrackDetail IDs
         const crackDetailIds = existingReport.crackDetails.map(detail => detail.crackDetailsId)
 
-
-
-
-        // Xóa tất cả CrackDetail của báo cáo
+        // Delete all CrackDetails of the report
         await prisma.crackDetail.deleteMany({
           where: { crackReportId }
         })
 
-        // Xóa CrackReport
+        // Delete CrackReport
         await prisma.crackReport.delete({
           where: { crackReportId }
         })
 
-        return new ApiResponse(true, 'Crack Report và các dữ liệu liên quan đã được xóa thành công', {
+        return new ApiResponse(true, 'Crack Report and related data has been successfully deleted', {
           crackReportId,
           crackDetailIds,
           deletedSegmentsCount: crackDetailIds.length > 0 ? crackDetailIds.length : 0,
@@ -673,9 +671,9 @@ export class CrackReportsService {
         })
       })
     } catch (error) {
-      console.error('Lỗi khi xóa Crack Report:', error)
+      console.error('Error when deleting Crack Report:', error)
       throw new RpcException(
-        new ApiResponse(false, 'Lỗi hệ thống khi xóa Crack Report. Vui lòng thử lại sau.')
+        new ApiResponse(false, 'System error when deleting Crack Report. Please try again later.')
       )
     }
   }
@@ -688,6 +686,7 @@ export class CrackReportsService {
       let updatedReport
       let createTaskResponse
       let createTaskAssignmentResponse
+      let buildingDetailInfo = null
 
       // Start a real database transaction - all operations will be committed or rolled back together
       return await this.prismaService.$transaction(async (prisma) => {
@@ -698,8 +697,30 @@ export class CrackReportsService {
 
         if (!existingReport) {
           throw new RpcException(
-            new ApiResponse(false, 'Crack Report không tồn tại')
+            new ApiResponse(false, 'Crack Report does not exist')
           )
+        }
+
+        // Step 1.5: Get buildingDetail information if available
+        if (existingReport.buildingDetailId) {
+          try {
+            const buildingDetailResponse = await firstValueFrom(
+              this.buildingClient
+                .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId: existingReport.buildingDetailId })
+                .pipe(
+                  timeout(10000),
+                  catchError((error) => {
+                    console.error('Error fetching building detail:', error)
+                    return of(null)
+                  })
+                )
+            )
+
+            buildingDetailInfo = buildingDetailResponse?.data || null
+          } catch (error) {
+            console.error('Error fetching building detail:', error)
+            // Continue even if building detail info cannot be fetched
+          }
         }
 
         // Step 2: Check if staff's area matches the crack report's area
@@ -709,26 +730,32 @@ export class CrackReportsService {
 
         if (!areaMatchResponse.isMatch) {
           throw new RpcException(
-            new ApiResponse(false, 'Nhân viên không thuộc khu vực của báo cáo nứt này')
+            new ApiResponse(false, 'Staff does not belong to the area of this crack report')
           )
         }
+
+        // Create building location text
+        const buildingText = buildingDetailInfo ?
+          `${buildingDetailInfo.name || buildingDetailInfo.buildingName || ''}` :
+          existingReport.position
 
         // Step 3: Create task first - do this before updating report status
         createTaskResponse = await firstValueFrom(
           this.taskClient
             .send(TASKS_PATTERN.CREATE, {
-              description: `Xử lý báo cáo vết nứt ${crackReportId}`,
+              title: `Crack repair at ${existingReport.position}`,
+              description: `Crack inspection and repair task. Location details: ${existingReport.position}${buildingDetailInfo ? ` - Building: ${buildingText}` : ''}. Report date: ${new Date(existingReport.createdAt).toLocaleDateString('en-US')}`,
               status: Status.Assigned,
               crack_id: crackReportId,
               schedule_job_id: '',
             })
             .pipe(
-              timeout(30000), // Tăng timeout từ 10s lên 30s
-              retry(3), // Thêm retry tối đa 3 lần
+              timeout(30000), // Increase timeout from 10s to 30s
+              retry(3), // Add maximum 3 retries
               catchError((error) => {
                 console.error('Task creation error:', error);
                 throw new RpcException(
-                  new ApiResponse(false, 'Không thể tạo task, vui lòng thử lại sau')
+                  new ApiResponse(false, 'Cannot create task, please try again later')
                 )
               })
             )
@@ -737,7 +764,7 @@ export class CrackReportsService {
         // Check if task creation was successful and task_id exists
         if (!createTaskResponse?.data?.task_id) {
           throw new RpcException(
-            new ApiResponse(false, 'Task được tạo nhưng không trả về task_id hợp lệ')
+            new ApiResponse(false, 'Task was created but did not return a valid task_id')
           )
         }
 
@@ -747,7 +774,7 @@ export class CrackReportsService {
             .send(TASKASSIGNMENT_PATTERN.ASSIGN_TO_EMPLOYEE, {
               taskId: createTaskResponse.data.task_id,
               employeeId: staffId,
-              description: `Phân công xử lý báo cáo nứt tại ${existingReport.position}`,
+              description: `Assignment to handle crack report at ${existingReport.position}`,
               status: AssignmentStatus.Pending,
             })
             .pipe(
@@ -756,7 +783,7 @@ export class CrackReportsService {
               catchError((error) => {
                 console.error('Task assignment error:', error);
                 throw new RpcException(
-                  new ApiResponse(false, error.message || 'Không thể tạo phân công task, vui lòng thử lại sau')
+                  new ApiResponse(false, error.message || 'Cannot create task assignment, please try again later')
                 )
               }),
             ),
@@ -765,7 +792,7 @@ export class CrackReportsService {
         // Check task assignment response
         if (createTaskAssignmentResponse?.statusCode === 400) {
           throw new RpcException(
-            new ApiResponse(false, createTaskAssignmentResponse.message || 'Lỗi phân công task')
+            new ApiResponse(false, createTaskAssignmentResponse.message || 'Error in task assignment')
           )
         }
 
@@ -781,7 +808,7 @@ export class CrackReportsService {
         // Return success response with all data
         return new ApiResponse(
           true,
-          'Crack Report đã được cập nhật và Task đã được tạo',
+          'Crack Report has been updated and Task has been created',
           {
             crackReport: updatedReport,
             task: createTaskResponse,
@@ -795,7 +822,7 @@ export class CrackReportsService {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable
       })
     } catch (error) {
-      console.error('🔥 Lỗi trong updateCrackReportStatus:', error)
+      console.error('🔥 Error in updateCrackReportStatus:', error)
 
       // Pass through RpcExceptions
       if (error instanceof RpcException) {
@@ -804,7 +831,7 @@ export class CrackReportsService {
 
       // Wrap other errors
       throw new RpcException(
-        new ApiResponse(false, 'Lỗi hệ thống, vui lòng thử lại sau')
+        new ApiResponse(false, 'System error, please try again later')
       )
     }
   }
@@ -926,7 +953,6 @@ export class CrackReportsService {
   }
 
   async getAllCrackReportByUserId(userId: string) {
-    console.log("🚀 Kha ne ~ userId:", userId)
     try {
       const crackReports = await this.prismaService.crackReport.findMany({
         where: {
@@ -978,22 +1004,21 @@ export class CrackReportsService {
 
   async updateCrackReportForAllStatus(crackReportId: string, dto: UpdateCrackReportDto) {
     try {
-
-      // Kiểm tra crack report có tồn tại không
+      // Check if crack report exists
       const existingReport = await this.prismaService.crackReport.findUnique({
         where: { crackReportId },
       })
 
       if (!existingReport) {
         throw new RpcException(
-          new ApiResponse(false, 'Crack Report không tồn tại')
+          new ApiResponse(false, 'Crack Report does not exist')
         )
       }
 
-      // Lưu trạng thái cũ để so sánh sau khi cập nhật
+      // Save old status for comparison after update
       const oldStatus = existingReport.status;
 
-      // Cập nhật crack report
+      // Update crack report
       const updatedReport = await this.prismaService.crackReport.update({
         where: { crackReportId },
         data: {
@@ -1013,22 +1038,22 @@ export class CrackReportsService {
 
         if (validStatus) {
           try {
-            // Định cấu hình title và content cho từng loại status
+            // Configure title and content for each status type
             let title = '';
             let content = '';
 
             switch (dto.status) {
               case 'InProgress':
-                title = 'Báo cáo vết nứt đang được xử lý';
-                content = `Báo cáo vết nứt của bạn tại vị trí "${existingReport.position}" đã được tiếp nhận và đang được xử lý.`;
+                title = 'Crack report is being processed';
+                content = `Your crack report at location "${existingReport.position}" has been received and is being processed.`;
                 break;
               case 'Rejected':
-                title = 'Báo cáo vết nứt đã bị từ chối';
-                content = `Báo cáo vết nứt của bạn tại vị trí "${existingReport.position}" đã bị từ chối. Vui lòng liên hệ quản lý để biết thêm chi tiết.`;
+                title = 'Crack report has been rejected';
+                content = `Your crack report at location "${existingReport.position}" has been rejected. Please contact management for more details.`;
                 break;
               case 'Completed':
-                title = 'Báo cáo vết nứt đã được xử lý hoàn tất';
-                content = `Báo cáo vết nứt của bạn tại vị trí "${existingReport.position}" đã được xử lý thành công.`;
+                title = 'Crack report has been fully processed';
+                content = `Your crack report at location "${existingReport.position}" has been successfully processed.`;
                 break;
             }
 
@@ -1063,7 +1088,7 @@ export class CrackReportsService {
       }
       return new ApiResponse(
         true,
-        'Crack Report đã được cập nhật thành công',
+        'Crack Report has been updated successfully',
         [updatedReport]
       )
     } catch (error) {
@@ -1071,7 +1096,7 @@ export class CrackReportsService {
         throw error
       }
       throw new RpcException(
-        new ApiResponse(false, 'Lỗi hệ thống khi cập nhật Crack Report')
+        new ApiResponse(false, 'System error when updating Crack Report')
       )
     }
   }

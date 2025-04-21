@@ -37,7 +37,7 @@ export class CrackDetailsService {
 
     if (!detail) {
       throw new RpcException(
-        new ApiResponse(false, 'Crack Detail không tồn tại'),
+        new ApiResponse(false, 'Crack Detail does not exist'),
       )
     }
 
@@ -53,10 +53,10 @@ export class CrackDetailsService {
           : null
       }
 
-      return new ApiResponse(true, 'Crack Detail đã tìm thấy', [enrichedDetail])
+      return new ApiResponse(true, 'Crack Detail found', [enrichedDetail])
     } catch (error) {
       console.error('Lỗi khi tạo presigned URL:', error)
-      return new ApiResponse(true, 'Crack Detail đã tìm thấy', [detail])
+      return new ApiResponse(true, 'Crack Detail found', [detail])
     }
   }
 
@@ -67,7 +67,7 @@ export class CrackDetailsService {
       return url.pathname.substring(1) // Bỏ dấu '/' đầu tiên
     } catch (error) {
       console.error('URL không hợp lệ:', urlString)
-      throw new Error('Định dạng URL không đúng')
+      throw new Error('Invalid URL format')
     }
   }
 
@@ -87,14 +87,14 @@ export class CrackDetailsService {
     })
     if (!exists)
       throw new RpcException(
-        new ApiResponse(false, 'Crack Detail không tồn tại'),
+        new ApiResponse(false, 'Crack Detail does not exist'),
       )
 
     const data = await this.prisma.crackDetail.update({
       where: { crackDetailsId: id },
       data: { ...dto },
     })
-    return new ApiResponse(true, 'Crack Detail đã được cập nhật', [data])
+    return new ApiResponse(true, 'Crack Detail has been updated', [data])
   }
 
   async deleteCrackDetail(id: string) {
@@ -103,10 +103,10 @@ export class CrackDetailsService {
     })
     if (!exists)
       throw new RpcException(
-        new ApiResponse(false, 'Crack Detail không tồn tại'),
+        new ApiResponse(false, 'Crack Detail does not exist'),
       )
 
     await this.prisma.crackDetail.delete({ where: { crackDetailsId: id } })
-    return new ApiResponse(true, 'Crack Detail đã được xóa')
+    return new ApiResponse(true, 'Crack Detail has been deleted')
   }
 }

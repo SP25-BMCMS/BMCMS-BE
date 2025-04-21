@@ -230,13 +230,13 @@ export class TaskAssignmentsService {
       // Gửi thông báo cho nhân viên được phân công
       try {
         // Lấy thông tin task 
-        const taskName = newAssignment.task?.description || 'Công việc mới';
+        const taskName = newAssignment.task?.description || 'New Task';
 
         // Tạo notification cho user - sử dụng emit() thay vì send()
         this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, {
           userId: createTaskAssignmentDto.employee_id,
-          title: 'Bạn được phân công một công việc mới',
-          content: `Bạn đã được phân công: ${taskName}`,
+          title: 'You have been assigned a new task',
+          content: `You have been assigned: ${taskName}`,
           type: NotificationType.TASK_ASSIGNMENT,
           relatedId: newAssignment.assignment_id,
           link: `/tasks/assignments/${newAssignment.assignment_id}`
@@ -387,7 +387,7 @@ export class TaskAssignmentsService {
 
       const responseData = {
         statusCode: 200,
-        message: 'Danh sách phân công công việc',
+        message: 'Task assignment list',
         data: taskAssignments,
         pagination: {
           total,
@@ -578,13 +578,13 @@ export class TaskAssignmentsService {
       // Gửi thông báo cho nhân viên được phân công
       try {
         // Lấy thông tin task để hiển thị trong thông báo
-        const taskName = newAssignment.task?.description || 'Công việc mới';
+        const taskName = newAssignment.task?.description || 'New Task';
 
         // Đảm bảo dữ liệu notification đầy đủ và đúng định dạng
         const notificationData = {
           userId: employeeId,
-          title: 'Bạn được phân công một công việc mới',
-          content: `Bạn đã được phân công: ${taskName}`,
+          title: 'You have been assigned a new task',
+          content: `You have been assigned: ${taskName}`,
           type: NotificationType.TASK_ASSIGNMENT, // Đảm bảo dùng đúng enum
           relatedId: newAssignment.assignment_id,
           link: `/tasks/assignments/${newAssignment.assignment_id}`
@@ -1703,48 +1703,48 @@ export class TaskAssignmentsService {
       switch (payload.status) {
         case 'Pending':
           worklogStatus = 'INIT_INSPECTION'
-          worklog_title = 'Tạo Mới Công Việc'
-          worklog_description = 'Công việc đã được giao và đang chờ kiểm tra.'
+          worklog_title = 'New Task Created'
+          worklog_description = 'The task has been assigned and is waiting for inspection.'
           break
         case 'Verified':
           worklogStatus = 'WAIT_FOR_DEPOSIT'
-          worklog_title = 'Công Việc Đã Được Xác Nhận'
-          worklog_description = 'Công việc đã được xác nhận và đang chờ đặt cọc.'
+          worklog_title = 'Task Has Been Verified'
+          worklog_description = 'The task has been verified and is waiting for deposit.'
           break
         case 'InFixing':
           worklogStatus = 'EXECUTE_CRACKS'
-          worklog_title = 'Công Việc Đang Được Sửa Chữa'
-          worklog_description = 'Công việc đang được kỹ thuật viên sửa chữa.'
+          worklog_title = 'Task Is Being Repaired'
+          worklog_description = 'The task is being repaired by the technician.'
           break
         case 'Fixed':
           worklogStatus = 'CONFIRM_NO_PENDING_ISSUES'
-          worklog_title = 'Công Việc Đã Được Sửa Chữa'
-          worklog_description = 'Công việc đã được sửa chữa và đang chờ xác nhận không còn vấn đề tồn đọng.'
+          worklog_title = 'Task Has Been Repaired'
+          worklog_description = 'The task has been repaired and is waiting for confirmation that there are no remaining issues.'
           break
         case 'Confirmed':
           worklogStatus = 'FINAL_REVIEW'
-          worklog_title = 'Công Việc Được Đã Xác Nhận'
-          worklog_description = 'Công việc đã được xác nhận và đang trong quá trình kiểm tra cuối cùng.'
+          worklog_title = 'Task Has Been Confirmed'
+          worklog_description = 'The task has been confirmed and is in the final review process.'
           break
         case 'Reassigned':
           worklogStatus = 'CANCELLED'
-          worklog_title = 'Công Việc Đã Được Giao Lại'
-          worklog_description = 'Công việc đã được giao lại cho kỹ thuật viên khác.'
+          worklog_title = 'Task Has Been Reassigned'
+          worklog_description = 'The task has been reassigned to another technician.'
           break
         case 'Unverified':
           worklogStatus = 'CANCELLED'
-          worklog_title = 'Công Việc Chưa Được Xác Minh'
-          worklog_description = 'Công việc không thể xác minh và cần được xem xét lại.'
+          worklog_title = 'Task Not Verified'
+          worklog_description = 'The task could not be verified and needs to be reviewed again.'
           break
         case 'Notcompleted':
           worklogStatus = 'CANCELLED'
-          worklog_title = 'Công Việc Chưa Được Hoàn Thành'
-          worklog_description = 'Công việc không thể hoàn thành và đã bị hủy.'
+          worklog_title = 'Task Not Completed'
+          worklog_description = 'The task could not be completed and has been cancelled.'
           break
         default:
           worklogStatus = 'INIT_INSPECTION' // Default status
-          worklog_title = 'Cập Nhật Trạng Thái Công Việc'
-          worklog_description = `Trạng thái công việc đã được cập nhật thành ${payload.status}.`
+          worklog_title = 'Task Status Update'
+          worklog_description = `The task status has been updated to ${payload.status}.`
       }
 
       // 4. Create a worklog entry for this status change

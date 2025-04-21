@@ -515,8 +515,8 @@ export class ScheduleService {
 
           // Tạo thông báo hệ thống cho tất cả người dùng về lịch bảo trì mới
           const notificationData = {
-            title: `Lịch bảo trì ${maintenanceCycle.device_type} mới được tạo`,
-            content: `Lịch bảo trì ${dto.schedule_name} cho ${maintenanceCycle.device_type} tại ${buildingNames} đã được lên lịch từ ${formattedStartDate} đến ${formattedEndDate}.`,
+            title: `New maintenance schedule ${maintenanceCycle.device_type} created`,
+            content: `Maintenance schedule ${dto.schedule_name} for ${maintenanceCycle.device_type} at ${buildingNames} has been scheduled from ${formattedStartDate} to ${formattedEndDate}.`,
             type: NotificationType.SYSTEM,
             broadcastToAll: true, // Gửi cho tất cả người dùng
             link: `/schedules/${newSchedule.schedule.schedule_id}`,
@@ -780,8 +780,8 @@ export class ScheduleService {
 
           // Tạo và gửi thông báo cho tất cả người dùng
           const notificationData = {
-            title: `Lịch bảo trì tự động mới được tạo`,
-            content: `Hệ thống đã tự động tạo ${createdSchedules.length} lịch bảo trì mới: ${formattedSchedules} cho các tòa nhà: ${buildingNames}.`,
+            title: `New automatic maintenance schedules created`,
+            content: `The system has automatically created ${createdSchedules.length} new maintenance schedules: ${formattedSchedules} for buildings: ${buildingNames}.`,
             type: NotificationType.SYSTEM,
             broadcastToAll: true,
             link: `/schedules`
@@ -973,8 +973,8 @@ export class ScheduleService {
 
           // Create and send notification for all users
           const notificationData = {
-            title: `Lịch bảo trì mới được tạo`,
-            content: `Lịch bảo trì mới "${newSchedule.schedule_name}" đã được tạo cho ${cycle?.device_type || 'thiết bị'} từ ${formattedStartDate} đến ${formattedEndDate} cho các tòa nhà: ${buildingNames}.`,
+            title: `New maintenance schedule created`,
+            content: `New maintenance schedule "${newSchedule.schedule_name}" has been created for ${cycle?.device_type || 'device'} from ${formattedStartDate} to ${formattedEndDate} for buildings: ${buildingNames}.`,
             type: NotificationType.SYSTEM,
             broadcastToAll: true,
             link: `/schedules/${newSchedule.schedule_id}`

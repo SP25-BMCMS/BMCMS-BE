@@ -109,7 +109,8 @@ export class MaintenanceCronService {
             // 3. Tạo task mới
             const createTaskResponse = await firstValueFrom(
                 this.taskClient.send(TASKS_PATTERN.CREATE, {
-                    description: `Bảo trì ${scheduleJob.schedule.schedule_name} cho ${building.name}`,
+                    title: `Maintenance ${scheduleJob.schedule.schedule_name} for ${building.name}`,
+                    description: `Maintenance ${scheduleJob.schedule.schedule_name} for ${building.name}`,
                     status: 'Pending', // Trạng thái ban đầu
                     schedule_job_id: scheduleJob.schedule_job_id, // Liên kết với schedule job
                 })
@@ -127,7 +128,7 @@ export class MaintenanceCronService {
                 this.taskClient.send(TASKS_PATTERN.CREATE_TASK_ASSIGNMENT, {
                     task_id: task.task_id,
                     employee_id: leader.userId, // ID của leader
-                    description: `Phân công bảo trì ${scheduleJob.schedule.schedule_name} cho ${building.name}. Yêu cầu kiểm tra và báo cáo sau khi hoàn thành.`,
+                    description: `Assignment for maintenance ${scheduleJob.schedule.schedule_name} for ${building.name}. Required to check and report after completion.`,
                     status: 'Assigned', // Trạng thái ban đầu
                 })
             );
@@ -431,7 +432,7 @@ export class MaintenanceCronService {
                     month: 'long',
                     day: 'numeric'
                 })
-                : 'Không xác định';
+                : 'Not specified';
 
             const endTime = job.end_date
                 ? new Date(job.end_date).toLocaleDateString('vi-VN', {
@@ -439,7 +440,7 @@ export class MaintenanceCronService {
                     month: 'long',
                     day: 'numeric'
                 })
-                : 'Không xác định';
+                : 'Not specified';
 
             // Create map to track unique residents by email
             const residentMap = new Map();
@@ -457,7 +458,7 @@ export class MaintenanceCronService {
                     // Get the best available name for the resident
                     const residentName = resident.username || resident.name ||
                         (resident.firstName && resident.lastName ? `${resident.firstName} ${resident.lastName}` : null) ||
-                        'Quý cư dân';
+                        'Valued Resident';
 
                     this.logger.log(`Sending notification to: ${residentName} (${resident.email}) for maintenance from ${startTime} to ${endTime}`);
 
@@ -470,10 +471,10 @@ export class MaintenanceCronService {
                             startTime: startTime,
                             endTime: endTime,
                             maintenanceType: job.schedule.schedule_name,
-                            description: job.schedule.description || 'Không có mô tả chi tiết',
-                            floor: resident.floor || 'Không xác định',
-                            area: building.area?.name || 'Không xác định',
-                            unit: resident.apartmentNumber || 'Không xác định'
+                            description: job.schedule.description || 'No detailed description',
+                            floor: resident.floor || 'Not specified',
+                            area: building.area?.name || 'Not specified',
+                            unit: resident.apartmentNumber || 'Not specified'
                         })
                     );
                 }
@@ -515,7 +516,7 @@ export class MaintenanceCronService {
                     month: 'long',
                     day: 'numeric'
                 })
-                : 'Không xác định';
+                : 'Not specified';
 
             const endTime = job.end_date
                 ? new Date(job.end_date).toLocaleDateString('vi-VN', {
@@ -523,7 +524,7 @@ export class MaintenanceCronService {
                     month: 'long',
                     day: 'numeric'
                 })
-                : 'Không xác định';
+                : 'Not specified';
 
             // Create a map to track residents by email to ensure no duplicates
             const emailMap = new Map();
@@ -546,7 +547,7 @@ export class MaintenanceCronService {
                 // Get the best available name for the resident
                 const residentName = resident.username || resident.name ||
                     (resident.firstName && resident.lastName ? `${resident.firstName} ${resident.lastName}` : null) ||
-                    'Quý cư dân';
+                    'Valued Resident';
 
                 this.logger.log(`Sending reminder to: ${residentName} (${resident.email}) for maintenance from ${startTime} to ${endTime}`);
 
@@ -559,10 +560,10 @@ export class MaintenanceCronService {
                         startTime: startTime,
                         endTime: endTime,
                         maintenanceType: job.schedule.schedule_name,
-                        description: `NHẮC NHỞ: Lịch bảo trì sẽ diễn ra sau ${daysUntil} ngày. ${job.schedule.description || 'Không có mô tả chi tiết'}`,
-                        floor: resident.floor || 'Không xác định',
-                        area: building.area?.name || 'Không xác định',
-                        unit: resident.apartmentNumber || 'Không xác định'
+                        description: `REMINDER: Maintenance schedule will take place in ${daysUntil} days. ${job.schedule.description || 'No detailed description'}`,
+                        floor: resident.floor || 'Not specified',
+                        area: building.area?.name || 'Not specified',
+                        unit: resident.apartmentNumber || 'Not specified'
                     })
                 );
                 this.logger.log(`Sent reminder email to ${resident.email}`);
