@@ -4,5 +4,6 @@ export const NOTIFICATIONS_PATTERN = {
     CREATE_NOTIFICATION: 'create_notification',
     GET_USER_NOTIFICATIONS: 'get_user_notifications',
     MARK_NOTIFICATION_READ: 'mark_notification_read',
-    SUBSCRIBE_NOTIFICATIONS: 'subscribe_notifications'
+    SUBSCRIBE_NOTIFICATIONS: 'subscribe_notifications',
+    STREAM_NOTIFICATIONS: 'notification.stream'
 } as const 

@@ -1,10 +1,10 @@
-import { Body, Controller, Get, Inject, Param, Post, Put, Query, UseGuards } from '@nestjs/common'
+import { Body, Controller, Get, Inject, Param, Post, Put, Query, Sse, UseGuards } from '@nestjs/common'
 import { ClientProxy } from '@nestjs/microservices'
-import { ApiOperation, ApiParam, ApiQuery, ApiTags, ApiBody, ApiResponse } from '@nestjs/swagger'
+import { ApiOperation, ApiParam, ApiQuery, ApiTags, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger'
 import { NOTIFICATION_CLIENT } from '../constraints'
 import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
 import { CreateNotificationDto, MarkNotificationReadDto } from '@app/contracts/notifications/notification.dto'
-import { firstValueFrom } from 'rxjs'
+import { firstValueFrom, Observable } from 'rxjs'
 import { IsNotEmpty, Length } from 'class-validator'
 import { IsEmail } from 'class-validator'
 import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard'
@@ -30,6 +30,7 @@ class OtpResponse {
 
 @Controller('notifications')
 @ApiTags('notifications')
+@ApiBearerAuth('access-token')
 export class NotificationsController {
   constructor(@Inject(NOTIFICATION_CLIENT) private client: ClientProxy) { }
 
@@ -41,14 +42,14 @@ export class NotificationsController {
     try {
       const response = await firstValueFrom(
         this.client.send(NOTIFICATIONS_PATTERN.GET_USER_NOTIFICATIONS, { userId })
-      );
-      return response;
+      )
+      return response
     } catch (error) {
       return {
         success: false,
         message: error.message || 'Failed to fetch notifications',
         data: null
-      };
+      }
     }
   }
 
@@ -58,17 +59,17 @@ export class NotificationsController {
   @ApiParam({ name: 'notificationId', type: 'string', description: 'ID của thông báo' })
   async markNotificationRead(@Param('notificationId') notificationId: string) {
     try {
-      const data: MarkNotificationReadDto = { notificationId };
+      const data: MarkNotificationReadDto = { notificationId }
       const response = await firstValueFrom(
         this.client.send(NOTIFICATIONS_PATTERN.MARK_NOTIFICATION_READ, data)
-      );
-      return response;
+      )
+      return response
     } catch (error) {
       return {
         success: false,
         message: error.message || 'Failed to mark notification as read',
         data: null
-      };
+      }
     }
   }
 
@@ -79,14 +80,14 @@ export class NotificationsController {
     try {
       const response = await firstValueFrom(
         this.client.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, createDto)
-      );
-      return response;
+      )
+      return response
     } catch (error) {
       return {
         success: false,
         message: error.message || 'Failed to create notification',
         data: null
-      };
+      }
     }
   }
 
@@ -134,5 +135,18 @@ export class NotificationsController {
   })
   async verifyOtp(@Body() data: VerifyOtpDto) {
     return this.client.send('verify_otp', data)
+  }
+
+  // Thêm endpoint mới cho realtime notifications sử dụng SSE
+  @Sse('stream/:userId')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiOperation({ summary: 'Stream realtime notifications' })
+  @ApiParam({ name: 'userId', type: 'string', description: 'ID của người dùng' })
+  streamNotifications(@Param('userId') userId: string): Observable<MessageEvent> {
+    // Gửi message tới notification microservice để thiết lập kênh stream
+    return this.client.send<MessageEvent>(
+      'notification.stream', // Thêm pattern này vào NOTIFICATIONS_PATTERN
+      { userId }
+    )
   }
 }
