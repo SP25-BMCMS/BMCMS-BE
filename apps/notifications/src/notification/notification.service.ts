@@ -8,7 +8,8 @@ import { MessageEvent } from '@nestjs/common'
 @Injectable()
 export class NotificationService {
     private readonly logger = new Logger(NotificationService.name);
-    // Map để theo dõi các thông báo đang được xử lý
+    private readonly CACHE_EXPIRY = 24 * 60 * 60; // 24 hours in seconds
+    private readonly NOTIFICATION_LIMIT = 100; // Limit for pagination
     private processingNotifications = new Map<string, number>();
 
     constructor(
@@ -16,8 +17,32 @@ export class NotificationService {
         private readonly prisma: PrismaService
     ) {
         this.logger.log('NotificationService initialized')
-        // Định kỳ dọn dẹp các thông báo quá hạn
-        setInterval(() => this.cleanupExpiredNotifications(), 60000) // Mỗi phút
+        setInterval(() => this.cleanupExpiredNotifications(), 60000)
+    }
+
+    // Helper method to create Redis cache key
+    private getCacheKey(userId: string): string {
+        return `notifications:user:${userId}`
+    }
+
+    // Helper method to create Redis channel key
+    private getChannelKey(userId: string): string {
+        return `notifications:${userId}`
+    }
+
+    // Helper method to convert DB notification to DTO
+    private toNotificationDto(notification: any): NotificationResponseDto {
+        return {
+            id: notification.id,
+            userId: notification.userId,
+            title: notification.title,
+            content: notification.content,
+            link: notification.link,
+            isRead: notification.isRead,
+            type: notification.type as NotificationType,
+            relatedId: notification.relatedId,
+            createdAt: notification.createdAt,
+        }
     }
 
     // Kiểm tra xem thông báo có phải là trùng lặp không
@@ -40,7 +65,7 @@ export class NotificationService {
     // Dọn dẹp các thông báo quá hạn (quá 30 giây)
     private cleanupExpiredNotifications(): void {
         const now = Date.now()
-        const expiryTime = 30 * 1000 // 30 giây, thay vì 5 phút
+        const expiryTime = 30 * 1000 // 30 seconds
 
         for (const [key, timestamp] of this.processingNotifications.entries()) {
             if (now - timestamp > expiryTime) {
@@ -53,62 +78,19 @@ export class NotificationService {
     // Tạo thông báo mới và lưu vào cả DB và Redis
     async createNotification(createDto: CreateNotificationDto): Promise<NotificationResponseDto> {
         try {
-            this.logger.log(`==== NOTIFICATION CREATION START ====`)
             this.logger.log(`Creating notification for user: ${createDto.userId}`)
-            this.logger.log(`Full notification data: ${JSON.stringify(createDto)}`)
-            this.logger.log(`Notification type: ${createDto.type} (${typeof createDto.type})`)
 
-            // Kiểm tra xem relatedId đã tồn tại trong DB chưa (trong vòng 30 giây)
+            // Check for duplicate within 30 seconds
             if (createDto.relatedId) {
-                this.logger.log(`Checking for duplicate notification with relatedId: ${createDto.relatedId}`)
-
-                // Kiểm tra trong DB xem có notification cùng relatedId được tạo trong vòng 30 giây không
-                const thirtySecondsAgo = new Date(Date.now() - 30 * 1000)
-                const existingNotification = await this.prisma.notification.findFirst({
-                    where: {
-                        relatedId: createDto.relatedId,
-                        createdAt: {
-                            gte: thirtySecondsAgo
-                        }
-                    }
-                })
-
+                const existingNotification = await this.checkDuplicateNotification(createDto.relatedId)
                 if (existingNotification) {
-                    this.logger.warn(`Found duplicate notification with relatedId: ${createDto.relatedId}, id: ${existingNotification.id}, created at: ${existingNotification.createdAt}`)
-
-                    // Trả về thông báo hiện có thay vì tạo mới
-                    const responseDto: NotificationResponseDto = {
-                        id: existingNotification.id,
-                        userId: existingNotification.userId,
-                        title: existingNotification.title,
-                        content: existingNotification.content,
-                        link: existingNotification.link,
-                        isRead: existingNotification.isRead,
-                        type: existingNotification.type as NotificationType,
-                        relatedId: existingNotification.relatedId,
-                        createdAt: existingNotification.createdAt,
-                    }
-
-                    this.logger.log(`Returning existing notification instead of creating a duplicate`)
-                    return responseDto
+                    return this.toNotificationDto(existingNotification)
                 }
             }
 
-            // Log environment variables
-            this.logger.log(`DB_NOTIFICATION_SERVICE is ${process.env.DB_NOTIFICATION_SERVICE ? 'set' : 'NOT SET'}`)
-
-            // 1. Lưu vào DB để lưu trữ lâu dài
-            this.logger.log(`[1/3] Saving notification to database...`)
-
-            try {
-                this.logger.log(`Creating notification in database with data structure: ${JSON.stringify({
-                    userId: createDto.userId,
-                    title: createDto.title?.substring(0, 20) + '...',
-                    content: createDto.content?.substring(0, 20) + '...',
-                    type: createDto.type
-                })}`)
-
-                const notification = await this.prisma.notification.create({
+            // Create notification in transaction
+            const notification = await this.prisma.$transaction(async (prisma) => {
+                const created = await prisma.notification.create({
                     data: {
                         userId: createDto.userId,
                         title: createDto.title,
@@ -118,51 +100,21 @@ export class NotificationService {
                         relatedId: createDto.relatedId,
                     },
                 })
-                this.logger.log(`[DB] Notification saved to database successfully with ID: ${notification.id}`)
-                this.logger.log(`[DB] Full notification object from database: ${JSON.stringify(notification)}`)
 
-                // 2. Tạo response DTO
-                this.logger.log(`[2/3] Creating response DTO...`)
-                const responseDto: NotificationResponseDto = {
-                    id: notification.id,
-                    userId: notification.userId,
-                    title: notification.title,
-                    content: notification.content,
-                    link: notification.link,
-                    isRead: notification.isRead,
-                    type: notification.type as NotificationType,
-                    relatedId: notification.relatedId,
-                    createdAt: notification.createdAt,
-                }
-                this.logger.log(`Response DTO created: ${JSON.stringify(responseDto)}`)
+                return created
+            })
 
-                // 3. Publish thông báo đến Redis để realtime
-                this.logger.log(`[3/3] Publishing notification to Redis...`)
-                try {
-                    await this.publishNotification(responseDto)
-                    this.logger.log(`Notification published to Redis successfully`)
-                } catch (redisError) {
-                    this.logger.error(`Failed to publish to Redis but database write was successful: ${redisError.message}`)
-                    // Continue even if Redis publish fails
-                }
+            const responseDto = this.toNotificationDto(notification)
 
-                this.logger.log(`==== NOTIFICATION CREATION COMPLETE ====`)
-                return responseDto
-            } catch (dbError) {
-                this.logger.error(`Database error while creating notification:`)
-                this.logger.error(`- Error message: ${dbError.message}`)
-                this.logger.error(`- Error name: ${dbError.name}`)
-                this.logger.error(`- Error code: ${dbError.code}`)
-                this.logger.error(`- Stack: ${dbError.stack}`)
-                if (dbError.meta) {
-                    this.logger.error(`- Meta: ${JSON.stringify(dbError.meta)}`)
-                }
-                throw dbError
-            }
+            // Update Redis cache and publish notification
+            await Promise.all([
+                this.updateRedisCache(responseDto),
+                this.publishNotification(responseDto)
+            ])
+
+            return responseDto
         } catch (error) {
-            this.logger.error(`==== NOTIFICATION CREATION FAILED ====`)
             this.logger.error(`Failed to create notification: ${error.message}`)
-            this.logger.error(`Error stack: ${error.stack}`)
             throw error
         }
     }
@@ -170,29 +122,20 @@ export class NotificationService {
     // Đánh dấu thông báo đã đọc
     async markAsRead(notificationId: string): Promise<NotificationResponseDto> {
         try {
-            const notification = await this.prisma.notification.update({
-                where: { id: notificationId },
-                data: { isRead: true },
+            const notification = await this.prisma.$transaction(async (prisma) => {
+                const updated = await prisma.notification.update({
+                    where: { id: notificationId },
+                    data: { isRead: true },
+                })
+                return updated
             })
 
-            const responseDto: NotificationResponseDto = {
-                id: notification.id,
-                userId: notification.userId,
-                title: notification.title,
-                content: notification.content,
-                link: notification.link,
-                isRead: notification.isRead,
-                type: notification.type as NotificationType,
-                relatedId: notification.relatedId,
-                createdAt: notification.createdAt,
-            }
-
-            // Cập nhật trạng thái đã đọc cho thông báo trong Redis
+            const responseDto = this.toNotificationDto(notification)
             await this.updateNotificationReadStatus(notificationId, true)
 
             return responseDto
         } catch (error) {
-            this.logger.error(`Failed to mark notification as read: ${error.message}`, error.stack)
+            this.logger.error(`Failed to mark notification as read: ${error.message}`)
             throw error
         }
     }
@@ -231,18 +174,18 @@ export class NotificationService {
     // Publish thông báo tới Redis channel
     private async publishNotification(notification: NotificationResponseDto): Promise<void> {
         try {
-            const channel = `notifications:${notification.userId}`
+            const channel = this.getChannelKey(notification.userId)
             await this.redisClient.publish(channel, JSON.stringify(notification))
 
             // Cũng lưu thông báo mới nhất vào Redis cache để truy cập nhanh
-            const cacheKey = `notifications:user:${notification.userId}`
+            const cacheKey = this.getCacheKey(notification.userId)
 
             // Lưu thông báo vào danh sách trong Redis, giới hạn 20 thông báo mới nhất
             await this.redisClient.lPush(cacheKey, JSON.stringify(notification))
-            await this.redisClient.lTrim(cacheKey, 0, 19) // Chỉ giữ 20 thông báo mới nhất
+            await this.redisClient.lTrim(cacheKey, 0, this.NOTIFICATION_LIMIT - 1) // Chỉ giữ 20 thông báo mới nhất
 
             // Set thời gian hết hạn cho cache (6 giờ)
-            await this.redisClient.expire(cacheKey, 6 * 60 * 60)
+            await this.redisClient.expire(cacheKey, this.CACHE_EXPIRY)
 
             this.logger.log(`Published notification to channel ${channel}`)
         } catch (error) {
@@ -262,7 +205,7 @@ export class NotificationService {
                 return
             }
 
-            const cacheKey = `notifications:user:${notification.userId}`
+            const cacheKey = this.getCacheKey(notification.userId)
 
             // Lấy danh sách thông báo từ Redis
             const cachedNotifications = await this.redisClient.lRange(cacheKey, 0, -1)
@@ -283,7 +226,7 @@ export class NotificationService {
 
             if (updatedNotifications.length > 0) {
                 await this.redisClient.rPush(cacheKey, updatedNotifications)
-                await this.redisClient.expire(cacheKey, 24 * 60 * 60)
+                await this.redisClient.expire(cacheKey, this.CACHE_EXPIRY)
             }
         } catch (error) {
             this.logger.error(`Failed to update notification read status: ${error.message}`, error.stack)
@@ -291,15 +234,10 @@ export class NotificationService {
     }
 
     createNotificationStream(userId: string): Observable<MessageEvent> {
-        this.logger.log(`Creating notification stream for user: ${userId}`)
-
         return new Observable<MessageEvent>(subscriber => {
-            const channel = `notifications:${userId}`
-
-            // Tạo một Redis client mới để lắng nghe channel
+            const channel = this.getChannelKey(userId)
             const subscriberClient = this.redisClient.duplicate()
 
-            // Kết nối và subscribe vào channel
             subscriberClient.subscribe(channel, (err) => {
                 if (err) {
                     this.logger.error(`Failed to subscribe to channel ${channel}:`, err)
@@ -307,36 +245,27 @@ export class NotificationService {
                     return
                 }
 
-                this.logger.log(`Subscribed to Redis channel: ${channel}`)
-
-                // Gửi tin nhắn xác nhận kết nối thành công
                 subscriber.next({
                     data: {
                         connected: true,
-                        userId: userId,
+                        userId,
                         timestamp: new Date().toISOString()
                     }
                 })
             })
 
-            // Lắng nghe tin nhắn từ Redis channel
             subscriberClient.on('message', (receivedChannel, message) => {
                 if (receivedChannel === channel) {
                     try {
                         const notification = JSON.parse(message)
-                        this.logger.log(`Received notification for user ${userId}: ${notification.title}`)
-
-                        // Gửi notification về client qua SSE
                         subscriber.next({ data: notification })
                     } catch (error) {
-                        this.logger.error(`Error parsing notification for user ${userId}:`, error)
+                        this.logger.error(`Error parsing notification: ${error.message}`)
                     }
                 }
             })
 
-            // Cleanup khi client ngắt kết nối
             return () => {
-                this.logger.log(`Cleaning up Redis subscription for user ${userId}`)
                 subscriberClient.unsubscribe(channel)
                 subscriberClient.quit()
             }
@@ -348,23 +277,9 @@ export class NotificationService {
      */
     async markAllAsRead(userId: string): Promise<{ success: boolean; message: string }> {
         try {
-            this.logger.log(`[Service] Marking all notifications as read for user: ${userId}`)
-
-            // Thực hiện trong transaction
             const result = await this.prisma.$transaction(async (prisma) => {
-                // 1. Đếm số lượng thông báo chưa đọc
-                const unreadCount = await prisma.notification.count({
-                    where: {
-                        OR: [
-                            { userId: userId },
-                            { userId: 'system' }
-                        ],
-                        isRead: false
-                    }
-                })
-
-                // 2. Cập nhật tất cả thông báo chưa đọc
-                const updateResult = await prisma.notification.updateMany({
+                // Update all unread notifications
+                const { count } = await prisma.notification.updateMany({
                     where: {
                         OR: [
                             { userId: userId },
@@ -372,75 +287,41 @@ export class NotificationService {
                         ],
                         isRead: false
                     },
-                    data: {
-                        isRead: true,
-                        updatedAt: new Date()
-                    }
+                    data: { isRead: true }
                 })
 
-                // 3. Lấy danh sách notifications đã cập nhật để cập nhật cache
-                const updatedNotifications = await prisma.notification.findMany({
+                // Get updated notifications for cache
+                const notifications = await prisma.notification.findMany({
                     where: {
                         OR: [
                             { userId: userId },
                             { userId: 'system' }
                         ]
                     },
-                    orderBy: {
-                        createdAt: 'desc'
-                    },
-                    take: 100 // Giới hạn số lượng để tối ưu performance
+                    orderBy: { createdAt: 'desc' },
+                    take: this.NOTIFICATION_LIMIT
                 })
 
-                return { unreadCount, updateResult, updatedNotifications }
+                return { count, notifications }
             })
 
-            // Cập nhật Redis cache
-            const cacheKey = `notifications:user:${userId}`
-            await this.redisClient.del(cacheKey)
+            // Update Redis cache
+            await this.updateBulkCache(userId, result.notifications)
 
-            if (result.updatedNotifications.length > 0) {
-                const notificationsToCache = result.updatedNotifications.map(notification => {
-                    return JSON.stringify({
-                        id: notification.id,
-                        userId: notification.userId,
-                        title: notification.title,
-                        content: notification.content,
-                        type: notification.type,
-                        link: notification.link,
-                        isRead: true,
-                        relatedId: notification.relatedId,
-                        createdAt: notification.createdAt,
-                        updatedAt: new Date()
-                    })
-                })
-
-                await this.redisClient.rPush(cacheKey, notificationsToCache)
-                await this.redisClient.expire(cacheKey, 24 * 60 * 60) // Cache 24h
-            }
-
-            // Gửi thông báo realtime
-            const systemNotification = {
-                id: `system-update-${Date.now()}`,
-                userId: userId,
+            // Send system notification
+            await this.sendSystemNotification(userId, {
                 title: 'Notifications Updated',
-                content: `${result.unreadCount} notifications have been marked as read`,
-                type: NotificationType.SYSTEM,
-                isRead: true,
-                createdAt: new Date(),
-                updatedAt: new Date()
-            }
-
-            await this.publishNotification(systemNotification)
+                content: `${result.count} notifications have been marked as read`,
+                type: NotificationType.SYSTEM
+            })
 
             return {
                 success: true,
-                message: `Successfully marked ${result.unreadCount} notifications as read`
+                message: `Marked ${result.count} notifications as read`
             }
-
         } catch (error) {
-            this.logger.error(`[Service] Failed to mark all notifications as read: ${error.message}`, error.stack)
-            throw new Error(`Failed to mark all notifications as read: ${error.message}`)
+            this.logger.error(`Failed to mark all notifications as read: ${error.message}`)
+            throw error
         }
     }
 
@@ -449,95 +330,88 @@ export class NotificationService {
      */
     async clearAll(userId: string): Promise<{ success: boolean; message: string }> {
         try {
-            this.logger.log(`[Service] Clearing all notifications for user: ${userId}`)
-
-            // Thực hiện trong transaction
             const result = await this.prisma.$transaction(async (prisma) => {
-                // 1. Đếm số lượng thông báo sẽ xóa
-                const countToDelete = await prisma.notification.count({
+                // Delete non-system notifications
+                const { count } = await prisma.notification.deleteMany({
                     where: {
                         userId: userId,
-                        type: {
-                            not: NotificationType.SYSTEM
-                        }
+                        type: { not: NotificationType.SYSTEM }
                     }
                 })
 
-                // 2. Xóa tất cả thông báo (trừ system)
-                await prisma.notification.deleteMany({
-                    where: {
-                        userId: userId,
-                        type: {
-                            not: NotificationType.SYSTEM
-                        }
-                    }
-                })
-
-                // 3. Lấy các thông báo hệ thống còn lại
+                // Get remaining system notifications
                 const systemNotifications = await prisma.notification.findMany({
                     where: {
                         OR: [
                             { userId: 'system' },
-                            {
-                                userId: userId,
-                                type: NotificationType.SYSTEM
-                            }
+                            { userId: userId, type: NotificationType.SYSTEM }
                         ]
                     },
-                    orderBy: {
-                        createdAt: 'desc'
-                    }
+                    orderBy: { createdAt: 'desc' }
                 })
 
-                return { countToDelete, systemNotifications }
+                return { count, systemNotifications }
             })
 
-            // Cập nhật Redis cache - chỉ giữ lại thông báo hệ thống
-            const cacheKey = `notifications:user:${userId}`
-            await this.redisClient.del(cacheKey)
+            // Update Redis cache with remaining system notifications
+            await this.updateBulkCache(userId, result.systemNotifications)
 
-            if (result.systemNotifications.length > 0) {
-                const systemNotificationsToCache = result.systemNotifications.map(notification =>
-                    JSON.stringify({
-                        id: notification.id,
-                        userId: notification.userId,
-                        title: notification.title,
-                        content: notification.content,
-                        type: notification.type,
-                        link: notification.link,
-                        isRead: notification.isRead,
-                        relatedId: notification.relatedId,
-                        createdAt: notification.createdAt,
-                        updatedAt: notification.updatedAt
-                    })
-                )
-
-                await this.redisClient.rPush(cacheKey, systemNotificationsToCache)
-                await this.redisClient.expire(cacheKey, 24 * 60 * 60)
-            }
-
-            // Gửi thông báo realtime về việc xóa
-            const systemNotification = {
-                id: `system-clear-${Date.now()}`,
-                userId: userId,
+            // Send system notification
+            await this.sendSystemNotification(userId, {
                 title: 'Notifications Cleared',
-                content: `${result.countToDelete} notifications have been cleared`,
-                type: NotificationType.SYSTEM,
-                isRead: true,
-                createdAt: new Date(),
-                updatedAt: new Date()
-            }
-
-            await this.publishNotification(systemNotification)
+                content: `${result.count} notifications have been cleared`,
+                type: NotificationType.SYSTEM
+            })
 
             return {
                 success: true,
-                message: `Successfully cleared ${result.countToDelete} notifications`
+                message: `Cleared ${result.count} notifications`
             }
-
         } catch (error) {
-            this.logger.error(`[Service] Failed to clear all notifications: ${error.message}`, error.stack)
-            throw new Error(`Failed to clear all notifications: ${error.message}`)
+            this.logger.error(`Failed to clear all notifications: ${error.message}`)
+            throw error
         }
+    }
+
+    // Helper method for checking duplicate notifications
+    private async checkDuplicateNotification(relatedId: string) {
+        const thirtySecondsAgo = new Date(Date.now() - 30 * 1000)
+        return await this.prisma.notification.findFirst({
+            where: {
+                relatedId,
+                createdAt: { gte: thirtySecondsAgo }
+            }
+        })
+    }
+
+    // Helper method for bulk cache updates
+    private async updateBulkCache(userId: string, notifications: any[]): Promise<void> {
+        const cacheKey = this.getCacheKey(userId)
+        await this.redisClient.del(cacheKey)
+
+        if (notifications.length > 0) {
+            const notificationsToCache = notifications.map(n => JSON.stringify(this.toNotificationDto(n)))
+            await this.redisClient.rPush(cacheKey, notificationsToCache)
+            await this.redisClient.expire(cacheKey, this.CACHE_EXPIRY)
+        }
+    }
+
+    // Helper method for sending system notifications
+    private async sendSystemNotification(userId: string, notification: {
+        title: string
+        content: string
+        type: NotificationType
+    }): Promise<void> {
+        const systemNotification = {
+            id: `system-${Date.now()}`,
+            userId,
+            ...notification,
+            isRead: true,
+            createdAt: new Date(),
+            link: null,
+            relatedId: null
+        }
+
+        await this.publishNotification(systemNotification as NotificationResponseDto)
     }
 } 
