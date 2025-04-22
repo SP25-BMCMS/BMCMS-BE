@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Param, Post, Put, Query, Sse, UseGuards } from '@nestjs/common'
+import { Body, Controller, Get, Inject, Param, Post, Put, Query, Sse, UseGuards, Delete } from '@nestjs/common'
 import { ClientProxy } from '@nestjs/microservices'
 import { ApiOperation, ApiParam, ApiQuery, ApiTags, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger'
 import { NOTIFICATION_CLIENT } from '../constraints'
@@ -139,7 +139,6 @@ export class NotificationsController {
 
   // Thêm endpoint mới cho realtime notifications sử dụng SSE
   @Sse('stream/:userId')
-  @UseGuards(PassportJwtAuthGuard)
   @ApiOperation({ summary: 'Stream realtime notifications' })
   @ApiParam({ name: 'userId', type: 'string', description: 'ID của người dùng' })
   streamNotifications(@Param('userId') userId: string): Observable<MessageEvent> {
@@ -148,5 +147,43 @@ export class NotificationsController {
       'notification.stream', // Thêm pattern này vào NOTIFICATIONS_PATTERN
       { userId }
     )
+  }
+
+  @Put('mark-all-read/:userId')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiOperation({ summary: 'Đánh dấu tất cả thông báo của người dùng là đã đọc' })
+  @ApiParam({ name: 'userId', type: 'string', description: 'ID của người dùng' })
+  async markAllNotificationsRead(@Param('userId') userId: string) {
+    try {
+      const response = await firstValueFrom(
+        this.client.send(NOTIFICATIONS_PATTERN.MARK_ALL_READ, { userId })
+      )
+      return response
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Failed to mark all notifications as read',
+        data: null
+      }
+    }
+  }
+
+  @Delete('clear-all/:userId')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiOperation({ summary: 'Xóa tất cả thông báo của người dùng' })
+  @ApiParam({ name: 'userId', type: 'string', description: 'ID của người dùng' })
+  async clearAllNotifications(@Param('userId') userId: string) {
+    try {
+      const response = await firstValueFrom(
+        this.client.send(NOTIFICATIONS_PATTERN.CLEAR_ALL, { userId })
+      )
+      return response
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Failed to clear all notifications',
+        data: null
+      }
+    }
   }
 }

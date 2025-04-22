@@ -342,4 +342,202 @@ export class NotificationService {
             }
         })
     }
+
+    /**
+     * Đánh dấu tất cả thông báo là đã đọc
+     */
+    async markAllAsRead(userId: string): Promise<{ success: boolean; message: string }> {
+        try {
+            this.logger.log(`[Service] Marking all notifications as read for user: ${userId}`)
+
+            // Thực hiện trong transaction
+            const result = await this.prisma.$transaction(async (prisma) => {
+                // 1. Đếm số lượng thông báo chưa đọc
+                const unreadCount = await prisma.notification.count({
+                    where: {
+                        OR: [
+                            { userId: userId },
+                            { userId: 'system' }
+                        ],
+                        isRead: false
+                    }
+                })
+
+                // 2. Cập nhật tất cả thông báo chưa đọc
+                const updateResult = await prisma.notification.updateMany({
+                    where: {
+                        OR: [
+                            { userId: userId },
+                            { userId: 'system' }
+                        ],
+                        isRead: false
+                    },
+                    data: {
+                        isRead: true,
+                        updatedAt: new Date()
+                    }
+                })
+
+                // 3. Lấy danh sách notifications đã cập nhật để cập nhật cache
+                const updatedNotifications = await prisma.notification.findMany({
+                    where: {
+                        OR: [
+                            { userId: userId },
+                            { userId: 'system' }
+                        ]
+                    },
+                    orderBy: {
+                        createdAt: 'desc'
+                    },
+                    take: 100 // Giới hạn số lượng để tối ưu performance
+                })
+
+                return { unreadCount, updateResult, updatedNotifications }
+            })
+
+            // Cập nhật Redis cache
+            const cacheKey = `notifications:user:${userId}`
+            await this.redisClient.del(cacheKey)
+
+            if (result.updatedNotifications.length > 0) {
+                const notificationsToCache = result.updatedNotifications.map(notification => {
+                    return JSON.stringify({
+                        id: notification.id,
+                        userId: notification.userId,
+                        title: notification.title,
+                        content: notification.content,
+                        type: notification.type,
+                        link: notification.link,
+                        isRead: true,
+                        relatedId: notification.relatedId,
+                        createdAt: notification.createdAt,
+                        updatedAt: new Date()
+                    })
+                })
+
+                await this.redisClient.rPush(cacheKey, notificationsToCache)
+                await this.redisClient.expire(cacheKey, 24 * 60 * 60) // Cache 24h
+            }
+
+            // Gửi thông báo realtime
+            const systemNotification = {
+                id: `system-update-${Date.now()}`,
+                userId: userId,
+                title: 'Notifications Updated',
+                content: `${result.unreadCount} notifications have been marked as read`,
+                type: NotificationType.SYSTEM,
+                isRead: true,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            }
+
+            await this.publishNotification(systemNotification)
+
+            return {
+                success: true,
+                message: `Successfully marked ${result.unreadCount} notifications as read`
+            }
+
+        } catch (error) {
+            this.logger.error(`[Service] Failed to mark all notifications as read: ${error.message}`, error.stack)
+            throw new Error(`Failed to mark all notifications as read: ${error.message}`)
+        }
+    }
+
+    /**
+     * Xóa tất cả thông báo (trừ thông báo hệ thống)
+     */
+    async clearAll(userId: string): Promise<{ success: boolean; message: string }> {
+        try {
+            this.logger.log(`[Service] Clearing all notifications for user: ${userId}`)
+
+            // Thực hiện trong transaction
+            const result = await this.prisma.$transaction(async (prisma) => {
+                // 1. Đếm số lượng thông báo sẽ xóa
+                const countToDelete = await prisma.notification.count({
+                    where: {
+                        userId: userId,
+                        type: {
+                            not: NotificationType.SYSTEM
+                        }
+                    }
+                })
+
+                // 2. Xóa tất cả thông báo (trừ system)
+                await prisma.notification.deleteMany({
+                    where: {
+                        userId: userId,
+                        type: {
+                            not: NotificationType.SYSTEM
+                        }
+                    }
+                })
+
+                // 3. Lấy các thông báo hệ thống còn lại
+                const systemNotifications = await prisma.notification.findMany({
+                    where: {
+                        OR: [
+                            { userId: 'system' },
+                            {
+                                userId: userId,
+                                type: NotificationType.SYSTEM
+                            }
+                        ]
+                    },
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
+                })
+
+                return { countToDelete, systemNotifications }
+            })
+
+            // Cập nhật Redis cache - chỉ giữ lại thông báo hệ thống
+            const cacheKey = `notifications:user:${userId}`
+            await this.redisClient.del(cacheKey)
+
+            if (result.systemNotifications.length > 0) {
+                const systemNotificationsToCache = result.systemNotifications.map(notification =>
+                    JSON.stringify({
+                        id: notification.id,
+                        userId: notification.userId,
+                        title: notification.title,
+                        content: notification.content,
+                        type: notification.type,
+                        link: notification.link,
+                        isRead: notification.isRead,
+                        relatedId: notification.relatedId,
+                        createdAt: notification.createdAt,
+                        updatedAt: notification.updatedAt
+                    })
+                )
+
+                await this.redisClient.rPush(cacheKey, systemNotificationsToCache)
+                await this.redisClient.expire(cacheKey, 24 * 60 * 60)
+            }
+
+            // Gửi thông báo realtime về việc xóa
+            const systemNotification = {
+                id: `system-clear-${Date.now()}`,
+                userId: userId,
+                title: 'Notifications Cleared',
+                content: `${result.countToDelete} notifications have been cleared`,
+                type: NotificationType.SYSTEM,
+                isRead: true,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            }
+
+            await this.publishNotification(systemNotification)
+
+            return {
+                success: true,
+                message: `Successfully cleared ${result.countToDelete} notifications`
+            }
+
+        } catch (error) {
+            this.logger.error(`[Service] Failed to clear all notifications: ${error.message}`, error.stack)
+            throw new Error(`Failed to clear all notifications: ${error.message}`)
+        }
+    }
 } 

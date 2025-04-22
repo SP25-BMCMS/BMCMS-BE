@@ -272,4 +272,155 @@ export class NotificationsController {
     // Ủy quyền việc tạo stream cho NotificationService
     return this.notificationService.createNotificationStream(data.userId)
   }
+
+  @MessagePattern(NOTIFICATIONS_PATTERN.MARK_ALL_READ)
+  async handleMarkAllNotificationsRead(data: { userId: string }) {
+    this.logger.log(`[MessagePattern] Marking all notifications as read for user: ${data.userId}`)
+
+    try {
+      // Validate userId
+      if (!data.userId) {
+        throw new Error('User ID is required')
+      }
+
+      const result = await this.notificationService.markAllAsRead(data.userId)
+
+      this.logger.log(`[MessagePattern] Successfully marked all notifications as read for user: ${data.userId}`)
+
+      return {
+        success: true,
+        message: result.message,
+        data: {
+          userId: data.userId,
+          timestamp: new Date().toISOString()
+        }
+      }
+    } catch (error) {
+      this.logger.error(`[MessagePattern] Error marking all notifications as read: ${error.message}`, error.stack)
+      return {
+        success: false,
+        message: `Failed to mark all notifications as read: ${error.message}`,
+        data: null
+      }
+    }
+  }
+
+  @MessagePattern(NOTIFICATIONS_PATTERN.CLEAR_ALL)
+  async handleClearAllNotifications(data: { userId: string }) {
+    this.logger.log(`[MessagePattern] Clearing all notifications for user: ${data.userId}`)
+
+    try {
+      // Validate userId
+      if (!data.userId) {
+        throw new Error('User ID is required')
+      }
+
+      const result = await this.notificationService.clearAll(data.userId)
+
+      this.logger.log(`[MessagePattern] Successfully cleared all notifications for user: ${data.userId}`)
+
+      return {
+        success: true,
+        message: result.message,
+        data: {
+          userId: data.userId,
+          timestamp: new Date().toISOString()
+        }
+      }
+    } catch (error) {
+      this.logger.error(`[MessagePattern] Error clearing all notifications: ${error.message}`, error.stack)
+      return {
+        success: false,
+        message: `Failed to clear all notifications: ${error.message}`,
+        data: null
+      }
+    }
+  }
+
+  // Thêm method test cho hai chức năng mới
+  @MessagePattern('test_mark_all_read')
+  async testMarkAllRead(data: { userId: string }) {
+    this.logger.log('[Test] Testing mark all notifications as read')
+    try {
+      // Tạo một số test notifications
+      const testNotifications = [
+        {
+          userId: data.userId,
+          title: 'Test Notification 1',
+          content: 'Test content 1',
+          type: NotificationType.SYSTEM
+        },
+        {
+          userId: data.userId,
+          title: 'Test Notification 2',
+          content: 'Test content 2',
+          type: NotificationType.SYSTEM
+        }
+      ]
+
+      // Tạo test notifications
+      for (const notification of testNotifications) {
+        await this.notificationService.createNotification(notification)
+      }
+
+      // Test mark all as read
+      const result = await this.notificationService.markAllAsRead(data.userId)
+
+      return {
+        success: true,
+        message: 'Test completed successfully',
+        data: result
+      }
+    } catch (error) {
+      this.logger.error('[Test] Test failed:', error)
+      return {
+        success: false,
+        message: `Test failed: ${error.message}`,
+        error: error.stack
+      }
+    }
+  }
+
+  @MessagePattern('test_clear_all')
+  async testClearAll(data: { userId: string }) {
+    this.logger.log('[Test] Testing clear all notifications')
+    try {
+      // Tạo một số test notifications
+      const testNotifications = [
+        {
+          userId: data.userId,
+          title: 'Test Notification 1',
+          content: 'Test content 1',
+          type: NotificationType.SYSTEM
+        },
+        {
+          userId: data.userId,
+          title: 'Test Notification 2',
+          content: 'Test content 2',
+          type: NotificationType.TASK_ASSIGNMENT
+        }
+      ]
+
+      // Tạo test notifications
+      for (const notification of testNotifications) {
+        await this.notificationService.createNotification(notification)
+      }
+
+      // Test clear all
+      const result = await this.notificationService.clearAll(data.userId)
+
+      return {
+        success: true,
+        message: 'Test completed successfully',
+        data: result
+      }
+    } catch (error) {
+      this.logger.error('[Test] Test failed:', error)
+      return {
+        success: false,
+        message: `Test failed: ${error.message}`,
+        error: error.stack
+      }
+    }
+  }
 }

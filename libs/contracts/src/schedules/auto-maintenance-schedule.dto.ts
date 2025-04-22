@@ -1,6 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
-import { DeviceType } from '@prisma/client-schedule';
+import { ApiProperty } from '@nestjs/swagger'
+import { IsArray, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator'
+import { DeviceType } from '@prisma/client-schedule'
 
 export class AutoMaintenanceScheduleDto {
     @IsNotEmpty()
@@ -9,7 +9,7 @@ export class AutoMaintenanceScheduleDto {
         description: 'Name of the maintenance schedule',
         example: 'Elevator Maintenance Schedule'
     })
-    schedule_name: string;
+    schedule_name: string
 
     @IsOptional()
     @IsString()
@@ -18,7 +18,7 @@ export class AutoMaintenanceScheduleDto {
         example: 'Automatic maintenance schedule for elevators',
         required: false
     })
-    description?: string;
+    description?: string
 
     @IsNotEmpty()
     @IsUUID()
@@ -26,7 +26,7 @@ export class AutoMaintenanceScheduleDto {
         description: 'ID of the maintenance cycle to use as template',
         example: 'd290f1ee-6c54-4b01-90e6-d701748f0851'
     })
-    cycle_id: string;
+    cycle_id: string
 
     @IsNotEmpty()
     @IsArray()
@@ -35,7 +35,7 @@ export class AutoMaintenanceScheduleDto {
         example: ['d290f1ee-6c54-4b01-90e6-d701748f0851', 'e290f1ee-6c54-4b01-90e6-d701748f0852'],
         type: [String]
     })
-    buildingDetailIds: string[];
+    buildingDetailIds: string[]
 
     @IsOptional()
     @ApiProperty({
@@ -43,5 +43,13 @@ export class AutoMaintenanceScheduleDto {
         example: '2025-01-01T00:00:00.000Z',
         required: false
     })
-    start_date?: Date;
+    start_date?: Date
+
+    @IsOptional()
+    @ApiProperty({
+        description: 'End date of the maintenance schedule',
+        example: '2025-01-01T00:00:00.000Z',
+        required: false
+    })
+    end_date?: Date
 } 
