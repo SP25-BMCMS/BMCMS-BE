@@ -20,42 +20,42 @@ async function main() {
     const rainbowArea = await prisma.area.create({
         data: {
             name: 'The Rainbow',
-            description: 'Khu vực Rainbow gồm 4 tòa nhà'
+            description: 'Rainbow area consists of 4 buildings'
         }
     });
 
     const origamiArea = await prisma.area.create({
         data: {
             name: 'The Origami',
-            description: 'Khu vực Origami gồm 5 tòa nhà'
+            description: 'Origami area consists of 5 buildings'
         }
     });
 
     const beverlyArea = await prisma.area.create({
         data: {
             name: 'The Beverly',
-            description: 'Khu vực Beverly gồm 3 tòa nhà'
+            description: 'Beverly area consists of 3 buildings'
         }
     });
 
     const gloryHeightsArea = await prisma.area.create({
         data: {
             name: 'Glory Heights',
-            description: 'Khu vực Glory Heights gồm 3 tòa nhà'
+            description: 'Glory Heights area consists of 3 buildings'
         }
     });
 
     const masteriCentrePointArea = await prisma.area.create({
         data: {
             name: 'Masteri Centre Point',
-            description: 'Khu vực Masteri Centre Point gồm 3 tòa nhà'
+            description: 'Masteri Centre Point area consists of 3 buildings'
         }
     });
 
     const lumièreBoulevardArea = await prisma.area.create({
         data: {
             name: 'Lumière Boulevard',
-            description: 'Khu vực Lumière Boulevard gồm 3 tòa nhà'
+            description: 'Lumière Boulevard area consists of 3 buildings'
         }
     });
 
@@ -65,7 +65,7 @@ async function main() {
     const buildingS1 = await prisma.building.create({
         data: {
             name: 'S1',
-            description: 'Tòa S1 - Khu Rainbow',
+            description: 'Building S1 - Rainbow Area',
             numberFloor: 25,
             imageCover: 'building-s1.jpg',
             areaId: rainbowArea.areaId,
@@ -79,7 +79,7 @@ async function main() {
     const buildingS2 = await prisma.building.create({
         data: {
             name: 'S2',
-            description: 'Tòa S2 - Khu Rainbow',
+            description: 'Building S2 - Rainbow Area',
             numberFloor: 30,
             imageCover: 'building-s2.jpg',
             areaId: rainbowArea.areaId,
@@ -93,7 +93,7 @@ async function main() {
     const buildingS3 = await prisma.building.create({
         data: {
             name: 'S3',
-            description: 'Tòa S3 - Khu Rainbow',
+            description: 'Building S3 - Rainbow Area',
             numberFloor: 28,
             imageCover: 'building-s3.jpg',
             areaId: rainbowArea.areaId,
@@ -107,7 +107,7 @@ async function main() {
     const buildingS4 = await prisma.building.create({
         data: {
             name: 'S4',
-            description: 'Tòa S4 - Khu Rainbow',
+            description: 'Building S4 - Rainbow Area',
             numberFloor: 27,
             imageCover: 'building-s4.jpg',
             areaId: rainbowArea.areaId,
@@ -122,7 +122,7 @@ async function main() {
     const buildingS5 = await prisma.building.create({
         data: {
             name: 'S5',
-            description: 'Tòa S5 - Khu Origami',
+            description: 'Building S5 - Origami Area',
             numberFloor: 22,
             imageCover: 'building-s5.jpg',
             areaId: origamiArea.areaId,
@@ -136,7 +136,7 @@ async function main() {
     const buildingS6 = await prisma.building.create({
         data: {
             name: 'S6',
-            description: 'Tòa S6 - Khu Origami',
+            description: 'Building S6 - Origami Area',
             numberFloor: 20,
             imageCover: 'building-s6.jpg',
             areaId: origamiArea.areaId,
@@ -150,7 +150,7 @@ async function main() {
     const buildingS7 = await prisma.building.create({
         data: {
             name: 'S7',
-            description: 'Tòa S7 - Khu Origami',
+            description: 'Building S7 - Origami Area',
             numberFloor: 24,
             imageCover: 'building-s7.jpg',
             areaId: origamiArea.areaId,
@@ -165,7 +165,7 @@ async function main() {
     const buildingB1 = await prisma.building.create({
         data: {
             name: 'B1',
-            description: 'Tòa B1 - Khu Beverly',
+            description: 'Building B1 - Beverly Area',
             numberFloor: 35,
             imageCover: 'building-b1.jpg',
             areaId: beverlyArea.areaId,
@@ -179,7 +179,7 @@ async function main() {
     const buildingB2 = await prisma.building.create({
         data: {
             name: 'B2',
-            description: 'Tòa B2 - Khu Beverly',
+            description: 'Building B2 - Beverly Area',
             numberFloor: 33,
             imageCover: 'building-b2.jpg',
             areaId: beverlyArea.areaId,
@@ -194,7 +194,7 @@ async function main() {
     const buildingG1 = await prisma.building.create({
         data: {
             name: 'G1',
-            description: 'Tòa G1 - Khu Glory Heights',
+            description: 'Building G1 - Glory Heights Area',
             numberFloor: 40,
             imageCover: 'building-g1.jpg',
             areaId: gloryHeightsArea.areaId,
@@ -208,7 +208,7 @@ async function main() {
     const buildingG2 = await prisma.building.create({
         data: {
             name: 'G2',
-            description: 'Tòa G2 - Khu Glory Heights',
+            description: 'Building G2 - Glory Heights Area',
             numberFloor: 38,
             imageCover: 'building-g2.jpg',
             areaId: gloryHeightsArea.areaId,
@@ -223,7 +223,7 @@ async function main() {
     const buildingM1 = await prisma.building.create({
         data: {
             name: 'M1',
-            description: 'Tòa M1 - Khu Masteri Centre Point',
+            description: 'Building M1 - Masteri Centre Point Area',
             numberFloor: 45,
             imageCover: 'building-m1.jpg',
             areaId: masteriCentrePointArea.areaId,
@@ -237,7 +237,7 @@ async function main() {
     const buildingM2 = await prisma.building.create({
         data: {
             name: 'M2',
-            description: 'Tòa M2 - Khu Masteri Centre Point',
+            description: 'Building M2 - Masteri Centre Point Area',
             numberFloor: 42,
             imageCover: 'building-m2.jpg',
             areaId: masteriCentrePointArea.areaId,

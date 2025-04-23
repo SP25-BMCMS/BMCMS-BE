@@ -21,30 +21,30 @@ async function main() {
   // 1. Seed Departments
   const department1 = await prisma.department.create({
     data: {
-      departmentName: 'Kỹ thuật viên chính',
+      departmentName: 'Primary Technicians',
       area: 'Rainbow',
-      description: 'Quản lý bảo trì toàn khu vực'
+      description: 'Manage maintenance for the entire area'
     }
   });
   const department2 = await prisma.department.create({
     data: {
-      departmentName: 'Kỹ thuật viên điện lạnh',
+      departmentName: 'HVAC Technicians',
       area: 'Rainbow',
-      description: 'Quản lý bảo trì các vết nứt'
+      description: 'Manage crack maintenance'
     }
   });
   const department3 = await prisma.department.create({
     data: {
-      departmentName: 'Kỹ thuật viên vệ sinh',
+      departmentName: 'Cleaning Technicians',
       area: 'Rainbow',
-      description: 'Chịu trách nhiệm vệ sinh toàn khu vực'
+      description: 'Responsible for cleaning the entire area'
     }
   });
   const department4 = await prisma.department.create({
     data: {
-      departmentName: 'Kỹ thuật viên bảo trì',
+      departmentName: 'Maintenance Technicians',
       area: 'Rainbow',
-      description: 'Chịu trách nhiệm bảo trì các thiết bị kỹ thuật'
+      description: 'Responsible for maintaining technical equipment'
     }
   });
 
@@ -52,25 +52,25 @@ async function main() {
   const position1 = await prisma.workingPosition.create({
     data: {
       positionName: 'Leader',
-      description: 'Kỹ sư chính'
+      description: 'Lead Engineer'
     }
   });
   const position2 = await prisma.workingPosition.create({
     data: {
       positionName: 'Technician',
-      description: 'Kỹ thuật viên điện lạnh'
+      description: 'HVAC Technician'
     }
   });
   const position3 = await prisma.workingPosition.create({
     data: {
       positionName: 'Janitor',
-      description: 'Nhân viên vệ sinh khu vực chung'
+      description: 'Common area cleaning staff'
     }
   });
   const position4 = await prisma.workingPosition.create({
     data: {
       positionName: 'Maintenance_Technician',
-      description: 'Kỹ thuật viên bảo trì chung'
+      description: 'General maintenance technician'
     }
   });
 
@@ -202,7 +202,7 @@ async function main() {
     }
   });
 
-  // 4. Seed Apartments cho Resident
+  // 4. Seed Apartments for Resident
   console.log('Seeding apartments...');
   await prisma.apartment.createMany({
     data: [

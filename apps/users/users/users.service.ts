@@ -27,6 +27,7 @@ import { GrpcMethod } from '@nestjs/microservices'
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
 import { PrismaClient as TasksPrismaClient } from '@prisma/client-Task'
 import { PrismaClient as TasksPrismaClientSchedule } from '@prisma/client-schedule'
+import { log } from 'console'
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 const CRACKS_CLIENT = 'CRACKS_CLIENT'
@@ -1138,7 +1139,7 @@ export class UsersService {
           }
         }
       })
-
+      console.log(`[users[users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service].service] Staff: ${JSON.stringify(staff)}`)
       if (!staff || !staff.userDetails?.department) {
         return {
           isSuccess: false,
@@ -1151,7 +1152,7 @@ export class UsersService {
       const crackReportResponse = await firstValueFrom(
         this.cracksClient.send(CRACK_PATTERN.GET_CRACK_REPORT, crackReportId)
           .pipe(
-            timeout(5000),
+            timeout(15000),
             catchError((err) => {
               console.error('Error getting crack report:', err)
               return of({ isSuccess: false, message: 'Error getting crack report', data: null })
@@ -1173,7 +1174,7 @@ export class UsersService {
       const buildingResponse = await firstValueFrom(
         this.buildingsClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId: crackReport.buildingDetailId })
           .pipe(
-            timeout(5000),
+            timeout(15000),
             catchError((err) => {
               console.error('Error getting building details:', err)
               return of({ statusCode: 404, data: null })
@@ -1193,7 +1194,7 @@ export class UsersService {
       const areaResponse = await firstValueFrom(
         this.buildingsClient.send(AREAS_PATTERN.GET_BY_ID, { areaId: buildingResponse.data.building.area.areaId })
           .pipe(
-            timeout(5000),
+            timeout(15000),
             catchError((err) => {
               return of({ statusCode: 404, data: null })
             })
