@@ -123,4 +123,16 @@ export interface UserInterface {
     message: string;
     data?: { userId: string; role: string } | null;
   }>;
+
+  getStaffLeaderByCrackReport(data: { crackReportId: string }): Observable<{
+    isSuccess: boolean;
+    message: string;
+    data: any[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }>;
 }
