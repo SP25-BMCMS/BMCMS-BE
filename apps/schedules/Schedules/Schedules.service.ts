@@ -229,24 +229,93 @@ export class ScheduleService {
 
     for (const [index, job] of scheduleJobs.entries()) {
       try {
+        // Logging for better debugging
+        logger.log(`Processing job ${index + 1}/${scheduleJobs.length}: ${job.schedule_job_id}`)
 
-        const createTaskResponse = await firstValueFrom(
-          this.taskClient.send({ cmd: 'create-task-for-schedule-job' }, {
-            scheduleJobId: job.schedule_job_id
-          }).pipe(
-            timeout(TASK_CREATION_TIMEOUT),
-            catchError(err => {
-              return of({
-                isSuccess: false,
-                message: err.message || 'Unknown error',
-                data: null
-              })
-            })
-          )
-        )
+        if (!job.schedule_job_id) {
+          logger.error(`Missing schedule_job_id for job at index ${index}`)
+          continue
+        }
 
+        // Implement retry mechanism
+        let attempts = 0
+        const maxAttempts = MAX_RETRY_ATTEMPTS
+        let success = false
+        let lastError = null
+
+        while (attempts < maxAttempts && !success) {
+          try {
+            attempts++
+            logger.log(`Attempt ${attempts}/${maxAttempts} to create task for job: ${job.schedule_job_id}`)
+
+            // Use the correct pattern format: { cmd: 'pattern-name' }
+            const createTaskResponse = await firstValueFrom(
+              this.taskClient.send({ cmd: 'create-task-for-schedule-job' }, {
+                scheduleJobId: job.schedule_job_id
+              }).pipe(
+                timeout(TASK_CREATION_TIMEOUT),
+                catchError(err => {
+                  logger.error(`Task creation error (attempt ${attempts}): ${err.message || 'Unknown error'}`)
+                  return of({
+                    isSuccess: false,
+                    message: err.message || 'Unknown error',
+                    data: null
+                  })
+                })
+              )
+            )
+
+            // Log the response
+            logger.log(`Task creation response: ${JSON.stringify(createTaskResponse)}`)
+
+            // Check if task creation was successful
+            if (createTaskResponse && createTaskResponse.isSuccess) {
+              success = true
+              logger.log(`Successfully created task for job ${job.schedule_job_id}`)
+            } else {
+              // Task creation failed, will retry if attempts remain
+              const errorMsg = createTaskResponse?.message || 'Unknown error'
+              lastError = new Error(errorMsg)
+              logger.warn(`Task creation failed: ${errorMsg}`)
+
+              // Wait before retrying (exponential backoff)
+              if (attempts < maxAttempts) {
+                const waitTime = Math.min(1000 * Math.pow(2, attempts - 1), 10000) // Max 10 seconds
+                logger.log(`Waiting ${waitTime}ms before retry`)
+                await new Promise(resolve => setTimeout(resolve, waitTime))
+              }
+            }
+          } catch (retryError) {
+            lastError = retryError
+            logger.error(`Error during retry attempt ${attempts}: ${retryError.message}`)
+
+            // Wait before retrying
+            if (attempts < maxAttempts) {
+              const waitTime = Math.min(1000 * Math.pow(2, attempts - 1), 10000)
+              await new Promise(resolve => setTimeout(resolve, waitTime))
+            }
+          }
+        }
+
+        // If all attempts failed, log a final error
+        if (!success) {
+          logger.error(`Failed to create task for job ${job.schedule_job_id} after ${maxAttempts} attempts`)
+
+          // Add job to a queue for later retry if needed
+          this.taskQueue.push({
+            scheduleJobId: job.schedule_job_id,
+            attempt: 0,
+            lastAttempt: new Date()
+          })
+        }
       } catch (error) {
+        logger.error(`Unexpected error processing job ${job?.schedule_job_id || index}: ${error.message}`)
       }
+    }
+
+    // If there are any jobs in the queue and we're not already processing it, start queue processing
+    if (this.taskQueue.length > 0 && !this.isProcessingQueue) {
+      this.logger.log(`Queueing ${this.taskQueue.length} failed tasks for later retry`)
     }
   }
 
@@ -1071,26 +1140,14 @@ export class ScheduleService {
       if (updateScheduleDto.schedule_status) updateData.schedule_status = updateScheduleDto.schedule_status
       if (updateScheduleDto.cycle_id) updateData.cycle_id = updateScheduleDto.cycle_id
 
+      // Khởi tạo mảng để lưu trữ các schedule jobs mới cần tạo task
+      const newScheduleJobs = [];
+
       // Handle building detail IDs if provided
       if (updateScheduleDto.buildingDetailIds && updateScheduleDto.buildingDetailIds.length > 0) {
-        // Kiểm tra xem có scheduleJobs hiện tại không
-        if (existingSchedule.scheduleJobs && existingSchedule.scheduleJobs.length > 0) {
-          // Kiểm tra tất cả scheduleJobs hiện tại có phải là Cancel không
-          const hasNonCancelledJobs = existingSchedule.scheduleJobs.some(
-            job => job.status !== $Enums.ScheduleJobStatus.Cancel
-          )
-
-          if (hasNonCancelledJobs) {
-            throw new RpcException({
-              statusCode: 400,
-              message: 'Cannot add new schedule jobs while there are active or pending jobs. All existing jobs must be cancelled first.',
-            })
-          }
-        }
-
-        // Nếu tất cả jobs đều đã Cancel hoặc không có jobs nào, tiến hành tạo mới
+        // Lấy thông tin maintenance cycle
         const maintenanceCycle = await this.prisma.maintenanceCycle.findUnique({
-          where: { cycle_id: existingSchedule.cycle_id }
+          where: { cycle_id: updateScheduleDto.cycle_id || existingSchedule.cycle_id }
         })
 
         if (!maintenanceCycle) {
@@ -1100,34 +1157,23 @@ export class ScheduleService {
           })
         }
 
-        // Tính toán thời gian cho jobs mới
-        const startDate = existingSchedule.start_date
-        const endDate = existingSchedule.end_date
+        // Tính toán thời gian cho jobs
+        const startDate = updateData.start_date || existingSchedule.start_date
+        const endDate = updateData.end_date || existingSchedule.end_date
         const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-        const buildingsCount = updateScheduleDto.buildingDetailIds.length
+        const totalBuildings = updateScheduleDto.buildingDetailIds.length
 
-        // Tạo schedule jobs với thời gian phân bổ hợp lý
-        const scheduleJobsData = updateScheduleDto.buildingDetailIds.map((buildingDetailId, index) => {
-          // Tính toán run_date và end_date cho mỗi job
-          const jobStartDate = new Date(startDate)
-          const timeSlot = totalDays / buildingsCount
-          jobStartDate.setDate(jobStartDate.getDate() + (index * Math.ceil(timeSlot)))
+        // Tính khoảng thời gian bảo trì dựa trên frequency
+        let intervalDays
+        switch (maintenanceCycle.frequency) {
+          case 'Daily': intervalDays = 1; break
+          case 'Weekly': intervalDays = 7; break
+          case 'Monthly': intervalDays = 30; break
+          case 'Yearly': intervalDays = 365; break
+          default: intervalDays = 30
+        }
 
-          const jobEndDate = new Date(jobStartDate)
-          jobEndDate.setDate(jobEndDate.getDate() + Math.ceil(timeSlot))
-
-          // Đảm bảo không vượt quá end_date của schedule
-          const finalEndDate = jobEndDate > endDate ? endDate : jobEndDate
-
-          return {
-            schedule_id: schedule_id,
-            buildingDetailId: buildingDetailId,
-            run_date: jobStartDate,
-            start_date: jobStartDate,
-            end_date: finalEndDate,
-            status: $Enums.ScheduleJobStatus.Pending,
-          }
-        })
+        this.logger.log(`Maintenance frequency: ${maintenanceCycle.frequency}, intervalDays: ${intervalDays}, totalDays: ${totalDays}`)
 
         // Thực hiện update trong transaction
         await this.prisma.$transaction(async (prisma) => {
@@ -1137,17 +1183,118 @@ export class ScheduleService {
             data: updateData,
           })
 
-          // Tạo jobs mới
-          await prisma.scheduleJob.createMany({
-            data: scheduleJobsData,
-          })
-        })
+          // Danh sách buildingDetailIds cần tạo scheduleJobs mới
+          const buildingDetailsToCreate = [];
+
+          // Kiểm tra từng buildingDetailId
+          for (const buildingDetailId of updateScheduleDto.buildingDetailIds) {
+            // Tìm tất cả scheduleJobs hiện tại với buildingDetailId này
+            const existingJobs = existingSchedule.scheduleJobs.filter(
+              job => job.buildingDetailId === buildingDetailId
+            );
+
+            // Kiểm tra xem có bất kỳ scheduleJob nào đang active (không phải Cancel) không
+            const hasActiveJob = existingJobs.some(
+              job => job.status !== $Enums.ScheduleJobStatus.Cancel
+            );
+
+            // Nếu không có jobs nào hoặc tất cả đều đã bị Cancel, thêm vào danh sách cần tạo mới
+            if (existingJobs.length === 0 || !hasActiveJob) {
+              buildingDetailsToCreate.push(buildingDetailId);
+            }
+          }
+
+          // Log kết quả kiểm tra
+          this.logger.log(`Building details to create new jobs: ${buildingDetailsToCreate.length > 0 ? buildingDetailsToCreate.join(', ') : 'None'}`);
+
+          // Nếu có buildingDetailIds cần tạo scheduleJobs mới
+          if (buildingDetailsToCreate.length > 0) {
+            // Tính số lượng chu kỳ bảo trì có thể thực hiện
+            const possibleMaintenanceCycles = Math.floor(totalDays / intervalDays)
+            this.logger.log(`Possible maintenance cycles: ${possibleMaintenanceCycles}`)
+
+            // Tạo jobs cho từng building - áp dụng logic giống createAutoMaintenanceSchedule
+            const scheduleJobs = buildingDetailsToCreate.flatMap((buildingDetailId, buildingIndex) => {
+              const jobs = []
+              let currentDate = new Date(startDate)
+
+              // Tính offset cho mỗi building để phân bổ đều
+              const offsetDays = Math.floor((intervalDays / totalBuildings) * buildingIndex)
+              currentDate.setDate(currentDate.getDate() + offsetDays)
+
+              this.logger.log(`Building ${buildingDetailId}, offsetDays: ${offsetDays}, startDate: ${currentDate.toISOString()}`)
+
+              while (currentDate < endDate) {
+                const jobEndDate = new Date(currentDate)
+                jobEndDate.setDate(jobEndDate.getDate() + intervalDays)
+
+                // Đảm bảo không vượt quá end date của schedule
+                const finalEndDate = jobEndDate > endDate ? endDate : jobEndDate
+
+                if (currentDate < endDate) {
+                  jobs.push({
+                    schedule_id: schedule_id,
+                    run_date: new Date(currentDate),
+                    status: $Enums.ScheduleJobStatus.Pending,
+                    buildingDetailId: buildingDetailId,
+                    start_date: new Date(currentDate),
+                    end_date: finalEndDate
+                  })
+
+                  this.logger.log(`Created job for building ${buildingDetailId}, run_date: ${currentDate.toISOString()}, end_date: ${finalEndDate.toISOString()}`)
+                }
+
+                // Tính ngày bắt đầu cho chu kỳ tiếp theo - nhân với số lượng buildings để phân phối đều
+                currentDate = new Date(currentDate)
+                currentDate.setDate(currentDate.getDate() + intervalDays * totalBuildings)
+              }
+
+              this.logger.log(`Total jobs created for building ${buildingDetailId}: ${jobs.length}`)
+              return jobs
+            })
+
+            // Tạo các scheduleJobs mới
+            if (scheduleJobs.length > 0) {
+              this.logger.log(`Creating ${scheduleJobs.length} new schedule jobs`)
+
+              await prisma.scheduleJob.createMany({
+                data: scheduleJobs,
+              });
+
+              // Lấy thông tin đầy đủ của các scheduleJobs vừa tạo
+              const createdJobs = await prisma.scheduleJob.findMany({
+                where: {
+                  schedule_id: schedule_id,
+                  buildingDetailId: {
+                    in: buildingDetailsToCreate
+                  },
+                  status: $Enums.ScheduleJobStatus.Pending // Chỉ lấy các job mới tạo với status Pending
+                }
+              });
+
+              // Thêm vào danh sách cần tạo task
+              newScheduleJobs.push(...createdJobs);
+              this.logger.log(`Retrieved ${createdJobs.length} new schedule jobs`)
+            }
+          }
+        });
+
+        // Tạo tasks và task assignments cho các scheduleJobs mới
+        if (newScheduleJobs.length > 0) {
+          console.log(`Creating tasks for ${newScheduleJobs.length} new schedule jobs`);
+          try {
+            await this.createTasksForScheduleJobs(newScheduleJobs);
+          } catch (taskError) {
+            console.error(`Error creating tasks for schedule jobs: ${taskError.message}`);
+            // Vẫn tiếp tục thực hiện, không throw lỗi ở đây
+          }
+        }
       } else {
         // Nếu không có buildingDetailIds, chỉ update schedule
         await this.prisma.schedule.update({
           where: { schedule_id },
           data: updateData,
-        })
+        });
       }
 
       // Get updated schedule with all jobs
@@ -1156,30 +1303,30 @@ export class ScheduleService {
         include: {
           scheduleJobs: true,
         },
-      })
+      });
 
       // Format the response
       const scheduleResponse: ScheduleResponseDto = {
         ...updatedSchedule,
         schedule_job: updatedSchedule.scheduleJobs,
-      }
+      };
 
       return new ApiResponse<ScheduleResponseDto>(
         true,
         'Schedule updated successfully',
         scheduleResponse,
-      )
+      );
     } catch (error) {
-      console.error('Error updating schedule:', error)
+      console.error('Error updating schedule:', error);
 
       if (error instanceof RpcException) {
-        throw error
+        throw error;
       }
 
       throw new RpcException({
         statusCode: 500,
         message: `Failed to update schedule: ${error.message}`,
-      })
+      });
     }
   }
 }
