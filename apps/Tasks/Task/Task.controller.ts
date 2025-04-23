@@ -67,10 +67,24 @@ export class TasksController {
   }
 
   @MessagePattern({ cmd: 'create-task-for-schedule-job' })
-  async createTaskForScheduleJob(@Payload() payload: { scheduleJobId: string; staffId: string }) {
+  async createTaskForScheduleJob(@Payload() payload: any) {
     console.log('Received create-task-for-schedule-job request with payload:', payload);
     try {
-      const result = await this.taskService.createTaskForScheduleJob(payload.scheduleJobId, payload.staffId);
+      // Extract scheduleJobId from multiple possible input formats
+      const scheduleJobId = payload.scheduleJobId ||
+        payload.schedule_job_id ||
+        (typeof payload === 'string' ? payload : null);
+
+      if (!scheduleJobId) {
+        throw new Error('Missing scheduleJobId in request payload');
+      }
+
+      console.log('Starting task creation for schedule job:', scheduleJobId);
+
+      // Extract staffId if available
+      const staffId = payload.staffId || payload.staff_id;
+
+      const result = await this.taskService.createTaskForScheduleJob(scheduleJobId, staffId);
       console.log('createTaskForScheduleJob completed with result:', JSON.stringify(result));
       return result;
     } catch (error) {
