@@ -1147,7 +1147,7 @@ export class ScheduleService {
       if (updateScheduleDto.buildingDetailIds && updateScheduleDto.buildingDetailIds.length > 0) {
         // Lấy thông tin maintenance cycle
         const maintenanceCycle = await this.prisma.maintenanceCycle.findUnique({
-          where: { cycle_id: existingSchedule.cycle_id }
+          where: { cycle_id: updateScheduleDto.cycle_id || existingSchedule.cycle_id }
         })
 
         if (!maintenanceCycle) {
@@ -1161,7 +1161,19 @@ export class ScheduleService {
         const startDate = updateData.start_date || existingSchedule.start_date
         const endDate = updateData.end_date || existingSchedule.end_date
         const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-        const buildingsCount = updateScheduleDto.buildingDetailIds.length
+        const totalBuildings = updateScheduleDto.buildingDetailIds.length
+
+        // Tính khoảng thời gian bảo trì dựa trên frequency
+        let intervalDays
+        switch (maintenanceCycle.frequency) {
+          case 'Daily': intervalDays = 1; break
+          case 'Weekly': intervalDays = 7; break
+          case 'Monthly': intervalDays = 30; break
+          case 'Yearly': intervalDays = 365; break
+          default: intervalDays = 30
+        }
+
+        this.logger.log(`Maintenance frequency: ${maintenanceCycle.frequency}, intervalDays: ${intervalDays}, totalDays: ${totalDays}`)
 
         // Thực hiện update trong transaction
         await this.prisma.$transaction(async (prisma) => {
@@ -1197,47 +1209,73 @@ export class ScheduleService {
 
           // Nếu có buildingDetailIds cần tạo scheduleJobs mới
           if (buildingDetailsToCreate.length > 0) {
-            // Tạo scheduleJobs mới cho các buildingDetailIds này
-            const newJobsData = buildingDetailsToCreate.map((buildingDetailId, index) => {
-              // Tính toán run_date và end_date cho mỗi job
-              const jobStartDate = new Date(startDate);
-              const timeSlot = totalDays / buildingsCount;
-              jobStartDate.setDate(jobStartDate.getDate() + (index * Math.ceil(timeSlot)));
+            // Tính số lượng chu kỳ bảo trì có thể thực hiện
+            const possibleMaintenanceCycles = Math.floor(totalDays / intervalDays)
+            this.logger.log(`Possible maintenance cycles: ${possibleMaintenanceCycles}`)
 
-              const jobEndDate = new Date(jobStartDate);
-              jobEndDate.setDate(jobEndDate.getDate() + Math.ceil(timeSlot));
+            // Tạo jobs cho từng building - áp dụng logic giống createAutoMaintenanceSchedule
+            const scheduleJobs = buildingDetailsToCreate.flatMap((buildingDetailId, buildingIndex) => {
+              const jobs = []
+              let currentDate = new Date(startDate)
 
-              // Đảm bảo không vượt quá end_date của schedule
-              const finalEndDate = jobEndDate > endDate ? endDate : jobEndDate;
+              // Tính offset cho mỗi building để phân bổ đều
+              const offsetDays = Math.floor((intervalDays / totalBuildings) * buildingIndex)
+              currentDate.setDate(currentDate.getDate() + offsetDays)
 
-              return {
-                schedule_id: schedule_id,
-                buildingDetailId: buildingDetailId,
-                run_date: jobStartDate,
-                start_date: jobStartDate,
-                end_date: finalEndDate,
-                status: $Enums.ScheduleJobStatus.Pending,
-              };
-            });
+              this.logger.log(`Building ${buildingDetailId}, offsetDays: ${offsetDays}, startDate: ${currentDate.toISOString()}`)
+
+              while (currentDate < endDate) {
+                const jobEndDate = new Date(currentDate)
+                jobEndDate.setDate(jobEndDate.getDate() + intervalDays)
+
+                // Đảm bảo không vượt quá end date của schedule
+                const finalEndDate = jobEndDate > endDate ? endDate : jobEndDate
+
+                if (currentDate < endDate) {
+                  jobs.push({
+                    schedule_id: schedule_id,
+                    run_date: new Date(currentDate),
+                    status: $Enums.ScheduleJobStatus.Pending,
+                    buildingDetailId: buildingDetailId,
+                    start_date: new Date(currentDate),
+                    end_date: finalEndDate
+                  })
+
+                  this.logger.log(`Created job for building ${buildingDetailId}, run_date: ${currentDate.toISOString()}, end_date: ${finalEndDate.toISOString()}`)
+                }
+
+                // Tính ngày bắt đầu cho chu kỳ tiếp theo - nhân với số lượng buildings để phân phối đều
+                currentDate = new Date(currentDate)
+                currentDate.setDate(currentDate.getDate() + intervalDays * totalBuildings)
+              }
+
+              this.logger.log(`Total jobs created for building ${buildingDetailId}: ${jobs.length}`)
+              return jobs
+            })
 
             // Tạo các scheduleJobs mới
-            await prisma.scheduleJob.createMany({
-              data: newJobsData,
-            });
+            if (scheduleJobs.length > 0) {
+              this.logger.log(`Creating ${scheduleJobs.length} new schedule jobs`)
 
-            // Lấy thông tin đầy đủ của các scheduleJobs vừa tạo
-            const createdJobs = await prisma.scheduleJob.findMany({
-              where: {
-                schedule_id: schedule_id,
-                buildingDetailId: {
-                  in: buildingDetailsToCreate
-                },
-                status: $Enums.ScheduleJobStatus.Pending // Chỉ lấy các job mới tạo với status Pending
-              }
-            });
+              await prisma.scheduleJob.createMany({
+                data: scheduleJobs,
+              });
 
-            // Thêm vào danh sách cần tạo task
-            newScheduleJobs.push(...createdJobs);
+              // Lấy thông tin đầy đủ của các scheduleJobs vừa tạo
+              const createdJobs = await prisma.scheduleJob.findMany({
+                where: {
+                  schedule_id: schedule_id,
+                  buildingDetailId: {
+                    in: buildingDetailsToCreate
+                  },
+                  status: $Enums.ScheduleJobStatus.Pending // Chỉ lấy các job mới tạo với status Pending
+                }
+              });
+
+              // Thêm vào danh sách cần tạo task
+              newScheduleJobs.push(...createdJobs);
+              this.logger.log(`Retrieved ${createdJobs.length} new schedule jobs`)
+            }
           }
         });
 
