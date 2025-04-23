@@ -108,14 +108,18 @@ export class NotificationService {
 
             // Update Redis cache and publish notification
             await Promise.all([
-                this.updateRedisCache(responseDto),
+                this.updateBulkCache(notification.userId, [notification]),
                 this.publishNotification(responseDto)
             ])
 
             return responseDto
         } catch (error) {
-            this.logger.error(`Failed to create notification: ${error.message}`)
-            throw error
+            this.logger.error(`Failed to create notification: ${error.message}`, {
+                error: error,
+                stack: error.stack,
+                context: 'NotificationService'
+            })
+            throw new NotificationError(error.message, error.code)
         }
     }
 
@@ -135,8 +139,12 @@ export class NotificationService {
 
             return responseDto
         } catch (error) {
-            this.logger.error(`Failed to mark notification as read: ${error.message}`)
-            throw error
+            this.logger.error(`Failed to mark notification as read: ${error.message}`, {
+                error: error,
+                stack: error.stack,
+                context: 'NotificationService'
+            })
+            throw new NotificationError(error.message, error.code)
         }
     }
 
@@ -320,8 +328,12 @@ export class NotificationService {
                 message: `Marked ${result.count} notifications as read`
             }
         } catch (error) {
-            this.logger.error(`Failed to mark all notifications as read: ${error.message}`)
-            throw error
+            this.logger.error(`Failed to mark all notifications as read: ${error.message}`, {
+                error: error,
+                stack: error.stack,
+                context: 'NotificationService'
+            })
+            throw new NotificationError(error.message, error.code)
         }
     }
 
@@ -368,8 +380,12 @@ export class NotificationService {
                 message: `Cleared ${result.count} notifications`
             }
         } catch (error) {
-            this.logger.error(`Failed to clear all notifications: ${error.message}`)
-            throw error
+            this.logger.error(`Failed to clear all notifications: ${error.message}`, {
+                error: error,
+                stack: error.stack,
+                context: 'NotificationService'
+            })
+            throw new NotificationError(error.message, error.code)
         }
     }
 
@@ -413,5 +429,13 @@ export class NotificationService {
         }
 
         await this.publishNotification(systemNotification as NotificationResponseDto)
+    }
+}
+
+// Thêm custom error class
+export class NotificationError extends Error {
+    constructor(message: string, public readonly code?: string) {
+        super(message)
+        this.name = 'NotificationError'
     }
 } 
