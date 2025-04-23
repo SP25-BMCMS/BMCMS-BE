@@ -558,36 +558,61 @@ export class TaskService {
       return await this.prisma.$transaction(async (prisma) => {
         // BƯỚC 1: Lấy thông tin scheduleJob để tìm buildingId
         console.log('Fetching schedule job data:', scheduleJobId);
+
+        // Lưu trữ ID cần truy vấn
+        const scheduleJobQuery = { schedule_job_id: scheduleJobId };
+        console.log('paypayloadpayloadpayloadpayloadpayloadpayloadpayloadload', scheduleJobId);
+        console.log('schedule_job_idschedule_job_idschedule_job_idschedule_job_idschedule_job_idschedule_job_idschedule_job_id', scheduleJobId);
+
         const scheduleJobResponse = await firstValueFrom(
-          this.scheduleClient.send(SCHEDULEJOB_PATTERN.GET_BY_ID, { schedule_job_id: scheduleJobId })
+          this.scheduleClient.send(SCHEDULEJOB_PATTERN.GET_BY_ID, scheduleJobQuery)
             .pipe(
-              timeout(8000), // Tăng timeout
+              timeout(10000), // Tăng timeout lên 10 giây
               catchError(err => {
                 console.error('Error fetching schedule job:', err);
-                // Thử các pattern thay thế
-                return this.scheduleClient.send('get_schedulejob_by_id', { scheduleJobId }).pipe(
-                  timeout(5000),
+
+                // Thử sửa lại cấu trúc payload
+                const alternativePayload = { scheduleJobId: scheduleJobId };
+                return this.scheduleClient.send('get_ScheduleJob_by_id', alternativePayload).pipe(
+                  timeout(10000),
                   catchError(err2 => {
-                    console.error('Alternative pattern also failed:', err2);
-                    return throwError(() => new RpcException({
-                      statusCode: 404,
-                      message: `Không tìm thấy lịch công việc: ${err.message}`
-                    }));
+                    console.error('Alternative pattern with different payload structure failed:', err2);
+
+                    // Thử pattern thay thế
+                    return this.scheduleClient.send('get_schedulejob_by_id', alternativePayload).pipe(
+                      timeout(10000),
+                      catchError(err3 => {
+                        console.error('All patterns failed:', err3);
+                        return throwError(() => new RpcException({
+                          statusCode: 404,
+                          message: `Không tìm thấy lịch công việc: ${err.message}`
+                        }));
+                      })
+                    );
                   })
                 );
               })
             )
         );
 
-        if (!scheduleJobResponse?.isSuccess) {
+        if (!scheduleJobResponse?.isSuccess && !scheduleJobResponse?.data) {
+          console.error('Invalid schedule job response:', JSON.stringify(scheduleJobResponse));
           throw new RpcException({
             statusCode: 404,
-            message: 'Không tìm thấy lịch công việc'
+            message: 'Không tìm thấy lịch công việc hoặc định dạng dữ liệu không hợp lệ'
           });
         }
 
-        // Lấy buildingDetailId từ scheduleJob
-        buildingDetailId = scheduleJobResponse.data.buildingDetailId || scheduleJobResponse.data.building_id;
+        // Kiểm tra dữ liệu trả về trong các định dạng khác nhau
+        const scheduleJobData = scheduleJobResponse.data || scheduleJobResponse;
+
+        // Lấy buildingDetailId từ scheduleJob - kiểm tra nhiều trường hợp khác nhau
+        buildingDetailId = scheduleJobData.buildingDetailId ||
+          scheduleJobData.building_id ||
+          scheduleJobResponse.buildingDetailId ||
+          scheduleJobResponse.building_id ||
+          null;
+
         console.log('Building ID from schedule job:', buildingDetailId);
 
         if (!buildingDetailId) {
@@ -602,18 +627,27 @@ export class TaskService {
         const buildingDetailResponse = await firstValueFrom(
           this.buildingsClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId })
             .pipe(
-              timeout(8000),
+              timeout(10000),
               catchError(err => {
                 console.error('Error fetching building:', err);
-                // Thử sử dụng pattern thay thế nếu pattern chính không hoạt động
-                return this.buildingsClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId }).pipe(
-                  timeout(5000),
+
+                // Thử các cách gọi khác
+                const alternativePayload = { building_detail_id: buildingDetailId };
+                return this.buildingsClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, alternativePayload).pipe(
+                  timeout(10000),
                   catchError(err2 => {
-                    console.error('Secondary pattern also failed:', err2);
-                    return throwError(() => new RpcException({
-                      statusCode: 404,
-                      message: `Không tìm thấy tòa nhà: ${err.message}`
-                    }));
+                    console.error('Alternative payload structure failed:', err2);
+
+                    return this.buildingsClient.send('get_building_detail_by_id', { buildingDetailId }).pipe(
+                      timeout(10000),
+                      catchError(err3 => {
+                        console.error('All building service patterns failed:', err3);
+                        return throwError(() => new RpcException({
+                          statusCode: 404,
+                          message: `Không tìm thấy tòa nhà: ${err.message}`
+                        }));
+                      })
+                    );
                   })
                 );
               })
@@ -623,19 +657,43 @@ export class TaskService {
         // Kiểm tra dữ liệu trả về từ building service
         console.log('Building Response:', JSON.stringify(buildingDetailResponse));
 
-        if (!buildingDetailResponse || buildingDetailResponse.statusCode !== 200 || !buildingDetailResponse.data) {
+        // Xử lý nhiều định dạng dữ liệu có thể nhận được
+        const buildingData = buildingDetailResponse?.data || buildingDetailResponse;
+
+        if (!buildingData) {
           throw new RpcException({
             statusCode: 404,
-            message: 'Không tìm thấy thông tin tòa nhà hoặc dữ liệu không hợp lệ'
+            message: 'Không tìm thấy thông tin tòa nhà'
           });
         }
 
-        // Lấy tên và area của building
-        buildingName = buildingDetailResponse.data.name || buildingDetailResponse.data.buildingName || "Unknown Building";
+        // Lấy tên và area của building, kiểm tra nhiều cấu trúc dữ liệu
+        buildingName = buildingData.name ||
+          buildingData.buildingName ||
+          buildingDetailResponse.name ||
+          "Unknown Building";
 
-        // Extract area information from the nested structure
-        const areaId = buildingDetailResponse.data.building?.area?.areaId || null;
-        buildingAreaName = buildingDetailResponse.data.building?.area?.name || null;
+        // Trích xuất thông tin khu vực từ nhiều cấu trúc lồng nhau có thể có
+        let areaId = null;
+        let areaName = null;
+
+        // Tìm kiếm areaId và areaName trong mọi cấu trúc có thể
+        if (buildingData.building?.area) {
+          areaId = buildingData.building.area.areaId || buildingData.building.area.area_id;
+          areaName = buildingData.building.area.name || buildingData.building.area.areaName;
+        } else if (buildingData.area) {
+          areaId = buildingData.area.areaId || buildingData.area.area_id;
+          areaName = buildingData.area.name || buildingData.area.areaName;
+        } else if (buildingData.areaId) {
+          areaId = buildingData.areaId;
+          areaName = buildingData.areaName || "Unknown Area";
+        } else if (buildingDetailResponse.areaId) {
+          areaId = buildingDetailResponse.areaId;
+          areaName = buildingDetailResponse.areaName || "Unknown Area";
+        }
+
+        // Sử dụng buildingAreaName từ context hiện tại nếu có
+        buildingAreaName = areaName || buildingAreaName;
 
         console.log(`Found building: ${buildingName}, areaId: ${areaId}, areaName: ${buildingAreaName}`);
 
@@ -706,43 +764,76 @@ export class TaskService {
         }
 
         // BƯỚC 5: Tạo task cho schedule job
+        console.log(`Creating task for schedule job ${scheduleJobId} in building ${buildingName}`);
+
+        const taskTitle = `Bảo trì định kỳ tòa nhà ${buildingName}`;
+        const taskDescription = `Phân công bảo trì định kỳ cho tòa nhà ${buildingName}`;
+
         const createTaskResponse = await this.createTask({
-          title: `Bảo trì định kỳ tòa nhà ${buildingName}`,
-          description: `Phân công bảo trì định kỳ cho tòa nhà ${buildingName}`,
+          title: taskTitle,
+          description: taskDescription,
           status: Status.Assigned,
           crack_id: "",
           schedule_job_id: scheduleJobId,
         });
 
+        // Thêm thông tin debug để kiểm tra kết quả tạo task
+        console.log(`Task creation response: ${JSON.stringify(createTaskResponse)}`);
+
         if (!createTaskResponse?.data?.task_id) {
           throw new RpcException(
-            new ApiResponse(false, 'Lỗi khi tạo task')
+            new ApiResponse(false, `Lỗi khi tạo task: ${JSON.stringify(createTaskResponse)}`)
           );
         }
+
+        const taskId = createTaskResponse.data.task_id;
+        console.log(`Task created successfully with ID: ${taskId}`);
 
         // BƯỚC 6: Phân công task cho staff leader
-        const taskAssignmentResponse = await this.taskAssignmentService.assignTaskToEmployee(
-          createTaskResponse.data.task_id,
-          matchedStaffId,
-          `Phân công bảo trì định kỳ cho tòa nhà ${buildingName}`
-        );
+        console.log(`Assigning task ${taskId} to staff leader ${matchedStaffId}`);
 
-        if (taskAssignmentResponse?.statusCode === 400) {
+        try {
+          const taskAssignmentResponse = await this.taskAssignmentService.assignTaskToEmployee(
+            taskId,
+            matchedStaffId,
+            taskDescription
+          );
+
+          // Thêm thông tin debug để kiểm tra kết quả phân công
+          console.log(`Task assignment response: ${JSON.stringify(taskAssignmentResponse)}`);
+
+          if (taskAssignmentResponse?.statusCode >= 400) {
+            console.error(`Error assigning task: ${JSON.stringify(taskAssignmentResponse)}`);
+            throw new RpcException(
+              new ApiResponse(false, taskAssignmentResponse.message || 'Lỗi phân công task')
+            );
+          }
+
+          console.log(`Task assigned successfully to staff leader ${matchedStaffId}`);
+
+          // Trả về kết quả thành công
+          return new ApiResponse(
+            true,
+            'Task đã được tạo và phân công cho Staff Leader thành công',
+            {
+              task: createTaskResponse.data,
+              taskAssignment: taskAssignmentResponse,
+              staffLeader: { staffId: matchedStaffId }
+            }
+          );
+        } catch (assignmentError) {
+          console.error(`Failed to assign task: ${assignmentError.message}`);
+
+          // Đánh dấu task là unassigned nếu không thể assign
+          await this.prisma.task.update({
+            where: { task_id: taskId },
+            data: { status: Status.Assigned }
+          });
+
           throw new RpcException(
-            new ApiResponse(false, taskAssignmentResponse.message || 'Lỗi phân công task')
+            new ApiResponse(false, `Lỗi phân công task: ${assignmentError.message}`)
           );
         }
-
-        // Trả về kết quả thành công
-        return new ApiResponse(
-          true,
-          'Task đã được tạo và phân công cho Staff Leader thành công',
-          {
-            task: createTaskResponse.data,
-            taskAssignment: taskAssignmentResponse,
-            staffLeader: { staffId: matchedStaffId }
-          }
-        );
       }, {
         timeout: 30000, // Tăng timeout lên 30 giây
         isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted
