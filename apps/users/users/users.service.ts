@@ -25,27 +25,37 @@ import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { CreateWorkingPositionDto } from '@app/contracts/users/create-working-position.dto'
 import { GrpcMethod } from '@nestjs/microservices'
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
+import { PrismaClient as TasksPrismaClient } from '@prisma/client-Task'
+import { PrismaClient as TasksPrismaClientSchedule } from '@prisma/client-schedule'
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 const CRACKS_CLIENT = 'CRACKS_CLIENT'
+const TASKS_CLIENT = 'TASK_CLIENT'
+
 const CRACK_PATTERN = {
   GET_CRACK_REPORT: { cmd: 'get-crack-report-by-id' }
 }
 
 @Injectable()
 export class UsersService {
+  private tasksPrisma: TasksPrismaClient
+  private tasksPrismaSchedule: TasksPrismaClientSchedule
+
   constructor(
     private prisma: PrismaService,
-    @Inject(BUILDINGS_CLIENT) private readonly buildingClient: ClientProxy,
-    @Inject(CRACKS_CLIENT) private readonly crackClient: ClientProxy,
-  ) { }
+    @Inject('BUILDINGS_CLIENT') private buildingsClient: ClientProxy,
+    @Inject('CRACKS_CLIENT') private cracksClient: ClientProxy,
+    @Inject('TASK_CLIENT') private taskClient: ClientProxy,
+  ) {
+    this.tasksPrisma = new TasksPrismaClient()
+  }
 
   async getUserByUsername(username: string): Promise<UserDto | null> {
     const user = await this.prisma.user.findUnique({ where: { username } })
     if (!user)
       throw new RpcException({
         statusCode: 401,
-        message: 'Sai số điện thoại hoặc mật khẩu',
+        message: 'Incorrect phone number or password',
       })
     return user
   }
@@ -55,7 +65,7 @@ export class UsersService {
     if (!user)
       throw new RpcException({
         statusCode: 401,
-        message: 'Sai số điện thoại hoặc mật khẩu',
+        message: 'Incorrect phone number or password',
       })
     return user
   }
@@ -65,7 +75,7 @@ export class UsersService {
     if (!user)
       throw new RpcException({
         statusCode: 401,
-        message: 'Email không tồn tại',
+        message: 'Email does not exist',
       })
     return user
   }
@@ -91,20 +101,20 @@ export class UsersService {
       })
 
     // Create a formatted response to avoid duplicate fields
-    const { password, ...userWithoutPassword } = userRaw;
+    const { password, ...userWithoutPassword } = userRaw
 
     // Base user response
     const response = {
       ...userWithoutPassword,
       dateOfBirth: userWithoutPassword.dateOfBirth ? userWithoutPassword.dateOfBirth.toISOString() : null,
-    };
+    }
 
     // Format userDetails to avoid duplicates
     if (response.userDetails) {
-      const userDetails = response.userDetails;
+      const userDetails = response.userDetails
       let formattedUserDetails: any = {
         staffStatus: userDetails.staffStatus,
-      };
+      }
 
       // Add position if it exists
       if (userDetails.position) {
@@ -112,7 +122,7 @@ export class UsersService {
           positionId: userDetails.position.positionId,
           positionName: userDetails.position.positionName.toString(),
           description: userDetails.position.description,
-        };
+        }
       }
 
       // Add department if it exists
@@ -122,14 +132,14 @@ export class UsersService {
           departmentName: userDetails.department.departmentName,
           description: userDetails.department.description || '',
           area: userDetails.department.area || '',
-        };
+        }
       }
 
       // Replace userDetails with formatted version
-      response.userDetails = formattedUserDetails;
+      response.userDetails = formattedUserDetails
     }
 
-    return response;
+    return response
   }
 
   async signup(userData: createUserDto): Promise<ApiResponse<any>> {
@@ -147,7 +157,7 @@ export class UsersService {
             console.log(`Checking building ID: ${apartment.buildingDetailId}`)
 
             const buildingResponse = await firstValueFrom(
-              this.buildingClient
+              this.buildingsClient
                 .send(BUILDINGDETAIL_PATTERN.CHECK_EXISTS, {
                   buildingDetailId: apartment.buildingDetailId,
                 })
@@ -193,7 +203,7 @@ export class UsersService {
       })
 
       if (existingUser) {
-        return new ApiResponse(false, 'Username hoặc Email đã tồn tại', null)
+        return new ApiResponse(false, 'Username or Email already exists', null)
       }
 
       const hashedPassword = await bcrypt.hash(userData.password, 10)
@@ -268,7 +278,7 @@ export class UsersService {
         },
       })
 
-      return new ApiResponse(true, 'User đã được tạo thành công', {
+      return new ApiResponse(true, 'User has been created successfully', {
         userId: fullUser?.userId,
         username: fullUser?.username,
         email: fullUser?.email,
@@ -295,7 +305,7 @@ export class UsersService {
       })
     } catch (error) {
       console.error('🔥 Lỗi trong UsersService:', error)
-      return new ApiResponse(false, 'Lỗi không xác định khi tạo user', null)
+      return new ApiResponse(false, 'Unknown error when creating user', null)
     }
   }
 
@@ -316,7 +326,7 @@ export class UsersService {
           console.log(`Checking building ID: ${apartment.buildingDetailId}`)
 
           const buildingResponse = await firstValueFrom(
-            this.buildingClient
+            this.buildingsClient
               .send(BUILDINGDETAIL_PATTERN.CHECK_EXISTS, {
                 buildingDetailId: apartment.buildingDetailId,
               })
@@ -401,23 +411,26 @@ export class UsersService {
       console.log('Received data:', data) // Debug dữ liệu nhận từ gRPC
 
       // Map string position names to enum values
-      let positionNameEnum: PositionName;
+      let positionNameEnum: PositionName
 
       // Convert string to enum based on Prisma schema
       switch (data.positionName) {
         case 'Leader':
-          positionNameEnum = PositionName.Leader;
-          break;
+          positionNameEnum = PositionName.Leader
+          break
         case 'Technician':
-          positionNameEnum = PositionName.Technician;
-          break;
+          positionNameEnum = PositionName.Technician
+          break
         case 'Janitor':
-          positionNameEnum = PositionName.Janitor;
-          break;
+          positionNameEnum = PositionName.Janitor
+          break
+        case 'Maintenance_Technician':
+          positionNameEnum = PositionName.Maintenance_Technician
+          break
         default:
           // For unsupported position names, use Leader as default
-          positionNameEnum = PositionName.Leader;
-          break;
+          positionNameEnum = PositionName.Leader
+          break
       }
 
       // Create the position
@@ -426,7 +439,7 @@ export class UsersService {
           positionName: positionNameEnum,
           description: data.description,
         },
-      });
+      })
 
       return {
         isSuccess: true,
@@ -551,7 +564,7 @@ export class UsersService {
       )
 
       const areaExistsResponse = await firstValueFrom(
-        this.buildingClient
+        this.buildingsClient
           .send('check_area_exists', { areaName: data.area })
           .pipe(
             timeout(5000),
@@ -612,7 +625,7 @@ export class UsersService {
   private async getBuildingDetails(buildingDetailId: string) {
     try {
       const response = await firstValueFrom(
-        this.buildingClient
+        this.buildingsClient
           .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId })
           .pipe(
             timeout(5000),
@@ -643,8 +656,10 @@ export class UsersService {
     isSuccess: boolean
     message: string
     data: {
+      apartmentId: string
       apartmentName: string
-      buildingDetails: any // Thay thế 'any' bằng kiểu dữ liệu chính xác của building
+      warrantyDate: string | null
+      buildingDetails: any
     }[]
   }> {
     try {
@@ -669,8 +684,9 @@ export class UsersService {
         return {
           apartmentId: apartment.apartmentId,
           apartmentName: apartment.apartmentName,
+          warrantyDate: apartment.warrantyDate,
           buildingDetails:
-            buildingResponse?.statusCode === 200 ? buildingResponse.data : null,
+            buildingResponse?.statusCode === 200 ? buildingResponse.data : null
         }
       })
 
@@ -853,7 +869,7 @@ export class UsersService {
       if (!user) {
         return {
           isSuccess: false,
-          message: 'Không tìm thấy cư dân',
+          message: 'Resident not found',
           data: null
         }
       }
@@ -874,23 +890,24 @@ export class UsersService {
           .join(', ')
         return {
           isSuccess: false,
-          message: `Cư dân đã sở hữu các căn hộ sau: ${duplicateNames}`,
+          message: `Resident already owns the following apartments: ${duplicateNames}`,
           data: null
         }
       }
 
-      // Validate buildingDetail IDs
+      const apartmentsWithWarranty = []
+
       for (const apartment of apartments) {
         try {
-          const buildingResponse = await firstValueFrom(
-            this.buildingClient
+          // Validate if buildingDetail exists
+          const buildingDetailResponse = await firstValueFrom(
+            this.buildingsClient
               .send(BUILDINGDETAIL_PATTERN.CHECK_EXISTS, {
                 buildingDetailId: apartment.buildingDetailId,
               })
               .pipe(
                 timeout(5000),
                 catchError((err) => {
-                  console.error('Error checking building:', err)
                   return of({
                     statusCode: 503,
                     message: 'Dịch vụ tòa nhà không phản hồi',
@@ -900,15 +917,86 @@ export class UsersService {
               ),
           )
 
-          if (!buildingResponse.exists) {
+          if (!buildingDetailResponse.exists) {
             return {
               isSuccess: false,
-              message: `Không tìm thấy tòa nhà với ID ${apartment.buildingDetailId}`,
+              message: `Building with ID ${apartment.buildingDetailId} not found`,
               data: null
             }
           }
+
+          const buildingDetailInfo = await firstValueFrom(
+            this.buildingsClient
+              .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, {
+                buildingDetailId: apartment.buildingDetailId,
+              })
+              .pipe(
+                timeout(5000),
+                catchError((err) => {
+                  console.error('Error getting building details:', err)
+                  return of({
+                    statusCode: 503,
+                    message: 'Dịch vụ tòa nhà không phản hồi',
+                    data: null
+                  })
+                }),
+              ),
+          )
+
+          if (buildingDetailInfo.statusCode === 200 && buildingDetailInfo.data) {
+            // Navigate to the building through building detail
+            const buildingId = buildingDetailInfo.data.buildingId
+
+            const buildingResponse = await firstValueFrom(
+              this.buildingsClient
+                .send(BUILDINGS_PATTERN.GET_BY_ID, {
+                  buildingId: buildingId,
+                })
+                .pipe(
+                  timeout(5000),
+                  catchError((err) => {
+                    console.error('Error getting building information:', err)
+                    return of({
+                      statusCode: 503,
+                      message: 'Dịch vụ tòa nhà không phản hồi',
+                      data: null
+                    })
+                  }),
+                ),
+            )
+
+            if (buildingResponse.statusCode === 200 && buildingResponse.data) {
+              let warrantyDate = null
+
+              if (buildingResponse.data.Warranty_date) {
+                try {
+                  const warDate = buildingResponse.data.Warranty_date
+                  if (typeof warDate === 'string') {
+                    warrantyDate = warDate
+                  } else {
+                    warrantyDate = String(warDate)
+                  }
+                } catch (error) {
+                }
+              }
+
+              apartmentsWithWarranty.push({
+                ...apartment,
+                warrantyDate: warrantyDate
+              })
+            } else {
+              apartmentsWithWarranty.push({
+                ...apartment,
+                warrantyDate: null
+              })
+            }
+          } else {
+            apartmentsWithWarranty.push({
+              ...apartment,
+              warrantyDate: null
+            })
+          }
         } catch (error) {
-          console.error('Error validating building:', error)
           return {
             isSuccess: false,
             message: 'Lỗi khi kiểm tra thông tin tòa nhà',
@@ -917,12 +1005,27 @@ export class UsersService {
         }
       }
 
+      // Fetch full user data with userDetails included
+      const fullUserData = await this.prisma.user.findUnique({
+        where: { userId: residentId },
+        include: {
+          userDetails: true,
+          apartments: true
+        }
+      })
+
       // Update apartments by adding new ones without deleting existing ones
       const updatedUser = await this.prisma.user.update({
         where: { userId: residentId },
         data: {
           apartments: {
-            create: apartments,
+            create: apartmentsWithWarranty.map(apt => {
+              return {
+                apartmentName: apt.apartmentName,
+                buildingDetailId: apt.buildingDetailId,
+                warrantyDate: apt.warrantyDate || null
+              }
+            }),
           },
         },
         include: {
@@ -930,24 +1033,30 @@ export class UsersService {
         },
       })
 
+      // Verify data was saved correctly
+      const savedApartments = await this.prisma.apartment.findMany({
+        where: {
+          ownerId: residentId,
+          buildingDetailId: {
+            in: apartmentsWithWarranty.map(apt => apt.buildingDetailId)
+          }
+        },
+      })
+
       return {
         isSuccess: true,
-        message: 'Thêm căn hộ thành công',
+        message: 'Apartments updated successfully',
         data: {
           userId: updatedUser.userId,
           username: updatedUser.username,
-          apartments: updatedUser.apartments.map((apt) => ({
-            apartmentName: apt.apartmentName,
-            buildingDetailId: apt.buildingDetailId,
-          })),
+          apartments: updatedUser.apartments,
         },
       }
     } catch (error) {
-      console.error('Error updating resident apartments:', error)
       return {
         isSuccess: false,
-        message: 'Lỗi khi thêm căn hộ',
-        data: null
+        message: error.message || 'Error updating apartments',
+        data: null,
       }
     }
   }
@@ -965,7 +1074,7 @@ export class UsersService {
       if (!user) {
         return {
           isSuccess: false,
-          message: `Không tìm thấy người dùng với ID: ${userId}`,
+          message: `User with ID: ${userId} not found`,
           data: null,
         }
       }
@@ -1003,60 +1112,14 @@ export class UsersService {
 
       return {
         isSuccess: true,
-        message: `Cập nhật trạng thái tài khoản thành ${accountStatus}`,
+        message: `Account status updated to ${accountStatus}`,
         data: formattedResponse,
       }
     } catch (error) {
       console.error('Error updating account status:', error)
       return {
         isSuccess: false,
-        message: `Lỗi khi cập nhật trạng thái tài khoản: ${error.message}`,
-        data: null,
-      }
-    }
-  }
-
-  async getApartmentByResidentAndApartmentId(data: {
-    residentId: string
-    apartmentId: string
-  }) {
-    try {
-      const apartment = await this.prisma.apartment.findFirst({
-        where: {
-          apartmentId: data.apartmentId,
-          ownerId: data.residentId,
-        },
-      })
-
-      if (!apartment) {
-        return {
-          isSuccess: false,
-          message: 'Không tìm thấy căn hộ',
-          data: null,
-        }
-      }
-
-      // Get building details for this apartment
-      const buildingResponse = await this.getBuildingDetails(
-        apartment.buildingDetailId,
-      )
-
-      const formattedResponse = {
-        apartmentId: apartment.apartmentId,
-        apartmentName: apartment.apartmentName,
-        buildingDetails: buildingResponse?.statusCode === 200 ? buildingResponse.data : null,
-      }
-
-      return {
-        isSuccess: true,
-        message: 'Success',
-        data: formattedResponse,
-      }
-    } catch (error) {
-      console.error('Error fetching apartment:', error)
-      return {
-        isSuccess: false,
-        message: 'Failed to retrieve apartment',
+        message: `Error updating account status: ${error.message}`,
         data: null,
       }
     }
@@ -1086,7 +1149,7 @@ export class UsersService {
 
       // Get crack report info from crack service
       const crackReportResponse = await firstValueFrom(
-        this.crackClient.send(CRACK_PATTERN.GET_CRACK_REPORT, crackReportId)
+        this.cracksClient.send(CRACK_PATTERN.GET_CRACK_REPORT, crackReportId)
           .pipe(
             timeout(5000),
             catchError((err) => {
@@ -1108,7 +1171,7 @@ export class UsersService {
 
       // Get building details to get areaId
       const buildingResponse = await firstValueFrom(
-        this.buildingClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId: crackReport.buildingDetailId })
+        this.buildingsClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId: crackReport.buildingDetailId })
           .pipe(
             timeout(5000),
             catchError((err) => {
@@ -1128,7 +1191,7 @@ export class UsersService {
 
       // Get area details to get area name
       const areaResponse = await firstValueFrom(
-        this.buildingClient.send(AREAS_PATTERN.GET_BY_ID, { areaId: buildingResponse.data.building.area.areaId })
+        this.buildingsClient.send(AREAS_PATTERN.GET_BY_ID, { areaId: buildingResponse.data.building.area.areaId })
           .pipe(
             timeout(5000),
             catchError((err) => {
@@ -1145,14 +1208,23 @@ export class UsersService {
         }
       }
 
-      const buildingAreaName = areaResponse.data.name
+      const areaName = areaResponse.data.name
 
-      // Check if staff's department area matches building's area name
-      const isMatch = staff.userDetails.department.area === buildingAreaName
+      // Lấy area của staff từ department
+      const staffAreaName = staff.userDetails.department.area
+
+      // So sánh area của staff với area của building
+      // Đảm bảo so sánh không phân biệt hoa thường
+      console.log(`[users.service] Comparing areas: Staff area (${staffAreaName}) vs Building area (${areaName})`)
+      const isMatch = staffAreaName.toLowerCase() === areaName.toLowerCase()
+
+      console.log(`[users.service] Area match result: ${isMatch ? 'MATCH' : 'NO MATCH'}`)
 
       return {
         isSuccess: true,
-        message: isMatch ? 'Area match found' : 'Area mismatch',
+        message: isMatch
+          ? `Staff from area ${staffAreaName} matches the area ${areaName} of the task`
+          : `Staff from area ${staffAreaName} does not match the area ${areaName} of the task`,
         isMatch
       }
     } catch (error) {
@@ -1411,11 +1483,10 @@ export class UsersService {
         }
       })
 
-
       if (!staff) {
         return {
           isSuccess: false,
-          message: 'Nhân viên không tồn tại hoặc không phải là Staff/Manager',
+          message: 'Staff does not exist or is not a Staff/Manager',
           data: null
         }
       }
@@ -1428,7 +1499,7 @@ export class UsersService {
       if (!department) {
         return {
           isSuccess: false,
-          message: 'Phòng ban không tồn tại',
+          message: 'Department does not exist',
           data: null
         }
       }
@@ -1441,7 +1512,7 @@ export class UsersService {
       if (!position) {
         return {
           isSuccess: false,
-          message: 'Vị trí công việc không tồn tại',
+          message: 'Working position does not exist',
           data: null
         }
       }
@@ -1487,7 +1558,7 @@ export class UsersService {
       // Prepare response
       return {
         isSuccess: true,
-        message: 'Cập nhật phòng ban và vị trí công việc thành công',
+        message: 'Department and working position updated successfully',
         data: {
           staffId: staff.userId,
           username: staff.username,
@@ -1511,9 +1582,330 @@ export class UsersService {
     } catch (error) {
       return {
         isSuccess: false,
-        message: `Lỗi khi cập nhật phòng ban và vị trí công việc: ${error.message}`,
+        message: `Error updating department and working position: ${error.message}`,
         data: null
       }
+    }
+  }
+
+  async checkStaffAreaMatchWithScheduleJob(data: { staffId: string; scheduleJobId: string }): Promise<{
+    isSuccess: boolean
+    message: string
+    isMatch: boolean
+    statusCode?: number
+  }> {
+    try {
+      console.log(`[users.service] Checking staff (${data.staffId}) area match with schedule job (${data.scheduleJobId})`)
+
+      // Get staff user with department and position info
+      const staff = await this.prisma.user.findUnique({
+        where: { userId: data.staffId },
+        include: {
+          userDetails: {
+            include: {
+              position: true,
+              department: true
+            }
+          }
+        }
+      })
+
+      console.log(`[users.service] Staff details:`, JSON.stringify({
+        userId: staff?.userId,
+        position: staff?.userDetails?.position?.positionName,
+        department: staff?.userDetails?.department?.departmentName,
+        area: staff?.userDetails?.department?.area
+      }))
+
+      if (!staff) {
+        return {
+          isSuccess: false,
+          message: `Staff not found (${data.staffId})`,
+          isMatch: false,
+          statusCode: 404
+        }
+      }
+
+      if (!staff.userDetails) {
+        return {
+          isSuccess: false,
+          message: 'Staff has not been assigned a department and working position',
+          isMatch: false
+        }
+      }
+
+      if (!staff.userDetails.position) {
+        return {
+          isSuccess: false,
+          message: 'Staff has not been assigned a working position',
+          isMatch: false
+        }
+      }
+
+      if (!staff.userDetails.department) {
+        return {
+          isSuccess: false,
+          message: 'Staff has not been assigned a department',
+          isMatch: false
+        }
+      }
+
+      // Check if staff is a Maintenance Technician
+      if (staff.userDetails.position.positionName !== 'Maintenance_Technician') {
+        return {
+          isSuccess: false,
+          message: `Only maintenance technicians (Maintenance Technician) can perform this task. Current position: ${staff.userDetails.position.positionName}`,
+          isMatch: false
+        }
+      }
+
+      // Initialize tasksPrismaSchedule if not already initialized
+      if (!this.tasksPrismaSchedule) {
+        this.tasksPrismaSchedule = new TasksPrismaClientSchedule()
+        console.log(`[users.service] Initialized Schedule PrismaClient`)
+      }
+
+      // Get schedule job info
+      const scheduleJob = await this.tasksPrismaSchedule.scheduleJob.findUnique({
+        where: { schedule_job_id: data.scheduleJobId }
+      })
+
+      console.log(`[users.service] Schedule job details:`, JSON.stringify(scheduleJob))
+
+      if (!scheduleJob) {
+        return {
+          isSuccess: false,
+          message: `Schedule job with ID: ${data.scheduleJobId} not found`,
+          isMatch: false,
+          statusCode: 404
+        }
+      }
+
+      // Từ building_id trong scheduleJob, gọi đến building service để lấy thông tin building
+      console.log(`[users.service] Getting building info using building_id from scheduleJob: ${scheduleJob.buildingDetailId}`)
+
+      // Kiểm tra xem building_id có tồn tại không
+      if (!scheduleJob.buildingDetailId) {
+        return {
+          isSuccess: false,
+          message: 'Schedule job does not have building information',
+          isMatch: false
+        }
+      }
+
+      // Gọi API để lấy thông tin building từ building_id
+      // Thử dùng BUILDINGS_PATTERN.GET_BY_ID trước (nơi đã confirm có dữ liệu)
+      const buildingResponse = await firstValueFrom(
+        this.buildingsClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: scheduleJob.buildingDetailId }).pipe(
+          timeout(5000),
+          catchError(err => {
+            console.error(`[users.service] Error fetching building:`, err)
+            throw new Error(`Lỗi khi lấy thông tin tòa nhà: ${err.message}`)
+          })
+        )
+      )
+
+      console.log(`[users.service] Building response:`, JSON.stringify(buildingResponse))
+
+      // Kiểm tra xem có lấy được thông tin building không
+      if (!buildingResponse) {
+        return {
+          isSuccess: false,
+          message: `Không nhận được phản hồi khi tìm tòa nhà với ID: ${scheduleJob.buildingDetailId}`,
+          isMatch: false
+        }
+      }
+
+      // Kiểm tra response success theo cả hai loại cấu trúc có thể nhận được
+      const responseSuccess =
+        (buildingResponse.statusCode === 200) ||
+        (buildingResponse.isSuccess === true)
+
+      if (!responseSuccess || !buildingResponse.data) {
+        return {
+          isSuccess: false,
+          message: `Không tìm thấy thông tin tòa nhà với ID: ${scheduleJob.buildingDetailId}`,
+          isMatch: false
+        }
+      }
+
+      // Lấy areaId từ thông tin building
+      console.log(`[users.service] Building data:`, JSON.stringify(buildingResponse.data))
+
+      // Truy cập areaId theo cả hai cấu trúc dữ liệu có thể có
+      let areaId
+      let areaName
+
+      // Trích xuất dữ liệu từ các cấu trúc response khác nhau
+      if (buildingResponse.data.areaId) {
+        // Cấu trúc từ BUILDINGS_PATTERN.GET_BY_ID
+        console.log('[users.service] Using direct building data structure')
+        areaId = buildingResponse.data.areaId
+
+        // Từ area object - cấu trúc đầy đủ
+        if (buildingResponse.data.area && buildingResponse.data.area.name) {
+          areaName = buildingResponse.data.area.name
+        }
+      }
+      else if (buildingResponse.data.building && buildingResponse.data.building.area) {
+        // Cấu trúc từ BUILDINGDETAIL_PATTERN.GET_BY_ID
+        console.log('[users.service] Using buildingDetail data structure')
+        areaId = buildingResponse.data.building.area.areaId
+        areaName = buildingResponse.data.building.area.name
+      }
+
+      console.log(`[users.service] Extracted area information: areaId=${areaId}, areaName=${areaName}`)
+
+      if (!areaId) {
+        return {
+          isSuccess: false,
+          message: 'Không thể xác định khu vực của tòa nhà',
+          isMatch: false
+        }
+      }
+
+      // Từ areaId, gọi đến area service để lấy thông tin area nếu không có areaName
+      if (!areaName) {
+        console.log(`[users.service] Getting area info using areaId: ${areaId}`)
+
+        try {
+          // Gọi API để lấy thông tin area từ areaId
+          const areaResponse = await firstValueFrom(
+            this.buildingsClient.send(AREAS_PATTERN.GET_BY_ID, { areaId }).pipe(
+              timeout(5000),
+              catchError(err => {
+                console.error(`[users.service] Error fetching area:`, err)
+                throw new Error(`Lỗi khi lấy thông tin khu vực: ${err.message}`)
+              })
+            )
+          )
+
+          console.log(`[users.service] Area response:`, JSON.stringify(areaResponse))
+
+          // Kiểm tra xem có lấy được thông tin area không
+          if (!areaResponse || areaResponse.statusCode !== 200 || !areaResponse.data) {
+            return {
+              isSuccess: false,
+              message: `Không tìm thấy thông tin khu vực với ID: ${areaId}`,
+              isMatch: false
+            }
+          }
+
+          // Lấy areaName từ thông tin area
+          areaName = areaResponse.data.name
+        } catch (error) {
+          console.error(`[users.service] Error getting area name:`, error)
+          return {
+            isSuccess: false,
+            message: `Lỗi khi lấy tên khu vực: ${error.message}`,
+            isMatch: false
+          }
+        }
+      }
+
+      if (!areaName) {
+        return {
+          isSuccess: false,
+          message: 'Khu vực không có tên',
+          isMatch: false
+        }
+      }
+
+      // Lấy area của staff từ department
+      const staffAreaName = staff.userDetails.department.area
+
+      console.log(`[users.service] Comparing areas: Staff area (${staffAreaName}) vs Building area (${areaName})`)
+
+      // So sánh area của staff với area của building
+      const isMatch = staffAreaName.toLowerCase() === areaName.toLowerCase()
+
+      console.log(`[users.service] Area match result: ${isMatch ? 'MATCH' : 'NO MATCH'}`)
+
+      return {
+        isSuccess: true,
+        message: isMatch
+          ? `Staff from area ${staffAreaName} matches the area ${areaName} of the task`
+          : `Staff from area ${staffAreaName} does not match the area ${areaName} of the task`,
+        isMatch
+      }
+    } catch (error) {
+      console.error(`[users.service] Error in checkStaffAreaMatchWithScheduleJob:`, error)
+      return {
+        isSuccess: false,
+        message: `Error when checking area: ${error.message}`,
+        isMatch: false
+      }
+    }
+  }
+
+  async getUserByIdForTaskAssignmentDetail(userId: string) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { userId },
+        select: {
+          userId: true,
+          username: true,
+        },
+      })
+
+      if (!user) {
+        return {
+          isSuccess: false,
+          message: 'User not found',
+          data: null,
+        }
+      }
+
+      return {
+        isSuccess: true,
+        message: 'User retrieved successfully',
+        data: {
+          userId: user.userId,
+          username: user.username,
+        },
+      }
+    } catch (error) {
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error retrieving user details',
+      })
+    }
+  }
+
+  /**
+   * Check if a user exists with optional role validation
+   * @param userId The user ID to check
+   * @param role Optional role to validate against
+   * @returns The user if found, null otherwise
+   */
+  async checkUserExists(userId: string, role?: string): Promise<any> {
+    try {
+      if (!userId) {
+        return null
+      }
+
+      // Build the where clause
+      const where: any = { userId }
+
+      // If role is specified, add it to the query
+      if (role) {
+        where.role = role
+      }
+
+      // Find the user
+      const user = await this.prisma.user.findFirst({
+        where,
+        select: {
+          userId: true,
+          role: true,
+          username: true
+        }
+      })
+
+      return user
+    } catch (error) {
+      console.error(`Error checking if user exists (userId: ${userId}, role: ${role}):`, error)
+      return null
     }
   }
 }

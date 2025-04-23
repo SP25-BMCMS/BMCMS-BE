@@ -1,5 +1,5 @@
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
-import { Controller } from '@nestjs/common'
+import { Controller, Query } from '@nestjs/common'
 import { MessagePattern, Payload, RpcException } from '@nestjs/microservices'
 import { BUILDINGS_PATTERN } from 'libs/contracts/src/buildings/buildings.patterns'
 import { BuildingsService } from './buildings.service'
@@ -12,11 +12,6 @@ export class BuildingsController {
     return await this.buildingsService.createBuilding(data);
   }
 
-  // @MessagePattern(BUILDINGS_PATTERN.GET)
-  // async getAllBuildings(@Payload() data: any) {
-  //   console.log('Getting all buildings...');
-  //   return await this.buildingsService.readBuilding();
-  // }
   @MessagePattern(BUILDINGS_PATTERN.GET)
   async getAllBuildings(@Payload() paginationParams: PaginationParams) {
     try {
@@ -107,5 +102,23 @@ export class BuildingsController {
   @MessagePattern(BUILDINGS_PATTERN.GET_RESIDENTS_BY_BUILDING_ID)
   async getAllResidentsByBuildingId(@Payload() buildingId: string) {
     return this.buildingsService.getAllResidentsByBuildingId(buildingId);
+  }
+
+  @MessagePattern(BUILDINGS_PATTERN.GET_RESIDENTS_BY_BUILDING_DETAIL_ID)
+  async getAllResidentsByBuildingDetailId(@Payload() buildingDetailId: string) {
+    return this.buildingsService.getAllResidentsByBuildingDetailId(buildingDetailId);
+  }
+
+  @MessagePattern(BUILDINGS_PATTERN.GET_BY_MANAGER_ID)
+  async getBuildingsByManagerId(@Payload() data: { managerId: string; params?: { page?: number; limit?: number; search?: string } }) {
+    try {
+      console.log('Received data:', data);
+      return this.buildingsService.getBuildingsByManagerId(data.managerId, data.params);
+    } catch (error) {
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error retrieving buildings for manager',
+      })
+    }
   }
 }

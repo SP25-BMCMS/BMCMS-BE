@@ -1,8 +1,13 @@
-import { Body, Controller, Inject, Post } from '@nestjs/common'
+import { Body, Controller, Get, Inject, Param, Post, Put, Query, Sse, UseGuards, Delete } from '@nestjs/common'
 import { ClientProxy } from '@nestjs/microservices'
-import { ApiOperation, ApiTags, ApiBody, ApiResponse } from '@nestjs/swagger'
+import { ApiOperation, ApiParam, ApiQuery, ApiTags, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger'
 import { NOTIFICATION_CLIENT } from '../constraints'
-import { IsEmail, IsNotEmpty, Length } from 'class-validator'
+import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
+import { CreateNotificationDto, MarkNotificationReadDto } from '@app/contracts/notifications/notification.dto'
+import { firstValueFrom, Observable } from 'rxjs'
+import { IsNotEmpty, Length } from 'class-validator'
+import { IsEmail } from 'class-validator'
+import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard'
 
 class SendOtpDto {
   email: string
@@ -25,8 +30,66 @@ class OtpResponse {
 
 @Controller('notifications')
 @ApiTags('notifications')
+@ApiBearerAuth('access-token')
 export class NotificationsController {
   constructor(@Inject(NOTIFICATION_CLIENT) private client: ClientProxy) { }
+
+  @Get('user/:userId')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiOperation({ summary: 'Lấy danh sách thông báo của người dùng' })
+  @ApiParam({ name: 'userId', type: 'string', description: 'ID của người dùng' })
+  async getUserNotifications(@Param('userId') userId: string) {
+    try {
+      const response = await firstValueFrom(
+        this.client.send(NOTIFICATIONS_PATTERN.GET_USER_NOTIFICATIONS, { userId })
+      )
+      return response
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Failed to fetch notifications',
+        data: null
+      }
+    }
+  }
+
+  @Put('read/:notificationId')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiOperation({ summary: 'Đánh dấu thông báo đã đọc' })
+  @ApiParam({ name: 'notificationId', type: 'string', description: 'ID của thông báo' })
+  async markNotificationRead(@Param('notificationId') notificationId: string) {
+    try {
+      const data: MarkNotificationReadDto = { notificationId }
+      const response = await firstValueFrom(
+        this.client.send(NOTIFICATIONS_PATTERN.MARK_NOTIFICATION_READ, data)
+      )
+      return response
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Failed to mark notification as read',
+        data: null
+      }
+    }
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Tạo thông báo mới (debug only)' })
+  @ApiBody({ type: CreateNotificationDto })
+  async createNotification(@Body() createDto: CreateNotificationDto) {
+    try {
+      const response = await firstValueFrom(
+        this.client.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, createDto)
+      )
+      return response
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Failed to create notification',
+        data: null
+      }
+    }
+  }
 
   @Post('send-otp')
   @ApiOperation({ summary: 'Request OTP verification' })
@@ -72,5 +135,55 @@ export class NotificationsController {
   })
   async verifyOtp(@Body() data: VerifyOtpDto) {
     return this.client.send('verify_otp', data)
+  }
+
+  // Thêm endpoint mới cho realtime notifications sử dụng SSE
+  @Sse('stream/:userId')
+  @ApiOperation({ summary: 'Stream realtime notifications' })
+  @ApiParam({ name: 'userId', type: 'string', description: 'ID của người dùng' })
+  streamNotifications(@Param('userId') userId: string): Observable<MessageEvent> {
+    // Gửi message tới notification microservice để thiết lập kênh stream
+    return this.client.send<MessageEvent>(
+      'notification.stream', // Thêm pattern này vào NOTIFICATIONS_PATTERN
+      { userId }
+    )
+  }
+
+  @Put('mark-all-read/:userId')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiOperation({ summary: 'Đánh dấu tất cả thông báo của người dùng là đã đọc' })
+  @ApiParam({ name: 'userId', type: 'string', description: 'ID của người dùng' })
+  async markAllNotificationsRead(@Param('userId') userId: string) {
+    try {
+      const response = await firstValueFrom(
+        this.client.send(NOTIFICATIONS_PATTERN.MARK_ALL_READ, { userId })
+      )
+      return response
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Failed to mark all notifications as read',
+        data: null
+      }
+    }
+  }
+
+  @Delete('clear-all/:userId')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiOperation({ summary: 'Xóa tất cả thông báo của người dùng' })
+  @ApiParam({ name: 'userId', type: 'string', description: 'ID của người dùng' })
+  async clearAllNotifications(@Param('userId') userId: string) {
+    try {
+      const response = await firstValueFrom(
+        this.client.send(NOTIFICATIONS_PATTERN.CLEAR_ALL, { userId })
+      )
+      return response
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Failed to clear all notifications',
+        data: null
+      }
+    }
   }
 }

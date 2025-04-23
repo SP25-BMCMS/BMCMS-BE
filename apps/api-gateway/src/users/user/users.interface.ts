@@ -11,6 +11,21 @@ export interface UserInterface {
   signup(userData: createUserDto): Observable<ApiResponse<any>> // ✅ Sửa kiểu trả về
   logout({ }): Observable<any>
   getUserInfo(data: { userId: string; username: string }): Observable<any>
+  getUserById(data: { userId: string }): Observable<{
+    isSuccess: boolean
+    message: string
+    data: {
+      username: string
+    }
+  }>
+  GetUserByIdForTaskAssignmentDetail(data: { userId: string }): Observable<{
+    isSuccess: boolean;
+    message: string;
+    data: {
+      userId: string;
+      username: string;
+    };
+  }>;
   getAllUsers({ }): Observable<any>
   test(data: { username: string; password: string }): Observable<any>
   validateUser(data: { username: string; password: string }): Promise<any>
@@ -69,7 +84,10 @@ export interface UserInterface {
 
   updateResidentApartments(data: {
     residentId: string
-    apartments: { apartmentName: string; buildingDetailId: string }[]
+    apartments: {
+      apartmentName: string;
+      buildingDetailId: string;
+    }[]
   }): Observable<any>
 
   // Account Status
@@ -91,5 +109,18 @@ export interface UserInterface {
       limit: number;
       totalPages: number;
     };
+  }>;
+
+  checkStaffAreaMatchWithScheduleJob(data: { staffId: string; scheduleJobId: string }): Observable<{
+    isSuccess: boolean;
+    message: string;
+    isMatch: boolean;
+  }>;
+
+  // User role validation
+  checkUserExists(data: { userId: string; role?: string }): Observable<{
+    exists: boolean;
+    message: string;
+    data?: { userId: string; role: string } | null;
   }>;
 }

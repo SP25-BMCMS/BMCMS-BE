@@ -14,6 +14,7 @@ import { TaskAssignmentsModule } from '../TaskAssignments/TaskAssignments.module
 import { WorkLogModule } from '../Worklog/Worklog.module';
 import { FeedbackModule } from '../Feedback/Feedback.module';
 import { MaterialsModule } from '../Materials/Materials.module';
+import { UsersModule } from 'apps/users/users/users.module';
 
 @Module({
   imports: [
@@ -29,7 +30,7 @@ import { MaterialsModule } from '../Materials/Materials.module';
     TaskAssignmentsModule,
     WorkLogModule,
     FeedbackModule,
-    MaterialsModule
+    MaterialsModule,
   ],
   controllers: [
     TasksController,
@@ -38,4 +39,4 @@ import { MaterialsModule } from '../Materials/Materials.module';
   ],
   providers: [TaskService, RepairMaterialsService],
 })
-export class TaskModule {}
+export class TaskModule { }

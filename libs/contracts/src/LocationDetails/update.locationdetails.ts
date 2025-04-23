@@ -33,9 +33,6 @@ export class UpdateLocationDetailDto {
   // @IsOptional()
   // @IsUUID()
   // buildingDetailId?: string;
-  @IsUUID()
-  @ApiProperty({ description: 'The unique identifier for the location detail', type: String })
-  locationDetailId: string;
 
   @IsOptional()
   @IsString()

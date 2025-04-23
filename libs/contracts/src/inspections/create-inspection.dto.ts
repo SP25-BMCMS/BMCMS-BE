@@ -60,21 +60,21 @@ export class RepairMaterialDto {
   @ApiProperty({
     description: 'ID of the material',
     example: '123e4567-e89b-12d3-a456-426614174000',
-    required: true,
+    required: false,
     type: String
   })
   @IsUUID()
-  @IsNotEmpty()
+  @IsOptional()
   materialId: string;
 
   @ApiProperty({
     description: 'Quantity of the material',
     example: 5,
-    required: true,
+    required: false,
     type: Number
   })
   @IsInt()
-  @IsNotEmpty()
+  @IsOptional()
   quantity: number;
 }
 
@@ -103,6 +103,16 @@ export class CreateInspectionDto {
   image_urls?: string[];
 
   @ApiProperty({
+    description: 'URL of the uploaded PDF file (populated by the server after upload)',
+    example: 'reports/inspection-123.pdf',
+    required: false,
+    readOnly: true
+  })
+  @IsString()
+  @IsOptional()
+  uploadFile?: string;
+
+  @ApiProperty({
     description: 'Description of the inspection',
     example: 'This is a description of the inspection',
     required: false
@@ -116,7 +126,7 @@ export class CreateInspectionDto {
   total_cost?: number;
 
   @ApiProperty({
-    description: 'Files to upload (handled automatically by controller)',
+    description: 'Files to upload - use the files and pdfFile form fields to upload binary files (this field will not be used directly)',
     type: 'array',
     items: {
       type: 'string',

@@ -14,6 +14,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service'
 import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
 import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
+import { isUUID } from 'class-validator'
 
 const NOTIFICATION_CLIENT = 'NOTIFICATION_CLIENT'
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
@@ -31,19 +32,28 @@ export class ScheduleJobsService {
     createScheduleJobDto: CreateScheduleJobDto,
   ): Promise<ApiResponse<ScheduleJobResponseDto>> {
     try {
+      const validScheduleId = isUUID(createScheduleJobDto.schedule_id)
+        ? createScheduleJobDto.schedule_id
+        : null;
+
       const newScheduleJob = await this.prismaService.scheduleJob.create({
         data: {
-          schedule_id: createScheduleJobDto.schedule_id,
+          schedule_id: validScheduleId,
           run_date: createScheduleJobDto.run_date,
-          // status:  $Enums.ScheduleJobStatus.InProgress,
           status: createScheduleJobDto.status,
-          building_id: createScheduleJobDto.building_id,
+          buildingDetailId: createScheduleJobDto.buildingDetailId,
+          inspection_id: createScheduleJobDto.inspectionId,
         },
       })
+      // Map buildingDetailId to building_id to match ScheduleJobResponseDto
+      const responseDto: ScheduleJobResponseDto = {
+        ...newScheduleJob,
+        building_id: newScheduleJob.buildingDetailId,
+      }
       return new ApiResponse<ScheduleJobResponseDto>(
         true,
         'Schedule job created successfully',
-        newScheduleJob,
+        responseDto,
       )
     } catch (error) {
       throw new RpcException({
@@ -87,9 +97,15 @@ export class ScheduleJobsService {
         orderBy: { created_at: 'desc' },
       })
 
+      // Map each scheduleJob to include building_id
+      const mappedJobs: ScheduleJobResponseDto[] = scheduleJobs.map(job => ({
+        ...job,
+        building_id: job.buildingDetailId,
+      }))
+
       // Use PaginationResponseDto for consistent response formatting
       return new PaginationResponseDto(
-        scheduleJobs,
+        mappedJobs,
         total,
         page,
         limit,
@@ -112,8 +128,16 @@ export class ScheduleJobsService {
     schedule_job_id: string,
   ): Promise<ApiResponse<ScheduleJobResponseDto>> {
     try {
+      console.log('schedule_job_idschedule_job_idschedule_job_idschedule_job_idschedule_job_idschedule_job_idschedule_job_id', schedule_job_id)
       const scheduleJob = await this.prismaService.scheduleJob.findUnique({
         where: { schedule_job_id },
+        include: {
+          schedule: {
+            include: {
+              cycle: true
+            }
+          }
+        },
       })
       if (!scheduleJob) {
         throw new RpcException({
@@ -121,10 +145,32 @@ export class ScheduleJobsService {
           mescsage: 'Shedule job not found',
         })
       }
+
+      // Get building detail information if buildingDetailId exists
+      let buildingDetail = null;
+      if (scheduleJob.buildingDetailId) {
+        try {
+          buildingDetail = await firstValueFrom(
+            this.buildingClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, {
+              buildingDetailId: scheduleJob.buildingDetailId,
+            })
+          );
+        } catch (error) {
+          console.error('Error fetching building detail:', error);
+          // Continue without building detail if there's an error
+        }
+      }
+
+      const responseDto: ScheduleJobResponseDto = {
+        ...scheduleJob,
+        building_id: scheduleJob.buildingDetailId,
+        buildingDetail: buildingDetail?.data || null
+      }
+
       return new ApiResponse<ScheduleJobResponseDto>(
         true,
         'Schedule job fetched successfully',
-        scheduleJob,
+        responseDto,
       )
     } catch (error) {
       throw new RpcException({
@@ -139,18 +185,27 @@ export class ScheduleJobsService {
     updateScheduleJobStatusDto: UpdateScheduleJobStatusDto,
   ): Promise<ApiResponse<ScheduleJobResponseDto>> {
     try {
-      const { schedule_job_id, status } = updateScheduleJobStatusDto
+      console.log('🚀 ~ ScheduleJobsService ~ updateScheduleJobStatus ~ updateScheduleJobStatusDto:', updateScheduleJobStatusDto)
+      const { schedulejobs_id, status } = updateScheduleJobStatusDto
+      console.log('🚀 ~ ScheduleJobsService ~ updateScheduleJobStatus ~ schedulejobs_id:', updateScheduleJobStatusDto.schedulejobs_id)
+      console.log('🚀 ~ ScheduleJobsService ~ updateScheduleJobStatus ~ status:', updateScheduleJobStatusDto.status)
 
       const updatedScheduleJob = await this.prismaService.scheduleJob.update({
-        where: { schedule_job_id },
+        where: { schedule_job_id: schedulejobs_id },
         data: {
           status,
         },
       })
+
+      const responseDto: ScheduleJobResponseDto = {
+        ...updatedScheduleJob,
+        building_id: updatedScheduleJob.buildingDetailId,
+      }
+
       return new ApiResponse<ScheduleJobResponseDto>(
         true,
         'Schedule job status updated successfully',
-        updatedScheduleJob,
+        responseDto,
       )
     } catch (error) {
       throw new RpcException({
@@ -171,14 +226,20 @@ export class ScheduleJobsService {
           schedule_id: updateData.schedule_id, // Nếu có, cập nhật schedule_id
           run_date: updateData.run_date, // Nếu có, cập nhật run_date
           status: updateData.status, // Nếu có, cập nhật status
-          building_id: updateData.building_id, // Nếu có, cập nhật building_id        },
+          // Map building_id to buildingDetailId in the database
+          buildingDetailId: updateData.building_id,
         },
       })
+
+      const responseDto: ScheduleJobResponseDto = {
+        ...updatedScheduleJob,
+        building_id: updatedScheduleJob.buildingDetailId,
+      }
 
       return new ApiResponse<ScheduleJobResponseDto>(
         true,
         'Schedule job updated successfully',
-        updatedScheduleJob,
+        responseDto,
       )
     } catch (error) {
       throw new RpcException({
@@ -213,29 +274,50 @@ export class ScheduleJobsService {
       const scheduleJobsWithBuildings = await Promise.all(
         scheduleJobs.map(async (job) => {
           try {
-            // Kiểm tra xem building_id có tồn tại không
-            if (!job.building_id) {
-              console.warn(`Schedule job ${job.schedule_job_id} has no building_id`)
+            // Kiểm tra xem buildingDetailId có tồn tại không
+            if (!job.buildingDetailId) {
+              console.warn(`Schedule job ${job.schedule_job_id} has no buildingDetailId`)
               return {
                 ...job,
                 building: null,
+                building_id: job.buildingDetailId,
+              }
+            }
+            // Get building detail information if buildingDetailId exists
+            let buildingDetail = null;
+            if (job.buildingDetailId) {
+              try {
+                buildingDetail = await firstValueFrom(
+                  this.buildingClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, {
+                    buildingDetailId: job.buildingDetailId,
+                  })
+                );
+              } catch (error) {
+                console.error('Error fetching building detail:', error);
+                // Continue without building detail if there's an error
               }
             }
 
-            console.log(`Fetching building with ID: ${job.building_id}`)
+            console.log(`Fetching building with ID: ${job.buildingDetailId}`)
             const building = await firstValueFrom(
-              this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: job.building_id })
+              this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: job.buildingDetailId })
             )
             console.log(`Building response:`, building)
             return {
               ...job,
               building: building.data,
+              building_id: job.buildingDetailId,
+              buildingDetail: buildingDetail?.data || null,
+
             }
           } catch (error) {
             console.error(`Error fetching building for job ${job.schedule_job_id}:`, error)
             return {
               ...job,
               building: null,
+              building_id: job.buildingDetailId,
+              //buildingDetail: buildingDetail?.data || null,
+
             }
           }
         })
@@ -281,66 +363,119 @@ export class ScheduleJobsService {
         return new ApiResponse(false, 'Schedule job not found', null)
       }
 
-      console.log(`Fetching building with ID: ${scheduleJob.building_id}`)
-      // Get building details
-      const buildingResponse = await firstValueFrom(
-        this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId: scheduleJob.building_id })
-      )
-
-      if (!buildingResponse || !buildingResponse.data) {
-        console.error(`Building not found with ID: ${scheduleJob.building_id}`)
-        return new ApiResponse(false, 'Building not found', null)
-      }
-
-      const building = buildingResponse.data
-      console.log(`Building details:`, {
-        name: building.name,
-        description: building.description,
-        numberFloor: building.numberFloor,
-        area: building.area,
-        buildingDetails: building.buildingDetails
-      })
-
-      // Get building details with location information
-      const buildingDetailsResponse = await firstValueFrom(
+      console.log(`Fetching building detail with ID: ${scheduleJob.buildingDetailId}`)
+      // Get building details with location information in a single call
+      const buildingDetailResponse = await firstValueFrom(
         this.buildingClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, {
-          buildingDetailId: building.buildingDetails?.[0]?.buildingDetailId
+          buildingDetailId: scheduleJob.buildingDetailId
         })
       )
 
-      console.log(`Fetching residents for building ID: ${scheduleJob.building_id}`)
-      // Get residents for the building
+      if (!buildingDetailResponse || !buildingDetailResponse.data) {
+        console.error(`Building detail not found with ID: ${scheduleJob.buildingDetailId}`)
+        return new ApiResponse(false, 'Building detail not found', null)
+      }
+
+      const buildingDetail = buildingDetailResponse.data
+      console.log(`Building details:`, {
+        name: buildingDetail.name,
+        description: buildingDetail.description,
+        numberFloor: buildingDetail.numberFloor,
+        area: buildingDetail.area,
+        locationDetails: buildingDetail.locationDetails?.length || 0
+      })
+
+      console.log(`Fetching residents for building detail ID: ${scheduleJob.buildingDetailId}`)
+      // Get residents for the building detail directly using the new endpoint
       const residentsResponse = await firstValueFrom(
-        this.buildingClient.send(BUILDINGS_PATTERN.GET_RESIDENTS_BY_BUILDING_ID, building.buildingId)
+        this.buildingClient.send(BUILDINGS_PATTERN.GET_RESIDENTS_BY_BUILDING_DETAIL_ID, scheduleJob.buildingDetailId)
       )
 
+      // Check if we got any residents
+      if (!residentsResponse.data || residentsResponse.data.length === 0) {
+        console.log(`No residents found for building detail ID: ${scheduleJob.buildingDetailId}`)
+        return new ApiResponse(
+          true,
+          'No residents found to send emails to',
+          { message: 'No emails sent' }
+        )
+      }
+
       console.log(`Found ${residentsResponse.data.length} residents to send emails to`)
-      // Send email to each resident using notifications service
-      const emailPromises = residentsResponse.data.map(resident => {
-        if (!resident.email) {
-          console.log(`Skipping resident ${resident.name} - no email address`)
-          return Promise.resolve()
+
+      // Detailed logging to debug resident data structure
+      console.log('Sample resident data:', residentsResponse.data.length > 0 ?
+        JSON.stringify(residentsResponse.data[0], null, 2) : 'No residents found');
+
+      // Create a map to track residents by email to ensure no duplicates
+      const emailMap = new Map()
+
+      // Process each resident
+      residentsResponse.data.forEach(resident => {
+        // Debug each resident
+        console.log(`Processing resident: ${JSON.stringify({
+          id: resident.userId,
+          name: resident.name,
+          username: resident.username,
+          email: resident.email,
+          firstName: resident.firstName,
+          lastName: resident.lastName
+        })}`);
+
+        // Skip if already processed this email
+        if (!resident.email || emailMap.has(resident.email)) {
+          console.log(`Skipping resident ${resident.name || resident.username || resident.userId} - ${!resident.email ? 'no email address' : 'duplicate email'}`)
+          return
         }
 
+        // Add to map to prevent duplicates
+        emailMap.set(resident.email, resident)
+      })
+
+      // Send email to each unique resident using notifications service
+      const emailPromises = Array.from(emailMap.values()).map(resident => {
+        // Get resident's name using username, name, or firstName+lastName
+        const residentName = resident.username || resident.name ||
+          (resident.firstName && resident.lastName ? `${resident.firstName} ${resident.lastName}` : null) ||
+          'Valued Resident';
+
         // Get location details for the resident
-        const locationDetails = buildingDetailsResponse?.data?.locationDetails?.find(
+        const locationDetails = buildingDetail.locationDetails?.find(
           loc => loc.roomNumber === resident.apartmentNumber
         )
 
-        console.log(`Sending email to resident: ${resident.name} (${resident.email})`)
+        // Format times for display
+        const startTime = scheduleJob.start_date
+          ? new Date(scheduleJob.start_date).toLocaleDateString('vi-VN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })
+          : 'Not specified';
+
+        const endTime = scheduleJob.end_date
+          ? new Date(scheduleJob.end_date).toLocaleDateString('vi-VN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })
+          : 'Not specified';
+
+        console.log(`Sending email to resident: ${residentName} (${resident.email}) for maintenance from ${startTime} to ${endTime}`);
+
         return firstValueFrom(
-          this.notificationsClient.emit(NOTIFICATIONS_PATTERN.SEND_MAINTENANCE_SCHEDULE_EMAIL, {
+          this.notificationsClient.emit(NOTIFICATIONS_PATTERN.SEND_EMAIL, {
             to: resident.email,
-            residentName: resident.name,
-            buildingName: building.name,
+            residentName: residentName,
+            buildingName: buildingDetail.name,
             maintenanceDate: scheduleJob.run_date,
-            startTime: '08:00', // Default start time
-            endTime: '17:00', // Default end time
+            startTime: startTime,
+            endTime: endTime,
             maintenanceType: scheduleJob.schedule.schedule_name,
-            description: scheduleJob.schedule.description || 'No additional details provided',
-            floor: locationDetails?.floorNumber?.toString() || building.numberFloor?.toString() || 'Không xác định',
-            area: building.area?.name || 'Không xác định',
-            unit: locationDetails?.roomNumber || resident.apartmentNumber || 'Không xác định'
+            description: scheduleJob.schedule.description || 'No detailed description',
+            floor: locationDetails?.floorNumber?.toString() || buildingDetail.numberFloor?.toString() || 'Not specified',
+            area: buildingDetail.area?.name || 'Not specified',
+            unit: locationDetails?.roomNumber || resident.apartmentNumber || 'Not specified'
           })
         )
       })
@@ -351,7 +486,7 @@ export class ScheduleJobsService {
       return new ApiResponse(
         true,
         'Maintenance schedule emails sent successfully',
-        { message: `Emails sent to ${residentsResponse.data.length} residents` }
+        { message: `Emails sent to ${emailMap.size} residents` }
       )
     } catch (error) {
       console.error('Error sending maintenance emails:', error)
@@ -362,4 +497,49 @@ export class ScheduleJobsService {
       )
     }
   }
+
+  // async changeStatus(schedule_job_id: string, status: string) {
+  //   console.log('🚀 ~ ScheduleJobsService ~ changeStatus ~ schedule_job_id:', schedule_job_id)
+  //   try {
+  //     console.log('🚀 ~ ScheduleJobsService ~ changeStatus ~ status:', status)
+
+  //     // Check if the schedule job exists before trying to update
+  //     const scheduleJob = await this.prismaService.scheduleJob.findUnique({
+  //       where: { schedule_job_id },
+  //     })
+
+  //     // If schedule job does not exist, throw an exception
+  //     if (!scheduleJob) {
+  //       throw new RpcException({
+  //         statusCode: 404,
+  //         message: 'Schedule job not found',
+  //       })
+  //     }
+
+  //     const scheduleJobStatus: ScheduleJobStatus = status as ScheduleJobStatus
+
+  //     // Proceed to update the status
+  //     const updatedScheduleJob = await this.prismaService.scheduleJob.update({
+  //       where: { schedule_job_id },
+  //       data: {
+  //         status: scheduleJobStatus,
+  //       },
+  //     })
+
+  //     return new ApiResponse<ScheduleJobResponseDto>(
+  //       true,
+  //       'Schedule job status updated successfully',
+  //       updatedScheduleJob,
+  //     )
+  //   } catch (error) {
+  //     console.error('Error updating schedule job status:', error)
+
+  //     // Return a meaningful response for the error
+  //     throw new RpcException({
+  //       statusCode: 400,
+  //       message: 'Error updating schedule job status',
+  //       error: error.message,
+  //     })
+  //   }
+  // }
 }

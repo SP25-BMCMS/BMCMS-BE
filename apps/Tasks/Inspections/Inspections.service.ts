@@ -1,4 +1,4 @@
-import { Injectable, Inject, OnModuleInit } from '@nestjs/common'
+import { Injectable, Inject, OnModuleInit, Logger } from '@nestjs/common'
 import { RpcException } from '@nestjs/microservices'
 import { PrismaService } from '../prisma/prisma.service'
 import { ApiResponse } from '../../../libs/contracts/src/ApiResponse/api-response'
@@ -12,6 +12,13 @@ import { catchError, firstValueFrom, Observable, of, timeout } from 'rxjs'
 import { IsUUID } from 'class-validator'
 import { MATERIAL_PATTERN } from '@app/contracts/materials/material.patterns'
 import { TASK_CLIENT } from 'apps/api-gateway/src/constraints'
+import { GetObjectCommand, S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { ConfigService } from '@nestjs/config'
+import { TaskAssignmentsService } from '../TaskAssignments/TaskAssignments.service'
+import { AssignmentStatus } from '@prisma/client-Task'
+import { TaskService } from '../Task/Task.service'
+import { UpdateInspectionReportStatusDto, ReportStatus } from '@app/contracts/inspections/update-inspection-report-status.dto'
 
 const USERS_CLIENT = 'USERS_CLIENT'
 // Define interface for the User service
@@ -38,14 +45,27 @@ const CRACK_PATTERNS = {
 @Injectable()
 export class InspectionsService implements OnModuleInit {
   private userService: UserService
+  private s3: S3Client
+  private bucketName: string
+  private readonly logger = new Logger(InspectionsService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     @Inject('CRACK_CLIENT') private readonly crackClient: ClientProxy,
     @Inject(USERS_CLIENT) private readonly userClient: ClientGrpc,
-    @Inject(TASK_CLIENT) private readonly taskClient: ClientProxy
+    @Inject(TASK_CLIENT) private readonly taskClient: ClientProxy,
+    private configService: ConfigService,
+    private readonly taskAssignmentService: TaskAssignmentsService,
+    private readonly taskService: TaskService
   ) {
-
+    this.s3 = new S3Client({
+      region: this.configService.get<string>('AWS_REGION'),
+      credentials: {
+        accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID'),
+        secretAccessKey: this.configService.get<string>('AWS_SECRET_ACCESS_KEY'),
+      },
+    })
+    this.bucketName = this.configService.get<string>('AWS_S3_BUCKET')
   }
 
   onModuleInit() {
@@ -65,12 +85,48 @@ export class InspectionsService implements OnModuleInit {
     }
   }
 
+  /**
+   * Get pre-signed URL for an S3 object
+   * @param fileKey The S3 object key
+   * @returns A pre-signed URL for accessing the object
+   */
+  async getPreSignedUrl(fileKey: string): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucketName,
+      Key: fileKey,
+    })
+
+    return getSignedUrl(this.s3, command, { expiresIn: 86400 }) // URL expires after 24 hours
+  }
+
+  /**
+   * Extract S3 file key from full URL
+   * @param url Full S3 URL
+   * @returns The file key part
+   */
+  private extractFileKey(url: string): string {
+    try {
+      // If already a key rather than a URL, return as is
+      if (!url.startsWith('http')) {
+        return url
+      }
+
+      // Extract key from URL
+      const urlObj = new URL(url)
+      return urlObj.pathname.substring(1) // Remove leading '/'
+    } catch (error) {
+      console.error('Invalid URL format:', url)
+      return url // Return original as fallback
+    }
+  }
+
   async GetInspectionByTaskAssignmentId(task_assignment_id: string) {
     try {
-      const inspection = await this.prisma.inspection.findMany({
+      const inspections = await this.prisma.inspection.findMany({
         where: { task_assignment_id },
       })
-      if (inspection.length === 0) {
+
+      if (inspections.length === 0) {
         return {
           statusCode: 404,
           message:
@@ -78,10 +134,40 @@ export class InspectionsService implements OnModuleInit {
             task_assignment_id,
         }
       }
+
+      // Xử lý presignedUrl cho mỗi inspection
+      for (const inspection of inspections) {
+        // Process image URLs
+        if (inspection.image_urls && inspection.image_urls.length > 0) {
+          inspection.image_urls = await Promise.all(
+            inspection.image_urls.map(async (url: string) => {
+              try {
+                const fileKey = this.extractFileKey(url)
+                return await this.getPreSignedUrl(fileKey)
+              } catch (error) {
+                console.error(`Error getting pre-signed URL for ${url}:`, error)
+                return url // Return original URL as fallback
+              }
+            })
+          )
+        }
+
+        // Process PDF file URL if exists
+        if (inspection.uploadFile) {
+          try {
+            const fileKey = this.extractFileKey(inspection.uploadFile)
+            inspection.uploadFile = await this.getPreSignedUrl(fileKey)
+          } catch (error) {
+            console.error(`Error getting pre-signed URL for PDF file:`, error)
+            // Keep original URL as fallback
+          }
+        }
+      }
+
       return {
         statusCode: 200,
         message: 'Inspections retrieved successfully',
-        data: inspection,
+        data: inspections,
       }
     } catch (error) {
       throw new RpcException({
@@ -98,7 +184,7 @@ export class InspectionsService implements OnModuleInit {
 
     if (!existingInspection) {
       throw new RpcException(
-        new ApiResponse(false, 'Inspection không tồn tại'),
+        new ApiResponse(false, 'Inspection does not exist'),
       )
     }
 
@@ -107,11 +193,11 @@ export class InspectionsService implements OnModuleInit {
         where: { inspection_id },
         data: { ...dto },
       })
-      return new ApiResponse(true, 'Inspection đã được cập nhật thành công', [
+      return new ApiResponse(true, 'Inspection has been updated successfully', [
         updatedInspection,
       ])
     } catch (error) {
-      throw new RpcException(new ApiResponse(false, 'Dữ liệu không hợp lệ'))
+      throw new RpcException(new ApiResponse(false, 'Invalid data'))
     }
   }
 
@@ -161,6 +247,35 @@ export class InspectionsService implements OnModuleInit {
         }
       }
 
+      // Process image URLs and PDF files for each inspection
+      for (const inspection of inspections) {
+        // Process image URLs
+        if (inspection.image_urls && inspection.image_urls.length > 0) {
+          inspection.image_urls = await Promise.all(
+            inspection.image_urls.map(async (url: string) => {
+              try {
+                const fileKey = this.extractFileKey(url)
+                return await this.getPreSignedUrl(fileKey)
+              } catch (error) {
+                console.error(`Error getting pre-signed URL for ${url}:`, error)
+                return url // Return original URL as fallback
+              }
+            })
+          )
+        }
+
+        // Process PDF file URL if exists
+        if (inspection.uploadFile) {
+          try {
+            const fileKey = this.extractFileKey(inspection.uploadFile)
+            inspection.uploadFile = await this.getPreSignedUrl(fileKey)
+          } catch (error) {
+            console.error(`Error getting pre-signed URL for PDF file:`, error)
+            // Keep original URL as fallback
+          }
+        }
+      }
+
       return {
         statusCode: 200,
         message: 'Inspections retrieved successfully',
@@ -204,10 +319,15 @@ export class InspectionsService implements OnModuleInit {
       }
 
       // Parse repairMaterials if it's a string
-      let repairMaterialsArray: RepairMaterialDto[]
+      let repairMaterialsArray: RepairMaterialDto[] = [];
       try {
         const repairMaterials = dto.repairMaterials as string | RepairMaterialDto[]
-        if (typeof repairMaterials === 'string') {
+
+        // Handle empty string or undefined
+        if (!repairMaterials || (typeof repairMaterials === 'string' && repairMaterials.trim() === '')) {
+          // Set to empty array if empty or not provided
+          repairMaterialsArray = [];
+        } else if (typeof repairMaterials === 'string') {
           // Handle case where multiple objects are sent as separate strings
           const repairMaterialsStr = repairMaterials.trim()
           if (repairMaterialsStr.startsWith('{') && repairMaterialsStr.includes('},{')) {
@@ -229,97 +349,120 @@ export class InspectionsService implements OnModuleInit {
 
       // Validate all materials and calculate total cost
       let totalCost = 0
-      const materialValidations = await Promise.all(
-        repairMaterialsArray.map(async (repairMaterial) => {
-          const materialResponse = await firstValueFrom(
-            this.taskClient.send(
-              MATERIAL_PATTERN.GET_MATERIAL_BY_ID,
-              repairMaterial.materialId
-            ).pipe(
-              timeout(10000),
-              catchError(err => {
-                console.error('Error getting material info:', err)
-                return of(new ApiResponse(false, 'Error getting material info', null))
-              })
+
+      // Skip validation if no repair materials
+      if (repairMaterialsArray.length > 0) {
+        const materialValidations = await Promise.all(
+          repairMaterialsArray.map(async (repairMaterial) => {
+            const materialResponse = await firstValueFrom(
+              this.taskClient.send(
+                MATERIAL_PATTERN.GET_MATERIAL_BY_ID,
+                repairMaterial.materialId
+              ).pipe(
+                timeout(10000),
+                catchError(err => {
+                  console.error('Error getting material info:', err)
+                  return of(new ApiResponse(false, 'Error getting material info', null))
+                })
+              )
             )
+
+            if (!materialResponse || !materialResponse.isSuccess || !materialResponse.data) {
+              throw new Error(`Material not found or error retrieving material information for ID: ${repairMaterial.materialId}`)
+            }
+
+            const material = materialResponse.data
+
+            // Check if there's enough stock
+            if (material.stock_quantity < repairMaterial.quantity) {
+              throw new Error(`Not enough stock for material ${material.name}. Current stock: ${material.stock_quantity}, Required: ${repairMaterial.quantity}`)
+            }
+
+            // Calculate cost for this material
+            const unitCost = Number(material.unit_price)
+            const materialTotalCost = unitCost * repairMaterial.quantity
+            totalCost += materialTotalCost
+
+            return {
+              material,
+              repairMaterial,
+              unitCost,
+              materialTotalCost
+            }
+          })
+        )
+
+        // Create inspection and repair materials in a transaction
+        const result = await this.prisma.$transaction(async (prisma) => {
+          // Create the inspection
+          const inspection = await prisma.inspection.create({
+            data: {
+              task_assignment_id: dto.task_assignment_id,
+              inspected_by: dto.inspected_by,
+              image_urls: dto.image_urls || [],
+              description: dto.description || "",
+              total_cost: totalCost,
+              uploadFile: dto.uploadFile || null,
+            },
+          })
+
+          // Create all repair materials
+          const repairMaterials = await Promise.all(
+            materialValidations.map(async (validation) => {
+              const repairMaterial = await prisma.repairMaterial.create({
+                data: {
+                  inspection_id: inspection.inspection_id,
+                  material_id: validation.repairMaterial.materialId,
+                  quantity: validation.repairMaterial.quantity,
+                  unit_cost: validation.unitCost,
+                  total_cost: validation.materialTotalCost,
+                },
+              })
+
+              // Update material stock
+              await prisma.material.update({
+                where: { material_id: validation.repairMaterial.materialId },
+                data: {
+                  stock_quantity: {
+                    decrement: validation.repairMaterial.quantity,
+                  },
+                },
+              })
+
+              return repairMaterial
+            })
           )
 
-          if (!materialResponse || !materialResponse.isSuccess || !materialResponse.data) {
-            throw new Error(`Material not found or error retrieving material information for ID: ${repairMaterial.materialId}`)
-          }
-
-          const material = materialResponse.data
-
-          // Check if there's enough stock
-          if (material.stock_quantity < repairMaterial.quantity) {
-            throw new Error(`Not enough stock for material ${material.name}. Current stock: ${material.stock_quantity}, Required: ${repairMaterial.quantity}`)
-          }
-
-          // Calculate cost for this material
-          const unitCost = Number(material.unit_price)
-          const materialTotalCost = unitCost * repairMaterial.quantity
-          totalCost += materialTotalCost
-
           return {
-            material,
-            repairMaterial,
-            unitCost,
-            materialTotalCost
+            ...inspection,
+            repairMaterials,
           }
         })
-      )
 
-      // Create inspection and repair materials in a transaction
-      const result = await this.prisma.$transaction(async (prisma) => {
-        // Create the inspection
-        const inspection = await prisma.inspection.create({
+        return new ApiResponse(
+          true,
+          'Inspection and repair materials created successfully',
+          result
+        )
+      } else {
+        // No repair materials, just create the inspection
+        const inspection = await this.prisma.inspection.create({
           data: {
             task_assignment_id: dto.task_assignment_id,
             inspected_by: dto.inspected_by,
             image_urls: dto.image_urls || [],
             description: dto.description || "",
-            total_cost: totalCost,
+            total_cost: 0,
+            uploadFile: dto.uploadFile || null,
           },
         })
 
-        // Create all repair materials
-        const repairMaterials = await Promise.all(
-          materialValidations.map(async (validation) => {
-            const repairMaterial = await prisma.repairMaterial.create({
-              data: {
-                inspection_id: inspection.inspection_id,
-                material_id: validation.repairMaterial.materialId,
-                quantity: validation.repairMaterial.quantity,
-                unit_cost: validation.unitCost,
-                total_cost: validation.materialTotalCost,
-              },
-            })
-
-            // Update material stock
-            await prisma.material.update({
-              where: { material_id: validation.repairMaterial.materialId },
-              data: {
-                stock_quantity: {
-                  decrement: validation.repairMaterial.quantity,
-                },
-              },
-            })
-
-            return repairMaterial
-          })
+        return new ApiResponse(
+          true,
+          'Inspection created successfully with no repair materials',
+          inspection
         )
-
-        return {
-          ...inspection,
-          repairMaterials,
-        }
-      })
-
-      return new ApiResponse(
-        true,
-        'Inspection and repair materials created successfully',
-        result
-      )
+      }
     } catch (error) {
       console.error('Error in createInspection:', error)
       return new ApiResponse(false, error.message || 'Error creating inspection and repair materials', null)
@@ -394,9 +537,36 @@ export class InspectionsService implements OnModuleInit {
 
       const result: any = { ...inspection }
 
+      // Process main inspection image URLs
+      if (result.image_urls && result.image_urls.length > 0) {
+        result.image_urls = await Promise.all(
+          result.image_urls.map(async (url: string) => {
+            try {
+              const fileKey = this.extractFileKey(url)
+              return await this.getPreSignedUrl(fileKey)
+            } catch (error) {
+              console.error(`Error getting pre-signed URL for ${url}:`, error)
+              return url // Return original URL as fallback
+            }
+          })
+        )
+      }
+
+      // Process PDF file URL if exists
+      if (result.uploadFile) {
+        try {
+          const fileKey = this.extractFileKey(result.uploadFile)
+          result.uploadFile = await this.getPreSignedUrl(fileKey)
+        } catch (error) {
+          console.error(`Error getting pre-signed URL for PDF file:`, error)
+          // Keep original URL as fallback
+        }
+      }
+
       // 2. Get task info
       const task = inspection.taskAssignment.task
       console.log(task)
+
       // 3. If crack_id exists, get crack info
       if (task.crack_id) {
         console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ task.crack_id:", task.crack_id)
@@ -405,6 +575,44 @@ export class InspectionsService implements OnModuleInit {
         )
         result.crackInfo = crackInfo
         console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ crackInfo:", crackInfo)
+
+        // Process crack images if they exist
+        if (result.crackInfo && result.crackInfo.data) {
+          const crackData = result.crackInfo.data
+
+          // Process crack main image if it exists
+          if (crackData.photoUrl) {
+            try {
+              const fileKey = this.extractFileKey(crackData.photoUrl)
+              crackData.photoUrl = await this.getPreSignedUrl(fileKey)
+            } catch (error) {
+              console.error(`Error getting pre-signed URL for crack photo:`, error)
+            }
+          }
+
+          // Process crack detail images if they exist
+          if (crackData.crackDetails && Array.isArray(crackData.crackDetails)) {
+            for (const detail of crackData.crackDetails) {
+              if (detail.photoUrl) {
+                try {
+                  const fileKey = this.extractFileKey(detail.photoUrl)
+                  detail.photoUrl = await this.getPreSignedUrl(fileKey)
+                } catch (error) {
+                  console.error(`Error getting pre-signed URL for crack detail photo:`, error)
+                }
+              }
+
+              if (detail.aiDetectionUrl) {
+                try {
+                  const fileKey = this.extractFileKey(detail.aiDetectionUrl)
+                  detail.aiDetectionUrl = await this.getPreSignedUrl(fileKey)
+                } catch (error) {
+                  console.error(`Error getting pre-signed URL for AI detection image:`, error)
+                }
+              }
+            }
+          }
+        }
       }
 
       // 4. If schedule_id exists, get schedule info (you can add this later)
@@ -434,6 +642,32 @@ export class InspectionsService implements OnModuleInit {
 
       if (!inspection) {
         return new ApiResponse(false, 'Inspection not found', null)
+      }
+
+      // Process image URLs
+      if (inspection.image_urls && inspection.image_urls.length > 0) {
+        inspection.image_urls = await Promise.all(
+          inspection.image_urls.map(async (url: string) => {
+            try {
+              const fileKey = this.extractFileKey(url)
+              return await this.getPreSignedUrl(fileKey)
+            } catch (error) {
+              console.error(`Error getting pre-signed URL for ${url}:`, error)
+              return url // Return original URL as fallback
+            }
+          })
+        )
+      }
+
+      // Process PDF file URL if exists
+      if (inspection.uploadFile) {
+        try {
+          const fileKey = this.extractFileKey(inspection.uploadFile)
+          inspection.uploadFile = await this.getPreSignedUrl(fileKey)
+        } catch (error) {
+          console.error(`Error getting pre-signed URL for PDF file:`, error)
+          // Keep original URL as fallback
+        }
       }
 
       return new ApiResponse(true, 'Inspection retrieved successfully', inspection)
@@ -578,6 +812,272 @@ export class InspectionsService implements OnModuleInit {
     } catch (error) {
       console.error('Tasks microservice - Error in verifyStaffRole:', error)
       return new ApiResponse(false, `Error validating user role: ${error.message}`, false)
+    }
+  }
+
+  async updateInspectionPrivateAsset(
+    inspection_id: string,
+    dto: { isprivateasset: boolean }
+  ) {
+    try {
+      const inspection = await this.prisma.inspection.findUnique({
+        where: { inspection_id },
+        include: {
+          taskAssignment: true
+        }
+      });
+
+      if (!inspection) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Inspection not found',
+        });
+      }
+
+      const updatedInspection = await this.prisma.inspection.update({
+        where: { inspection_id },
+        data: {
+          isprivateasset: dto.isprivateasset
+        },
+        include: {
+          taskAssignment: true,
+          repairMaterials: true
+        }
+      });
+
+      return new ApiResponse(
+        true,
+        'Inspection private asset status updated successfully',
+        updatedInspection
+      );
+    } catch (error) {
+      if (error instanceof RpcException) throw error;
+      throw new RpcException({
+        statusCode: 500,
+        message: `Failed to update inspection private asset status: ${error.message}`,
+      });
+    }
+  }
+
+  async updateInspectionReportStatus(
+    inspection_id: string,
+    dto: { report_status: 'NoPending' | 'Pending' | 'Approved' | 'Rejected' | 'AutoApproved' }
+  ) {
+    try {
+      const inspection = await this.prisma.inspection.findUnique({
+        where: { inspection_id },
+        include: {
+          taskAssignment: true
+        }
+      });
+
+      if (!inspection) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Inspection not found',
+        });
+      }
+
+      // Update the inspection report status
+      const updatedInspection = await this.prisma.inspection.update({
+        where: { inspection_id },
+        data: {
+          report_status: dto.report_status
+        },
+        include: {
+          taskAssignment: true,
+          repairMaterials: true
+        }
+      });
+
+      // Handle special cases for report status changes
+      if (dto.report_status === 'Rejected' && inspection.isprivateasset === true) {
+        // If report is rejected and it's a private asset, mark task as not completed
+        // await this.taskAssignmentService.changeTaskAssignmentStatus(
+        //   inspection.task_assignment_id,
+        //   AssignmentStatus.Confirmed
+        // );
+
+        // if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
+        //   await this.taskService.changeTaskStatus(
+        //     inspection.taskAssignment.task_id,
+        //     'Completed'
+        //   );
+        // }
+
+        // updatedInspection.taskAssignment.status = AssignmentStatus.Confirmed;
+
+        return new ApiResponse(
+          true,
+          'It is already in our maintenance schedule system',
+          updatedInspection
+        );
+      }
+      else if (dto.report_status === 'Approved') {
+        // If report is approved, mark task as completed
+        // await this.taskAssignmentService.changeTaskAssignmentStatus(
+        //   inspection.task_assignment_id,
+        //   AssignmentStatus.Confirmed // Using Confirmed status since Completed is not in the enum
+        // );
+
+        // // Also update the task status to Completed
+        // if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
+        //   await this.taskService.changeTaskStatus(
+        //     inspection.taskAssignment.task_id,
+        //     'Completed'
+        //   );
+        // }
+
+        // updatedInspection.taskAssignment.status = AssignmentStatus.Confirmed;
+
+        return new ApiResponse(
+          true,
+          'We acknowledge and will review',
+          updatedInspection
+        );
+      }
+
+      return new ApiResponse(
+        true,
+        'Inspection report status updated successfully',
+        updatedInspection
+      );
+    } catch (error) {
+      if (error instanceof RpcException) throw error;
+      throw new RpcException({
+        statusCode: 500,
+        message: `Failed to update inspection report status: ${error.message}`,
+      });
+    }
+  }
+
+  async updateInspectionReportStatusByManager(
+    inspection_id: string,
+    report_status: ReportStatus,
+    userId: string,
+    reason: string
+  ) {
+    try {
+      // Kiểm tra inspection có tồn tại không
+      const inspection = await this.prisma.inspection.findUnique({
+        where: { inspection_id },
+        include: {
+          taskAssignment: true
+        }
+      });
+
+      if (!inspection) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Inspection not found',
+        });
+      }
+      console.log(inspection)
+
+      // Kiểm tra user có phải là manager không
+      // const userInfo = await firstValueFrom(
+      //   this.userService.getUserInfo({ userId, username: '' } as UserRequest)
+      //     .pipe(
+      //       timeout(10000),
+      //       catchError(err => {
+      //         console.error('Error fetching user info:', err);
+      //         return of(null);
+      //       })
+      //     )
+      // );
+      // console.log(userInfo)
+      // if (!userInfo || userInfo.role !== 'Manager') {
+      //   throw new RpcException({
+      //     statusCode: 403,
+      //     message: 'Only managers can update inspection report status',
+      //   });
+      // }
+      console.log(inspection)
+      // Cập nhật trạng thái báo cáo kiểm tra
+      const updatedInspection = await this.prisma.inspection.update({
+        where: { inspection_id },
+        data: {
+          confirmed_by: userId,
+          report_status: report_status,
+          updated_at: new Date(),
+          reason: reason
+        },
+        include: {
+          taskAssignment: true,
+          repairMaterials: true
+        }
+      });
+      console.log(updatedInspection)
+      // Xử lý các trường hợp đặc biệt cho thay đổi trạng thái báo cáo
+      if (report_status === 'Rejected' && inspection.isprivateasset === true) {
+        // Nếu báo cáo bị từ chối và là tài sản riêng, đánh dấu task là chưa hoàn thành
+        // await this.taskAssignmentService.changeTaskAssignmentStatus(
+        //   inspection.task_assignment_id,
+        //   AssignmentStatus.Confirmed
+        // );
+
+        // if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
+        //   await this.taskService.changeTaskStatus(
+        //     inspection.taskAssignment.task_id,
+        //     'Completed'
+        //   );
+        // }
+
+        // const taskAssignment = await this.prisma.taskAssignment.findUnique({
+        //   where: { assignment_id: inspection.task_assignment_id }
+        // });
+
+        // if (taskAssignment) {
+        //   taskAssignment.status = AssignmentStatus.Confirmed;
+        // }
+
+        return new ApiResponse(
+          true,
+          'It is already in our maintenance schedule system',
+          updatedInspection
+        );
+      }
+      else if (report_status === 'Approved') {
+        // Nếu báo cáo được phê duyệt, đánh dấu task là đã hoàn thành
+        // await this.taskAssignmentService.changeTaskAssignmentStatus(
+        //   inspection.task_assignment_id,
+        //   AssignmentStatus.Confirmed
+        // );
+
+        // // Cập nhật trạng thái task thành Completed
+        // if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
+        //   await this.taskService.changeTaskStatus(
+        //     inspection.taskAssignment.task_id,
+        //     'Completed'
+        //   );
+        // }
+
+        // const taskAssignment = await this.prisma.taskAssignment.findUnique({
+        //   where: { assignment_id: inspection.task_assignment_id }
+        // });
+
+        // if (taskAssignment) {
+        //   taskAssignment.status = AssignmentStatus.Confirmed;
+        // }
+
+        return new ApiResponse(
+          true,
+          'We acknowledge and will review',
+          updatedInspection
+        );
+      }
+
+      return new ApiResponse(
+        true,
+        'Inspection report status updated successfully',
+        updatedInspection
+      );
+    } catch (error) {
+      if (error instanceof RpcException) throw error;
+      throw new RpcException({
+        statusCode: 500,
+        message: `Failed to update inspection report status: ${error.message}`,
+      });
     }
   }
 }

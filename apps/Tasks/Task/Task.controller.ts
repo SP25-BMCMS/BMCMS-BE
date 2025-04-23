@@ -52,6 +52,7 @@ export class TasksController {
 
   @MessagePattern(TASKS_PATTERN.GET)
   async getAllTasks(@Payload() data: PaginationParams = {}) {
+    console.log("🚀 ~ TasksController ~ getAllTasks ~ getAllTasks:")
     return this.taskService.getAllTasks(data);
   }
 
@@ -63,5 +64,18 @@ export class TasksController {
   @MessagePattern({ cmd: 'get-crack-id-by-task' })
   async getCrackIdByTask(@Payload() payload: { taskId: string }) {
     return this.taskService.getCrackIdByTask(payload.taskId);
+  }
+
+  @MessagePattern({ cmd: 'create-task-for-schedule-job' })
+  async createTaskForScheduleJob(@Payload() payload: { scheduleJobId: string; staffId: string }) {
+    console.log('Received create-task-for-schedule-job request with payload:', payload);
+    try {
+      const result = await this.taskService.createTaskForScheduleJob(payload.scheduleJobId, payload.staffId);
+      console.log('createTaskForScheduleJob completed with result:', JSON.stringify(result));
+      return result;
+    } catch (error) {
+      console.error('Error in createTaskForScheduleJob controller:', error);
+      throw error;
+    }
   }
 }

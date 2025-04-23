@@ -57,6 +57,13 @@ export class WorkLogController {
     return this.workLogService.updateWorkLogStatus(updateWorkLogStatusDto)
   }
 
+  @MessagePattern(WORKLOG_PATTERN.GET_BY_RESIDENT_ID)
+  async getWorklogsByResidentId(
+    @Payload() payload: { residentId: string },
+  ): Promise<ApiResponse<any[]>> {
+    return this.workLogService.getWorklogsByResidentId(payload.residentId);
+  }
+
   //   @MessagePattern(WORKLOG_PATTERN.GET_BY_USER_ID)
   //   async getWorkLogsByUserId(@Payload() payload: { user_id: string }): Promise<WorkLogResponseDto[]> {
   //     return this.workLogService.getWorkLogsByUserId(payload.user_id);

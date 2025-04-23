@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Apartment" ADD COLUMN     "warranty_date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

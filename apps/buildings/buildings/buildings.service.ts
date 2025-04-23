@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common'
-import { Payload, RpcException, ClientProxy } from '@nestjs/microservices'
+import { Payload, RpcException, ClientProxy, ClientGrpc } from '@nestjs/microservices'
 import { PrismaClient } from '@prisma/client-building'
 import { PrismaClient as PrismaClientUsers } from '@prisma/client-users'
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library'
@@ -10,22 +10,29 @@ import { CreateBuildingDto } from 'libs/contracts/src/buildings/create-buildings
 import { UpdateBuildingDto } from 'libs/contracts/src/buildings/update-buildings.dto'
 import { Observable } from 'rxjs'
 import { firstValueFrom, lastValueFrom } from 'rxjs'
+import { timeout, catchError, of } from 'rxjs'
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
-
+const USERS_CLIENT = 'USERS_CLIENT'
 // Interface for UserService
 interface UserService {
   getApartmentById(data: { apartmentId: string }): Observable<any>
+  checkUserExists(data: { userId: string; role?: string }): Observable<{
+    exists: boolean;
+    message: string;
+    data?: { userId: string; role: string } | null;
+  }>;
 }
 
 @Injectable()
 export class BuildingsService {
   private prisma = new PrismaClient();
   private prismaUsers = new PrismaClientUsers();
-
+  private userService: UserService
   constructor(
     @Inject(BUILDINGS_CLIENT) private readonly buildingsClient: ClientProxy,
-  ) { }
+    @Inject(USERS_CLIENT) private readonly usersClient: ClientGrpc,
+  ) { this.userService = this.usersClient.getService<UserService>('UserService') }
 
   // Add this method to forward apartment requests to the users service
   async getApartmentById(apartmentId: string) {
@@ -53,6 +60,30 @@ export class BuildingsService {
   // Create a new building
   async createBuilding(CreateBuildingDto: CreateBuildingDto) {
     try {
+      // Validate areaId if provided
+      if (CreateBuildingDto.areaId) {
+        const areaExists = await this.validateAreaId(CreateBuildingDto.areaId);
+        if (!areaExists) {
+          return {
+            statusCode: 404,
+            message: `Area with ID ${CreateBuildingDto.areaId} not found`,
+            error: 'Not Found'
+          };
+        }
+      }
+
+      // Validate managerId if provided
+      if (CreateBuildingDto.manager_id) {
+        const managerExists = await this.validateManagerId(CreateBuildingDto.manager_id);
+        if (!managerExists) {
+          return {
+            statusCode: 404,
+            message: `Manager with ID ${CreateBuildingDto.manager_id} not found`,
+            error: 'Not Found'
+          };
+        }
+      }
+
       const newBuilding = await this.prisma.building.create({
         data: {
           name: CreateBuildingDto.name,
@@ -60,20 +91,14 @@ export class BuildingsService {
           numberFloor: CreateBuildingDto.numberFloor,
           imageCover: CreateBuildingDto.imageCover,
           areaId: CreateBuildingDto.areaId,
+          manager_id: CreateBuildingDto.manager_id,
           Status: CreateBuildingDto.status,
           construction_date: CreateBuildingDto.construction_date,
           completion_date: CreateBuildingDto.completion_date,
+          Warranty_date: CreateBuildingDto.Warranty_date,
         },
       })
 
-      // if(!newBuilding){
-      //   return {
-      //     statusCode: 500,
-      //     message: 'Something wwrong wwhile created',
-      //     data: newBuilding,
-      //   };
-
-      // }
       return {
         statusCode: 201,
         message: 'Building created successfully',
@@ -82,9 +107,29 @@ export class BuildingsService {
     } catch (error) {
       console.error('Error during building creation:', error)
 
+      // Check for specific error types from Prisma
+      if (error instanceof PrismaClientKnownRequestError) {
+        // Foreign key constraint error
+        if (error.code === 'P2003') {
+          return {
+            statusCode: 404,
+            message: 'Referenced record not found. Check areaId or managerId values.',
+            error: 'Not Found'
+          };
+        }
+        // Invalid UUID format
+        if (error.code === 'P2023') {
+          return {
+            statusCode: 400,
+            message: 'Invalid UUID format provided for areaId or managerId',
+            error: 'Bad Request'
+          };
+        }
+      }
+
       throw new RpcException({
         statusCode: 400,
-        message: 'Building creation failed',
+        message: `Building creation failed: ${error.message}`,
       })
     }
   }
@@ -229,6 +274,40 @@ export class BuildingsService {
   // Update an existing building
   async updateBuilding(UpdateBuildingDto: UpdateBuildingDto) {
     try {
+      // Check if building exists
+      const buildingExists = await this.checkBuildingExists(UpdateBuildingDto.buildingId);
+      if (!buildingExists) {
+        return {
+          statusCode: 404,
+          message: `Building with ID ${UpdateBuildingDto.buildingId} not found`,
+          error: 'Not Found'
+        };
+      }
+
+      // Validate areaId if provided
+      if (UpdateBuildingDto.areaId) {
+        const areaExists = await this.validateAreaId(UpdateBuildingDto.areaId);
+        if (!areaExists) {
+          return {
+            statusCode: 404,
+            message: `Area with ID ${UpdateBuildingDto.areaId} not found`,
+            error: 'Not Found'
+          };
+        }
+      }
+
+      // Validate managerId if provided
+      if (UpdateBuildingDto.manager_id) {
+        const managerExists = await this.validateManagerId(UpdateBuildingDto.manager_id);
+        if (!managerExists) {
+          return {
+            statusCode: 404,
+            message: `Manager with ID ${UpdateBuildingDto.manager_id} not found`,
+            error: 'Not Found'
+          };
+        }
+      }
+
       const updatedBuilding = await this.prisma.building.update({
         where: {
           buildingId: UpdateBuildingDto.buildingId,
@@ -239,6 +318,7 @@ export class BuildingsService {
           numberFloor: UpdateBuildingDto.numberFloor,
           imageCover: UpdateBuildingDto.imageCover,
           areaId: UpdateBuildingDto.areaId,
+          manager_id: UpdateBuildingDto.manager_id,
           Status: UpdateBuildingDto.status,
           construction_date: UpdateBuildingDto.construction_date,
           completion_date: UpdateBuildingDto.completion_date,
@@ -251,9 +331,39 @@ export class BuildingsService {
         data: updatedBuilding,
       }
     } catch (error) {
+      console.error('Error during building update:', error)
+
+      // Check for specific error types from Prisma
+      if (error instanceof PrismaClientKnownRequestError) {
+        // Record not found
+        if (error.code === 'P2025') {
+          return {
+            statusCode: 404,
+            message: `Building with ID ${UpdateBuildingDto.buildingId} not found`,
+            error: 'Not Found'
+          };
+        }
+        // Foreign key constraint error
+        if (error.code === 'P2003') {
+          return {
+            statusCode: 404,
+            message: 'Referenced record not found. Check areaId or managerId values.',
+            error: 'Not Found'
+          };
+        }
+        // Invalid UUID format
+        if (error.code === 'P2023') {
+          return {
+            statusCode: 400,
+            message: 'Invalid UUID format provided for areaId or managerId',
+            error: 'Bad Request'
+          };
+        }
+      }
+
       throw new RpcException({
         statusCode: 400,
-        message: 'Building update failed',
+        message: `Building update failed: ${error.message}`,
       })
     }
   }
@@ -311,6 +421,54 @@ export class BuildingsService {
     } catch (error) {
       console.error('Error checking building existence:', error)
       throw error
+    }
+  }
+
+  // Validate if an area ID exists
+  async validateAreaId(areaId: string | undefined): Promise<boolean> {
+    // If no areaId provided, it's optional so validation passes
+    if (!areaId) {
+      return true;
+    }
+
+    try {
+      const area = await this.prisma.area.findUnique({
+        where: { areaId },
+      });
+
+      return !!area; // Returns true if area exists, false otherwise
+    } catch (error) {
+      console.error(`Error validating area ID ${areaId}:`, error);
+      return false;
+    }
+  }
+
+  // Validate if a manager ID exists by checking in users microservice
+  async validateManagerId(managerId: string | undefined): Promise<boolean> {
+    // If no managerId provided, it's optional so validation passes
+    if (!managerId) {
+      return true;
+    }
+
+    try {
+      // Call Users microservice to check if the manager exists
+      const userResponse = await firstValueFrom(
+        this.userService.checkUserExists({
+          userId: managerId,
+          role: 'Manager' // Optionally check if the user has the Manager role
+        }).pipe(
+          timeout(5000), // 5 second timeout
+          catchError(err => {
+            console.error(`Timeout or error validating manager ID ${managerId}:`, err);
+            return of({ exists: false });
+          })
+        )
+      );
+
+      return userResponse?.exists || false;
+    } catch (error) {
+      console.error(`Error validating manager ID ${managerId}:`, error);
+      return false;
     }
   }
 
@@ -413,6 +571,152 @@ export class BuildingsService {
         statusCode: 500,
         message: 'Error retrieving residents',
         data: []
+      }
+    }
+  }
+
+  async getAllResidentsByBuildingDetailId(buildingDetailId: string) {
+    console.log(`[BuildingsService] Getting residents for building detail ID: ${buildingDetailId}`)
+    try {
+      if (!buildingDetailId) {
+        console.error('[BuildingsService] Building detail ID is null or undefined')
+        return {
+          statusCode: 400,
+          message: 'Building detail ID is required',
+          data: []
+        }
+      }
+
+      // Get all apartments directly with the buildingDetailId
+      try {
+        const apartments = await this.prismaUsers.apartment.findMany({
+          where: {
+            buildingDetailId: buildingDetailId
+          },
+          include: {
+            owner: true
+          }
+        })
+
+        console.log(`[BuildingsService] Found ${apartments.length} apartments for building detail ID: ${buildingDetailId}`)
+
+        if (apartments.length === 0) {
+          console.log(`[BuildingsService] No apartments found for building detail ID: ${buildingDetailId}`)
+          return {
+            statusCode: 200,
+            message: 'No apartments found',
+            data: []
+          }
+        }
+
+        // Extract unique owners and remove the password field
+        const residents = new Map()
+        apartments.forEach(apartment => {
+          if (apartment.owner) {
+            const { password, ...ownerWithoutPassword } = apartment.owner
+            residents.set(ownerWithoutPassword.userId, ownerWithoutPassword)
+          }
+        })
+
+        const uniqueResidents = Array.from(residents.values())
+        console.log(`[BuildingsService] Found ${uniqueResidents.length} unique residents`)
+
+        return {
+          statusCode: 200,
+          message: 'Residents retrieved successfully',
+          data: uniqueResidents
+        }
+      } catch (error) {
+        console.error('[BuildingsService] Error fetching apartments by building detail ID:', error)
+        return {
+          statusCode: 500,
+          message: 'Error retrieving apartments',
+          data: []
+        }
+      }
+    } catch (error) {
+      console.error('[BuildingsService] Error getting residents by building detail ID:', error)
+      return {
+        statusCode: 500,
+        message: 'Error retrieving residents',
+        data: []
+      }
+    }
+  }
+
+  // Get buildings by manager ID
+  async getBuildingsByManagerId(managerId: string, params?: { page?: number; limit?: number; search?: string }) {
+    try {
+      if (!managerId) {
+        return {
+          statusCode: 404,
+          message: 'Invalid manager ID provided',
+          data: []
+        }
+      }
+
+      const pageNum = Math.max(1, params?.page || 1);
+      const limitNum = Math.min(50, Math.max(1, params?.limit || 10));
+      const skip = (pageNum - 1) * limitNum;
+
+      const where = {
+        manager_id: managerId,
+        ...(params?.search ? {
+          name: {
+            contains: params?.search,
+            mode: 'insensitive' as const
+          }
+        } : {})
+      };
+
+      const [buildings, total] = await Promise.all([
+        this.prisma.building.findMany({
+          where,
+          include: {
+            area: true,
+            buildingDetails: {
+              include: {
+                locationDetails: true
+              }
+            }
+          },
+          skip,
+          take: limitNum,
+          orderBy: { createdAt: 'desc' }
+        }),
+        this.prisma.building.count({ where })
+      ]);
+
+      if (!buildings || buildings.length === 0) {
+        return {
+          statusCode: 404,
+          message: 'No buildings found for this manager',
+          data: [],
+          meta: {
+            total: 0,
+            page: pageNum,
+            limit: limitNum,
+            totalPages: 0
+          }
+        }
+      }
+
+      return {
+        statusCode: 200,
+        message: 'Buildings retrieved successfully',
+        data: buildings,
+        meta: {
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(total / limitNum)
+        }
+      }
+    } catch (error) {
+      return {
+        statusCode: 500,
+        message: 'Internal server error while retrieving buildings for manager',
+        error: error.message
       }
     }
   }

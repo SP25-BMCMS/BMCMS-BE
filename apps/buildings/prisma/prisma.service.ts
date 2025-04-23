@@ -1,42 +1,68 @@
-// import { PrismaClient } from '.prisma/client'
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PrismaClient } from '@prisma/client-building';
-//import { PrismaClient } from '@prisma/client';
-import { log } from 'console';
-
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
+import { PrismaClient } from '@prisma/client-building'
+import { withAccelerate } from '@prisma/extension-accelerate'
+import { withOptimize } from "@prisma/extension-optimize"
 @Injectable()
 export class PrismaService
   extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
-{
-  constructor(config: ConfigService) {
-    console.log('buildings Initialized'); // Add a debug log to ensure service is being initialized
+  implements OnModuleInit, OnModuleDestroy {
+  constructor(private configService: ConfigService) {
+    // const accelerateUrl = configService.get<string>('BUILDING_PRISMA_ACCELERATE_URL')
+    const url = configService.get<string>('DB_BUILDING_SERVICE')
 
-    const url = config.get<string>('DB_BUILDING_SERVICE');
-    // console.log("database: ", process.env.DATABASE_URL);
+
+    // if (!accelerateUrl) {
+    //   throw new Error('BUILDING_PRISMA_ACCELERATE_URL is not defined')
+    // }
+
+    // if (!accelerateUrl.startsWith('prisma://')) {
+    //   throw new Error('BUILDING_PRISMA_ACCELERATE_URL must start with prisma://')
+    // }
 
     super({
+      log: ['query', 'error', 'warn', 'info'],
       datasources: {
         db: {
-          url,
-        },
-      },
-    });
+          // url: accelerateUrl
+          url: url
+        }
+      }
+    })
   }
 
   async onModuleInit() {
-    await this.$connect();
+    try {
+      console.log('Initializing Prisma Client with Accelerate...')
+
+      // Apply Accelerate extension first
+      // this.$extends(withAccelerate())
+      // this.$extends(withOptimize({ apiKey: this.configService.get<string>('BUILDING_PRISMA_OPTIMIZE_KEY') }))
+      // console.log('Accelerate extension applied')
+
+      // Then connect
+      await this.$connect()
+      console.log('Connected to database')
+
+      // Test connection
+      await this.$queryRaw`SELECT 1`
+      console.log('Connection test successful')
+
+      // console.log('Successfully connected to database with Accelerate')
+    } catch (error) {
+      console.error('Failed to connect to database:', error)
+      throw error
+    }
   }
 
   async onModuleDestroy() {
-    await this.$disconnect();
+    await this.$disconnect()
   }
 
   async cleanDatabase() {
-    if (process.env.NODE_ENV === 'production') return;
+    if (process.env.NODE_ENV === 'production') return
 
     // teardown logic
-    //   return Promise.all([this.user.deleteMany()])
+    return Promise.all([this.building.deleteMany()])
   }
 }

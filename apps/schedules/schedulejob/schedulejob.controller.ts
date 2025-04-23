@@ -36,6 +36,7 @@ export class ScheduleJobController {
   async getScheduleJobById(
     @Payload() payload: { schedule_job_id: string },
   ): Promise<ApiResponse<ScheduleJobResponseDto>> {
+    console.log('paypayloadpayloadpayloadpayloadpayloadpayloadpayloadload', payload.schedule_job_id)
     return this.ScheduleJobsService.getScheduleJobById(payload.schedule_job_id)
   }
 
@@ -43,6 +44,7 @@ export class ScheduleJobController {
   async updateScheduleJobStatus(
     @Payload() updateScheduleJobStatusDto: UpdateScheduleJobStatusDto,
   ): Promise<ApiResponse<ScheduleJobResponseDto>> {
+    console.log('🚀 ~ ScheduleJobController ~ updateScheduleJobStatus ~ updateScheduleJobStatusDto:', updateScheduleJobStatusDto)
     return this.ScheduleJobsService.updateScheduleJobStatus(
       updateScheduleJobStatusDto,
     )
@@ -70,4 +72,12 @@ export class ScheduleJobController {
   async sendMaintenanceEmail(data: { scheduleJobId: string }) {
     return this.ScheduleJobsService.sendMaintenanceEmail(data.scheduleJobId)
   }
+
+  // @MessagePattern(SCHEDULEJOB_PATTERN.CHANGE_STATUS)
+  // async changeStatus(
+  //   @Payload() payload: { schedule_job_id: string; status: string },
+  // ): Promise<ApiResponse<ScheduleJobResponseDto>> {
+  //   console.log('🚀 ~ ScheduleJobController ~ changeStatus ~ payload:', payload)
+  //   return this.ScheduleJobsService.changeStatus(payload.schedule_job_id, payload.status)
+  // }
 }

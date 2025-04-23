@@ -8,17 +8,11 @@ async function bootstrap() {
   const app = await NestFactory.create(CracksModule);
   const configService = app.get(ConfigService);
 
-  const user = configService.get('RABBITMQ_USER');
-  const password = configService.get('RABBITMQ_PASSWORD');
-  const host = configService.get('RABBITMQ_HOST');
-  const queueName = configService.get('RABBITMQ_QUEUE_NAME');
-  const isLocal = process.env.NODE_ENV !== 'production';
+  const url = configService.get('RABBITMQ_URL');
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,
     options: {
-      urls: isLocal
-        ? [`amqp://${user}:${password}@${host}`]
-        : [`amqp://${user}:${password}@rabbitmq:5672`],
+      urls: [url],
       queue: 'cracks_queue',
       queueOptions: {
         durable: true,

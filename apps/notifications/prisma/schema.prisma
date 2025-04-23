@@ -1,0 +1,32 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+    output   = "../../../node_modules/@prisma/client-notifications"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DB_NOTIFICATION_SERVICE")
+}
+
+model Notification {
+    id        String           @id @default(uuid())
+    userId    String?
+    title     String
+    content   String
+    link      String?
+    isRead    Boolean          @default(false)
+    type      NotificationType
+    relatedId String?
+    createdAt DateTime         @default(now())
+    updatedAt DateTime         @updatedAt
+}
+
+enum NotificationType {
+    TASK_ASSIGNMENT
+    TASK_STATUS_UPDATE
+    MAINTENANCE_SCHEDULE
+    SYSTEM
+}

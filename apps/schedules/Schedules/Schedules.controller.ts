@@ -10,12 +10,13 @@ import { CreateScheduleDto } from '@app/contracts/schedules/create-Schedules.dto
 import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules'
 import { ScheduleResponseDto } from '@app/contracts/schedules/Schedule.dto'
-import { $Enums } from '@prisma/client-Schedule'
 import { SCHEDULES_PATTERN } from '@app/contracts/schedules/Schedule.patterns'
 import {
   PaginationParams,
   PaginationResponseDto,
 } from '../../../libs/contracts/src/Pagination/pagination.dto'
+import { AutoMaintenanceScheduleDto } from '@app/contracts/schedules/auto-maintenance-schedule.dto'
+
 @Controller('schedules')
 export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) { }
@@ -41,20 +42,6 @@ export class ScheduleController {
     return this.scheduleService.updateSchedule(schedule_id, updateScheduleDto)
   }
 
-  @MessagePattern(SCHEDULES_PATTERN.UPDATE_TYPE)
-  async changeScheduleType(
-    @Payload()
-    {
-      schedule_id,
-      schedule_type,
-    }: {
-      schedule_id: string
-      schedule_type: $Enums.ScheduleType
-    },
-  ): Promise<ApiResponse<ScheduleResponseDto>> {
-    return this.scheduleService.changeScheduleType(schedule_id, schedule_type)
-  }
-
   @MessagePattern(SCHEDULES_PATTERN.GET)
   async getAllSchedulesMicro(
     @Payload() paginationParams: PaginationParams = {},
@@ -78,5 +65,17 @@ export class ScheduleController {
     schedule_id: string,
   ): Promise<ApiResponse<ScheduleResponseDto>> {
     return this.scheduleService.deleteSchedule(schedule_id)
+  }
+
+  @MessagePattern(SCHEDULES_PATTERN.CREATE_AUTO_MAINTENANCE)
+  async createAutoMaintenanceSchedule(
+    @Payload() dto: AutoMaintenanceScheduleDto
+  ): Promise<ApiResponse<ScheduleResponseDto>> {
+    return this.scheduleService.createAutoMaintenanceSchedule(dto);
+  }
+
+  @MessagePattern(SCHEDULES_PATTERN.TRIGGER_AUTO_MAINTENANCE)
+  async triggerAutoMaintenanceSchedule(): Promise<ApiResponse<string>> {
+    return this.scheduleService.triggerAutoMaintenanceSchedule();
   }
 }

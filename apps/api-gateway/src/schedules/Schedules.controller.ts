@@ -12,6 +12,7 @@ import {
   Req,
   UseGuards,
   Query,
+  Patch,
 } from '@nestjs/common'
 import { SchedulesService } from './Schedules.service'
 import { catchError, firstValueFrom, NotFoundError } from 'rxjs'
@@ -19,8 +20,6 @@ import { CreateScheduleDto } from '@app/contracts/schedules/create-Schedules.dto
 import { ScheduleResponseDto } from '@app/contracts/schedules/Schedule.dto'
 import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { UpdateScheduleDto } from '@app/contracts/schedules/update.Schedules'
-import { $Enums } from '@prisma/client-Schedule'
-import { ChangeScheduleTypeDto } from '@app/contracts/schedules/changeScheduleStatusDto '
 import {
   ApiTags,
   ApiOperation,
@@ -30,6 +29,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger'
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
+import { AutoMaintenanceScheduleDto } from '@app/contracts/schedules/auto-maintenance-schedule.dto'
 
 @Controller('schedules')
 @ApiTags('schedules')
@@ -44,7 +44,11 @@ export class SchedulesController {
     status: 201,
     description: 'Schedule created successfully',
   })
-  @SwaggerResponse({ status: 400, description: 'Bad request' })
+  @SwaggerResponse({ status: 400, description: 'Bad request - Missing required fields or invalid data' })
+  @SwaggerResponse({ status: 404, description: 'Maintenance cycle or building details not found' })
+  @SwaggerResponse({ status: 408, description: 'Request timeout - Service may be unavailable' })
+  @SwaggerResponse({ status: 500, description: 'Internal server error' })
+  @HttpCode(HttpStatus.CREATED)
   async createSchedule(
     @Body() createScheduleDto: CreateScheduleDto,
   ): Promise<ApiResponse<ScheduleResponseDto>> {
@@ -60,7 +64,10 @@ export class SchedulesController {
     status: 200,
     description: 'Schedule updated successfully',
   })
-  @SwaggerResponse({ status: 404, description: 'Schedule not found' })
+  @SwaggerResponse({ status: 400, description: 'Bad request - Invalid input data' })
+  @SwaggerResponse({ status: 404, description: 'Schedule, maintenance cycle, or building details not found' })
+  @SwaggerResponse({ status: 408, description: 'Request timeout - Service may be unavailable' })
+  @SwaggerResponse({ status: 500, description: 'Internal server error' })
   async updateSchedule(
     @Param('schedule_id') schedule_id: string,
     @Body() updateScheduleDto: UpdateScheduleDto,
@@ -68,24 +75,52 @@ export class SchedulesController {
     return this.schedulesService.updateSchedule(schedule_id, updateScheduleDto)
   }
 
-  // Change schedule type
-  @Put('change-type/:schedule_id')
-  @ApiOperation({ summary: 'Change schedule type' })
+  // Partial update schedule (PATCH)
+  @Patch(':schedule_id')
+  @ApiOperation({ summary: 'Partially update a schedule' })
   @ApiParam({ name: 'schedule_id', description: 'Schedule ID' })
-  @ApiBody({ type: ChangeScheduleTypeDto })
+  @ApiBody({ type: UpdateScheduleDto })
   @SwaggerResponse({
     status: 200,
-    description: 'Schedule type changed successfully',
+    description: 'Schedule partially updated successfully',
   })
-  @SwaggerResponse({ status: 404, description: 'Schedule not found' })
-  async changeScheduleType(
+  @SwaggerResponse({ status: 400, description: 'Bad request - Invalid input data' })
+  @SwaggerResponse({ status: 404, description: 'Schedule, maintenance cycle, or building details not found' })
+  @SwaggerResponse({ status: 408, description: 'Request timeout - Service may be unavailable' })
+  @SwaggerResponse({ status: 500, description: 'Internal server error' })
+  async partialUpdateSchedule(
     @Param('schedule_id') schedule_id: string,
-    @Body() changeScheduleTypeDto: ChangeScheduleTypeDto,
+    @Body() updateScheduleDto: UpdateScheduleDto,
   ): Promise<ApiResponse<ScheduleResponseDto>> {
-    return this.schedulesService.changeScheduleType(
-      schedule_id,
-      changeScheduleTypeDto.schedule_type,
-    )
+    return this.schedulesService.updateSchedule(schedule_id, updateScheduleDto)
+  }
+
+  @Post('auto-maintenance')
+  @ApiOperation({ summary: 'Create an automated maintenance schedule based on maintenance cycles' })
+  @ApiBody({ type: AutoMaintenanceScheduleDto })
+  @SwaggerResponse({
+    status: 201,
+    description: 'Automated maintenance schedule created successfully',
+  })
+  @SwaggerResponse({ status: 400, description: 'Bad request' })
+  @SwaggerResponse({ status: 404, description: 'Maintenance cycle not found' })
+  async createAutoMaintenanceSchedule(
+    @Body() autoMaintenanceDto: AutoMaintenanceScheduleDto,
+  ): Promise<ApiResponse<ScheduleResponseDto>> {
+    return this.schedulesService.createAutoMaintenanceSchedule(autoMaintenanceDto);
+  }
+
+  @Post('trigger-auto-maintenance')
+  @ApiOperation({ summary: 'Trigger automatic creation of maintenance schedules from all maintenance cycles' })
+  @SwaggerResponse({
+    status: 201,
+    description: 'Automated maintenance schedules creation triggered successfully',
+  })
+  @SwaggerResponse({ status: 404, description: 'No maintenance cycles or buildings found' })
+  @SwaggerResponse({ status: 500, description: 'Server error' })
+  @SwaggerResponse({ status: 408, description: 'Request timeout - operation may still be processing' })
+  async triggerAutoMaintenanceSchedule(): Promise<ApiResponse<string>> {
+    return this.schedulesService.triggerAutoMaintenanceSchedule();
   }
 
   // Get all schedules

@@ -1,44 +1,70 @@
-import { IsOptional, IsString, IsEnum, IsDateString, IsArray, IsUUID } from 'class-validator'
-import { $Enums } from '@prisma/client-Schedule'
+import { IsOptional, IsString, IsEnum, IsDateString, IsUUID } from 'class-validator'
+import { $Enums } from '@prisma/client-schedule'
 import { ApiProperty } from '@nestjs/swagger'
 
 export class UpdateScheduleDto {
   @IsOptional()
   @IsString()
-  @ApiProperty({ description: 'The name of the schedule', required: false })  // Optional property
+  @ApiProperty({
+    description: 'The name of the schedule',
+    required: false,
+    example: 'Updated Elevator Maintenance'
+  })
   schedule_name?: string
 
   @IsOptional()
-  @IsEnum($Enums.ScheduleType)
-  @ApiProperty({
-    description: 'The type of the schedule', required: false, enum: $Enums.ScheduleType,
-    example: $Enums.ScheduleType.Daily + "Daily ,Weekly,Monthly,Yearly,Specific",
-  })  // Optional enum property
-  schedule_type?: $Enums.ScheduleType
-
-  @IsOptional()
   @IsString()
-  @ApiProperty({ description: 'A brief description of the schedule', required: false })  // Optional description
+  @ApiProperty({
+    description: 'A brief description of the schedule',
+    required: false,
+    example: 'Updated maintenance schedule for elevators'
+  })
   description?: string
 
   @IsOptional()
   @IsDateString()
-  @ApiProperty({ description: 'Start date of the schedule', required: false })  // Optional start date
+  @ApiProperty({
+    description: 'Start date of the schedule',
+    required: false,
+    example: '2023-12-01T00:00:00.000Z'
+  })
   start_date?: string
 
   @IsOptional()
   @IsDateString()
-  @ApiProperty({ description: 'End date of the schedule', required: false })  // Optional end date
+  @ApiProperty({
+    description: 'End date of the schedule',
+    required: false,
+    example: '2024-12-31T00:00:00.000Z'
+  })
   end_date?: string
 
   @IsOptional()
-  @IsArray()
+  @IsEnum($Enums.ScheduleStatus)
+  @ApiProperty({
+    description: 'Status of the schedule',
+    enum: $Enums.ScheduleStatus,
+    required: false,
+    example: 'InProgress'
+  })
+  schedule_status?: $Enums.ScheduleStatus
+
+  @IsOptional()
+  @IsUUID()
+  @ApiProperty({
+    description: 'ID of the maintenance cycle',
+    required: false,
+    example: 'd290f1ee-6c54-4b01-90e6-d701748f0851'
+  })
+  cycle_id?: string
+
+  @IsOptional()
   @IsUUID('4', { each: true })
   @ApiProperty({
-    description: 'Array of building IDs associated with this schedule',
+    description: 'Array of building detail IDs associated with this schedule',
     required: false,
     type: [String],
-    example: ['123e4567-e89b-12d3-a456-426614174000']
-  })  // Optional building IDs
-  buildingId?: string[]
+    example: ['d290f1ee-6c54-4b01-90e6-d701748f0851']
+  })
+  buildingDetailIds?: string[]
 }

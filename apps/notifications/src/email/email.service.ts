@@ -6,20 +6,68 @@ import { MailerService } from '@nestjs-modules/mailer'
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name)
+  private recentEmails = new Map<string, number>() // Store email keys with timestamps
+  private readonly DEDUPLICATION_WINDOW_MS = 10000 // 10 seconds deduplication window
 
   constructor(
     private configService: ConfigService,
     private readonly mailerService: MailerService,
-  ) { }
+  ) {
+    // Clear old entries from deduplication map every minute
+    setInterval(() => this.cleanupRecentEmails(), 60000);
+  }
+
+  // Helper to clean up old entries from the deduplication map
+  private cleanupRecentEmails() {
+    const now = Date.now();
+    for (const [key, timestamp] of this.recentEmails.entries()) {
+      if (now - timestamp > this.DEDUPLICATION_WINDOW_MS) {
+        this.recentEmails.delete(key);
+      }
+    }
+  }
+
+  // Create a unique key for the email to prevent duplicates
+  private createEmailKey(to: string, subject: string): string {
+    return `${to}:${subject}`;
+  }
+
+  // Check if this is a duplicate email sent within the deduplication window
+  private isDuplicateEmail(key: string): boolean {
+    const now = Date.now();
+    if (this.recentEmails.has(key)) {
+      const timestamp = this.recentEmails.get(key);
+      return now - timestamp < this.DEDUPLICATION_WINDOW_MS;
+    }
+    return false;
+  }
 
   async sendOtp(email: string, otp: string): Promise<boolean> {
     try {
+      // Create a unique key for this OTP email
+      const subject = 'Mã OTP xác thực';
+      const emailKey = this.createEmailKey(email, subject);
+
+      // Check if we just sent an OTP to this email
+      if (this.isDuplicateEmail(emailKey)) {
+        this.logger.warn(`Duplicate OTP email detected to: ${email} - skipping send`);
+        return true; // Return true to avoid triggering error flows
+      }
+
+      // Mark this email as sent
+      this.recentEmails.set(emailKey, Date.now());
+
       this.logger.log(`Sending OTP email to: ${email}`)
       this.logger.debug(`OTP: ${otp}`)
+      this.logger.debug(`Email configuration:`, {
+        host: this.configService.get('EMAIL_HOST'),
+        port: this.configService.get('EMAIL_PORT'),
+        user: this.configService.get('EMAIL_USER'),
+      })
 
       const result = await this.mailerService.sendMail({
         to: email,
-        subject: 'Mã OTP xác thực',
+        subject: subject,
         template: 'otp',
         context: {
           otp,
@@ -31,10 +79,12 @@ export class EmailService {
 
       this.logger.log(`OTP email sent successfully to: ${email}`)
       this.logger.debug(`Message ID: ${result.messageId}`)
+      this.logger.debug(`Email response:`, result)
       return true
     } catch (error) {
       this.logger.error(`Failed to send OTP email to ${email}: ${error.message}`)
-      this.logger.error(error.stack)
+      this.logger.error(`Error details:`, error)
+      this.logger.error(`Stack trace:`, error.stack)
       return false
     }
   }
@@ -53,6 +103,19 @@ export class EmailService {
     unit: string
   }): Promise<boolean> {
     try {
+      // Create a unique key for this email
+      const subject = `Thông báo lịch bảo trì - ${data.buildingName}`;
+      const emailKey = this.createEmailKey(data.to, subject);
+
+      // Check if we just sent this exact email
+      if (this.isDuplicateEmail(emailKey)) {
+        this.logger.warn(`Duplicate email detected to: ${data.to} - skipping send`);
+        return true; // Return true to avoid triggering error flows
+      }
+
+      // Mark this email as sent
+      this.recentEmails.set(emailKey, Date.now());
+
       this.logger.log(`Sending maintenance email to: ${data.to}`)
       this.logger.debug(`Maintenance details:`, {
         building: data.buildingName,
@@ -76,7 +139,7 @@ export class EmailService {
 
       const result = await this.mailerService.sendMail({
         to: data.to,
-        subject: `Thông báo lịch bảo trì - ${data.buildingName}`,
+        subject: subject,
         template: 'maintenance-schedule',
         context: {
           residentName: data.residentName,

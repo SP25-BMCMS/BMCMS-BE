@@ -12,6 +12,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DB_CRACK_SERVICE")
+  // directUrl = env("CRACK_PRISMA_ACCELERATE_URL")
 }
 
 model CrackReport {
@@ -37,27 +38,15 @@ model CrackDetail {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   crackReport    CrackReport    @relation(fields: [crackReportId], references: [crackReportId])
-  crackSegment   CrackSegment[]
 }
 
-model CrackSegment {
-  crackSegmentId String      @id @default(uuid())
-  crackDetailsId String
-  confidence     Float
-  x              Float
-  y              Float
-  z              Float
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-  crackDetail    CrackDetail @relation(fields: [crackDetailsId], references: [crackDetailsId])
-}
 
 enum ReportStatus {
   Pending
   InProgress
   InFixing
   Reviewing
-  Rejected
+  Rejected  
   Completed
 }
 

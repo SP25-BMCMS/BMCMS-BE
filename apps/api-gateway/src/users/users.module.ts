@@ -50,5 +50,6 @@ import { DepartmentService } from './department/department.service';
     ApartmentController,
     DepartmentController,
   ],
+  exports: [USERS_CLIENT],
 })
 export class UsersModule { }

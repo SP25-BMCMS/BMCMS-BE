@@ -20,7 +20,14 @@ import { RepairMaterialModule } from './RepairMaterial/RepairMaterial.module'
 import { NotificationsModule } from './notifications/notifications.module'
 import { FeedbackModule } from './Feedback/Feedback.module'
 import { MaterialModule } from './Material/Material.module'
-
+import { ChatbotModule } from './chatbot/chatbot.module'
+import { DashboardModule } from './dashboard/dashboard.module'
+import { ContractsModule } from './contract/contracts.module'
+import { CrackRecordModule } from './CrackRecord/CrackRecord.module'
+import { MaintenanceCycleModule } from './MaintenanceCycle/MaintenanceCycle.module'
+import { MaintenancehistoryModule } from './maintenancehistory/maintenancehistory.module'
+import { DeviceModule } from './Device/Device.module'
+import { TechnicalRecordModule } from './technicalrecord/technicalrecord.module'
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -90,7 +97,15 @@ import { MaterialModule } from './Material/Material.module'
     RepairMaterialModule,
     NotificationsModule,
     FeedbackModule,
-    MaterialModule
+    MaterialModule,
+    ChatbotModule,
+    DashboardModule,
+    ContractsModule,
+    CrackRecordModule,
+    MaintenanceCycleModule,
+    MaintenancehistoryModule,
+    DeviceModule,
+    TechnicalRecordModule,
   ],
 })
 export class BuildingMaintenanceApiGatewayModule { }

@@ -21,7 +21,7 @@ import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 @Controller('worklogs')
 @ApiTags('worklogs')
 export class WorkLogController {
-  constructor(private readonly workLogService: WorklogService) {}
+  constructor(private readonly workLogService: WorklogService) { }
 
   @Post()
   @ApiOperation({ summary: 'Create a new worklog' })
@@ -106,4 +106,13 @@ export class WorkLogController {
   // async getWorkLogsByUserId(@Param('user_id') user_id: string) {
   //   return this.workLogService.getWorkLogsByUserId(user_id);
   // }
+
+  @Get('resident/:resident_id')
+  @ApiOperation({ summary: 'Get worklogs by resident ID' })
+  @ApiParam({ name: 'resident_id', description: 'Resident ID (reportBy from CrackReport)' })
+  @ApiResponse({ status: 200, description: 'Returns worklogs for the resident with related data' })
+  @ApiResponse({ status: 404, description: 'No worklogs found for this resident' })
+  async getWorklogsByResidentId(@Param('resident_id') resident_id: string) {
+    return this.workLogService.getWorklogsByResidentId(resident_id);
+  }
 }

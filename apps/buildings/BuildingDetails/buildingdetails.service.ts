@@ -60,6 +60,7 @@ export class BuildingDetailsService {
         include: {
           building: true,
           locationDetails: true,
+          device : true,
         },
         orderBy: {
           createdAt: 'desc',
@@ -106,10 +107,13 @@ export class BuildingDetailsService {
         include: {
           building: {
             include: {
-              area: true
+              area: true,
+              
             }
+
           },
           //locationDetails: true
+          device : true,
         }
       })
 

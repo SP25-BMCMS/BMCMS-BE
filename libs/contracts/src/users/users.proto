@@ -6,6 +6,7 @@ service UserService {
   rpc Login (LoginRequest) returns (LoginResponse);
   rpc Signup (CreateUserRequest) returns (ApiResponseUser);
   rpc GetUserInfo (UserRequest) returns (UserResponse);
+  rpc GetUserById (UserRequest) returns (UserResponse);
   rpc GetAllUsers (Empty) returns (UsersListResponse);
   rpc Logout (Empty) returns (LogoutResponse);
   rpc Test (TestRequest) returns (TestResponse);
@@ -31,6 +32,9 @@ service UserService {
   rpc CheckPositionAndDepartment (CheckPositionAndDepartmentRequest) returns (CheckPositionAndDepartmentResponse);
   rpc UpdateDepartmentAndWorkingPosition (UpdateDepartmentAndWorkingPositionRequest) returns (UpdateDepartmentAndWorkingPositionResponse);
   rpc GetAllStaffByStaffLeader (GetAllStaffByStaffLeaderRequest) returns (StaffListResponse);
+  rpc CheckStaffAreaMatchWithScheduleJob (CheckStaffAreaMatchWithScheduleJobRequest) returns (CheckStaffAreaMatchWithScheduleJobResponse);
+  rpc GetUserByIdForTaskAssignmentDetail (UserRequest) returns (UserForTaskAssignmentResponse);
+  rpc CheckUserExists (CheckUserExistsRequest) returns (CheckUserExistsResponse);
 }
 message GetApartmentByIdRequest {
   string apartmentId = 1;
@@ -68,6 +72,7 @@ message CreateUserRequest {
 message ApartmentRequest {
   string apartmentName = 1;
   string buildingDetailId = 2;
+  string warrantyDate = 3;
 }
 
 message ApiResponseUser {
@@ -121,6 +126,7 @@ message ApartmentResponse {
   string apartmentName = 2;
   string buildingDetailId = 3;
   BuildingDetailInfo buildingDetails = 4;
+  string warrantyDate = 5;
 }
 
 message BuildingInfo {
@@ -139,7 +145,9 @@ message BuildingInfo {
 message GetApartmentRepsonse {
   string apartmentId = 1;
   string apartmentName = 2;
+  string warrantyDate = 4;
   BuildingDetailInfo buildingDetails = 3;
+  string buildingDetailId = 5;
 }
 
 message GetApartmentByResidentIdResponse {
@@ -318,6 +326,7 @@ message Apartment {
   string apartmentName = 1;
   string apartmentId = 2;
   BuildingInfo building = 3;
+  string warrantyDate = 4;
 }
 
 message GetApartmentsResponse {
@@ -346,7 +355,27 @@ message UpdateResidentApartmentsRequest {
 message UpdateResidentApartmentsResponse {
   bool isSuccess = 1;
   string message = 2;
-  UserResponse data = 3;
+  UserResponseWithApartments data = 3;
+}
+
+message UserResponseWithApartments {
+  string userId = 1;
+  string username = 2;
+  string email = 3;
+  string phone = 4;
+  string role = 5;
+  string dateOfBirth = 6;
+  string gender = 7;
+  UserDetailsResponse userDetails = 8;
+  repeated ApartmentWithWarranty apartments = 9;
+  string accountStatus = 10;
+}
+
+message ApartmentWithWarranty {
+  string apartmentId = 1;
+  string apartmentName = 2;
+  string buildingDetailId = 3;
+  string warrantyDate = 4;
 }
 
 message UpdateAccountStatusRequest {
@@ -430,6 +459,44 @@ message StaffPaginationRequest {
 
 message GetAllStaffByStaffLeaderRequest {
   string staffId = 1;
+}
+
+message CheckStaffAreaMatchWithScheduleJobRequest {
+  string staffId = 1;
+  string scheduleJobId = 2;
+}
+
+message CheckStaffAreaMatchWithScheduleJobResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  bool isMatch = 3;
+}
+
+message UserForTaskAssignmentResponse {
+  bool isSuccess = 1;
+  string message = 2;
+  UserForTaskAssignment data = 3;
+}
+
+message UserForTaskAssignment {
+  string userId = 1;
+  string username = 2;
+}
+
+message CheckUserExistsRequest {
+  string userId = 1;
+  optional string role = 2; // Optional field for filtering by role
+}
+
+message CheckUserExistsResponse {
+  bool exists = 1;
+  string message = 2;
+  optional UserData data = 3; // Will be null if user doesn't exist
+}
+
+message UserData {
+  string userId = 1;
+  string role = 2;
 }
 
 

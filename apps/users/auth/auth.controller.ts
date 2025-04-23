@@ -113,11 +113,5 @@ export class AuthController {
     )
   }
 
-  @GrpcMethod('UserService', 'GetApartmentByResidentAndApartmentId')
-  async getApartmentByResidentAndApartmentId(data: {
-    residentId: string
-    apartmentId: string
-  }) {
-    return await this.usersService.getApartmentByResidentAndApartmentId(data)
-  }
+
 }

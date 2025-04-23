@@ -24,10 +24,23 @@ export class UsersController {
     apartments: { apartmentName: string; buildingDetailId: string }[];
   }) {
     try {
+      console.log("Users microservice received request:", JSON.stringify(data, null, 2));
+
       const response = await this.usersService.updateResidentApartments(
         data.residentId,
         data.apartments,
       );
+
+      // Log the response data
+      if (response.data && response.data.apartments && response.data.apartments.length > 0) {
+        console.log("Microservice response apartments:", JSON.stringify(response.data.apartments.map(apt => ({
+          id: apt.apartmentId,
+          name: apt.apartmentName,
+          warrantyDate: apt.warrantyDate
+        })), null, 2));
+      }
+
+      console.log("Users microservice sending response:", JSON.stringify(response, null, 2));
 
       if (!response.isSuccess) {
         throw new RpcException({
@@ -63,6 +76,16 @@ export class UsersController {
     }
   }
 
+  @GrpcMethod('users.UserService', 'GetUserById')
+  async getUserById(data: { userId: string }) {
+    try {
+      const response = await this.usersService.getUserById(data.userId);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   @GrpcMethod('UserService', 'UpdateDepartmentAndWorkingPosition')
   async updateDepartmentAndWorkingPosition(data: {
     staffId: string;
@@ -70,18 +93,13 @@ export class UsersController {
     positionId: string;
   }) {
     try {
-
       const result = await this.usersService.updateDepartmentAndWorkingPosition(
         data.staffId,
         data.departmentId,
         data.positionId
       );
 
-
-      // If the service method indicates a failure, throw an RPC exception
       if (!result.isSuccess) {
-
-        // Check for specific "not found" error messages and return 404
         const notFoundKeywords = ['không tìm thấy', 'not found', 'không tồn tại'];
         const isNotFound = notFoundKeywords.some(keyword =>
           result.message.toLowerCase().includes(keyword.toLowerCase())
@@ -95,20 +113,16 @@ export class UsersController {
 
       return result;
     } catch (error) {
-
-      // If it's already an RpcException, rethrow it
       if (error instanceof RpcException) {
         throw error;
       }
 
-      // For other errors, check if it's a "not found" message
       const errorMessage = error.message || 'Lỗi khi cập nhật phòng ban và vị trí công việc';
       const notFoundKeywords = ['không tìm thấy', 'not found', 'không tồn tại'];
       const isNotFound = notFoundKeywords.some(keyword =>
         errorMessage.toLowerCase().includes(keyword.toLowerCase())
       );
 
-      // Otherwise, wrap it in an RpcException
       throw new RpcException({
         statusCode: isNotFound ? 404 : 500,
         message: errorMessage,
@@ -127,5 +141,47 @@ export class UsersController {
     }
   }
 
+  @GrpcMethod('UserService', 'CheckStaffAreaMatchWithScheduleJob')
+  async checkStaffAreaMatchWithScheduleJob(data: { staffId: string; scheduleJobId: string }) {
+    try {
+      console.log('Received CheckStaffAreaMatchWithScheduleJob request:', data);
+      const result = await this.usersService.checkStaffAreaMatchWithScheduleJob(data);
+      console.log('CheckStaffAreaMatchWithScheduleJob result:', result);
+      return result;
+    } catch (error) {
+      console.error('Error in CheckStaffAreaMatchWithScheduleJob:', error);
+      throw new RpcException({
+        statusCode: 500,
+        message: `Error checking staff area match with schedule job: ${error.message}`,
+      });
+    }
+  }
 
+  @GrpcMethod('UserService', 'GetUserByIdForTaskAssignmentDetail')
+  async getUserByIdForTaskAssignmentDetail(data: { userId: string }) {
+    try {
+      const response = await this.usersService.getUserByIdForTaskAssignmentDetail(data.userId);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @GrpcMethod('UserService', 'CheckUserExists')
+  async checkUserExists(data: { userId: string; role?: string }) {
+    try {
+      const user = await this.usersService.checkUserExists(data.userId, data.role);
+      return {
+        exists: !!user,
+        message: user ? `User with ID ${data.userId} found` : `User with ID ${data.userId} not found${data.role ? ` with role ${data.role}` : ''}`,
+        data: user ? { userId: user.userId, role: user.role } : null
+      };
+    } catch (error) {
+      console.error('Error checking user existence:', error);
+      throw new RpcException({
+        statusCode: 500,
+        message: `Error checking user existence: ${error.message}`,
+      });
+    }
+  }
 }

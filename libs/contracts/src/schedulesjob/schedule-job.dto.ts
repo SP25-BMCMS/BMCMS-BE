@@ -21,4 +21,6 @@ export class ScheduleJobResponseDto {
 
   @ApiProperty()
   building_id: string;
+  @ApiProperty({ required: false })
+  buildingDetail?: any;
 }

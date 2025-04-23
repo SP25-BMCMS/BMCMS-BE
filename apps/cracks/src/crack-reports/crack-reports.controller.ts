@@ -96,4 +96,20 @@ export class CrackReportsController {
   async testUsersConnection() {
     return this.crackReportsService.testUsersServiceConnection()
   }
+
+  @MessagePattern({ cmd: 'get-all-crack-report-by-user-id' })
+  async getAllCrackReportByUserId(@Payload() payload: { userId: string }) {
+    console.log("🚀 Kha ne ~ userId:", payload.userId)
+    return await this.crackReportsService.getAllCrackReportByUserId(payload.userId)
+  }
+
+  @MessagePattern({ cmd: 'update-crack-report-for-all-status' })
+  async updateCrackReportForAllStatus(
+    @Payload() payload: { crackReportId: string; dto: UpdateCrackReportDto },
+  ) {
+    return await this.crackReportsService.updateCrackReportForAllStatus(
+      payload.crackReportId,
+      payload.dto,
+    )
+  }
 }

@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/@prisma/client-chatbot"
+  // previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DB_CHATBOT_SERVICE")
+  // directUrl = env("CHATBOT_PRISMA_ACCELERATE_URL")
+  // relationMode = "prisma"
+}
+
+model Chat {
+  id        String   @id @default(uuid())
+  userId    String
+  message   String
+  isUser    Boolean  @default(true)
+  type      String?  @default("user") // system, crack, user
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([type])
+} 

@@ -1,41 +1,14 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { $Enums } from "@prisma/client-building"
-import { IsEmail, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, MinLength } from "class-validator"
-
+import { IsDate, IsEmail, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, MinLength } from "class-validator"
+import { Type } from "class-transformer";
 
 export class CreateBuildingDto {
-  //   @IsUUID()
-  //   buildingId: string;
-
-  // @IsString()
-  // @IsNotEmpty()
-  // name: string;
-
-  // @IsOptional()
-  // @IsString()
-  // description?: string;
-
-  // @IsInt()
-  // numberFloor: number;
-
-  // @IsOptional()
-  // @IsString()
-  // imageCover?: string;
-
-  // @IsOptional()
-  // @IsUUID()
-  // areaId?: string;
-  @ApiProperty({
-    description: 'Unique identifier for the building',
-    type: String,
-    example: 'd1b0cd4c-1e76-4d7f-a0d4-81b32e5101cd', // Example UUID
-  })
-
 
   @ApiProperty({
     description: 'Name of the building',
     type: String,
-    example: 'Skyline Tower',
+    example: 'S7',
   })
   @IsString()
   @IsNotEmpty()
@@ -80,20 +53,50 @@ export class CreateBuildingDto {
   @IsUUID()
   areaId?: string;
 
-
-
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Manager ID associated with the building (optional)',
+    type: String,
+    example: '8e8c4a45-9c2d-4d2f-a5b6-7e3a9f0d8c1e',
+    required: false,
+  })
   @IsOptional()
-  @IsString()
-  construction_date?: string;
-  @ApiProperty()
-  @IsOptional()
-  @IsString()
-  completion_date?: string;
+  @IsUUID()
+  manager_id?: string;
+
+  @ApiProperty({
+    description: 'Construction date of the building',
+    type: Date,
+    example: '2022-01-01',
+  })
+  @Type(() => Date)
+  @IsDate()
+  construction_date: Date;
+
+  @ApiProperty({
+    description: 'Completion date of the building',
+    type: Date,
+    example: '2023-12-31',
+  })
+  @Type(() => Date)
+  @IsDate()
+  completion_date: Date;
+
+  @ApiProperty({
+    description: 'Warranty date of the building',
+    type: Date,
+    example: '2026-12-31',
+  })
+  @Type(() => Date)
+  @IsDate()
+  Warranty_date: Date;
 
 
+  @ApiProperty({
+    description: 'The status of the building',
+    enum: $Enums.BuildingStatus,
+    example: `${$Enums.BuildingStatus.operational}|${$Enums.BuildingStatus.under_construction}|${$Enums.BuildingStatus.completion_date}`
+  })
   @IsNotEmpty()
   @IsEnum($Enums.BuildingStatus)
-  @ApiProperty({ description: 'The status of the building', enum: $Enums.BuildingStatus, example: "" + $Enums.BuildingStatus.operational + "|" + $Enums.BuildingStatus.under_construction })  // Enum for status
   status: $Enums.BuildingStatus;
 }

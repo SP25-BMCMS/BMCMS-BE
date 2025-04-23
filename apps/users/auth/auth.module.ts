@@ -15,16 +15,28 @@ const NOTIFICATION_CLIENT = 'NOTIFICATION_CLIENT'
     ClientsModule.registerAsync([
       {
         name: NOTIFICATION_CLIENT,
-        useFactory: async (configService: ConfigService) => ({
-          transport: Transport.REDIS,
-          options: {
-            host: configService.get<string>('REDIS_HOST') || 'redis',
-            port: configService.get<number>('REDIS_PORT') || 6379,
-            password: configService.get<string>('REDIS_PASSWORD') || '',
-            retryAttempts: 5,
-            retryDelay: 3000,
-          },
-        }),
+        useFactory: async (configService: ConfigService) => {
+          const redisUrl = configService.get<string>('REDIS_URL')
+          if (!redisUrl) {
+            throw new Error('REDIS_URL environment variable is not set')
+          }
+
+          const url = new URL(redisUrl)
+          return {
+            transport: Transport.REDIS,
+            options: {
+              host: url.hostname,
+              port: parseInt(url.port),
+              username: url.username,
+              password: url.password,
+              retryAttempts: 5,
+              retryDelay: 3000,
+              tls: {
+                rejectUnauthorized: false
+              }
+            },
+          }
+        },
         inject: [ConfigService],
       },
     ]),

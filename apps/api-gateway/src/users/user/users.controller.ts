@@ -448,7 +448,7 @@ export class UsersController {
             type: 'object',
             properties: {
               apartmentName: { type: 'string', example: 'A101' },
-              buildingDetailId: { type: 'string', example: '12345' },
+              buildingDetailId: { type: 'string', example: '12345' }
             },
             required: ['apartmentName', 'buildingDetailId'],
           },
@@ -474,10 +474,23 @@ export class UsersController {
     @Res() res: any,
   ) {
     try {
+      console.log("API Gateway Controller - Updating resident apartments for resident:", residentId);
+
       const response = await this.usersService.updateResidentApartments(
         residentId,
         data.apartments,
       );
+
+      console.log("API Gateway Controller - Service response:");
+      console.log(`Success: ${response.isSuccess}, Message: ${response.message}`);
+
+      if (response.data && response.data.apartments) {
+        console.log(`API Gateway Controller - Apartment count: ${response.data.apartments.length}`);
+        console.log(`API Gateway Controller - First apartment data: ${JSON.stringify(response.data.apartments[0])}`);
+
+        return res.status(HttpStatus.OK).json(response);
+      }
+
       return res.status(HttpStatus.OK).json(response);
     } catch (error) {
       const status =

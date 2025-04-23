@@ -14,6 +14,7 @@ import {
   Query,
   Req,
   UseGuards,
+  HttpException,
 } from '@nestjs/common';
 import { TaskService } from './Tasks.service';
 import { catchError, firstValueFrom, NotFoundError } from 'rxjs';
@@ -39,7 +40,7 @@ import { Status } from '@prisma/client-Task';
 @Controller('tasks')
 @ApiTags('tasks')
 export class TaskController {
-  constructor(private readonly taskService: TaskService) {}
+  constructor(private readonly taskService: TaskService) { }
 
   @Post('task')
   @ApiOperation({ summary: 'Create a new task' })
@@ -146,12 +147,86 @@ export class TaskController {
     }
   }
 
-  @Get('status/:status')
-  @ApiOperation({ summary: 'Get tasks by status' })
-  @ApiParam({ name: 'status', description: 'Task status' })
-  @ApiResponse({ status: 200, description: 'Returns tasks by status' })
-  async getTasksByStatus(@Param('status') status: string) {
-    return this.taskService.getTasksByStatus(status);
+  // @Get('status/:status')
+  // @ApiOperation({ summary: 'Get tasks by status' })
+  // @ApiParam({ name: 'status', description: 'Task status' })
+  // @ApiResponse({ status: 200, description: 'Returns tasks by status' })
+  // async getTasksByStatus(@Param('status') status: string) {
+  //   return this.taskService.getTasksByStatus(status);
+  // }
+
+  @Post('schedule-job/:scheduleJobId/staff/:staffId')
+  @ApiOperation({ summary: 'Create task for schedule job' })
+  @ApiParam({ name: 'scheduleJobId', description: 'Schedule Job ID' })
+  @ApiParam({ name: 'staffId', description: 'Staff ID' })
+  @ApiResponse({ status: 201, description: 'Task created successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request - Validation error, UUID format error, or staff area mismatch' })
+  @ApiResponse({ status: 404, description: 'Not found - Schedule job or staff not found' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async createTaskForScheduleJob(
+    @Param('scheduleJobId') scheduleJobId: string,
+    @Param('staffId') staffId: string
+  ) {
+    try {
+      if (!scheduleJobId || !staffId) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.BAD_REQUEST,
+            message: 'scheduleJobId và staffId là bắt buộc',
+            error: 'Validation Error'
+          },
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      // Gọi service nếu các tham số đúng
+      const result = await this.taskService.createTaskForScheduleJob(scheduleJobId, staffId);
+      return result;
+    } catch (error) {
+      console.error('Controller error:', error);
+      // Nếu đã là HttpException thì chỉ cần ném lại
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // Xác định loại lỗi dựa trên thông báo lỗi
+      const errorMessage = error.message || 'Unknown error';
+
+      // Phân loại lỗi "không tìm thấy" sang 404
+      if (errorMessage.includes('không tìm thấy') ||
+        errorMessage.includes('not found') ||
+        errorMessage.includes('không tồn tại')) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.NOT_FOUND,
+            message: errorMessage,
+            error: 'Resource Not Found'
+          },
+          HttpStatus.NOT_FOUND
+        );
+      }
+
+      if (errorMessage.includes('không đúng định dạng') || errorMessage.includes('UUID')) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.BAD_REQUEST,
+            message: errorMessage,
+            error: 'Invalid Format'
+          },
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      // Lỗi mặc định
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: errorMessage,
+          error: 'Internal Server Error'
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   // @Post('repair-materials')

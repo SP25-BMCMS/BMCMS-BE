@@ -277,51 +277,21 @@ export class UsersService implements OnModuleInit {
     apartments: { apartmentName: string; buildingDetailId: string }[],
   ) {
     try {
-      const response = await lastValueFrom(
-        this.userService
-          .updateResidentApartments({ residentId, apartments })
-          .pipe(
-            catchError((error) => {
-              console.error('Update resident apartments error:', error)
+      console.log("API Gateway - Received apartment data:",
+        JSON.stringify(apartments.map(apt => ({
+          name: apt.apartmentName,
+          buildingId: apt.buildingDetailId
+        })), null, 2)
+      );
 
-              // Kiểm tra nếu error có details
-              if (error.details) {
-                // Kiểm tra message để xác định loại lỗi
-                if (error.details.includes('Cư dân đã sở hữu')) {
-                  return throwError(
-                    () =>
-                      new HttpException(error.details, HttpStatus.BAD_REQUEST),
-                  )
-                } else if (error.details.includes('Không tìm thấy tòa nhà')) {
-                  return throwError(
-                    () =>
-                      new HttpException(error.details, HttpStatus.NOT_FOUND),
-                  )
-                } else if (
-                  error.details.includes('Dịch vụ tòa nhà không khả dụng')
-                ) {
-                  return throwError(
-                    () =>
-                      new HttpException(
-                        error.details,
-                        HttpStatus.SERVICE_UNAVAILABLE,
-                      ),
-                  )
-                }
-              }
-
-              // Nếu không có details hoặc không match với các trường hợp trên, trả về 500
-              return throwError(
-                () =>
-                  new HttpException(
-                    'Lỗi khi thêm căn hộ',
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                  ),
-              )
-            }),
-          ),
+      const response = await firstValueFrom(
+        this.userService.updateResidentApartments({
+          residentId,
+          apartments
+        }),
       )
-      return response
+
+      return response;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error

@@ -20,9 +20,11 @@ import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-ins
 import { AddImageToInspectionDto } from '@app/contracts/inspections/add-image.dto'
 import { UserInterface } from '../users/user/users.interface'
 import { LOCATIONDETAIL_PATTERN } from 'libs/contracts/src/LocationDetails/Locationdetails.patterns'
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { ConfigService } from '@nestjs/config'
+import { UpdateInspectionPrivateAssetDto } from '@app/contracts/inspections/update-inspection-privateasset.dto'
+import { UpdateInspectionReportStatusDto } from '@app/contracts/inspections/update-inspection-report-status.dto'
 
 @Injectable()
 export class InspectionService implements OnModuleInit {
@@ -134,6 +136,8 @@ export class InspectionService implements OnModuleInit {
 
   async GetAllInspections() {
     try {
+      // Gọi microservice và trả về kết quả trực tiếp
+      // Không cần xử lý pre-signed URL nữa vì đã được xử lý ở microservice
       const response = await firstValueFrom(
         this.inspectionClient.send(INSPECTIONS_PATTERN.GET, {})
           .pipe(
@@ -147,28 +151,7 @@ export class InspectionService implements OnModuleInit {
           )
       )
 
-      // If the response contains inspection data with image URLs, get pre-signed URLs for each inspection
-      if (response && response.statusCode === 200 && response.data && Array.isArray(response.data)) {
-        // Process each inspection to get pre-signed URLs for its images
-        for (const inspection of response.data) {
-          if (inspection.image_urls && inspection.image_urls.length > 0) {
-            // Get pre-signed URLs for all images in this inspection
-            inspection.image_urls = await Promise.all(
-              inspection.image_urls.map(async (url: string) => {
-                try {
-                  const fileKey = this.extractFileKey(url)
-                  return await this.getPreSignedUrl(fileKey)
-                } catch (error) {
-                  console.error(`Error getting pre-signed URL for ${url}:`, error)
-                  return url // Return original URL as fallback
-                }
-              })
-            )
-          }
-        }
-      }
-
-      return response
+      return response;
     } catch (error) {
       throw new HttpException(
         'Error retrieving all inspections',
@@ -192,52 +175,110 @@ export class InspectionService implements OnModuleInit {
 
       // If files are provided, upload them to S3 via Crack service
       let imageUrls: string[] = []
+      let pdfUrl: string = null
+
       if (files && files.length > 0) {
         try {
-          // Convert file buffers to base64 for transport over RabbitMQ
-          const processedFiles = files.map(file => ({
-            ...file,
-            buffer: file.buffer.toString('base64')
-          }))
+          // Log detailed file information for debugging
+          console.log('======= FILE PROCESSING STARTED =======')
+          console.log(`Total files received: ${files.length}`)
+          files.forEach((file, index) => {
+            console.log(`File ${index + 1}: ${file.originalname}, fieldname: ${file.fieldname}, mimetype: ${file.mimetype}, size: ${file.size} bytes`)
+          })
 
-          // Call the crack service to upload the images
-          const uploadResponse = await firstValueFrom(
-            this.crackClient.send(
-              { cmd: 'upload-inspection-images' },
-              { files: processedFiles }
-            ).pipe(
-              timeout(30000),
-              catchError(err => {
-                console.error('Error uploading images:', err)
-                return of(new ApiResponse(false, 'Error uploading images', null))
+          // Group files by their origins
+          const pdfFiles = files.filter(file => file.fieldname === 'pdfFile')
+          const imageFiles = files.filter(file => file.fieldname === 'files')
+
+          console.log(`Grouped files: ${pdfFiles.length} PDF files, ${imageFiles.length} image files`)
+
+          // Handle PDF file upload if provided (take only the first PDF file if multiple are uploaded)
+          if (pdfFiles.length > 0) {
+            const pdfFile = pdfFiles[0]
+            console.log(`Processing PDF file: ${pdfFile.originalname}, fieldname: ${pdfFile.fieldname}, mimetype: ${pdfFile.mimetype}`)
+
+            // Check if the file is actually a PDF by mimetype or file extension
+            const isPdf = pdfFile.mimetype === 'application/pdf' ||
+              pdfFile.originalname.toLowerCase().endsWith('.pdf');
+
+            if (!isPdf) {
+              console.error(`Error: Non-PDF file uploaded through pdfFile field: ${pdfFile.originalname}, mimetype: ${pdfFile.mimetype}`);
+              return new ApiResponse(
+                false,
+                'Invalid file type for PDF upload. Only PDF files are allowed in the pdfFile field.',
+                null
+              );
+            }
+
+            // Generate a unique filename with timestamp and original extension
+            const fileExt = pdfFile.originalname.split('.').pop()
+            const uniqueFileName = `inspections/reports/${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`
+
+            try {
+              // Upload the PDF file directly to S3
+              const command = new PutObjectCommand({
+                Bucket: this.bucketName,
+                Key: uniqueFileName,
+                Body: pdfFile.buffer,
+                ContentType: 'application/pdf'  // Always set PDF content type
               })
-            )
-          )
 
-          if (uploadResponse.isSuccess && uploadResponse.data && uploadResponse.data.InspectionImage) {
-            imageUrls = uploadResponse.data.InspectionImage
+              await this.s3.send(command)
 
-            // Get pre-signed URLs for all uploaded images
-            imageUrls = await Promise.all(
-              imageUrls.map(async (url: string) => {
-                try {
-                  const fileKey = this.extractFileKey(url)
-                  return await this.getPreSignedUrl(fileKey)
-                } catch (error) {
-                  console.error(`Error getting pre-signed URL for ${url}:`, error)
-                  return url // Return original URL as fallback
-                }
-              })
-            )
-
-            console.log('Uploaded image URLs with signed URLs:', imageUrls)
+              // Store the full S3 URL, not just the file key
+              const s3BaseUrl = `https://${this.bucketName}.s3.amazonaws.com/`
+              pdfUrl = s3BaseUrl + uniqueFileName
+              console.log('PDF uploaded successfully, URL:', pdfUrl)
+            } catch (uploadError) {
+              console.error('Error uploading PDF to S3:', uploadError)
+              // Continue without PDF
+            }
           } else {
-            console.error('Image upload failed:', uploadResponse)
-            // Continue without images
+            console.log('No PDF files to process')
           }
+
+          // Handle image files upload if any
+          if (imageFiles.length > 0) {
+            console.log(`Processing ${imageFiles.length} image files`)
+
+            // Convert file buffers to base64 for transport over RabbitMQ
+            const processedFiles = imageFiles.map(file => ({
+              ...file,
+              buffer: file.buffer.toString('base64')
+            }))
+
+            // Call the crack service to upload the images
+            const uploadResponse = await firstValueFrom(
+              this.crackClient.send(
+                { cmd: 'upload-inspection-images' },
+                { files: processedFiles }
+              ).pipe(
+                timeout(30000),
+                catchError(err => {
+                  console.error('Error uploading images:', err)
+                  return of(new ApiResponse(false, 'Error uploading images', null))
+                })
+              )
+            )
+
+            if (uploadResponse.isSuccess && uploadResponse.data && uploadResponse.data.InspectionImage) {
+              imageUrls = uploadResponse.data.InspectionImage
+              console.log(`Successfully uploaded ${imageUrls.length} images:`, imageUrls)
+            } else {
+              console.error('Image upload failed:', uploadResponse)
+              // Continue without images
+            }
+          } else {
+            console.log('No image files to process')
+          }
+
+          console.log('======= FILE PROCESSING FINISHED =======')
+          console.log('Final results:')
+          console.log(`- Images: ${imageUrls.length > 0 ? imageUrls.length + ' files uploaded' : 'None'}`)
+          console.log(`- PDF: ${pdfUrl ? 'Uploaded successfully' : 'None'}`)
         } catch (error) {
-          console.error('Error in image upload process:', error)
-          // Continue without images
+          console.error('Error in file upload process:', error)
+          // Continue without files
         }
       }
 
@@ -246,6 +287,7 @@ export class InspectionService implements OnModuleInit {
         ...dto,
         inspected_by: userId, // Override any value in the DTO with the authenticated user's ID
         image_urls: imageUrls, // Add the image URLs from S3
+        uploadFile: pdfUrl, // Add the PDF URL from S3
         location_details: {
           // Add location details
           // This is a placeholder and should be replaced with actual implementation
@@ -310,11 +352,20 @@ export class InspectionService implements OnModuleInit {
           // Fix additionalLocationDetails format if needed
           let additionalLocDetails: any = dto.additionalLocationDetails
 
+          // Handle case when additionalLocationDetails is undefined, null, or an empty string
+          if (!additionalLocDetails || (typeof additionalLocDetails === 'string' && additionalLocDetails.trim() === '')) {
+            console.log('additionalLocationDetails is empty or not provided')
+            additionalLocDetails = []
+          }
           // Check if additionalLocationDetails exists but isn't an array (common issue with form data)
-          if (additionalLocDetails && !Array.isArray(additionalLocDetails)) {
+          else if (!Array.isArray(additionalLocDetails)) {
             try {
               // Try to parse it if it's a JSON string
               if (typeof additionalLocDetails === 'string') {
+                // Empty JSON array case
+                if (additionalLocDetails.trim() === '[]') {
+                  additionalLocDetails = []
+                }
                 // Handle the case where we get a string with multiple objects separated by commas
                 // but without enclosing square brackets
                 const additionalStr = additionalLocDetails as string
@@ -345,7 +396,6 @@ export class InspectionService implements OnModuleInit {
                         const matches = additionalStr.match(objectsRegex)
 
                         if (matches && matches.length > 0) {
-                          console.log(`Found ${matches.length} JSON objects using regex`)
                           additionalLocDetails = matches.map(obj => {
                             try {
                               return JSON.parse(obj)
@@ -398,7 +448,6 @@ export class InspectionService implements OnModuleInit {
 
           // If additionalLocationDetails is provided in the DTO, add them
           if (additionalLocDetails && Array.isArray(additionalLocDetails) && additionalLocDetails.length > 0) {
-            console.log('Processing additionalLocationDetails:', JSON.stringify(additionalLocDetails, null, 2))
 
             // Map additional location details to proper format and add to array
             additionalLocDetails.forEach(locationDetail => {
@@ -412,7 +461,11 @@ export class InspectionService implements OnModuleInit {
               })
             })
           }
-          // If no location details provided, create a default one
+          // Nếu additionalLocationDetails là mảng rỗng có chủ ý, không tạo mặc định
+          else if (additionalLocDetails && Array.isArray(additionalLocDetails) && additionalLocDetails.length === 0) {
+            // Không tạo mặc định, giữ mảng rỗng
+          }
+          // Trường hợp không có additionalLocationDetails hoặc nó là null/undefined
           else {
             locationDetails.push({
               buildingDetailId: buildingDetailId,
@@ -424,29 +477,30 @@ export class InspectionService implements OnModuleInit {
             })
           }
 
-          console.log(`Emitting events to create ${locationDetails.length} LocationDetails:`, JSON.stringify(locationDetails, null, 2))
 
-          // Emit a single event with all location details - use CREATE instead of CREATE_MANY to avoid duplication
-          if (locationDetails.length > 0) {
-            console.log('Emitting event to create location details one by one to avoid duplication')
+          // Emit separate events for each location detail to avoid duplication
+          locationDetails.forEach(detail => {
+            this.buildingClient.emit(LOCATIONDETAIL_PATTERN.CREATE, detail)
+          })
 
-            // Emit separate events for each location detail to avoid duplication
-            locationDetails.forEach(detail => {
-              this.buildingClient.emit(LOCATIONDETAIL_PATTERN.CREATE, detail)
-            })
+          // Add locationDetail info to the response ONLY if we have location details
+          if (response && response.data && typeof response.data === 'object') {
+            // Create a new object to avoid modifying the original response directly
+            const locationDetailsData = locationDetails.map(detail => ({
+              inspection_id: detail.inspection_id,
+              buildingDetailId: detail.buildingDetailId,
+              roomNumber: detail.roomNumber,
+              floorNumber: detail.floorNumber,
+              areaType: detail.areaType,
+              description: detail.description
+            }));
+
+            // Assign the location details to the response data object
+            Object.assign(response.data, { locationDetails: locationDetailsData });
+          } else {
+            console.error('Cannot add locationDetails to response: invalid response structure',
+              response ? typeof response.data : 'response is null')
           }
-
-          // Add locationDetail info to the response
-          response.data.locationDetails = locationDetails.map(detail => ({
-            inspection_id: detail.inspection_id,
-            buildingDetailId: detail.buildingDetailId,
-            roomNumber: detail.roomNumber,
-            floorNumber: detail.floorNumber,
-            areaType: detail.areaType,
-            description: detail.description
-          }))
-
-          console.log('Added locationDetails info to response:', response.data.locationDetails)
         } catch (error) {
           console.error('Error in LocationDetail creation process:', error)
           // Don't fail the whole request if LocationDetail creation fails
@@ -481,67 +535,23 @@ export class InspectionService implements OnModuleInit {
 
   async getInspectionDetails(inspection_id: string): Promise<ApiResponse<any>> {
     try {
+      // Gọi microservice và trả về kết quả trực tiếp
+      // Không cần xử lý pre-signed URL nữa vì đã được xử lý ở microservice
       const response = await firstValueFrom(
         this.inspectionClient.send(INSPECTIONS_PATTERN.GET_DETAILS, inspection_id)
       )
 
-      // If the response is successful and contains image URLs, get pre-signed URLs
-      if (response.isSuccess && response.data) {
-        // Process main inspection image URLs
-        if (response.data.image_urls && response.data.image_urls.length > 0) {
-          response.data.image_urls = await Promise.all(
-            response.data.image_urls.map(async (url: string) => {
-              try {
-                const fileKey = this.extractFileKey(url)
-                return await this.getPreSignedUrl(fileKey)
-              } catch (error) {
-                console.error(`Error getting pre-signed URL for ${url}:`, error)
-                return url // Return original URL as fallback
-              }
-            })
-          )
-        }
-
-        // If there's crack info with images, process those as well
-        if (response.data.crackInfo && response.data.crackInfo.data) {
-          const crackData = response.data.crackInfo.data
-
-          // Process crack main image if it exists
-          if (crackData.photoUrl) {
-            try {
-              const fileKey = this.extractFileKey(crackData.photoUrl)
-              crackData.photoUrl = await this.getPreSignedUrl(fileKey)
-            } catch (error) {
-              console.error(`Error getting pre-signed URL for crack photo:`, error)
-            }
-          }
-
-          // Process crack detail images if they exist
-          if (crackData.crackDetails && Array.isArray(crackData.crackDetails)) {
-            for (const detail of crackData.crackDetails) {
-              if (detail.photoUrl) {
-                try {
-                  const fileKey = this.extractFileKey(detail.photoUrl)
-                  detail.photoUrl = await this.getPreSignedUrl(fileKey)
-                } catch (error) {
-                  console.error(`Error getting pre-signed URL for crack detail photo:`, error)
-                }
-              }
-
-              if (detail.aiDetectionUrl) {
-                try {
-                  const fileKey = this.extractFileKey(detail.aiDetectionUrl)
-                  detail.aiDetectionUrl = await this.getPreSignedUrl(fileKey)
-                } catch (error) {
-                  console.error(`Error getting pre-signed URL for AI detection image:`, error)
-                }
-              }
-            }
-          }
+      // Nếu cần, tạo pre-signed URL cho uploadFile nếu có
+      if (response.isSuccess && response.data && response.data.uploadFile) {
+        try {
+          const fileKey = this.extractFileKey(response.data.uploadFile)
+          response.data.uploadFile = await this.getPreSignedUrl(fileKey)
+        } catch (error) {
+          console.error('Error generating pre-signed URL for PDF:', error)
         }
       }
 
-      return response
+      return response;
     } catch (error) {
       return new ApiResponse(false, 'Error getting inspection details', error.message)
     }
@@ -549,30 +559,23 @@ export class InspectionService implements OnModuleInit {
 
   async getInspectionById(inspection_id: string): Promise<any> {
     try {
+      // Gọi microservice và trả về kết quả trực tiếp
+      // Không cần xử lý pre-signed URL nữa vì đã được xử lý ở microservice
       const response = await firstValueFrom(
         this.inspectionClient.send(INSPECTIONS_PATTERN.GET_BY_ID, { inspection_id })
       )
 
-      // If the response is successful and contains image URLs, get pre-signed URLs
-      if (response.isSuccess && response.data && response.data.image_urls && response.data.image_urls.length > 0) {
-        // Get pre-signed URLs for all images
-        const signedUrls = await Promise.all(
-          response.data.image_urls.map(async (url: string) => {
-            try {
-              const fileKey = this.extractFileKey(url)
-              return await this.getPreSignedUrl(fileKey)
-            } catch (error) {
-              console.error(`Error getting pre-signed URL for ${url}:`, error)
-              return url // Return original URL as fallback
-            }
-          })
-        )
-
-        // Replace original URLs with signed URLs
-        response.data.image_urls = signedUrls
+      // Tạo pre-signed URL cho uploadFile nếu có
+      if (response.isSuccess && response.data && response.data.uploadFile) {
+        try {
+          const fileKey = this.extractFileKey(response.data.uploadFile)
+          response.data.uploadFile = await this.getPreSignedUrl(fileKey)
+        } catch (error) {
+          console.error('Error generating pre-signed URL for PDF:', error)
+        }
       }
 
-      return response
+      return response;
     } catch (error) {
       return {
         isSuccess: false,
@@ -586,7 +589,6 @@ export class InspectionService implements OnModuleInit {
   private async validateUserIsStaff(userId: string): Promise<ApiResponse<any>> {
     try {
       // Use the gRPC UserService to get user info
-      console.log(`Validating if user ${userId} is a Staff...`)
 
       // Use the correctly initialized userService from OnModuleInit
       const userInfo = await firstValueFrom(
@@ -600,7 +602,6 @@ export class InspectionService implements OnModuleInit {
           )
       )
 
-      console.log('User info received:', JSON.stringify(userInfo, null, 2))
 
       if (!userInfo) {
         console.error('User info is null or undefined')
@@ -609,10 +610,8 @@ export class InspectionService implements OnModuleInit {
 
       // Check if user has role Staff
       const role = userInfo.role
-      console.log(`User role: ${role}`)
 
       if (role !== 'Staff') {
-        console.log(`User role ${role} is not Staff`)
         return new ApiResponse(
           false,
           `Only Staff can create inspections. Current role: ${role}`,
@@ -620,7 +619,6 @@ export class InspectionService implements OnModuleInit {
         )
       }
 
-      console.log('User is a Staff, validation successful')
       return new ApiResponse(true, 'User is a Staff', { userId })
     } catch (error) {
       console.error('Error in validateUserIsStaff:', error)
@@ -643,5 +641,91 @@ export class InspectionService implements OnModuleInit {
 
     // Default to Other
     return "Other"
+  }
+
+  // Add new methods for updating isPrivateAsset and report_status
+
+  async updateInspectionPrivateAsset(
+    inspection_id: string,
+    dto: UpdateInspectionPrivateAssetDto
+  ): Promise<any> {
+    try {
+      return await firstValueFrom(
+        this.inspectionClient.send(INSPECTIONS_PATTERN.UPDATE_PRIVATE_ASSET, {
+          inspection_id,
+          dto
+        })
+      );
+    } catch (error) {
+      console.error(`Failed to update inspection private asset status: ${error.message}`, error.stack);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Failed to update inspection private asset status',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async updateInspectionReportStatus(
+    inspection_id: string,
+    dto: UpdateInspectionReportStatusDto
+  ): Promise<any> {
+    try {
+      return await firstValueFrom(
+        this.inspectionClient.send(INSPECTIONS_PATTERN.UPDATE_REPORT_STATUS, {
+          inspection_id,
+          dto
+        }).pipe(
+          timeout(10000),
+          catchError(err => {
+            console.error('Error updating inspection report status:', err);
+            return of(new ApiResponse(false, 'Error updating inspection report status', null));
+          })
+        )
+      );
+    } catch (error) {
+      console.error('Error in updateInspectionReportStatus:', error);
+      return new ApiResponse(false, 'Error updating inspection report status', null);
+    }
+  }
+
+  async updateInspectionReportStatusByManager(
+    dto: UpdateInspectionReportStatusDto
+  ): Promise<any> {
+    try {
+      return await firstValueFrom(
+        this.inspectionClient.send(INSPECTIONS_PATTERN.UPDATE_REPORT_STATUS_BY_MANAGER, dto)
+          .pipe(
+            timeout(10000),
+            catchError(err => {
+              console.error('Error updating inspection report status by manager:', err);
+              return of(new ApiResponse(false, 'Error updating inspection report status by manager', null));
+            })
+          )
+      );
+    } catch (error) {
+      console.error('Error in updateInspectionReportStatusByManager:', error);
+      return new ApiResponse(false, 'Error updating inspection report status by manager', null);
+    }
+  }
+
+  async getBuildingDetailIdFromTaskAssignment(task_assignment_id: string): Promise<any> {
+    try {
+      return await firstValueFrom(
+        this.inspectionClient.send({ cmd: 'get-building-detail-id-from-task-assignment' }, { task_assignment_id })
+          .pipe(
+            timeout(10000),
+            catchError(err => {
+              console.error('Error getting building detail ID from task assignment:', err);
+              return of(new ApiResponse(false, 'Error getting building detail ID from task assignment', null));
+            })
+          )
+      );
+    } catch (error) {
+      console.error('Error in getBuildingDetailIdFromTaskAssignment:', error);
+      return new ApiResponse(false, 'Error getting building detail ID from task assignment', null);
+    }
   }
 }

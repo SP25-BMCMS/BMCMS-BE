@@ -1,12 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../../../node_modules/@prisma/client-Schedule"
+  output   = "../../../node_modules/@prisma/client-schedule"
 }
 
 datasource db {
@@ -14,32 +8,43 @@ datasource db {
   url      = env("DB_SCHEDULE_SERVICE")
 }
 
-  model Schedule {
-    schedule_id   String    @id @default(uuid())
-    schedule_name String    @db.VarChar(100)
-    schedule_type ScheduleType
-    description   String?
-    start_date    DateTime? @db.Date
-    end_date      DateTime? @db.Date
-    created_at    DateTime  @default(now()) @db.Timestamp
-    updated_at    DateTime  @default(now()) @updatedAt @db.Timestamp
-    scheduleJobs  ScheduleJob[]
-    schedule_status ScheduleStatus @default(InProgress)
-  }
-
-model ScheduleJob {
-  schedule_job_id String    @id @default(uuid())
-  schedule_id     String
-  run_date        DateTime  @db.Date
-  status          ScheduleJobStatus
-  created_at      DateTime  @default(now()) @db.Timestamp
-  updated_at      DateTime  @default(now()) @updatedAt @db.Timestamp
-  building_id     String
-  schedule        Schedule  @relation(fields: [schedule_id], references: [schedule_id])
-
+model MaintenanceCycle {
+  cycle_id    String           @id @default(uuid())
+  frequency   Frequency
+  basis       MaintenanceBasis @default(OperationalExperience)
+  device_type DeviceType       @default(Other)
+  schedules   Schedule[]
 }
 
-enum ScheduleType {
+model Schedule {
+  schedule_id     String           @id @default(uuid())
+  schedule_name   String           @db.VarChar(100)
+  description     String?
+  start_date      DateTime?        @db.Date
+  end_date        DateTime?        @db.Date
+  created_at      DateTime         @default(now()) @db.Timestamp(6)
+  updated_at      DateTime         @default(now()) @updatedAt @db.Timestamp(6)
+  schedule_status ScheduleStatus   @default(InProgress)
+  cycle_id        String
+  cycle           MaintenanceCycle @relation(fields: [cycle_id], references: [cycle_id])
+  scheduleJobs    ScheduleJob[]
+}
+
+model ScheduleJob {
+  schedule_job_id  String            @id @default(uuid())
+  schedule_id      String?
+  start_date       DateTime?         @db.Date
+  end_date         DateTime?         @db.Date
+  run_date         DateTime          @db.Date
+  status           ScheduleJobStatus
+  created_at       DateTime          @default(now()) @db.Timestamp(6)
+  updated_at       DateTime          @default(now()) @updatedAt @db.Timestamp(6)
+  buildingDetailId String?
+  inspection_id    String?
+  schedule         Schedule?         @relation(fields: [schedule_id], references: [schedule_id])
+}
+
+enum Frequency {
   Daily
   Weekly
   Monthly
@@ -48,6 +53,8 @@ enum ScheduleType {
 }
 
 enum ScheduleJobStatus {
+  Reviewing
+  Rejected 
   Pending
   InProgress
   Completed
@@ -55,7 +62,28 @@ enum ScheduleJobStatus {
 }
 
 enum ScheduleStatus {
-  InProgress 
+  InProgress
   Completed
   Cancel
+}
+
+enum MaintenanceBasis {
+  ManufacturerRecommendation
+  LegalStandard
+  OperationalExperience
+  Other
+}
+
+enum DeviceType {
+  Elevator
+  FireProtection
+  Electrical
+  Plumbing
+  HVAC
+  CCTV
+  Generator
+  Lighting
+  AutomaticDoor
+  FireExtinguisher
+  Other
 }

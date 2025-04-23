@@ -5,38 +5,65 @@ import { PrismaModule } from '../prisma/prisma.module'
 import { ScheduleJobController } from './schedulejob.controller'
 import { ScheduleJobsService } from './schedulejob.service'
 
+const TASK_CLIENT = 'TASK_CLIENT'
 const NOTIFICATION_CLIENT = 'NOTIFICATION_CLIENT'
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
+
 @Module({
   imports: [PrismaModule,
     ClientsModule.registerAsync([
       {
+        name: TASK_CLIENT,
+        useFactory: (configService: ConfigService) => {
+          const url = configService.get('RABBITMQ_URL')
+          return {
+            transport: Transport.RMQ,
+            options: {
+              urls: [url],
+              queue: 'tasks_queue',
+              queueOptions: {
+                durable: true,
+                prefetchCount: 1,
+              },
+            },
+          }
+        },
+        inject: [ConfigService],
+      },
+      {
         name: NOTIFICATION_CLIENT,
-        useFactory: async (configService: ConfigService) => ({
-          transport: Transport.REDIS,
-          options: {
-            host: configService.get<string>('REDIS_HOST') || 'redis',
-            port: configService.get<number>('REDIS_PORT') || 6379,
-            password: configService.get<string>('REDIS_PASSWORD') || '',
-            retryAttempts: 5,
-            retryDelay: 3000,
-          },
-        }),
+        useFactory: async (configService: ConfigService) => {
+          const redisUrl = configService.get<string>('REDIS_URL')
+          if (!redisUrl) {
+            throw new Error('REDIS_URL environment variable is not set')
+          }
+
+          const url = new URL(redisUrl)
+          return {
+            transport: Transport.REDIS,
+            options: {
+              host: url.hostname,
+              port: parseInt(url.port),
+              username: url.username,
+              password: url.password,
+              retryAttempts: 5,
+              retryDelay: 3000,
+              tls: {
+                rejectUnauthorized: false
+              }
+            },
+          }
+        },
         inject: [ConfigService],
       },
       {
         name: BUILDINGS_CLIENT,
         useFactory: (configService: ConfigService) => {
-          const user = configService.get('RABBITMQ_USER')
-          const password = configService.get('RABBITMQ_PASSWORD')
-          const host = configService.get('RABBITMQ_HOST')
-          const isLocal = process.env.NODE_ENV !== 'production'
+          const url = configService.get('RABBITMQ_URL')
           return {
             transport: Transport.RMQ,
             options: {
-              urls: isLocal
-                ? [`amqp://${user}:${password}@${host}`]
-                : [`amqp://${user}:${password}@rabbitmq:5672`],
+              urls: [url],
               queue: 'buildings_queue',
               queueOptions: {
                 durable: true,
@@ -48,7 +75,6 @@ const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
         inject: [ConfigService],
       },
     ]),
-
   ],
   controllers: [ScheduleJobController],
   providers: [

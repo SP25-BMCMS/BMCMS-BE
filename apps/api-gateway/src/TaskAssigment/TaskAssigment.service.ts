@@ -8,6 +8,7 @@ import { AssignmentStatus } from '@prisma/client-Task';
 import { firstValueFrom } from 'rxjs';
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto';
 import { ChangeTaskAssignmentStatusDto } from '@app/contracts/taskAssigment/changeTaskStatusDto ';
+import { UpdateStatusCreateWorklogDto } from 'libs/contracts/src/taskAssigment/update-status-create-worklog.dto';
 
 @Injectable()
 export class TaskAssignmentService {
@@ -275,6 +276,70 @@ export class TaskAssignmentService {
       // Mặc định trả về 400 thay vì 500
       throw new HttpException(
         'Task assignment status must be InFixing or Fixed to reassign',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+  // Export Cost PDF
+  async exportCostPdf(taskId: string) {
+    try {
+      const response = await firstValueFrom(
+        this.taskClient.send(
+          TASKASSIGNMENT_PATTERN.EXPORT_COST_PDF,
+          { taskId }
+        ),
+      );
+
+      // Make sure the response is properly formatted for PDF download
+      if (response && response.success) {
+        return response;
+      } else {
+        return {
+          success: false,
+          message: response?.message || 'Error generating cost PDF report',
+          error: response?.error || 'Unknown error'
+        };
+      }
+    } catch (error) {
+      console.error('Error generating cost PDF:', error);
+      return {
+        success: false,
+        message: 'Error generating cost PDF report',
+        error: error.message
+      };
+    }
+  }
+
+  // Update Task Assignment Status and Create Worklog
+  async updateTaskAssignmentStatusToCreateWorklog(payload: { assignment_id: string, status: AssignmentStatus }) {
+    try {
+      return await firstValueFrom(
+        this.taskClient.send(
+          TASKASSIGNMENT_PATTERN.UPDATE_STATUS_CREATE_WORKLOG,
+          payload
+        ),
+      );
+    } catch (error) {
+      console.error('Error updating task assignment status and creating worklog:', error);
+      if (error?.response) {
+        const status = error.status || error.response.statusCode || 400;
+        const message = typeof error.response === 'string'
+          ? error.response
+          : error.response.message || 'Task assignment update and worklog creation failed';
+
+        throw new HttpException(message, status);
+      }
+
+      if (error?.statusCode) {
+        throw new HttpException(
+          error.message || 'Task assignment update and worklog creation failed',
+          error.statusCode
+        );
+      }
+
+      throw new HttpException(
+        'Error updating task assignment status and creating worklog',
         HttpStatus.BAD_REQUEST
       );
     }
