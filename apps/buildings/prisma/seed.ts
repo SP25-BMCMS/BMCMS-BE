@@ -67,7 +67,7 @@ async function main() {
             name: 'S1',
             description: 'Building S1 - Rainbow Area',
             numberFloor: 25,
-            imageCover: 'building-s1.jpg',
+            imageCover: 'https://th.bing.com/th/id/OIP.x16cxXtPkaps_wRoVQvSVwHaHa?rs=1&pid=ImgDetMain',
             areaId: rainbowArea.areaId,
             Status: 'operational',
             construction_date: new Date('2018-01-01'),
@@ -81,7 +81,7 @@ async function main() {
             name: 'S2',
             description: 'Building S2 - Rainbow Area',
             numberFloor: 30,
-            imageCover: 'building-s2.jpg',
+            imageCover: 'https://th.bing.com/th/id/OIP.x16cxXtPkaps_wRoVQvSVwHaHa?rs=1&pid=ImgDetMain',
             areaId: rainbowArea.areaId,
             Status: 'operational',
             construction_date: new Date('2018-02-01'),
@@ -95,7 +95,7 @@ async function main() {
             name: 'S3',
             description: 'Building S3 - Rainbow Area',
             numberFloor: 28,
-            imageCover: 'building-s3.jpg',
+            imageCover: 'https://th.bing.com/th/id/OIP.x16cxXtPkaps_wRoVQvSVwHaHa?rs=1&pid=ImgDetMain',
             areaId: rainbowArea.areaId,
             Status: 'operational',
             construction_date: new Date('2018-03-15'),
@@ -109,7 +109,7 @@ async function main() {
             name: 'S4',
             description: 'Building S4 - Rainbow Area',
             numberFloor: 27,
-            imageCover: 'building-s4.jpg',
+            imageCover: 'https://th.bing.com/th/id/OIP.x16cxXtPkaps_wRoVQvSVwHaHa?rs=1&pid=ImgDetMain',
             areaId: rainbowArea.areaId,
             Status: 'operational',
             construction_date: new Date('2018-04-20'),
@@ -124,7 +124,7 @@ async function main() {
             name: 'S5',
             description: 'Building S5 - Origami Area',
             numberFloor: 22,
-            imageCover: 'building-s5.jpg',
+            imageCover: 'https://www.vinhomeland.com.vn/wp-content/uploads/2020/04/the-origami-vinhomes-grand-park-48.jpg',
             areaId: origamiArea.areaId,
             Status: 'operational',
             construction_date: new Date('2019-01-10'),
@@ -138,7 +138,7 @@ async function main() {
             name: 'S6',
             description: 'Building S6 - Origami Area',
             numberFloor: 20,
-            imageCover: 'building-s6.jpg',
+            imageCover: 'https://www.vinhomeland.com.vn/wp-content/uploads/2020/04/the-origami-vinhomes-grand-park-48.jpg',
             areaId: origamiArea.areaId,
             Status: 'operational',
             construction_date: new Date('2019-05-01'),
@@ -152,7 +152,7 @@ async function main() {
             name: 'S7',
             description: 'Building S7 - Origami Area',
             numberFloor: 24,
-            imageCover: 'building-s7.jpg',
+            imageCover: 'https://www.vinhomeland.com.vn/wp-content/uploads/2020/04/the-origami-vinhomes-grand-park-48.jpg',
             areaId: origamiArea.areaId,
             Status: 'operational',
             construction_date: new Date('2019-06-15'),
@@ -167,7 +167,7 @@ async function main() {
             name: 'B1',
             description: 'Building B1 - Beverly Area',
             numberFloor: 35,
-            imageCover: 'building-b1.jpg',
+            imageCover: 'https://th.bing.com/th/id/OIP.QE9QeI_VhS_f1vSWQKFEwQHaDb?rs=1&pid=ImgDetMain',
             areaId: beverlyArea.areaId,
             Status: 'operational',
             construction_date: new Date('2019-02-01'),
@@ -181,7 +181,7 @@ async function main() {
             name: 'B2',
             description: 'Building B2 - Beverly Area',
             numberFloor: 33,
-            imageCover: 'building-b2.jpg',
+            imageCover: 'https://th.bing.com/th/id/OIP.QE9QeI_VhS_f1vSWQKFEwQHaDb?rs=1&pid=ImgDetMain',
             areaId: beverlyArea.areaId,
             Status: 'operational',
             construction_date: new Date('2019-04-10'),
@@ -196,7 +196,7 @@ async function main() {
             name: 'G1',
             description: 'Building G1 - Glory Heights Area',
             numberFloor: 40,
-            imageCover: 'building-g1.jpg',
+            imageCover: 'https://th.bing.com/th/id/OIP.KY4OZ1jxkEbi074AP4kU0AHaEK?rs=1&pid=ImgDetMain',
             areaId: gloryHeightsArea.areaId,
             Status: 'operational',
             construction_date: new Date('2020-01-05'),
@@ -210,7 +210,7 @@ async function main() {
             name: 'G2',
             description: 'Building G2 - Glory Heights Area',
             numberFloor: 38,
-            imageCover: 'building-g2.jpg',
+            imageCover: 'https://th.bing.com/th/id/OIP.KY4OZ1jxkEbi074AP4kU0AHaEK?rs=1&pid=ImgDetMain',
             areaId: gloryHeightsArea.areaId,
             Status: 'operational',
             construction_date: new Date('2020-03-15'),
@@ -225,7 +225,7 @@ async function main() {
             name: 'M1',
             description: 'Building M1 - Masteri Centre Point Area',
             numberFloor: 45,
-            imageCover: 'building-m1.jpg',
+            imageCover: 'https://th.bing.com/th/id/OIP.MkvRKAvG2KWAEYaexd3vgQHaFj?rs=1&pid=ImgDetMain',
             areaId: masteriCentrePointArea.areaId,
             Status: 'operational',
             construction_date: new Date('2020-05-10'),
@@ -239,7 +239,7 @@ async function main() {
             name: 'M2',
             description: 'Building M2 - Masteri Centre Point Area',
             numberFloor: 42,
-            imageCover: 'building-m2.jpg',
+            imageCover: 'https://th.bing.com/th/id/OIP.MkvRKAvG2KWAEYaexd3vgQHaFj?rs=1&pid=ImgDetMain',
             areaId: masteriCentrePointArea.areaId,
             Status: 'operational',
             construction_date: new Date('2020-07-20'),
@@ -252,9 +252,9 @@ async function main() {
     const buildingL1 = await prisma.building.create({
         data: {
             name: 'L1',
-            description: 'Tòa L1 - Khu Lumière Boulevard',
+            description: 'Building L1 - Lumière Boulevard Area',
             numberFloor: 32,
-            imageCover: 'building-l1.jpg',
+            imageCover: 'https://th.bing.com/th/id/OIP.8nogDElvifhFSCLR3HtSfgHaEu?rs=1&pid=ImgDetMain',
             areaId: lumièreBoulevardArea.areaId,
             Status: 'operational',
             construction_date: new Date('2021-01-15'),
@@ -266,9 +266,9 @@ async function main() {
     const buildingL2 = await prisma.building.create({
         data: {
             name: 'L2',
-            description: 'Tòa L2 - Khu Lumière Boulevard',
+            description: 'Building L2 - Lumière Boulevard Area',
             numberFloor: 30,
-            imageCover: 'building-l2.jpg',
+            imageCover: 'https://th.bing.com/th/id/OIP.8nogDElvifhFSCLR3HtSfgHaEu?rs=1&pid=ImgDetMain',
             areaId: lumièreBoulevardArea.areaId,
             Status: 'operational',
             construction_date: new Date('2021-03-25'),
@@ -376,7 +376,7 @@ async function main() {
             floorNumber: 1,
             roomNumber: 'Lobby',
             areaType: 'Floor',
-            description: 'Khu vực sảnh tầng 1'
+            description: 'Ground floor lobby area'
         }
     });
 
@@ -387,7 +387,7 @@ async function main() {
             floorNumber: 2,
             roomNumber: 'S1A-201',
             areaType: 'Wall',
-            description: 'Tường căn hộ 201'
+            description: 'Wall of apartment 201'
         }
     });
 
@@ -399,7 +399,7 @@ async function main() {
             floorNumber: 5,
             roomNumber: 'S2A-501',
             areaType: 'Ceiling',
-            description: 'Trần căn hộ 501'
+            description: 'Ceiling of apartment 501'
         }
     });
 
@@ -411,7 +411,7 @@ async function main() {
             floorNumber: 10,
             roomNumber: 'S6A-1001',
             areaType: 'Wall',
-            description: 'Tường căn hộ 1001'
+            description: 'Wall of apartment 1001'
         }
     });
 
@@ -423,7 +423,7 @@ async function main() {
             floorNumber: 15,
             roomNumber: 'B1A-1501',
             areaType: 'Floor',
-            description: 'Sàn căn hộ 1501'
+            description: 'Floor of apartment 1501'
         }
     });
 
@@ -435,7 +435,7 @@ async function main() {
             floorNumber: 20,
             roomNumber: 'G1A-2001',
             areaType: 'column',
-            description: 'Cột chính căn hộ 2001'
+            description: 'Main support column of apartment 2001'
         }
     });
 
@@ -447,7 +447,7 @@ async function main() {
             floorNumber: 25,
             roomNumber: 'M1A-2501',
             areaType: 'Wall',
-            description: 'Tường phòng khách căn hộ 2501'
+            description: 'Living room wall of apartment 2501'
         }
     });
 
@@ -459,7 +459,7 @@ async function main() {
             floorNumber: 15,
             roomNumber: 'L1A-1501',
             areaType: 'Ceiling',
-            description: 'Trần phòng ngủ căn hộ 1501'
+            description: 'Bedroom ceiling of apartment 1501'
         }
     });
 

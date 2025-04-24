@@ -512,7 +512,7 @@ export class TaskService {
       // Validate input
       if (!scheduleJobId) {
         throw new RpcException(
-          new ApiResponse(false, 'scheduleJobId là bắt buộc')
+          new ApiResponse(false, 'scheduleJobId is required')
         );
       }
 
@@ -525,7 +525,7 @@ export class TaskService {
 
       // Nếu task đã tồn tại, trả về luôn
       if (existingTask) {
-        console.log(`Task đã tồn tại cho schedule job ${scheduleJobId}, lấy assignment hiện có`);
+        console.log(`Task already exists for this schedule job ${scheduleJobId}, lấy assignment hiện có`);
 
         const existingAssignment = await this.prisma.taskAssignment.findFirst({
           where: { task_id: existingTask.task_id }
@@ -533,12 +533,12 @@ export class TaskService {
 
         return new ApiResponse(
           true,
-          'Task đã tồn tại cho schedule job này',
+          'Task already exists for this schedule job',
           {
             task: existingTask,
             taskAssignment: existingAssignment ? {
               statusCode: 200,
-              message: 'Assignment đã tồn tại',
+              message: 'Assignment already exists',
               data: existingAssignment
             } : null,
             staffLeader: existingAssignment ? {
@@ -585,7 +585,7 @@ export class TaskService {
                         console.error('All patterns failed:', err3);
                         return throwError(() => new RpcException({
                           statusCode: 404,
-                          message: `Không tìm thấy lịch công việc: ${err.message}`
+                          message: `Schedule job not found: ${err.message}`
                         }));
                       })
                     );
@@ -599,7 +599,7 @@ export class TaskService {
           console.error('Invalid schedule job response:', JSON.stringify(scheduleJobResponse));
           throw new RpcException({
             statusCode: 404,
-            message: 'Không tìm thấy lịch công việc hoặc định dạng dữ liệu không hợp lệ'
+            message: 'Schedule job not found or invalid data format'
           });
         }
 
@@ -618,7 +618,7 @@ export class TaskService {
         if (!buildingDetailId) {
           throw new RpcException({
             statusCode: 400,
-            message: 'Lịch công việc không có thông tin tòa nhà'
+            message: 'Schedule job has no building information'
           });
         }
 
@@ -644,7 +644,7 @@ export class TaskService {
                         console.error('All building service patterns failed:', err3);
                         return throwError(() => new RpcException({
                           statusCode: 404,
-                          message: `Không tìm thấy tòa nhà: ${err.message}`
+                          message: `Building not found: ${err.message}`
                         }));
                       })
                     );
@@ -663,7 +663,7 @@ export class TaskService {
         if (!buildingData) {
           throw new RpcException({
             statusCode: 404,
-            message: 'Không tìm thấy thông tin tòa nhà'
+            message: 'Building information not found'
           });
         }
 
@@ -700,7 +700,7 @@ export class TaskService {
         if (!areaId || !buildingAreaName) {
           throw new RpcException({
             statusCode: 404,
-            message: 'Tòa nhà không thuộc khu vực nào'
+            message: 'Building does not belong to any area'
           });
         }
 
@@ -724,7 +724,7 @@ export class TaskService {
             if (!staffResponse?.isSuccess || !staffResponse?.data || staffResponse.data.length === 0) {
               throw new RpcException({
                 statusCode: 404,
-                message: 'Không tìm thấy nhân viên phù hợp'
+                message: 'No suitable staff found'
               });
             }
 
@@ -742,7 +742,7 @@ export class TaskService {
             } else {
               throw new RpcException({
                 statusCode: 404,
-                message: `Không tìm thấy Staff Leader cho khu vực ${buildingAreaName}`
+                message: `No Staff Leader found for area ${buildingAreaName}`
               });
             }
           } catch (error) {
@@ -751,7 +751,7 @@ export class TaskService {
             }
             throw new RpcException({
               statusCode: 500,
-              message: `Lỗi khi tìm Staff Leader: ${error.message}`
+              message: `Error finding Staff Leader: ${error.message}`
             });
           }
         }
@@ -759,15 +759,15 @@ export class TaskService {
         if (!matchedStaffId) {
           throw new RpcException({
             statusCode: 404,
-            message: 'Không tìm thấy Staff Leader để phân công'
+            message: 'No Staff Leader found for assignment'
           });
         }
 
         // BƯỚC 5: Tạo task cho schedule job
         console.log(`Creating task for schedule job ${scheduleJobId} in building ${buildingName}`);
 
-        const taskTitle = `Bảo trì định kỳ tòa nhà ${buildingName}`;
-        const taskDescription = `Phân công bảo trì định kỳ cho tòa nhà ${buildingName}`;
+        const taskTitle = `Regular maintenance for building ${buildingName}`;
+        const taskDescription = `Regular maintenance assignment for building ${buildingName}`;
 
         const createTaskResponse = await this.createTask({
           title: taskTitle,
@@ -782,7 +782,7 @@ export class TaskService {
 
         if (!createTaskResponse?.data?.task_id) {
           throw new RpcException(
-            new ApiResponse(false, `Lỗi khi tạo task: ${JSON.stringify(createTaskResponse)}`)
+            new ApiResponse(false, `Error creating task: ${JSON.stringify(createTaskResponse)}`)
           );
         }
 
@@ -805,7 +805,7 @@ export class TaskService {
           if (taskAssignmentResponse?.statusCode >= 400) {
             console.error(`Error assigning task: ${JSON.stringify(taskAssignmentResponse)}`);
             throw new RpcException(
-              new ApiResponse(false, taskAssignmentResponse.message || 'Lỗi phân công task')
+              new ApiResponse(false, taskAssignmentResponse.message || 'Error assigning task')
             );
           }
 
@@ -814,7 +814,7 @@ export class TaskService {
           // Trả về kết quả thành công
           return new ApiResponse(
             true,
-            'Task đã được tạo và phân công cho Staff Leader thành công',
+            'Task has been created and assigned to Staff Leader successfully',
             {
               task: createTaskResponse.data,
               taskAssignment: taskAssignmentResponse,
@@ -831,7 +831,7 @@ export class TaskService {
           });
 
           throw new RpcException(
-            new ApiResponse(false, `Lỗi phân công task: ${assignmentError.message}`)
+            new ApiResponse(false, `Error assigning task: ${assignmentError.message}`)
           );
         }
       }, {
@@ -843,7 +843,7 @@ export class TaskService {
         throw error;
       }
       throw new RpcException(
-        new ApiResponse(false, `Lỗi: ${error.message}`)
+        new ApiResponse(false, `Error: ${error.message}`)
       );
     }
   }
