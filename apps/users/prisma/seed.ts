@@ -22,28 +22,28 @@ async function main() {
   const department1 = await prisma.department.create({
     data: {
       departmentName: 'Primary Technicians',
-      area: 'Rainbow',
+      area: 'The Rainbow',
       description: 'Manage maintenance for the entire area'
     }
   });
   const department2 = await prisma.department.create({
     data: {
       departmentName: 'HVAC Technicians',
-      area: 'Rainbow',
+      area: 'The Rainbow',
       description: 'Manage crack maintenance'
     }
   });
   const department3 = await prisma.department.create({
     data: {
       departmentName: 'Cleaning Technicians',
-      area: 'Rainbow',
+      area: 'The Rainbow',
       description: 'Responsible for cleaning the entire area'
     }
   });
   const department4 = await prisma.department.create({
     data: {
       departmentName: 'Maintenance Technicians',
-      area: 'Rainbow',
+      area: 'The Rainbow',
       description: 'Responsible for maintaining technical equipment'
     }
   });

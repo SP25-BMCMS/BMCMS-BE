@@ -30,6 +30,7 @@ import {
 } from '@nestjs/swagger'
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
 import { AutoMaintenanceScheduleDto } from '@app/contracts/schedules/auto-maintenance-schedule.dto'
+import { GenerateSchedulesConfigDto } from '@app/contracts/schedules/generate-schedules-config.dto'
 
 @Controller('schedules')
 @ApiTags('schedules')
@@ -174,5 +175,23 @@ export class SchedulesController {
   @SwaggerResponse({ status: 404, description: 'Schedule not found' })
   async deleteSchedule(@Param('schedule_id') schedule_id: string) {
     return this.schedulesService.deleteSchedule(schedule_id)
+  }
+
+  @Post('generate-schedules')
+  @ApiOperation({ summary: 'Generate schedules from maintenance cycles with custom configurations' })
+  @ApiBody({ type: GenerateSchedulesConfigDto })
+  @SwaggerResponse({
+    status: 201,
+    description: 'Schedules generated successfully',
+  })
+  @SwaggerResponse({ status: 400, description: 'Bad request - Missing required fields or invalid data' })
+  @SwaggerResponse({ status: 404, description: 'Maintenance cycle or building details not found' })
+  @SwaggerResponse({ status: 408, description: 'Request timeout - Service may be unavailable' })
+  @SwaggerResponse({ status: 500, description: 'Internal server error' })
+  @HttpCode(HttpStatus.CREATED)
+  async generateSchedules(
+    @Body() configDto: GenerateSchedulesConfigDto,
+  ): Promise<any> {
+    return this.schedulesService.generateSchedulesFromConfig(configDto);
   }
 }
