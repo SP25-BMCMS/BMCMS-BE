@@ -48,6 +48,29 @@ export class EmployeesController {
     return this.employeesService.getAllStaff(paginationParams);
   }
 
+  @GrpcMethod('UserService', 'GetStaffLeaderByCrackReport')
+  async getStaffLeaderByCrackReport(@Payload() request: { crackReportId: string }) {
+    try {
+      console.log('Received gRPC request for GetStaffLeaderByCrackReport:', request);
+      const result = await this.employeesService.getStaffLeaderByCrackReport(request.crackReportId);
+      console.log('Sending gRPC response for GetStaffLeaderByCrackReport');
+      return result;
+    } catch (error) {
+      console.error('Error in gRPC GetStaffLeaderByCrackReport:', error);
+      return {
+        isSuccess: false,
+        message: error.message || 'Service unavailable',
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
+      };
+    }
+  }
+
   @Get()
   findAll() {
     return this.employeesService.findAll();

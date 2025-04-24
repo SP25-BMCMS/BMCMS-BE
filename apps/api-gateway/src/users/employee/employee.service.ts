@@ -281,6 +281,46 @@ export class EmployeeService implements OnModuleInit {
     }
   }
 
+  async getStaffLeaderByCrackReport(request: { crackReportId: string }) {
+    try {
+      console.log('Calling gRPC method GetStaffLeaderByCrackReport with crackReportId:', request.crackReportId);
+      const response = await lastValueFrom(
+        this.userService.getStaffLeaderByCrackReport(request)
+      );
+
+      if (!response || !response.isSuccess) {
+        console.log('Received error response from gRPC:', response);
+        return {
+          isSuccess: false,
+          message: response?.message || 'Failed to retrieve staff leaders',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
+      console.log('Received successful response from gRPC for staff leaders');
+      return response;
+    } catch (error) {
+      console.error('Error in getStaffLeaderByCrackReport:', error);
+      return {
+        isSuccess: false,
+        message: 'Service unavailable',
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
+      };
+    }
+  }
+
   // Public method to test getDepartment directly
 
 }
