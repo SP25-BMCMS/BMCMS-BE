@@ -16,6 +16,7 @@ import {
   PaginationResponseDto,
 } from '../../../libs/contracts/src/Pagination/pagination.dto'
 import { AutoMaintenanceScheduleDto } from '@app/contracts/schedules/auto-maintenance-schedule.dto'
+import { GenerateSchedulesConfigDto } from '@app/contracts/schedules/generate-schedules-config.dto'
 
 @Controller('schedules')
 export class ScheduleController {
@@ -77,5 +78,12 @@ export class ScheduleController {
   @MessagePattern(SCHEDULES_PATTERN.TRIGGER_AUTO_MAINTENANCE)
   async triggerAutoMaintenanceSchedule(): Promise<ApiResponse<string>> {
     return this.scheduleService.triggerAutoMaintenanceSchedule();
+  }
+
+  @MessagePattern(SCHEDULES_PATTERN.GENERATE_SCHEDULES)
+  async generateSchedulesFromConfig(
+    @Payload() configDto: GenerateSchedulesConfigDto
+  ): Promise<ApiResponse<any>> {
+    return this.scheduleService.generateSchedulesFromConfig(configDto);
   }
 }

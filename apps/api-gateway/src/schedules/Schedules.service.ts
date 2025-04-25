@@ -480,4 +480,59 @@ export class SchedulesService {
       );
     }
   }
+
+  // Generate schedules from configuration
+  async generateSchedulesFromConfig(configDto: any): Promise<any> {
+    try {
+      console.log('Generating schedules from configuration:', configDto);
+
+      // Basic validation
+      if (!configDto.cycle_configs || !Array.isArray(configDto.cycle_configs) || configDto.cycle_configs.length === 0) {
+        throw new HttpException(
+          'At least one cycle configuration is required',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      if (!configDto.buildingDetails || !Array.isArray(configDto.buildingDetails) || configDto.buildingDetails.length === 0) {
+        throw new HttpException(
+          'At least one building detail ID is required',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      // Validate each cycle configuration
+      configDto.cycle_configs.forEach((config, index) => {
+        if (!config.cycle_id) {
+          throw new HttpException(
+            `Cycle ID is required for cycle configuration at index ${index}`,
+            HttpStatus.BAD_REQUEST
+          );
+        }
+      });
+
+      // Send request to microservice
+      const response = await firstValueFrom(
+        this.scheduleClient
+          .send(SCHEDULES_PATTERN.GENERATE_SCHEDULES, configDto)
+          .pipe(
+            timeout(60000), // 60 second timeout
+            catchError(err => {
+              console.error('Error in generateSchedulesFromConfig microservice call:', err);
+              if (err.name === 'TimeoutError') {
+                throw new HttpException(
+                  'Request timed out. The operation may still be processing on the server.',
+                  HttpStatus.REQUEST_TIMEOUT,
+                );
+              }
+              throw err;
+            })
+          )
+      );
+
+      return response;
+    } catch (error) {
+      return this.handleMicroserviceError(error, 'Error occurred while generating schedules from configuration');
+    }
+  }
 }

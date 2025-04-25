@@ -1329,4 +1329,292 @@ export class ScheduleService {
       });
     }
   }
+
+  async generateSchedulesFromConfig(configDto: any): Promise<ApiResponse<any>> {
+    try {
+      const { cycle_configs, buildingDetails } = configDto;
+      const logger = new Logger('GenerateSchedulesFromConfig');
+
+      // Validate building details IDs
+      if (!buildingDetails || buildingDetails.length === 0) {
+        throw new RpcException({
+          statusCode: 400,
+          message: 'At least one building detail ID is required',
+        });
+      }
+
+      // Validate building details existence
+      try {
+        const invalidBuildingDetailIds = [];
+        for (const buildingDetailId of buildingDetails) {
+          try {
+            logger.log(`Validating building detail ID: ${buildingDetailId}`);
+            const buildingResponse = await firstValueFrom(
+              this.buildingClient
+                .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId })
+                .pipe(
+                  timeout(15000),
+                  catchError(err => {
+                    logger.error(`Error checking building detail ${buildingDetailId}:`, err.message || err);
+                    return of({
+                      statusCode: 404,
+                      message: `Building detail check timed out`,
+                      isTimeout: true
+                    });
+                  })
+                )
+            );
+
+            if (!buildingResponse ||
+              buildingResponse.statusCode !== 200 ||
+              !buildingResponse.data ||
+              buildingResponse.isTimeout) {
+              logger.error(`Building detail ID ${buildingDetailId} is invalid`);
+              invalidBuildingDetailIds.push(buildingDetailId);
+            }
+          } catch (error) {
+            logger.error(`Unexpected error validating building detail ${buildingDetailId}:`, error);
+            invalidBuildingDetailIds.push(buildingDetailId);
+          }
+        }
+
+        if (invalidBuildingDetailIds.length > 0) {
+          throw new RpcException({
+            statusCode: 404,
+            message: `The following building detail IDs do not exist: ${invalidBuildingDetailIds.join(', ')}`,
+          });
+        }
+      } catch (error) {
+        if (error instanceof RpcException) throw error;
+        throw new RpcException({
+          statusCode: 500,
+          message: `Error validating building detail IDs: ${error.message}`,
+        });
+      }
+
+      // Process each cycle config
+      const createdSchedules = [];
+      const allCreatedJobs = [];
+
+      for (const cycleConfig of cycle_configs) {
+        try {
+          // Validate maintenance cycle
+          const maintenanceCycle = await this.prisma.maintenanceCycle.findUnique({
+            where: { cycle_id: cycleConfig.cycle_id }
+          });
+
+          if (!maintenanceCycle) {
+            logger.error(`Maintenance cycle with ID ${cycleConfig.cycle_id} not found`);
+            throw new RpcException({
+              statusCode: 404,
+              message: `Maintenance cycle with ID ${cycleConfig.cycle_id} not found`,
+            });
+          }
+
+          // Set default values if not provided
+          const startDate = new Date(cycleConfig.start_date || new Date());
+          const durationDays = cycleConfig.duration_days || this.getDefaultDurationByFrequency(maintenanceCycle.frequency);
+          const autoCreateTasks = cycleConfig.auto_create_tasks !== undefined ? cycleConfig.auto_create_tasks : true;
+
+          // Calculate end date based on duration
+          const endDate = new Date(startDate);
+          endDate.setDate(endDate.getDate() + durationDays);
+
+          logger.log(`Creating schedule for cycle ${maintenanceCycle.device_type} with duration ${durationDays} days`);
+
+          // Create the schedule
+          const schedule = await this.prisma.schedule.create({
+            data: {
+              schedule_name: `${maintenanceCycle.device_type} Maintenance - ${startDate.toISOString().slice(0, 10)}`,
+              description: `Generated maintenance schedule for ${maintenanceCycle.device_type}`,
+              cycle_id: maintenanceCycle.cycle_id,
+              start_date: startDate,
+              end_date: endDate,
+              schedule_status: $Enums.ScheduleStatus.InProgress,
+            },
+          });
+
+          logger.log(`Created schedule with ID: ${schedule.schedule_id}`);
+
+          // Create schedule jobs - UPDATED LOGIC
+          const scheduleJobs = [];
+          const totalBuildings = buildingDetails.length;
+
+          // Create jobs for each building with simple +1 day increment for runDate
+          buildingDetails.forEach((buildingDetailId, buildingIndex) => {
+            // Calculate runDate by adding 1 day per building index
+            const runDate = new Date(startDate);
+            runDate.setDate(runDate.getDate() + buildingIndex);
+
+            // Get the latest valid runDate (one day before endDate)
+            const latestValidRunDate = new Date(endDate);
+            latestValidRunDate.setDate(latestValidRunDate.getDate() - 1);
+
+            // Check if runDate exceeds or equals the latestValidRunDate
+            const finalRunDate = runDate >= latestValidRunDate ? new Date(latestValidRunDate) : runDate;
+
+            // All scheduleJobs share the same startDate and endDate as the schedule
+            scheduleJobs.push({
+              schedule_id: schedule.schedule_id,
+              run_date: finalRunDate,
+              status: $Enums.ScheduleJobStatus.Pending,
+              buildingDetailId: buildingDetailId,
+              start_date: startDate, // Same as schedule startDate
+              end_date: endDate      // Same as schedule endDate
+            });
+
+            logger.log(`Created job for building ${buildingDetailId} with runDate: ${finalRunDate.toISOString()} (original calculated: ${runDate.toISOString()})`);
+          });
+
+          if (scheduleJobs.length > 0) {
+            // Create schedule jobs in the database
+            await this.prisma.scheduleJob.createMany({
+              data: scheduleJobs,
+            });
+
+            // Retrieve the created jobs with full details
+            const createdScheduleJobs = await this.prisma.scheduleJob.findMany({
+              where: {
+                schedule_id: schedule.schedule_id
+              },
+              include: {
+                schedule: true,
+              },
+            });
+
+            // If auto create tasks is enabled, add to list for task creation
+            if (autoCreateTasks) {
+              allCreatedJobs.push(...createdScheduleJobs);
+              logger.log(`Added ${createdScheduleJobs.length} jobs for task creation`);
+            }
+
+            createdSchedules.push({
+              schedule,
+              maintenanceCycle,
+              jobsCount: createdScheduleJobs.length,
+              autoCreateTasks
+            });
+          }
+        } catch (error) {
+          if (error instanceof RpcException) {
+            logger.error(`Error processing cycle ${cycleConfig.cycle_id}: ${error.message}`);
+            // Continue with next cycle instead of failing completely
+            continue;
+          }
+          logger.error(`Unexpected error processing cycle ${cycleConfig.cycle_id}:`, error);
+        }
+      }
+
+      // Create tasks for jobs if specified and if any jobs were created
+      if (allCreatedJobs.length > 0) {
+        try {
+          logger.log(`Creating tasks for ${allCreatedJobs.length} schedule jobs`);
+          await this.createTasksForScheduleJobs(allCreatedJobs);
+          logger.log('Successfully created tasks for schedule jobs');
+        } catch (taskError) {
+          logger.error(`Error creating tasks for schedule jobs: ${taskError.message}`);
+        }
+      }
+
+      // Send notifications about created schedules
+      if (createdSchedules.length > 0) {
+        try {
+          // Get building names for notification
+          const buildingPromises = buildingDetails.map(buildingDetailId =>
+            firstValueFrom(
+              this.buildingClient
+                .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId })
+                .pipe(
+                  timeout(10000),
+                  catchError(error => of(null))
+                )
+            )
+          );
+
+          const buildingResults = await Promise.all(buildingPromises);
+          const buildingNames = buildingResults
+            .filter(result => result && result.data)
+            .map(result => result.data.name || 'Unnamed Building')
+            .join(', ');
+
+          // Create notification for each schedule
+          for (const scheduleInfo of createdSchedules) {
+            const formattedStartDate = scheduleInfo.schedule.start_date.toLocaleDateString('vi-VN', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+
+            const formattedEndDate = scheduleInfo.schedule.end_date.toLocaleDateString('vi-VN', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+
+            const notificationData = {
+              title: `New maintenance schedule created for ${scheduleInfo.maintenanceCycle.device_type}`,
+              content: `Maintenance schedule "${scheduleInfo.schedule.schedule_name}" has been created from ${formattedStartDate} to ${formattedEndDate} for buildings: ${buildingNames}.`,
+              type: NotificationType.SYSTEM,
+              broadcastToAll: true,
+              link: `/schedules/${scheduleInfo.schedule.schedule_id}`,
+              relatedId: scheduleInfo.schedule.schedule_id
+            };
+
+            await firstValueFrom(
+              this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, notificationData)
+                .pipe(
+                  timeout(10000),
+                  catchError(error => of({ success: false }))
+                )
+            );
+          }
+        } catch (notifyError) {
+          logger.error(`Error sending notifications: ${notifyError.message}`);
+          // Continue even if notification fails
+        }
+      }
+
+      if (createdSchedules.length === 0) {
+        return new ApiResponse(
+          false,
+          'No schedules could be created. Check that all cycle IDs and building detail IDs are valid.',
+          null
+        );
+      }
+
+      return new ApiResponse(
+        true,
+        `Successfully generated ${createdSchedules.length} schedules with ${allCreatedJobs.length} jobs`,
+        {
+          createdSchedules: createdSchedules.map(s => ({
+            schedule_id: s.schedule.schedule_id,
+            schedule_name: s.schedule.schedule_name,
+            device_type: s.maintenanceCycle.device_type,
+            start_date: s.schedule.start_date,
+            end_date: s.schedule.end_date,
+            jobs_count: s.jobsCount,
+            auto_create_tasks: s.autoCreateTasks
+          }))
+        }
+      );
+    } catch (error) {
+      console.error('Error generating schedules from config:', error);
+      if (error instanceof RpcException) throw error;
+      throw new RpcException({
+        statusCode: 500,
+        message: `Failed to generate schedules: ${error.message}`,
+      });
+    }
+  }
+
+  // Helper method to get default duration based on maintenance frequency
+  private getDefaultDurationByFrequency(frequency: string): number {
+    switch (frequency) {
+      case 'Daily': return 1;
+      case 'Weekly': return 2;
+      case 'Monthly': return 3;
+      case 'Yearly': return 5;
+      default: return 3;
+    }
+  }
 }
