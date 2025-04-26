@@ -169,7 +169,7 @@ export class DashboardController {
 
     @Get('manager/metrics')
     @Roles(Role.Manager, Role.Admin)
-    @ApiOperation({ summary: 'Lấy số liệu thống kê về CrackRecord và Task cho Manager Dashboard' })
+    @ApiOperation({ summary: 'Lấy số liệu thống kê về CrackRecord, Task, MaintenanceCycles và ScheduleJobs cho Manager Dashboard' })
     @ApiResponse({
         status: 200,
         description: 'Dữ liệu thống kê cho Manager Dashboard được lấy thành công',
@@ -202,6 +202,18 @@ export class DashboardController {
                                 unverified: { type: 'number', example: 15 },
                                 fixed: { type: 'number', example: 38 },
                                 total: { type: 'number', example: 76 }
+                            }
+                        },
+                        maintenanceCycles: {
+                            type: 'object',
+                            properties: {
+                                total: { type: 'number', example: 42 }
+                            }
+                        },
+                        scheduleJobs: {
+                            type: 'object',
+                            properties: {
+                                total: { type: 'number', example: 67 }
                             }
                         },
                         lastUpdated: { type: 'string', format: 'date-time' }

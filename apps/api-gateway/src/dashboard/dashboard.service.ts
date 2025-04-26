@@ -7,12 +7,15 @@ import { FEEDBACK_PATTERN } from '@app/contracts/feedback/feedback.patterns';
 import { AssignmentStatus, Status } from '@prisma/client-Task';
 import { ApiResponse } from '@app/contracts/ApiResponse/api-response';
 import { CRACK_RECORD_PATTERNS } from '@app/contracts/CrackRecord/CrackRecord.patterns';
+import { SCHEDULEJOB_PATTERN } from '@app/contracts/schedulesjob/ScheduleJob.patterns';
+import { MAINTENANCE_CYCLE_PATTERN } from '@app/contracts/MaintenanceCycle/MaintenanceCycle.patterns';
 
 const TASK_CLIENT = 'TASK_CLIENT';
 const CRACK_CLIENT = 'CRACK_CLIENT';
 const USERS_CLIENT = 'USERS_CLIENT';
-
 const BUILDING_CLIENT = 'BUILDINGS_CLIENT';
+const SCHEDULE_CLIENT = 'SCHEDULE_CLIENT';
+
 interface UserService {
     getAllStaff(paginationParams?: { page?: number; limit?: number; search?: string; role?: string | string[] }): Observable<any>
 }
@@ -24,6 +27,7 @@ export class DashboardService {
         @Inject(CRACK_CLIENT) private readonly crackClient: ClientProxy,
         @Inject(USERS_CLIENT) private readonly userClient: ClientGrpc,
         @Inject(BUILDING_CLIENT) private readonly buildingClient: ClientProxy,
+        @Inject(SCHEDULE_CLIENT) private readonly scheduleClient: ClientProxy,
     ) {
         this.userService = this.userClient.getService<UserService>('UserService');
     }
@@ -628,7 +632,6 @@ export class DashboardService {
                 )
             );
 
-            console.log(tasksResponse);
             // Get task assignments with status counts (InFixing, Unverified, Fixed)
             const taskAssignmentsResponse = await firstValueFrom(
                 this.taskClient.send(TASKASSIGNMENT_PATTERN.GET, {}).pipe(
@@ -639,8 +642,34 @@ export class DashboardService {
                     })
                 )
             );
-                console.log(taskAssignmentsResponse);
 
+            // Get maintenance cycle count from schedules service
+            const maintenanceCycleResponse = await firstValueFrom(
+                this.scheduleClient.send(MAINTENANCE_CYCLE_PATTERN.GET_ALL, {
+                    paginationParams: { page: 1, limit: 30 }
+                }).pipe(
+                    timeout(100000),
+                    catchError(err => {
+                        console.error('Error fetching maintenance cycles:', err);
+                        throw new Error('Failed to retrieve maintenance cycles data');
+                    })
+                )
+            );
+            console.log('MaintenanceCycle response structure:', JSON.stringify(maintenanceCycleResponse, null, 2).substring(0, 500));
+
+            // Get schedule jobs count from schedules service
+            const scheduleJobResponse = await firstValueFrom(
+                this.scheduleClient.send(SCHEDULEJOB_PATTERN.GET, {
+                    paginationParams: { page: 1, limit: 30}
+                }).pipe(
+                    timeout(100000),
+                    catchError(err => {
+                        console.error('Error fetching schedule jobs:', err);
+                        throw new Error('Failed to retrieve schedule jobs data');
+                    })
+                )
+            );
+            console.log('ScheduleJob response structure:', JSON.stringify(scheduleJobResponse, null, 2).substring(0, 500));
 
             // Process the data
             const tasks = tasksResponse?.data || [];
@@ -663,6 +692,26 @@ export class DashboardService {
 
             // Get total crack records count from the pagination response
             const totalCrackRecords = crackRecordResponse?.pagination?.total || 0;
+            
+            // Extract maintenance cycle and schedule job counts from the response
+            // Try different response formats based on the API structure
+            let totalMaintenanceCycles = 0;
+            if (maintenanceCycleResponse?.pagination?.total !== undefined) {
+                totalMaintenanceCycles = maintenanceCycleResponse.pagination.total;
+            } else if (maintenanceCycleResponse?.total !== undefined) {
+                totalMaintenanceCycles = maintenanceCycleResponse.total;
+            } else if (maintenanceCycleResponse?.data && Array.isArray(maintenanceCycleResponse.data)) {
+                totalMaintenanceCycles = maintenanceCycleResponse.data.length;
+            }
+            
+            let totalScheduleJobs = 0;
+            if (scheduleJobResponse?.pagination?.total !== undefined) {
+                totalScheduleJobs = scheduleJobResponse.pagination.total;
+            } else if (scheduleJobResponse?.total !== undefined) {
+                totalScheduleJobs = scheduleJobResponse.total;
+            } else if (scheduleJobResponse?.data && Array.isArray(scheduleJobResponse.data)) {
+                totalScheduleJobs = scheduleJobResponse.data.length;
+            }
 
             return {
                 isSuccess: true,
@@ -673,6 +722,12 @@ export class DashboardService {
                     },
                     tasks: taskCounts,
                     taskAssignments: taskAssignmentCounts,
+                    maintenanceCycles: {
+                        total: totalMaintenanceCycles
+                    },
+                    scheduleJobs: {
+                        total: totalScheduleJobs
+                    },
                     lastUpdated: new Date().toISOString()
                 }
             };
