@@ -5,11 +5,14 @@ import { TASKS_PATTERN } from '@app/contracts/tasks/task.patterns';
 import { TASKASSIGNMENT_PATTERN } from '@app/contracts/taskAssigment/taskAssigment.patterns';
 import { FEEDBACK_PATTERN } from '@app/contracts/feedback/feedback.patterns';
 import { AssignmentStatus, Status } from '@prisma/client-Task';
+import { ApiResponse } from '@app/contracts/ApiResponse/api-response';
+import { CRACK_RECORD_PATTERNS } from '@app/contracts/CrackRecord/CrackRecord.patterns';
 
 const TASK_CLIENT = 'TASK_CLIENT';
 const CRACK_CLIENT = 'CRACK_CLIENT';
 const USERS_CLIENT = 'USERS_CLIENT';
 
+const BUILDING_CLIENT = 'BUILDINGS_CLIENT';
 interface UserService {
     getAllStaff(paginationParams?: { page?: number; limit?: number; search?: string; role?: string | string[] }): Observable<any>
 }
@@ -20,6 +23,7 @@ export class DashboardService {
         @Inject(TASK_CLIENT) private readonly taskClient: ClientProxy,
         @Inject(CRACK_CLIENT) private readonly crackClient: ClientProxy,
         @Inject(USERS_CLIENT) private readonly userClient: ClientGrpc,
+        @Inject(BUILDING_CLIENT) private readonly buildingClient: ClientProxy,
     ) {
         this.userService = this.userClient.getService<UserService>('UserService');
     }
@@ -66,7 +70,7 @@ export class DashboardService {
         try {
             const response = await firstValueFrom(
                 this.taskClient.send(TASKS_PATTERN.GET, {}).pipe(
-                    timeout(10000),
+                    timeout(100000),
                     catchError(err => {
                         console.error('Error fetching task statistics:', err);
                         throw new Error('Failed to retrieve task data');
@@ -76,7 +80,7 @@ export class DashboardService {
 
             const taskAssignmentResponse = await firstValueFrom(
                 this.taskClient.send(TASKASSIGNMENT_PATTERN.GET, {}).pipe(
-                    timeout(10000),
+                    timeout(100000),
                     catchError(err => {
                         console.error('Error fetching task assignments:', err);
                         throw new Error('Failed to retrieve task assignment data');
@@ -589,6 +593,94 @@ export class DashboardService {
             return {
                 isSuccess: false,
                 message: 'Failed to retrieve staff performance data',
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Get manager dashboard metrics specifically for CrackRecord count and Task statistics
+     */
+    async getManagerDashboardMetrics() {
+        try {
+            // Get total crack records count from buildings service
+            const crackRecordResponse = await firstValueFrom(
+                this.buildingClient.send(CRACK_RECORD_PATTERNS.GET_ALL, {
+                    page: 1,
+                    limit: 1  // We only need the count from pagination response
+                }).pipe(
+                    timeout(100000),
+                    catchError(err => {
+                        console.error('Error fetching crack records count:', err);
+                        throw new Error('Failed to retrieve crack records count');
+                    })
+                )
+            );
+
+            // Get tasks with status counts (Assigned, Completed)
+            const tasksResponse = await firstValueFrom(
+                this.taskClient.send(TASKS_PATTERN.GET, {}).pipe(
+                    timeout(100000),
+                    catchError(err => {
+                        console.error('Error fetching tasks:', err);
+                        throw new Error('Failed to retrieve tasks data');
+                    })
+                )
+            );
+
+            console.log(tasksResponse);
+            // Get task assignments with status counts (InFixing, Unverified, Fixed)
+            const taskAssignmentsResponse = await firstValueFrom(
+                this.taskClient.send(TASKASSIGNMENT_PATTERN.GET, {}).pipe(
+                    timeout(100000),
+                    catchError(err => {
+                        console.error('Error fetching task assignments:', err);
+                        throw new Error('Failed to retrieve task assignments data');
+                    })
+                )
+            );
+                console.log(taskAssignmentsResponse);
+
+
+            // Process the data
+            const tasks = tasksResponse?.data || [];
+            const taskAssignments = taskAssignmentsResponse?.data || [];
+            
+            // Calculate task counts by status
+            const taskCounts = {
+                assigned: tasks.filter(task => task.status === Status.Assigned).length,
+                completed: tasks.filter(task => task.status === Status.Completed).length,
+                total: tasks.length
+            };
+
+            // Calculate task assignment counts by status
+            const taskAssignmentCounts = {
+                inFixing: taskAssignments.filter(assignment => assignment.status === AssignmentStatus.InFixing).length,
+                unverified: taskAssignments.filter(assignment => assignment.status === AssignmentStatus.Unverified).length,
+                fixed: taskAssignments.filter(assignment => assignment.status === AssignmentStatus.Fixed).length,
+                total: taskAssignments.length
+            };
+
+            // Get total crack records count from the pagination response
+            const totalCrackRecords = crackRecordResponse?.pagination?.total || 0;
+
+            return {
+                isSuccess: true,
+                message: 'Manager dashboard metrics retrieved successfully',
+                data: {
+                    crackRecords: {
+                        total: totalCrackRecords
+                    },
+                    tasks: taskCounts,
+                    taskAssignments: taskAssignmentCounts,
+                    lastUpdated: new Date().toISOString()
+                }
+            };
+        } catch (error) {
+            console.error('Error retrieving manager dashboard metrics:', error);
+            return {
+                isSuccess: false,
+                message: 'Failed to retrieve dashboard metrics',
                 error: error.message
             };
         }

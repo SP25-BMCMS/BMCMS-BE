@@ -166,4 +166,53 @@ export class DashboardController {
     async getStaffPerformance() {
         return this.dashboardService.getStaffPerformance();
     }
+
+    @Get('manager/metrics')
+    @Roles(Role.Manager, Role.Admin)
+    @ApiOperation({ summary: 'Lấy số liệu thống kê về CrackRecord và Task cho Manager Dashboard' })
+    @ApiResponse({
+        status: 200,
+        description: 'Dữ liệu thống kê cho Manager Dashboard được lấy thành công',
+        schema: {
+            type: 'object',
+            properties: {
+                isSuccess: { type: 'boolean', example: true },
+                message: { type: 'string', example: 'Manager dashboard metrics retrieved successfully' },
+                data: {
+                    type: 'object',
+                    properties: {
+                        crackRecords: {
+                            type: 'object',
+                            properties: {
+                                total: { type: 'number', example: 150 }
+                            }
+                        },
+                        tasks: {
+                            type: 'object',
+                            properties: {
+                                assigned: { type: 'number', example: 45 },
+                                completed: { type: 'number', example: 87 },
+                                total: { type: 'number', example: 132 }
+                            }
+                        },
+                        taskAssignments: {
+                            type: 'object',
+                            properties: {
+                                inFixing: { type: 'number', example: 23 },
+                                unverified: { type: 'number', example: 15 },
+                                fixed: { type: 'number', example: 38 },
+                                total: { type: 'number', example: 76 }
+                            }
+                        },
+                        lastUpdated: { type: 'string', format: 'date-time' }
+                    }
+                }
+            }
+        }
+    })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiResponse({ status: 403, description: 'Forbidden - Manager/Admin role required' })
+    async getManagerDashboardMetrics() {
+        return this.dashboardService.getManagerDashboardMetrics();
+    }
 } 
