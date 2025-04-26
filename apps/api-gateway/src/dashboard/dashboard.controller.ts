@@ -227,4 +227,144 @@ export class DashboardController {
     async getManagerDashboardMetrics() {
         return this.dashboardService.getManagerDashboardMetrics();
     }
+
+    @Get('manager/buildings')
+    @Roles(Role.Manager, Role.Admin)
+    @ApiOperation({ summary: 'Lấy thống kê về tòa nhà và thiết bị cho Manager Dashboard' })
+    @ApiResponse({
+        status: 200,
+        description: 'Dữ liệu thống kê về tòa nhà và thiết bị được lấy thành công',
+        schema: {
+            type: 'object',
+            properties: {
+                isSuccess: { type: 'boolean', example: true },
+                message: { type: 'string', example: 'Building statistics retrieved successfully' },
+                data: {
+                    type: 'object',
+                    properties: {
+                        buildings: {
+                            type: 'object',
+                            properties: {
+                                total: { type: 'number', example: 15 },
+                                byStatus: {
+                                    type: 'object',
+                                    properties: {
+                                        operational: { type: 'number', example: 12 },
+                                        underConstruction: { type: 'number', example: 2 },
+                                        other: { type: 'number', example: 1 }
+                                    }
+                                }
+                            }
+                        },
+                        buildingDetails: {
+                            type: 'object',
+                            properties: {
+                                total: { type: 'number', example: 45 }
+                            }
+                        },
+                        devices: {
+                            type: 'object',
+                            properties: {
+                                total: { type: 'number', example: 120 },
+                                byType: { 
+                                    type: 'object',
+                                    additionalProperties: { type: 'number' }
+                                }
+                            }
+                        },
+                        lastUpdated: { type: 'string', format: 'date-time' }
+                    }
+                }
+            }
+        }
+    })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiResponse({ status: 403, description: 'Forbidden - Manager/Admin role required' })
+    async getBuildingStatistics() {
+        return this.dashboardService.getBuildingStatistics();
+    }
+
+    @Get('manager/maintenance/efficiency')
+    @Roles(Role.Manager, Role.Admin)
+    @ApiOperation({ summary: 'Lấy các chỉ số hiệu quả bảo trì cho Manager Dashboard' })
+    @ApiResponse({
+        status: 200,
+        description: 'Dữ liệu về hiệu quả bảo trì được lấy thành công',
+        schema: {
+            type: 'object',
+            properties: {
+                isSuccess: { type: 'boolean', example: true },
+                message: { type: 'string', example: 'Maintenance efficiency metrics retrieved successfully' },
+                data: {
+                    type: 'object',
+                    properties: {
+                        maintenanceCycles: {
+                            type: 'object',
+                            properties: {
+                                total: { type: 'number', example: 42 },
+                                byDeviceType: { 
+                                    type: 'object',
+                                    additionalProperties: { type: 'number' }
+                                },
+                                byFrequency: { 
+                                    type: 'object',
+                                    additionalProperties: { type: 'number' }
+                                }
+                            }
+                        },
+                        scheduleJobs: {
+                            type: 'object',
+                            properties: {
+                                total: { type: 'number', example: 67 },
+                                byStatus: { 
+                                    type: 'object',
+                                    additionalProperties: { type: 'number' }
+                                },
+                                completionRate: { type: 'string', example: '78.50' },
+                                onTimeRate: { type: 'string', example: '85.30' },
+                                upcoming: { type: 'number', example: 12 }
+                            }
+                        },
+                        lastUpdated: { type: 'string', format: 'date-time' }
+                    }
+                }
+            }
+        }
+    })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiResponse({ status: 403, description: 'Forbidden - Manager/Admin role required' })
+    async getMaintenanceEfficiencyMetrics() {
+        return this.dashboardService.getMaintenanceEfficiencyMetrics();
+    }
+
+    @Get('manager/comprehensive')
+    @Roles(Role.Manager, Role.Admin)
+    @ApiOperation({ summary: 'Lấy tất cả dữ liệu dashboard cho Manager trong một API call' })
+    @ApiResponse({
+        status: 200,
+        description: 'Dữ liệu tổng hợp được lấy thành công',
+        schema: {
+            type: 'object',
+            properties: {
+                isSuccess: { type: 'boolean', example: true },
+                message: { type: 'string', example: 'Comprehensive dashboard data retrieved successfully' },
+                data: {
+                    type: 'object',
+                    properties: {
+                        metrics: { type: 'object' },
+                        buildingStats: { type: 'object' },
+                        maintenanceEfficiency: { type: 'object' },
+                        costsByType: { type: 'object' },
+                        staffPerformance: { type: 'object' },
+                        lastUpdated: { type: 'string', format: 'date-time' }
+                    }
+                }
+            }
+        }
+    })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiResponse({ status: 403, description: 'Forbidden - Manager/Admin role required' })
+    async getComprehensiveManagerDashboard() {
+        return this.dashboardService.getComprehensiveManagerDashboard();
+    }
 } 

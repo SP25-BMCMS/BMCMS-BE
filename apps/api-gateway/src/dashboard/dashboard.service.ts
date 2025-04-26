@@ -9,6 +9,8 @@ import { ApiResponse } from '@app/contracts/ApiResponse/api-response';
 import { CRACK_RECORD_PATTERNS } from '@app/contracts/CrackRecord/CrackRecord.patterns';
 import { SCHEDULEJOB_PATTERN } from '@app/contracts/schedulesjob/ScheduleJob.patterns';
 import { MAINTENANCE_CYCLE_PATTERN } from '@app/contracts/MaintenanceCycle/MaintenanceCycle.patterns';
+import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns';
+import { DEVICE_PATTERNS } from '@app/contracts/Device/Device.patterns';
 
 const TASK_CLIENT = 'TASK_CLIENT';
 const CRACK_CLIENT = 'CRACK_CLIENT';
@@ -736,6 +738,256 @@ export class DashboardService {
             return {
                 isSuccess: false,
                 message: 'Failed to retrieve dashboard metrics',
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Get comprehensive building statistics for manager dashboard
+     */
+    async getBuildingStatistics() {
+        try {
+            // Get buildings with their details
+            const buildingsResponse = await firstValueFrom(
+                this.buildingClient.send(BUILDINGS_PATTERN.GET, {
+                    page: 1,
+                    limit: 1000
+                }).pipe(
+                    timeout(10000),
+                    catchError(err => {
+                        console.error('Error fetching buildings:', err);
+                        throw new Error('Failed to retrieve buildings data');
+                    })
+                )
+            );
+
+            // Get devices information
+            const devicesResponse = await firstValueFrom(
+                this.buildingClient.send(DEVICE_PATTERNS.FIND_ALL, {
+                    page: 1,
+                    limit: 1000
+                }).pipe(
+                    timeout(10000),
+                    catchError(err => {
+                        console.error('Error fetching devices:', err);
+                        throw new Error('Failed to retrieve devices data');
+                    })
+                )
+            );
+
+            const buildings = buildingsResponse?.data || [];
+            const devices = devicesResponse?.data || [];
+
+            // Calculate building stats
+            const totalBuildings = buildings.length;
+            const buildingsByStatus = {
+                operational: buildings.filter(b => b.Status === 'operational').length,
+                underConstruction: buildings.filter(b => b.Status === 'under_construction').length,
+                other: buildings.filter(b => !['operational', 'under_construction'].includes(b.Status)).length
+            };
+
+            // Calculate device stats by type
+            const devicesByType = {};
+            devices.forEach(device => {
+                if (!devicesByType[device.type]) {
+                    devicesByType[device.type] = 0;
+                }
+                devicesByType[device.type]++;
+            });
+
+            // Get total number of building details
+            let totalBuildingDetails = 0;
+            buildings.forEach(building => {
+                if (building.buildingDetails) {
+                    totalBuildingDetails += building.buildingDetails.length;
+                }
+            });
+
+            return {
+                isSuccess: true,
+                message: 'Building statistics retrieved successfully',
+                data: {
+                    buildings: {
+                        total: totalBuildings,
+                        byStatus: buildingsByStatus
+                    },
+                    buildingDetails: {
+                        total: totalBuildingDetails
+                    },
+                    devices: {
+                        total: devices.length,
+                        byType: devicesByType
+                    },
+                    lastUpdated: new Date().toISOString()
+                }
+            };
+        } catch (error) {
+            console.error('Error retrieving building statistics:', error);
+            return {
+                isSuccess: false,
+                message: 'Failed to retrieve building statistics',
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Get maintenance efficiency metrics for manager dashboard
+     */
+    async getMaintenanceEfficiencyMetrics() {
+        try {
+            // Get all maintenance cycles
+            const maintenanceCyclesResponse = await firstValueFrom(
+                this.scheduleClient.send(MAINTENANCE_CYCLE_PATTERN.GET_ALL, {
+                    paginationParams: { page: 1, limit: 1000 }
+                }).pipe(
+                    timeout(10000),
+                    catchError(err => {
+                        console.error('Error fetching maintenance cycles:', err);
+                        throw new Error('Failed to retrieve maintenance cycles');
+                    })
+                )
+            );
+
+            // Get all schedule jobs
+            const scheduleJobsResponse = await firstValueFrom(
+                this.scheduleClient.send(SCHEDULEJOB_PATTERN.GET, {
+                    paginationParams: { page: 1, limit: 1000 }
+                }).pipe(
+                    timeout(10000),
+                    catchError(err => {
+                        console.error('Error fetching schedule jobs:', err);
+                        throw new Error('Failed to retrieve schedule jobs');
+                    })
+                )
+            );
+
+            const maintenanceCycles = maintenanceCyclesResponse?.data || [];
+            const scheduleJobs = scheduleJobsResponse?.data || [];
+
+            // Calculate cycles by device type
+            const cyclesByDeviceType = {};
+            maintenanceCycles.forEach(cycle => {
+                if (!cyclesByDeviceType[cycle.device_type]) {
+                    cyclesByDeviceType[cycle.device_type] = 0;
+                }
+                cyclesByDeviceType[cycle.device_type]++;
+            });
+
+            // Calculate cycles by frequency
+            const cyclesByFrequency = {};
+            maintenanceCycles.forEach(cycle => {
+                if (!cyclesByFrequency[cycle.frequency]) {
+                    cyclesByFrequency[cycle.frequency] = 0;
+                }
+                cyclesByFrequency[cycle.frequency]++;
+            });
+
+            // Calculate schedule jobs by status
+            const jobsByStatus = {};
+            scheduleJobs.forEach(job => {
+                if (!jobsByStatus[job.status]) {
+                    jobsByStatus[job.status] = 0;
+                }
+                jobsByStatus[job.status]++;
+            });
+
+            // Calculate completion rate
+            const completedJobs = scheduleJobs.filter(job => job.status === 'Completed').length;
+            const completionRate = scheduleJobs.length > 0 
+                ? (completedJobs / scheduleJobs.length * 100).toFixed(2) 
+                : 0;
+
+            // Calculate on-time completion rate
+            const now = new Date();
+            const onTimeJobs = scheduleJobs.filter(job => {
+                if (job.status !== 'Completed') return false;
+                const endDate = new Date(job.end_date);
+                const runDate = new Date(job.run_date);
+                return runDate <= endDate;
+            }).length;
+            
+            const onTimeRate = completedJobs > 0 
+                ? (onTimeJobs / completedJobs * 100).toFixed(2) 
+                : 0;
+
+            // Calculate upcoming jobs (due in the next 7 days)
+            const nextWeek = new Date();
+            nextWeek.setDate(nextWeek.getDate() + 7);
+            
+            const upcomingJobs = scheduleJobs.filter(job => {
+                if (job.status === 'Completed' || job.status === 'Cancel') return false;
+                const runDate = new Date(job.run_date);
+                return runDate >= now && runDate <= nextWeek;
+            });
+
+            return {
+                isSuccess: true,
+                message: 'Maintenance efficiency metrics retrieved successfully',
+                data: {
+                    maintenanceCycles: {
+                        total: maintenanceCycles.length,
+                        byDeviceType: cyclesByDeviceType,
+                        byFrequency: cyclesByFrequency
+                    },
+                    scheduleJobs: {
+                        total: scheduleJobs.length,
+                        byStatus: jobsByStatus,
+                        completionRate: completionRate,
+                        onTimeRate: onTimeRate,
+                        upcoming: upcomingJobs.length
+                    },
+                    lastUpdated: new Date().toISOString()
+                }
+            };
+        } catch (error) {
+            console.error('Error retrieving maintenance efficiency metrics:', error);
+            return {
+                isSuccess: false,
+                message: 'Failed to retrieve maintenance efficiency metrics',
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Get comprehensive dashboard data for managers in a single call
+     */
+    async getComprehensiveManagerDashboard() {
+        try {
+            // Call all dashboard methods in parallel
+            const [
+                metrics,
+                buildingStats,
+                maintenanceEfficiency,
+                costsByType,
+                staffPerformance
+            ] = await Promise.all([
+                this.getManagerDashboardMetrics(),
+                this.getBuildingStatistics(),
+                this.getMaintenanceEfficiencyMetrics(),
+                this.getCostByTaskType(),
+                this.getStaffPerformance()
+            ]);
+
+            return {
+                isSuccess: true,
+                message: 'Comprehensive dashboard data retrieved successfully',
+                data: {
+                    metrics: metrics.data,
+                    buildingStats: buildingStats.data,
+                    maintenanceEfficiency: maintenanceEfficiency.data,
+                    costsByType: costsByType.data,
+                    staffPerformance: staffPerformance.data,
+                    lastUpdated: new Date().toISOString()
+                }
+            };
+        } catch (error) {
+            console.error('Error retrieving comprehensive dashboard data:', error);
+            return {
+                isSuccess: false,
+                message: 'Failed to retrieve comprehensive dashboard data',
                 error: error.message
             };
         }
