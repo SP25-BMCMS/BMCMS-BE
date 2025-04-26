@@ -71,6 +71,29 @@ export class EmployeesController {
     }
   }
 
+  @GrpcMethod('UserService', 'GetStaffLeaderByScheduleJob')
+  async getStaffLeaderByScheduleJob(@Payload() request: { scheduleJobId: string }) {
+    try {
+      console.log('Received gRPC request for GetStaffLeaderByScheduleJob:', request);
+      const result = await this.employeesService.getStaffLeaderByScheduleJob(request.scheduleJobId);
+      console.log('Sending gRPC response for GetStaffLeaderByScheduleJob');
+      return result;
+    } catch (error) {
+      console.error('Error in gRPC GetStaffLeaderByScheduleJob:', error);
+      return {
+        isSuccess: false,
+        message: error.message || 'Service unavailable',
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
+      };
+    }
+  }
+
   @Get()
   findAll() {
     return this.employeesService.findAll();

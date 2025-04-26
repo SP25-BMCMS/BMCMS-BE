@@ -321,6 +321,46 @@ export class EmployeeService implements OnModuleInit {
     }
   }
 
+  async getStaffLeaderByScheduleJob(request: { scheduleJobId: string }) {
+    try {
+      console.log('Calling gRPC method GetStaffLeaderByScheduleJob with scheduleJobId:', request.scheduleJobId);
+      const response = await lastValueFrom(
+        this.userService.getStaffLeaderByScheduleJob(request)
+      );
+
+      if (!response || !response.isSuccess) {
+        console.log('Received error response from gRPC:', response);
+        return {
+          isSuccess: false,
+          message: response?.message || 'Failed to retrieve staff leaders',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
+      console.log('Received successful response from gRPC for staff leaders');
+      return response;
+    } catch (error) {
+      console.error('Error in getStaffLeaderByScheduleJob:', error);
+      return {
+        isSuccess: false,
+        message: 'Service unavailable',
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
+      };
+    }
+  }
+
   // Public method to test getDepartment directly
 
 }

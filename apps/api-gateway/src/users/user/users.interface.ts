@@ -135,4 +135,16 @@ export interface UserInterface {
       totalPages: number;
     };
   }>;
+
+  getStaffLeaderByScheduleJob(data: { scheduleJobId: string }): Observable<{
+    isSuccess: boolean;
+    message: string;
+    data: any[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }>;
 }

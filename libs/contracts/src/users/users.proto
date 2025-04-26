@@ -36,6 +36,7 @@ service UserService {
   rpc GetUserByIdForTaskAssignmentDetail (UserRequest) returns (UserForTaskAssignmentResponse);
   rpc CheckUserExists (CheckUserExistsRequest) returns (CheckUserExistsResponse);
   rpc GetStaffLeaderByCrackReport (GetStaffLeaderByCrackReportRequest) returns (StaffListResponse);
+  rpc GetStaffLeaderByScheduleJob (GetStaffLeaderByScheduleJobRequest) returns (StaffListResponse);
 }
 message GetApartmentByIdRequest {
   string apartmentId = 1;
@@ -502,6 +503,10 @@ message UserData {
 
 message GetStaffLeaderByCrackReportRequest {
   string crackReportId = 1;
+}
+
+message GetStaffLeaderByScheduleJobRequest {
+  string scheduleJobId = 1;
 }
 
 
