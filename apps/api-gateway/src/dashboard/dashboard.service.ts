@@ -5,10 +5,18 @@ import { TASKS_PATTERN } from '@app/contracts/tasks/task.patterns';
 import { TASKASSIGNMENT_PATTERN } from '@app/contracts/taskAssigment/taskAssigment.patterns';
 import { FEEDBACK_PATTERN } from '@app/contracts/feedback/feedback.patterns';
 import { AssignmentStatus, Status } from '@prisma/client-Task';
+import { ApiResponse } from '@app/contracts/ApiResponse/api-response';
+import { CRACK_RECORD_PATTERNS } from '@app/contracts/CrackRecord/CrackRecord.patterns';
+import { SCHEDULEJOB_PATTERN } from '@app/contracts/schedulesjob/ScheduleJob.patterns';
+import { MAINTENANCE_CYCLE_PATTERN } from '@app/contracts/MaintenanceCycle/MaintenanceCycle.patterns';
+import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns';
+import { DEVICE_PATTERNS } from '@app/contracts/Device/Device.patterns';
 
 const TASK_CLIENT = 'TASK_CLIENT';
 const CRACK_CLIENT = 'CRACK_CLIENT';
 const USERS_CLIENT = 'USERS_CLIENT';
+const BUILDING_CLIENT = 'BUILDINGS_CLIENT';
+const SCHEDULE_CLIENT = 'SCHEDULE_CLIENT';
 
 interface UserService {
     getAllStaff(paginationParams?: { page?: number; limit?: number; search?: string; role?: string | string[] }): Observable<any>
@@ -20,6 +28,8 @@ export class DashboardService {
         @Inject(TASK_CLIENT) private readonly taskClient: ClientProxy,
         @Inject(CRACK_CLIENT) private readonly crackClient: ClientProxy,
         @Inject(USERS_CLIENT) private readonly userClient: ClientGrpc,
+        @Inject(BUILDING_CLIENT) private readonly buildingClient: ClientProxy,
+        @Inject(SCHEDULE_CLIENT) private readonly scheduleClient: ClientProxy,
     ) {
         this.userService = this.userClient.getService<UserService>('UserService');
     }
@@ -66,7 +76,7 @@ export class DashboardService {
         try {
             const response = await firstValueFrom(
                 this.taskClient.send(TASKS_PATTERN.GET, {}).pipe(
-                    timeout(10000),
+                    timeout(100000),
                     catchError(err => {
                         console.error('Error fetching task statistics:', err);
                         throw new Error('Failed to retrieve task data');
@@ -76,7 +86,7 @@ export class DashboardService {
 
             const taskAssignmentResponse = await firstValueFrom(
                 this.taskClient.send(TASKASSIGNMENT_PATTERN.GET, {}).pipe(
-                    timeout(10000),
+                    timeout(100000),
                     catchError(err => {
                         console.error('Error fetching task assignments:', err);
                         throw new Error('Failed to retrieve task assignment data');
@@ -589,6 +599,395 @@ export class DashboardService {
             return {
                 isSuccess: false,
                 message: 'Failed to retrieve staff performance data',
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Get manager dashboard metrics specifically for CrackRecord count and Task statistics
+     */
+    async getManagerDashboardMetrics() {
+        try {
+            // Get total crack records count from buildings service
+            const crackRecordResponse = await firstValueFrom(
+                this.buildingClient.send(CRACK_RECORD_PATTERNS.GET_ALL, {
+                    page: 1,
+                    limit: 1  // We only need the count from pagination response
+                }).pipe(
+                    timeout(100000),
+                    catchError(err => {
+                        console.error('Error fetching crack records count:', err);
+                        throw new Error('Failed to retrieve crack records count');
+                    })
+                )
+            );
+
+            // Get tasks with status counts (Assigned, Completed)
+            const tasksResponse = await firstValueFrom(
+                this.taskClient.send(TASKS_PATTERN.GET, {}).pipe(
+                    timeout(100000),
+                    catchError(err => {
+                        console.error('Error fetching tasks:', err);
+                        throw new Error('Failed to retrieve tasks data');
+                    })
+                )
+            );
+
+            // Get task assignments with status counts (InFixing, Unverified, Fixed)
+            const taskAssignmentsResponse = await firstValueFrom(
+                this.taskClient.send(TASKASSIGNMENT_PATTERN.GET, {}).pipe(
+                    timeout(100000),
+                    catchError(err => {
+                        console.error('Error fetching task assignments:', err);
+                        throw new Error('Failed to retrieve task assignments data');
+                    })
+                )
+            );
+
+            // Get maintenance cycle count from schedules service
+            const maintenanceCycleResponse = await firstValueFrom(
+                this.scheduleClient.send(MAINTENANCE_CYCLE_PATTERN.GET_ALL, {
+                    paginationParams: { page: 1, limit: 30 }
+                }).pipe(
+                    timeout(100000),
+                    catchError(err => {
+                        console.error('Error fetching maintenance cycles:', err);
+                        throw new Error('Failed to retrieve maintenance cycles data');
+                    })
+                )
+            );
+            console.log('MaintenanceCycle response structure:', JSON.stringify(maintenanceCycleResponse, null, 2).substring(0, 500));
+
+            // Get schedule jobs count from schedules service
+            const scheduleJobResponse = await firstValueFrom(
+                this.scheduleClient.send(SCHEDULEJOB_PATTERN.GET, {
+                    paginationParams: { page: 1, limit: 30}
+                }).pipe(
+                    timeout(100000),
+                    catchError(err => {
+                        console.error('Error fetching schedule jobs:', err);
+                        throw new Error('Failed to retrieve schedule jobs data');
+                    })
+                )
+            );
+            console.log('ScheduleJob response structure:', JSON.stringify(scheduleJobResponse, null, 2).substring(0, 500));
+
+            // Process the data
+            const tasks = tasksResponse?.data || [];
+            const taskAssignments = taskAssignmentsResponse?.data || [];
+            
+            // Calculate task counts by status
+            const taskCounts = {
+                assigned: tasks.filter(task => task.status === Status.Assigned).length,
+                completed: tasks.filter(task => task.status === Status.Completed).length,
+                total: tasks.length
+            };
+
+            // Calculate task assignment counts by status
+            const taskAssignmentCounts = {
+                inFixing: taskAssignments.filter(assignment => assignment.status === AssignmentStatus.InFixing).length,
+                unverified: taskAssignments.filter(assignment => assignment.status === AssignmentStatus.Unverified).length,
+                fixed: taskAssignments.filter(assignment => assignment.status === AssignmentStatus.Fixed).length,
+                total: taskAssignments.length
+            };
+
+            // Get total crack records count from the pagination response
+            const totalCrackRecords = crackRecordResponse?.pagination?.total || 0;
+            
+            // Extract maintenance cycle and schedule job counts from the response
+            // Try different response formats based on the API structure
+            let totalMaintenanceCycles = 0;
+            if (maintenanceCycleResponse?.pagination?.total !== undefined) {
+                totalMaintenanceCycles = maintenanceCycleResponse.pagination.total;
+            } else if (maintenanceCycleResponse?.total !== undefined) {
+                totalMaintenanceCycles = maintenanceCycleResponse.total;
+            } else if (maintenanceCycleResponse?.data && Array.isArray(maintenanceCycleResponse.data)) {
+                totalMaintenanceCycles = maintenanceCycleResponse.data.length;
+            }
+            
+            let totalScheduleJobs = 0;
+            if (scheduleJobResponse?.pagination?.total !== undefined) {
+                totalScheduleJobs = scheduleJobResponse.pagination.total;
+            } else if (scheduleJobResponse?.total !== undefined) {
+                totalScheduleJobs = scheduleJobResponse.total;
+            } else if (scheduleJobResponse?.data && Array.isArray(scheduleJobResponse.data)) {
+                totalScheduleJobs = scheduleJobResponse.data.length;
+            }
+
+            return {
+                isSuccess: true,
+                message: 'Manager dashboard metrics retrieved successfully',
+                data: {
+                    crackRecords: {
+                        total: totalCrackRecords
+                    },
+                    tasks: taskCounts,
+                    taskAssignments: taskAssignmentCounts,
+                    maintenanceCycles: {
+                        total: totalMaintenanceCycles
+                    },
+                    scheduleJobs: {
+                        total: totalScheduleJobs
+                    },
+                    lastUpdated: new Date().toISOString()
+                }
+            };
+        } catch (error) {
+            console.error('Error retrieving manager dashboard metrics:', error);
+            return {
+                isSuccess: false,
+                message: 'Failed to retrieve dashboard metrics',
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Get comprehensive building statistics for manager dashboard
+     */
+    async getBuildingStatistics() {
+        try {
+            // Get buildings with their details
+            const buildingsResponse = await firstValueFrom(
+                this.buildingClient.send(BUILDINGS_PATTERN.GET, {
+                    page: 1,
+                    limit: 1000
+                }).pipe(
+                    timeout(10000),
+                    catchError(err => {
+                        console.error('Error fetching buildings:', err);
+                        throw new Error('Failed to retrieve buildings data');
+                    })
+                )
+            );
+
+            // Get devices information
+            const devicesResponse = await firstValueFrom(
+                this.buildingClient.send(DEVICE_PATTERNS.FIND_ALL, {
+                    page: 1,
+                    limit: 1000
+                }).pipe(
+                    timeout(10000),
+                    catchError(err => {
+                        console.error('Error fetching devices:', err);
+                        throw new Error('Failed to retrieve devices data');
+                    })
+                )
+            );
+
+            const buildings = buildingsResponse?.data || [];
+            const devices = devicesResponse?.data || [];
+
+            // Calculate building stats
+            const totalBuildings = buildings.length;
+            const buildingsByStatus = {
+                operational: buildings.filter(b => b.Status === 'operational').length,
+                underConstruction: buildings.filter(b => b.Status === 'under_construction').length,
+                other: buildings.filter(b => !['operational', 'under_construction'].includes(b.Status)).length
+            };
+
+            // Calculate device stats by type
+            const devicesByType = {};
+            devices.forEach(device => {
+                if (!devicesByType[device.type]) {
+                    devicesByType[device.type] = 0;
+                }
+                devicesByType[device.type]++;
+            });
+
+            // Get total number of building details
+            let totalBuildingDetails = 0;
+            buildings.forEach(building => {
+                if (building.buildingDetails) {
+                    totalBuildingDetails += building.buildingDetails.length;
+                }
+            });
+
+            return {
+                isSuccess: true,
+                message: 'Building statistics retrieved successfully',
+                data: {
+                    buildings: {
+                        total: totalBuildings,
+                        byStatus: buildingsByStatus
+                    },
+                    buildingDetails: {
+                        total: totalBuildingDetails
+                    },
+                    devices: {
+                        total: devices.length,
+                        byType: devicesByType
+                    },
+                    lastUpdated: new Date().toISOString()
+                }
+            };
+        } catch (error) {
+            console.error('Error retrieving building statistics:', error);
+            return {
+                isSuccess: false,
+                message: 'Failed to retrieve building statistics',
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Get maintenance efficiency metrics for manager dashboard
+     */
+    async getMaintenanceEfficiencyMetrics() {
+        try {
+            // Get all maintenance cycles
+            const maintenanceCyclesResponse = await firstValueFrom(
+                this.scheduleClient.send(MAINTENANCE_CYCLE_PATTERN.GET_ALL, {
+                    paginationParams: { page: 1, limit: 1000 }
+                }).pipe(
+                    timeout(10000),
+                    catchError(err => {
+                        console.error('Error fetching maintenance cycles:', err);
+                        throw new Error('Failed to retrieve maintenance cycles');
+                    })
+                )
+            );
+
+            // Get all schedule jobs
+            const scheduleJobsResponse = await firstValueFrom(
+                this.scheduleClient.send(SCHEDULEJOB_PATTERN.GET, {
+                    paginationParams: { page: 1, limit: 1000 }
+                }).pipe(
+                    timeout(10000),
+                    catchError(err => {
+                        console.error('Error fetching schedule jobs:', err);
+                        throw new Error('Failed to retrieve schedule jobs');
+                    })
+                )
+            );
+
+            const maintenanceCycles = maintenanceCyclesResponse?.data || [];
+            const scheduleJobs = scheduleJobsResponse?.data || [];
+
+            // Calculate cycles by device type
+            const cyclesByDeviceType = {};
+            maintenanceCycles.forEach(cycle => {
+                if (!cyclesByDeviceType[cycle.device_type]) {
+                    cyclesByDeviceType[cycle.device_type] = 0;
+                }
+                cyclesByDeviceType[cycle.device_type]++;
+            });
+
+            // Calculate cycles by frequency
+            const cyclesByFrequency = {};
+            maintenanceCycles.forEach(cycle => {
+                if (!cyclesByFrequency[cycle.frequency]) {
+                    cyclesByFrequency[cycle.frequency] = 0;
+                }
+                cyclesByFrequency[cycle.frequency]++;
+            });
+
+            // Calculate schedule jobs by status
+            const jobsByStatus = {};
+            scheduleJobs.forEach(job => {
+                if (!jobsByStatus[job.status]) {
+                    jobsByStatus[job.status] = 0;
+                }
+                jobsByStatus[job.status]++;
+            });
+
+            // Calculate completion rate
+            const completedJobs = scheduleJobs.filter(job => job.status === 'Completed').length;
+            const completionRate = scheduleJobs.length > 0 
+                ? (completedJobs / scheduleJobs.length * 100).toFixed(2) 
+                : 0;
+
+            // Calculate on-time completion rate
+            const now = new Date();
+            const onTimeJobs = scheduleJobs.filter(job => {
+                if (job.status !== 'Completed') return false;
+                const endDate = new Date(job.end_date);
+                const runDate = new Date(job.run_date);
+                return runDate <= endDate;
+            }).length;
+            
+            const onTimeRate = completedJobs > 0 
+                ? (onTimeJobs / completedJobs * 100).toFixed(2) 
+                : 0;
+
+            // Calculate upcoming jobs (due in the next 7 days)
+            const nextWeek = new Date();
+            nextWeek.setDate(nextWeek.getDate() + 7);
+            
+            const upcomingJobs = scheduleJobs.filter(job => {
+                if (job.status === 'Completed' || job.status === 'Cancel') return false;
+                const runDate = new Date(job.run_date);
+                return runDate >= now && runDate <= nextWeek;
+            });
+
+            return {
+                isSuccess: true,
+                message: 'Maintenance efficiency metrics retrieved successfully',
+                data: {
+                    maintenanceCycles: {
+                        total: maintenanceCycles.length,
+                        byDeviceType: cyclesByDeviceType,
+                        byFrequency: cyclesByFrequency
+                    },
+                    scheduleJobs: {
+                        total: scheduleJobs.length,
+                        byStatus: jobsByStatus,
+                        completionRate: completionRate,
+                        onTimeRate: onTimeRate,
+                        upcoming: upcomingJobs.length
+                    },
+                    lastUpdated: new Date().toISOString()
+                }
+            };
+        } catch (error) {
+            console.error('Error retrieving maintenance efficiency metrics:', error);
+            return {
+                isSuccess: false,
+                message: 'Failed to retrieve maintenance efficiency metrics',
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Get comprehensive dashboard data for managers in a single call
+     */
+    async getComprehensiveManagerDashboard() {
+        try {
+            // Call all dashboard methods in parallel
+            const [
+                metrics,
+                buildingStats,
+                maintenanceEfficiency,
+                costsByType,
+                staffPerformance
+            ] = await Promise.all([
+                this.getManagerDashboardMetrics(),
+                this.getBuildingStatistics(),
+                this.getMaintenanceEfficiencyMetrics(),
+                this.getCostByTaskType(),
+                this.getStaffPerformance()
+            ]);
+
+            return {
+                isSuccess: true,
+                message: 'Comprehensive dashboard data retrieved successfully',
+                data: {
+                    metrics: metrics.data,
+                    buildingStats: buildingStats.data,
+                    maintenanceEfficiency: maintenanceEfficiency.data,
+                    costsByType: costsByType.data,
+                    staffPerformance: staffPerformance.data,
+                    lastUpdated: new Date().toISOString()
+                }
+            };
+        } catch (error) {
+            console.error('Error retrieving comprehensive dashboard data:', error);
+            return {
+                isSuccess: false,
+                message: 'Failed to retrieve comprehensive dashboard data',
                 error: error.message
             };
         }
