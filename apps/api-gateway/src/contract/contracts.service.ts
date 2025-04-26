@@ -62,6 +62,32 @@ export class ContractsService {
         );
     }
 
+    async updateContractWithFile(contractId: string, updateContractDto: UpdateContractDto, file: any) {
+        return await firstValueFrom(
+            this.buildingsClient.send(CONTRACTS_PATTERN.UPDATE_WITH_FILE, {
+                contractId,
+                data: updateContractDto,
+                file
+            }).pipe(
+                catchError((error) => {
+                    console.error('Error updating contract with file:', error);
+
+                    if (error.error?.statusCode) {
+                        throw new HttpException({
+                            statusCode: error.error.statusCode,
+                            message: error.error.message || 'Failed to update contract with file'
+                        }, error.error.statusCode);
+                    }
+
+                    throw new HttpException({
+                        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                        message: 'Failed to update contract with file'
+                    }, HttpStatus.INTERNAL_SERVER_ERROR);
+                })
+            ),
+        );
+    }
+
     async getAllContracts(queryDto: ContractQueryDto) {
         return await firstValueFrom(
             this.buildingsClient.send(CONTRACTS_PATTERN.GET_ALL, queryDto)

@@ -9,7 +9,6 @@ export class UpdateContractDto {
         type: Date
     })
     @IsOptional()
-    @IsDateString()
     start_date?: string;
 
     @ApiProperty({
@@ -19,7 +18,6 @@ export class UpdateContractDto {
         type: Date
     })
     @IsOptional()
-    @IsDateString()
     end_date?: string;
 
     @ApiProperty({
@@ -28,6 +26,5 @@ export class UpdateContractDto {
         required: false
     })
     @IsOptional()
-    @IsString()
     vendor?: string;
 } 

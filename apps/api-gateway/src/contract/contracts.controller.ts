@@ -6,6 +6,7 @@ import {
     Param,
     Post,
     Put,
+    Patch,
     Query,
     UseGuards,
     UploadedFile,
@@ -394,6 +395,132 @@ export class ContractsController {
                 {
                     statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
                     message: 'Error viewing contract file'
+                },
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+
+    @Patch(':id')
+    @ApiOperation({ summary: 'Update a contract with optional file upload' })
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                start_date: {
+                    type: 'string',
+                    format: 'date',
+                    example: '2023-01-01',
+                    description: 'The start date of the contract'
+                },
+                end_date: {
+                    type: 'string',
+                    format: 'date',
+                    example: '2024-01-01',
+                    description: 'The end date of the contract'
+                },
+                vendor: {
+                    type: 'string',
+                    example: 'ABC Company',
+                    description: 'The vendor of the contract'
+                },
+                contractFile: {
+                    type: 'string',
+                    format: 'binary',
+                    description: 'Contract file (PDF only, maximum 10MB)'
+                }
+            }
+        }
+    })
+    @UseInterceptors(
+        FileInterceptor('contractFile', {
+            fileFilter: (req, file, callback) => {
+                console.log('File upload attempt:', {
+                    originalname: file.originalname,
+                    mimetype: file.mimetype,
+                    size: file.size
+                })
+
+                const allowedMimeTypes = [
+                    'application/pdf'
+                ]
+
+                if (allowedMimeTypes.includes(file.mimetype)) {
+                    callback(null, true)
+                } else {
+                    console.error('Invalid file type:', file.mimetype)
+                    callback(
+                        new HttpException(
+                            {
+                                statusCode: HttpStatus.BAD_REQUEST,
+                                message: 'Only PDF files are allowed'
+                            },
+                            HttpStatus.BAD_REQUEST
+                        ),
+                        false
+                    )
+                }
+            }
+        })
+    )
+    async updateContractWithFile(
+        @Param('id') contractId: string,
+        @Body() updateContractDto: UpdateContractDto,
+        @UploadedFile() file: Express.Multer.File,
+    ) {
+        try {
+            console.log('Updating contract with ID:', contractId);
+            console.log('Update data:', updateContractDto);
+            console.log('File:', file ? {
+                originalname: file.originalname,
+                mimetype: file.mimetype,
+                size: file.size
+            } : 'No file uploaded');
+
+            // Clean empty strings from the DTO
+            const cleanedDto = { ...updateContractDto };
+
+            // Only include non-empty strings for updating
+            Object.keys(cleanedDto).forEach(key => {
+                if (cleanedDto[key] === '') {
+                    delete cleanedDto[key];
+                }
+            });
+
+            console.log('Cleaned update data:', cleanedDto);
+
+            if (file) {
+                // Process the file for microservice transport
+                const processedFile = {
+                    ...file,
+                    buffer: file.buffer.toString('base64') // Convert buffer to base64 string for transport
+                };
+
+                // Call the service method that handles file uploads with cleaned DTO
+                return await this.contractsService.updateContractWithFile(
+                    contractId,
+                    cleanedDto,
+                    processedFile
+                );
+            } else {
+                // If no file was uploaded, use the regular update method with cleaned DTO
+                return await this.contractsService.updateContract(
+                    contractId,
+                    cleanedDto
+                );
+            }
+        } catch (error) {
+            console.error('Error updating contract with file:', error);
+
+            if (error instanceof HttpException) {
+                throw error;
+            }
+
+            throw new HttpException(
+                {
+                    statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                    message: 'An error occurred while updating the contract'
                 },
                 HttpStatus.INTERNAL_SERVER_ERROR
             );
