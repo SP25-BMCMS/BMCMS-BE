@@ -2,7 +2,6 @@ import { Module, OnModuleInit, Logger } from '@nestjs/common'
 import { ChatbotService } from './chatbot.service'
 import { ChatbotController } from './chatbot.controller'
 import { ConfigModule, ConfigService } from '@nestjs/config'
-import { PrismaModule } from '../prisma/prisma.module'
 import { GeminiService } from './utils/gemini.service'
 import { CHATBOT_CLIENT } from 'apps/api-gateway/src/constraints'
 import { ClientProxyFactory, Transport } from '@nestjs/microservices'
@@ -18,7 +17,7 @@ const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    PrismaModule,
+    // PrismaModule,
     ClientConfigModule,
   ],
   controllers: [ChatbotController],

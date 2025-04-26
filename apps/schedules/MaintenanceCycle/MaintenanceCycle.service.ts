@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { CreateMaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/create-MaintenanceCycle.dto'
 import { UpdateMaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/update-MaintenanceCycle.dto'
 import { MaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/MaintenanceCycle.dto'
+import { MaintenanceCycleHistoryDto } from '@app/contracts/MaintenanceCycle/MaintenanceCycleHistory.dto'
 import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { PaginationParams, PaginationResponseDto } from '@app/contracts/Pagination/pagination.dto'
 import { DeviceType, Frequency, MaintenanceBasis } from '@prisma/client-schedule'
@@ -107,16 +108,44 @@ export class MaintenanceCycleService {
 
   async update(cycle_id: string, updateDto: UpdateMaintenanceCycleDto): Promise<ApiResponse<MaintenanceCycleDto>> {
     try {
-      const cycle = await this.prisma.maintenanceCycle.update({
+      // Get the current cycle data before updating
+      const currentCycle = await this.prisma.maintenanceCycle.findUnique({
         where: { cycle_id },
-        data: updateDto,
-      })
+      });
+
+      if (!currentCycle) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Maintenance cycle not found',
+        });
+      }
+
+      // Extract updated_by and reason if they exist in the updateDto
+      const { updated_by, reason, ...updateData } = updateDto as any;
+      
+      // Save the current state to history
+      await this.prisma.maintenanceCycleHistory.create({
+        data: {
+          cycle_id: currentCycle.cycle_id,
+          frequency: currentCycle.frequency,
+          basis: currentCycle.basis,
+          device_type: currentCycle.device_type,
+          updated_by: updated_by || null,
+          reason: reason || null
+        },
+      });
+
+      // Update the cycle
+      const updatedCycle = await this.prisma.maintenanceCycle.update({
+        where: { cycle_id },
+        data: updateData,
+      });
 
       return new ApiResponse<MaintenanceCycleDto>(
         true,
         'Maintenance cycle updated successfully',
-        cycle
-      )
+        updatedCycle
+      );
     } catch (error) {
       this.logger.error(`Error updating maintenance cycle with ID ${cycle_id}:`, error)
       throw new RpcException({
@@ -142,6 +171,36 @@ export class MaintenanceCycleService {
       throw new RpcException({
         statusCode: error.code === 'P2025' ? 404 : 500,
         message: error.code === 'P2025' ? 'Maintenance cycle not found' : 'Error deleting maintenance cycle',
+      })
+    }
+  }
+
+  async getHistory(cycle_id: string): Promise<ApiResponse<MaintenanceCycleHistoryDto[]>> {
+    try {
+      const cycle = await this.prisma.maintenanceCycle.findUnique({
+        where: { cycle_id },
+        include: {
+          history: true
+        }
+      })
+
+      if (!cycle) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Maintenance cycle not found',
+        })
+      }
+
+      return new ApiResponse<MaintenanceCycleHistoryDto[]>(
+        true,
+        'Maintenance cycle history retrieved successfully',
+        cycle.history
+      )
+    } catch (error) {
+      this.logger.error(`Error retrieving history for maintenance cycle with ID ${cycle_id}:`, error)
+      throw new RpcException({
+        statusCode: error.statusCode || 500,
+        message: error.message || 'Error retrieving maintenance cycle history',
       })
     }
   }
