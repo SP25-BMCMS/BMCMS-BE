@@ -24,6 +24,11 @@ export class ChatResponseDto {
   @ApiProperty({ description: 'Response type' })
   @IsString()
   type: string;
+
+  @ApiPropertyOptional({ description: 'URL of AI detection image' })
+  @IsString()
+  @IsOptional()
+  url_img?: string;
 }
 
 export class ChatListQueryDto {

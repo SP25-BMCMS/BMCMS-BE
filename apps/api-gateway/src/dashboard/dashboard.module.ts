@@ -8,6 +8,8 @@ import { join } from 'path'
 const TASK_CLIENT = 'TASK_CLIENT'
 const CRACK_CLIENT = 'CRACK_CLIENT'
 const USERS_CLIENT = 'USERS_CLIENT'
+const BUILDING_CLIENT = 'BUILDINGS_CLIENT'
+const SCHEDULE_CLIENT = 'SCHEDULE_CLIENT'
 
 @Module({
     imports: [
@@ -31,6 +33,24 @@ const USERS_CLIENT = 'USERS_CLIENT'
                 inject: [ConfigService],
             },
             {
+                name: SCHEDULE_CLIENT,
+                useFactory: (configService: ConfigService) => {
+                    const rabbitUrl = configService.get('RABBITMQ_URL')
+                    return {
+                        transport: Transport.RMQ,
+                        options: {
+                            urls: [rabbitUrl],
+                            queue: 'schedules_queue',
+                            queueOptions: {
+                                durable: true,
+                                prefetchCount: 1,
+                            },
+                        },
+                    }
+                },
+                inject: [ConfigService],
+            },
+            {
                 name: CRACK_CLIENT,
                 useFactory: (configService: ConfigService) => {
                     const rabbitUrl = configService.get('RABBITMQ_URL')
@@ -39,6 +59,25 @@ const USERS_CLIENT = 'USERS_CLIENT'
                         options: {
                             urls: [rabbitUrl],
                             queue: 'cracks_queue',
+                            queueOptions: {
+                                durable: true,
+                                prefetchCount: 1,
+                            },
+                        },
+                    }
+                },
+                inject: [ConfigService],
+            },
+
+            {
+                name: BUILDING_CLIENT,
+                useFactory: (configService: ConfigService) => {
+                    const rabbitUrl = configService.get('RABBITMQ_URL')
+                    return {
+                        transport: Transport.RMQ,
+                        options: {
+                            urls: [rabbitUrl],
+                            queue: 'buildings_queue',
                             queueOptions: {
                                 durable: true,
                                 prefetchCount: 1,

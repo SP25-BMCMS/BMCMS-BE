@@ -4,6 +4,7 @@ import { MaintenanceCycleService } from './MaintenanceCycle.service'
 import { CreateMaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/create-MaintenanceCycle.dto'
 import { UpdateMaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/update-MaintenanceCycle.dto'
 import { MaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/MaintenanceCycle.dto'
+import { MaintenanceCycleHistoryDto } from '@app/contracts/MaintenanceCycle/MaintenanceCycleHistory.dto'
 import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { PaginationParams, PaginationResponseDto } from '@app/contracts/Pagination/pagination.dto'
 import { DeviceType, Frequency, MaintenanceBasis } from '@prisma/client-schedule'
@@ -57,5 +58,11 @@ export class MaintenanceCycleController {
   async delete(@Payload() cycle_id: string): Promise<ApiResponse<MaintenanceCycleDto>> {
     this.logger.log(`Deleting maintenance cycle: ${cycle_id}`)
     return this.maintenanceCycleService.delete(cycle_id)
+  }
+
+  @MessagePattern(MAINTENANCE_CYCLE_PATTERN.GET_HISTORY)
+  async getHistory(@Payload() cycle_id: string): Promise<ApiResponse<MaintenanceCycleHistoryDto[]>> {
+    this.logger.log(`Getting history for maintenance cycle: ${cycle_id}`)
+    return this.maintenanceCycleService.getHistory(cycle_id)
   }
 } 

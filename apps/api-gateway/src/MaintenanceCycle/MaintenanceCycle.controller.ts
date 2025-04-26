@@ -3,6 +3,7 @@ import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { CreateMaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/create-MaintenanceCycle.dto'
 import { UpdateMaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/update-MaintenanceCycle.dto'
 import { MaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/MaintenanceCycle.dto'
+import { MaintenanceCycleHistoryDto } from '@app/contracts/MaintenanceCycle/MaintenanceCycleHistory.dto'
 import { ApiResponse as ApiResponseContract } from '@app/contracts/ApiResponse/api-response'
 import { PaginationParams, PaginationResponseDto } from '@app/contracts/Pagination/pagination.dto'
 import { DeviceType, Frequency, MaintenanceBasis } from '@prisma/client-schedule'
@@ -78,5 +79,13 @@ export class MaintenanceCycleController {
   async remove(@Param('id') id: string): Promise<ApiResponseContract<MaintenanceCycleDto>> {
     this.logger.log(`Deleting maintenance cycle: ${id}`)
     return this.maintenanceCycleService.delete(id)
+  }
+
+  @Get(':id/history')
+  @ApiOperation({ summary: 'Get history of a maintenance cycle' })
+  @ApiResponse({ status: 200, type: MaintenanceCycleHistoryDto, isArray: true })
+  async getHistory(@Param('id') id: string): Promise<ApiResponseContract<MaintenanceCycleHistoryDto[]>> {
+    this.logger.log(`Getting history for maintenance cycle: ${id}`)
+    return this.maintenanceCycleService.getHistory(id)
   }
 } 
