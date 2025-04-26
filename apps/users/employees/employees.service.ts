@@ -4,6 +4,8 @@ import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
 import { ClientProxy, ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { BUILDINGDETAIL_PATTERN } from '../../../libs/contracts/src/BuildingDetails/buildingdetails.patterns';
+import { SCHEDULES_PATTERN } from '../../../libs/contracts/src/schedules/Schedule.patterns';
+import { SCHEDULEJOB_PATTERN } from '../../../libs/contracts/src/schedulesjob/ScheduleJob.patterns';
 
 @Injectable()
 export class EmployeesService {
@@ -14,6 +16,7 @@ export class EmployeesService {
     private readonly prisma: PrismaService,
     @Inject('BUILDINGS_CLIENT') private buildingsClient: ClientProxy,
     @Inject('CRACKS_CLIENT') private cracksClient: ClientProxy,
+    @Inject('SCHEDULES_CLIENT') private schedulesClient: ClientProxy,
   ) {
   }
 
@@ -236,57 +239,203 @@ export class EmployeesService {
     try {
       console.log('Received gRPC request for getStaffLeaderByCrackReport:', crackReportId);
 
-      // Bước 1: Lấy buildingDetailId từ crackReport thông qua RabbitMQ
+      // Validate crackReportId
+      if (!crackReportId) {
+        return {
+          isSuccess: false,
+          message: 'Invalid crack report ID',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
       let areaName = null;
+
       try {
-        // Gửi message đến Crack service để lấy buildingDetailId
+        // Step 1: Get crack report from the cracks service to find buildingDetailId
+        console.log(`Sending request to get crack report with ID: ${crackReportId}`);
         const crackResponse = await this.cracksClient.send(
           { cmd: 'get-crack-report-by-id' },
           crackReportId
         ).toPromise();
 
-        console.log('Crack service response:', JSON.stringify(crackResponse, null, 2));
+        console.log('Crack report service response:', JSON.stringify(crackResponse, null, 2));
 
-        if (crackResponse && crackResponse.isSuccess && crackResponse.data) {
-          // Xử lý nếu data là một array
-          const crackReportData = Array.isArray(crackResponse.data) ? crackResponse.data[0] : crackResponse.data;
-
-          if (crackReportData) {
-            const buildingDetailId = crackReportData.buildingDetailId;
-
-            if (!buildingDetailId) {
-              console.log('buildingDetailId is missing in the response data');
-              // Tiếp tục với việc trả về tất cả leaders mà không lọc
-            } else {
-              console.log(`Found buildingDetailId: ${buildingDetailId} for crackReportId: ${crackReportId}`);
-
-              // Bước 2: Lấy area từ buildingDetail thông qua RabbitMQ
-              const buildingResponse = await this.buildingsClient.send(
-                BUILDINGDETAIL_PATTERN.GET_BY_ID,
-                { buildingDetailId }
-              ).toPromise();
-
-              console.log('Building service response:', JSON.stringify(buildingResponse, null, 2));
-
-              if (buildingResponse && buildingResponse.statusCode === 200 && buildingResponse.data) {
-                areaName = buildingResponse.data.building?.area?.name;
-                console.log(`Found area: ${areaName} for buildingDetailId: ${buildingDetailId}`);
-              }
+        // Check if we got a valid response
+        if (!crackResponse || !crackResponse.isSuccess) {
+          return {
+            isSuccess: false,
+            message: crackResponse?.message || `Crack report with ID ${crackReportId} not found`,
+            data: [],
+            pagination: {
+              total: 0,
+              page: 1,
+              limit: 10,
+              totalPages: 0
             }
+          };
+        }
+
+        // Extract the crack report data
+        const crackReport = crackResponse.data;
+        if (!crackReport) {
+          console.log(`Crack report data missing in response for ID ${crackReportId}`);
+          return {
+            isSuccess: false,
+            message: `Crack report data not found`,
+            data: [],
+            pagination: {
+              total: 0,
+              page: 1,
+              limit: 10,
+              totalPages: 0
+            }
+          };
+        }
+
+        console.log('Crack report data:', JSON.stringify(crackReport, null, 2));
+
+        // Get the buildingDetailId - check multiple possible property names and locations
+        let buildingDetailId = null;
+
+        // Try different possible property names and nested structures
+        if (crackReport.buildingDetailId) {
+          buildingDetailId = crackReport.buildingDetailId;
+        } else if (crackReport.building_detail_id) {
+          buildingDetailId = crackReport.building_detail_id;
+        } else if (crackReport.buildingDetail?.id) {
+          buildingDetailId = crackReport.buildingDetail.id;
+        } else if (crackReport.buildingDetail?.buildingDetailId) {
+          buildingDetailId = crackReport.buildingDetail.buildingDetailId;
+        } else if (crackReport.building?.detailId) {
+          buildingDetailId = crackReport.building.detailId;
+        } else if (crackReport.locationDetail?.buildingDetailId) {
+          buildingDetailId = crackReport.locationDetail.buildingDetailId;
+        } else if (typeof crackReport.location === 'string') {
+          // Sometimes location might be the buildingDetailId directly
+          buildingDetailId = crackReport.location;
+        } else if (crackReport.location?.id) {
+          buildingDetailId = crackReport.location.id;
+        }
+
+        // If we're dealing with an array, it could be the first element
+        if (Array.isArray(crackReport) && crackReport.length > 0) {
+          const firstItem = crackReport[0];
+          if (firstItem.buildingDetailId) {
+            buildingDetailId = firstItem.buildingDetailId;
+          } else if (firstItem.building_detail_id) {
+            buildingDetailId = firstItem.building_detail_id;
           }
         }
+
+        if (!buildingDetailId) {
+          console.log('buildingDetailId is missing in the crack report. Full response:', JSON.stringify(crackReport, null, 2));
+          return {
+            isSuccess: false,
+            message: 'Cannot determine building area from this crack report. Missing building detail information.',
+            data: [],
+            pagination: {
+              total: 0,
+              page: 1,
+              limit: 10,
+              totalPages: 0
+            }
+          };
+        }
+
+        console.log(`Found buildingDetailId: ${buildingDetailId}`);
+
+        // Step 2: Get building detail to find building ID and area
+        console.log(`Sending request to get building detail with ID: ${buildingDetailId}`);
+        const buildingDetailResponse = await this.buildingsClient.send(
+          BUILDINGDETAIL_PATTERN.GET_BY_ID,
+          { buildingDetailId }
+        ).toPromise();
+
+        console.log('Building detail response:', JSON.stringify(buildingDetailResponse, null, 2));
+
+        // Check if we got a valid building detail response
+        if (!buildingDetailResponse || buildingDetailResponse.statusCode !== 200) {
+          return {
+            isSuccess: false,
+            message: buildingDetailResponse?.message || `Building detail not found for this crack report`,
+            data: [],
+            pagination: {
+              total: 0,
+              page: 1,
+              limit: 10,
+              totalPages: 0
+            }
+          };
+        }
+
+        // Extract building and area info
+        const buildingDetail = buildingDetailResponse.data;
+        if (!buildingDetail || !buildingDetail.building || !buildingDetail.building.area) {
+          console.log('Area information missing in building detail response');
+          return {
+            isSuccess: false,
+            message: 'Area information not available for this building',
+            data: [],
+            pagination: {
+              total: 0,
+              page: 1,
+              limit: 10,
+              totalPages: 0
+            }
+          };
+        }
+
+        // Get the area name
+        areaName = buildingDetail.building.area.name;
+        console.log(`Found area name: ${areaName}`);
+
+        if (!areaName) {
+          console.log('Area name is missing');
+          return {
+            isSuccess: false,
+            message: 'Area name not available for this building',
+            data: [],
+            pagination: {
+              total: 0,
+              page: 1,
+              limit: 10,
+              totalPages: 0
+            }
+          };
+        }
+
       } catch (error) {
         console.error('Error communicating with other services:', error);
-        // Tiếp tục chạy nếu có lỗi, trả về tất cả staff leader
+        return {
+          isSuccess: false,
+          message: "Cannot retrieve crack report information due to configuration error. Please contact the administrator.",
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
       }
 
-      // Bước 3: Lấy tất cả staff leader
+      // Step 3: Find staff leaders in this area
+      console.log(`Finding staff leaders in area: ${areaName}`);
       const staffLeaders = await this.prisma.user.findMany({
         where: {
           role: 'Staff',
           userDetails: {
             position: {
               positionName: 'Leader'
+            },
+            department: {
+              area: areaName
             }
           }
         },
@@ -303,7 +452,7 @@ export class EmployeesService {
       if (!staffLeaders || staffLeaders.length === 0) {
         return {
           isSuccess: false,
-          message: 'No staff leaders found',
+          message: `No staff leaders found for area: ${areaName}`,
           data: [],
           pagination: {
             total: 0,
@@ -314,34 +463,8 @@ export class EmployeesService {
         };
       }
 
-      // Bước 4: Lọc staff leader theo area nếu đã tìm được area
-      let filteredStaff = staffLeaders;
-      if (areaName) {
-        console.log(`Filtering staff leaders by area: ${areaName}`);
-        filteredStaff = staffLeaders.filter(staff => {
-          const staffArea = staff.userDetails?.department?.area;
-          console.log(`Staff ${staff.username} has area: ${staffArea}`);
-          return staffArea === areaName;
-        });
-
-        // Nếu không tìm thấy staff leader trong area đó, trả về thông báo
-        if (filteredStaff.length === 0) {
-          return {
-            isSuccess: false,
-            message: `No staff leaders found for area: ${areaName}`,
-            data: [],
-            pagination: {
-              total: 0,
-              page: 1,
-              limit: 10,
-              totalPages: 0
-            }
-          };
-        }
-      }
-
       // Transform staff data for the response
-      const staffData = filteredStaff.map((staff) => {
+      const staffData = staffLeaders.map((staff) => {
         const { password, ...userWithoutPassword } = staff;
         return {
           ...userWithoutPassword,
@@ -373,9 +496,7 @@ export class EmployeesService {
 
       return {
         isSuccess: true,
-        message: areaName
-          ? `Successfully retrieved staff leaders for area: ${areaName}`
-          : 'Successfully retrieved all staff leaders (area filtering unavailable)',
+        message: `Successfully retrieved staff leaders for area: ${areaName}`,
         data: staffData,
         pagination: {
           total: staffData.length,
@@ -388,7 +509,7 @@ export class EmployeesService {
       console.error('Error in getStaffLeaderByCrackReport:', error);
       return {
         isSuccess: false,
-        message: error.message || 'Failed to retrieve staff leaders',
+        message: 'Failed to retrieve staff leaders. Database error occurred.',
         data: [],
         pagination: {
           total: 0,
@@ -404,57 +525,168 @@ export class EmployeesService {
     try {
       console.log('Received gRPC request for getStaffLeaderByScheduleJob:', scheduleJobId);
 
-      // Bước 1: Lấy buildingDetailId từ scheduleJob thông qua RabbitMQ
-      let areaName = null;
-      try {
-        // Gửi message đến Schedule service để lấy buildingDetailId
-        const scheduleResponse = await this.buildingsClient.send(
-          { cmd: 'get-schedule-job-by-id' },
-          scheduleJobId
-        ).toPromise();
-
-        console.log('Schedule service response:', JSON.stringify(scheduleResponse, null, 2));
-
-        if (scheduleResponse && scheduleResponse.isSuccess && scheduleResponse.data) {
-          // Xử lý nếu data là một array
-          const scheduleJobData = Array.isArray(scheduleResponse.data) ? scheduleResponse.data[0] : scheduleResponse.data;
-
-          if (scheduleJobData) {
-            const buildingDetailId = scheduleJobData.buildingDetailId;
-
-            if (!buildingDetailId) {
-              console.log('buildingDetailId is missing in the response data');
-              // Tiếp tục với việc trả về tất cả leaders mà không lọc
-            } else {
-              console.log(`Found buildingDetailId: ${buildingDetailId} for scheduleJobId: ${scheduleJobId}`);
-
-              // Bước 2: Lấy area từ buildingDetail thông qua RabbitMQ
-              const buildingResponse = await this.buildingsClient.send(
-                BUILDINGDETAIL_PATTERN.GET_BY_ID,
-                { buildingDetailId }
-              ).toPromise();
-
-              console.log('Building service response:', JSON.stringify(buildingResponse, null, 2));
-
-              if (buildingResponse && buildingResponse.statusCode === 200 && buildingResponse.data) {
-                areaName = buildingResponse.data.building?.area?.name;
-                console.log(`Found area: ${areaName} for buildingDetailId: ${buildingDetailId}`);
-              }
-            }
+      // Validate scheduleJobId
+      if (!scheduleJobId) {
+        return {
+          isSuccess: false,
+          message: 'Invalid schedule job ID',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
           }
-        }
-      } catch (error) {
-        console.error('Error communicating with other services:', error);
-        // Tiếp tục chạy nếu có lỗi, trả về tất cả staff leader
+        };
       }
 
-      // Bước 3: Lấy tất cả staff leader
+      let areaName = null;
+
+      try {
+        // Step 1: Get schedule job from the schedules service to find buildingDetailId
+        console.log(`Sending request to get schedule job with ID: ${scheduleJobId}`);
+        const scheduleResponse = await this.schedulesClient.send(
+          SCHEDULEJOB_PATTERN.GET_BY_ID,
+          { schedule_job_id: scheduleJobId }
+        ).toPromise();
+
+        console.log('Schedule job service response:', JSON.stringify(scheduleResponse, null, 2));
+
+        // Check if we got a valid response
+        if (!scheduleResponse || !scheduleResponse.isSuccess) {
+          return {
+            isSuccess: false,
+            message: scheduleResponse?.message || `Schedule job with ID ${scheduleJobId} not found`,
+            data: [],
+            pagination: {
+              total: 0,
+              page: 1,
+              limit: 10,
+              totalPages: 0
+            }
+          };
+        }
+
+        // Extract the schedule job data
+        const scheduleJob = scheduleResponse.data;
+        if (!scheduleJob) {
+          console.log(`Schedule job data missing in response for ID ${scheduleJobId}`);
+          return {
+            isSuccess: false,
+            message: `Schedule job data not found`,
+            data: [],
+            pagination: {
+              total: 0,
+              page: 1,
+              limit: 10,
+              totalPages: 0
+            }
+          };
+        }
+
+        // Get the buildingDetailId
+        const buildingDetailId = scheduleJob.buildingDetailId || scheduleJob.building_id;
+        if (!buildingDetailId) {
+          console.log('buildingDetailId is missing in the schedule job');
+          return {
+            isSuccess: false,
+            message: 'Cannot determine building area from this schedule job',
+            data: [],
+            pagination: {
+              total: 0,
+              page: 1,
+              limit: 10,
+              totalPages: 0
+            }
+          };
+        }
+
+        // Step 2: Get building detail to find building ID and area
+        console.log(`Sending request to get building detail with ID: ${buildingDetailId}`);
+        const buildingDetailResponse = await this.buildingsClient.send(
+          BUILDINGDETAIL_PATTERN.GET_BY_ID,
+          { buildingDetailId }
+        ).toPromise();
+
+        console.log('Building detail response:', JSON.stringify(buildingDetailResponse, null, 2));
+
+        // Check if we got a valid building detail response
+        if (!buildingDetailResponse || buildingDetailResponse.statusCode !== 200) {
+          return {
+            isSuccess: false,
+            message: buildingDetailResponse?.message || `Building detail not found for this schedule job`,
+            data: [],
+            pagination: {
+              total: 0,
+              page: 1,
+              limit: 10,
+              totalPages: 0
+            }
+          };
+        }
+
+        // Extract building and area info
+        const buildingDetail = buildingDetailResponse.data;
+        if (!buildingDetail || !buildingDetail.building || !buildingDetail.building.area) {
+          console.log('Area information missing in building detail response');
+          return {
+            isSuccess: false,
+            message: 'Area information not available for this building',
+            data: [],
+            pagination: {
+              total: 0,
+              page: 1,
+              limit: 10,
+              totalPages: 0
+            }
+          };
+        }
+
+        // Get the area name
+        areaName = buildingDetail.building.area.name;
+        console.log(`Found area name: ${areaName}`);
+
+        if (!areaName) {
+          console.log('Area name is missing');
+          return {
+            isSuccess: false,
+            message: 'Area name not available for this building',
+            data: [],
+            pagination: {
+              total: 0,
+              page: 1,
+              limit: 10,
+              totalPages: 0
+            }
+          };
+        }
+
+      } catch (error) {
+        console.error('Error communicating with other services:', error);
+        return {
+          isSuccess: false,
+          message: "Cannot retrieve schedule information.",
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
+      // Step 3: Find staff leaders in this area
+      console.log(`Finding staff leaders in area: ${areaName}`);
       const staffLeaders = await this.prisma.user.findMany({
         where: {
           role: 'Staff',
           userDetails: {
             position: {
               positionName: 'Leader'
+            },
+            department: {
+              area: areaName
             }
           }
         },
@@ -471,7 +703,7 @@ export class EmployeesService {
       if (!staffLeaders || staffLeaders.length === 0) {
         return {
           isSuccess: false,
-          message: 'No staff leaders found',
+          message: `No staff leaders found for area: ${areaName}`,
           data: [],
           pagination: {
             total: 0,
@@ -482,34 +714,8 @@ export class EmployeesService {
         };
       }
 
-      // Bước 4: Lọc staff leader theo area nếu đã tìm được area
-      let filteredStaff = staffLeaders;
-      if (areaName) {
-        console.log(`Filtering staff leaders by area: ${areaName}`);
-        filteredStaff = staffLeaders.filter(staff => {
-          const staffArea = staff.userDetails?.department?.area;
-          console.log(`Staff ${staff.username} has area: ${staffArea}`);
-          return staffArea === areaName;
-        });
-
-        // Nếu không tìm thấy staff leader trong area đó, trả về thông báo
-        if (filteredStaff.length === 0) {
-          return {
-            isSuccess: false,
-            message: `No staff leaders found for area: ${areaName}`,
-            data: [],
-            pagination: {
-              total: 0,
-              page: 1,
-              limit: 10,
-              totalPages: 0
-            }
-          };
-        }
-      }
-
       // Transform staff data for the response
-      const staffData = filteredStaff.map((staff) => {
+      const staffData = staffLeaders.map((staff) => {
         const { password, ...userWithoutPassword } = staff;
         return {
           ...userWithoutPassword,
@@ -541,9 +747,7 @@ export class EmployeesService {
 
       return {
         isSuccess: true,
-        message: areaName
-          ? `Successfully retrieved staff leaders for area: ${areaName}`
-          : 'Successfully retrieved all staff leaders (area filtering unavailable)',
+        message: `Successfully retrieved staff leaders for area: ${areaName}`,
         data: staffData,
         pagination: {
           total: staffData.length,
@@ -556,7 +760,7 @@ export class EmployeesService {
       console.error('Error in getStaffLeaderByScheduleJob:', error);
       return {
         isSuccess: false,
-        message: error.message || 'Failed to retrieve staff leaders',
+        message: 'Failed to retrieve staff leaders. Database error occurred.',
         data: [],
         pagination: {
           total: 0,

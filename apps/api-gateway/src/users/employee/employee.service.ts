@@ -284,6 +284,22 @@ export class EmployeeService implements OnModuleInit {
   async getStaffLeaderByCrackReport(request: { crackReportId: string }) {
     try {
       console.log('Calling gRPC method GetStaffLeaderByCrackReport with crackReportId:', request.crackReportId);
+
+      // Basic validation
+      if (!request.crackReportId) {
+        return {
+          isSuccess: false,
+          message: 'Crack report ID is required',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
       const response = await lastValueFrom(
         this.userService.getStaffLeaderByCrackReport(request)
       );
@@ -324,6 +340,22 @@ export class EmployeeService implements OnModuleInit {
   async getStaffLeaderByScheduleJob(request: { scheduleJobId: string }) {
     try {
       console.log('Calling gRPC method GetStaffLeaderByScheduleJob with scheduleJobId:', request.scheduleJobId);
+
+      // Basic validation
+      if (!request.scheduleJobId) {
+        return {
+          isSuccess: false,
+          message: 'Schedule job ID is required',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
       const response = await lastValueFrom(
         this.userService.getStaffLeaderByScheduleJob(request)
       );

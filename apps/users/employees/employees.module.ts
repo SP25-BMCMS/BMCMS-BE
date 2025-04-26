@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 const CRACKS_CLIENT = 'CRACKS_CLIENT'
+const SCHEDULES_CLIENT = 'SCHEDULES_CLIENT'
 
 @Module({
   imports: [PrismaModule,
@@ -39,6 +40,24 @@ const CRACKS_CLIENT = 'CRACKS_CLIENT'
             options: {
               urls: [url],
               queue: 'cracks_queue',
+              queueOptions: {
+                durable: true,
+                prefetchCount: 1,
+              },
+            },
+          }
+        },
+        inject: [ConfigService],
+      },
+      {
+        name: SCHEDULES_CLIENT,
+        useFactory: (configService: ConfigService) => {
+          const url = configService.get('RABBITMQ_URL')
+          return {
+            transport: Transport.RMQ,
+            options: {
+              urls: [url],
+              queue: 'schedules_queue',
               queueOptions: {
                 durable: true,
                 prefetchCount: 1,
