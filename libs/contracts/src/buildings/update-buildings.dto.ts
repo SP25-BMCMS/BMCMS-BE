@@ -4,11 +4,12 @@ import { IsString, IsInt, IsOptional, IsUUID, IsNotEmpty, IsEnum } from 'class-v
 
 export class UpdateBuildingDto {
 
-  @ApiProperty({
-    description: 'Unique identifier for the building',
-    type: String,
-    example: 'd1b0cd4c-1e76-4d7f-a0d4-81b32e5101cd', // Example UUID
-  })
+  // @ApiProperty({
+  //   description: 'Unique identifier for the building',
+  //   type: String,
+  //   example: 'd1b0cd4c-1e76-4d7f-a0d4-81b32e5101cd', // Example UUID
+  // })
+  @IsOptional()
   @IsUUID()
   buildingId: string;
 
