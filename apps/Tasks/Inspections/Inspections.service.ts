@@ -294,6 +294,20 @@ export class InspectionsService implements OnModuleInit {
 
   async createInspection(dto: CreateInspectionDto): Promise<ApiResponse<Inspection>> {
     try {
+      console.log('Received inspection data:', JSON.stringify({
+        ...dto,
+        image_urls: dto.image_urls ? `${dto.image_urls.length} images` : 'none',
+        repairMaterials: dto.repairMaterials ? `received (type: ${typeof dto.repairMaterials})` : 'none'
+      }));
+
+      if (dto.repairMaterials) {
+        if (typeof dto.repairMaterials === 'string') {
+          console.log('repairMaterials string content:', dto.repairMaterials);
+        } else if (Array.isArray(dto.repairMaterials)) {
+          console.log('repairMaterials array length:', dto.repairMaterials.length);
+        }
+      }
+
       // Check if task assignment exists
       const taskAssignment = await this.prisma.taskAssignment.findUnique({
         where: { assignment_id: dto.task_assignment_id },

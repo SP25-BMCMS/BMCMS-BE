@@ -296,6 +296,11 @@ export class InspectionService implements OnModuleInit {
         }
       }
 
+      // Log repair materials if provided
+      if (dto.repairMaterials) {
+        console.log('Repair materials provided:', dto.repairMaterials);
+      }
+
       // Create the inspection
       const response = await firstValueFrom(
         this.inspectionClient.send(INSPECTIONS_PATTERN.CREATE, updatedDto)
