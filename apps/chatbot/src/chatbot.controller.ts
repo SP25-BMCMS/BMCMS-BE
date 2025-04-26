@@ -49,52 +49,52 @@ export class ChatbotController {
   //   }
   // }
 
-  @MessagePattern(CHATBOT_PATTERN.GET_USER_CHATS)
-  async getUserChats(@Payload() data: { userId: string; page: number; limit: number }, @Ctx() context: RmqContext) {
-    const pattern = context.getPattern();
+  // @MessagePattern(CHATBOT_PATTERN.GET_USER_CHATS)
+  // async getUserChats(@Payload() data: { userId: string; page: number; limit: number }, @Ctx() context: RmqContext) {
+  //   const pattern = context.getPattern();
 
-    this.logger.log(`[getUserChats] Received message with pattern: ${pattern}`);
-    this.logger.log(`[getUserChats] Received data: ${JSON.stringify(data)}`);
+  //   this.logger.log(`[getUserChats] Received message with pattern: ${pattern}`);
+  //   this.logger.log(`[getUserChats] Received data: ${JSON.stringify(data)}`);
     
-    try {
-      // Validate input
-      if (!data) {
-        this.logger.error('[getUserChats] No data received');
-        throw new Error('No data received');
-      }
+  //   try {
+  //     // Validate input
+  //     if (!data) {
+  //       this.logger.error('[getUserChats] No data received');
+  //       throw new Error('No data received');
+  //     }
 
-      if (!data.userId) {
-        this.logger.error('[getUserChats] No userId provided');
-        throw new Error('No userId provided');
-      }
+  //     if (!data.userId) {
+  //       this.logger.error('[getUserChats] No userId provided');
+  //       throw new Error('No userId provided');
+  //     }
 
-      // Convert page and limit to numbers and set default values
-      const page = data.page ? Number(data.page) : 1;
-      const limit = data.limit ? Number(data.limit) : 10;
+  //     // Convert page and limit to numbers and set default values
+  //     const page = data.page ? Number(data.page) : 1;
+  //     const limit = data.limit ? Number(data.limit) : 10;
 
-      // Validate page and limit
-      if (isNaN(page) || page < 1) {
-        this.logger.error('[getUserChats] Invalid page number');
-        throw new Error('Invalid page number');
-      }
+  //     // Validate page and limit
+  //     if (isNaN(page) || page < 1) {
+  //       this.logger.error('[getUserChats] Invalid page number');
+  //       throw new Error('Invalid page number');
+  //     }
 
-      if (isNaN(limit) || limit < 1) {
-        this.logger.error('[getUserChats] Invalid limit number');
-        throw new Error('Invalid limit number');
-      }
+  //     if (isNaN(limit) || limit < 1) {
+  //       this.logger.error('[getUserChats] Invalid limit number');
+  //       throw new Error('Invalid limit number');
+  //     }
 
-      // Get user chat history
-      this.logger.log(`[getUserChats] Getting chat history for user ${data.userId}, page ${page}, limit ${limit}`);
-      const chatHistory = await this.chatbotService.getUserChats(data.userId, page, limit);
+  //     // Get user chat history
+  //     this.logger.log(`[getUserChats] Getting chat history for user ${data.userId}, page ${page}, limit ${limit}`);
+  //     const chatHistory = await this.chatbotService.getUserChats(data.userId, page, limit);
       
-      this.logger.log(`[getUserChats] Found ${chatHistory.length} chat messages`);
+  //     this.logger.log(`[getUserChats] Found ${chatHistory.length} chat messages`);
       
-      return chatHistory;
-    } catch (error) {
-      this.logger.error(`[getUserChats] Error processing message:`, error);
-      throw error;
-    }
-  }
+  //     return chatHistory;
+  //   } catch (error) {
+  //     this.logger.error(`[getUserChats] Error processing message:`, error);
+  //     throw error;
+  //   }
+  // }
 
   @MessagePattern(CHATBOT_PATTERN.TEST_CHAT)
   async testChat(@Payload() data: { message: string; userId: string }, @Ctx() context: RmqContext) {
