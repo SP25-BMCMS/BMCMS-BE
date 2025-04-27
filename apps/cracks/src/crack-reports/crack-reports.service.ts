@@ -1018,17 +1018,35 @@ export class CrackReportsService {
       // Save old status for comparison after update
       const oldStatus = existingReport.status;
 
-      // Update crack report
+      // Extract suppressNotification flag and remove it from DTO data before updating
+      const suppressNotification = dto.suppressNotification;
+
+      // Create a new object without suppressNotification to avoid Prisma error
+      const prismaUpdateData = { ...dto };
+      delete prismaUpdateData.suppressNotification;
+
+      // Update crack report with cleaned data
       const updatedReport = await this.prismaService.crackReport.update({
         where: { crackReportId },
         data: {
-          ...dto,
+          ...prismaUpdateData,
           updatedAt: new Date(),
         },
         include: {
           crackDetails: true,
         },
       })
+
+      // Skip notification if suppressNotification is true
+      if (suppressNotification) {
+        console.log(`Suppressing notification for crack report ${crackReportId} as requested`);
+        return new ApiResponse(
+          true,
+          'Crack Report has been updated successfully',
+          [updatedReport]
+        )
+      }
+
       // TEMPORARY: Force notification for testing regardless of status change
       const forceNotification = true;
 

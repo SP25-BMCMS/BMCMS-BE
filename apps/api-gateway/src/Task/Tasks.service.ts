@@ -8,7 +8,7 @@ import {
   Param,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { TASK_CLIENT } from '../constraints';
+import { CRACK_CLIENT, NOTIFICATION_CLIENT, TASK_CLIENT } from '../constraints';
 import { TASKS_PATTERN } from 'libs/contracts/src/tasks/task.patterns';
 import { catchError, firstValueFrom } from 'rxjs';
 import { INSPECTIONS_PATTERN } from '../../../../libs/contracts/src/inspections/inspection.patterns';
@@ -16,13 +16,19 @@ import { UpdateCrackReportDto } from '../../../../libs/contracts/src/cracks/upda
 import { UpdateInspectionDto } from '../../../../libs/contracts/src/inspections/update-inspection.dto';
 import { CreateRepairMaterialDto } from '@app/contracts/repairmaterials/create-repair-material.dto';
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
+import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns';
+import { NotificationType } from '@app/contracts/notifications/notification.dto';
 
 // import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto'
 // import { buildingsDto } from '@app/contracts/buildings/buildings.dto'
 // import { catchError, firstValueFrom } from 'rxjs'
 @Injectable()
 export class TaskService {
-  constructor(@Inject(TASK_CLIENT) private readonly taskClient: ClientProxy) { }
+  constructor(
+    @Inject(TASK_CLIENT) private readonly taskClient: ClientProxy,
+    @Inject(CRACK_CLIENT) private readonly crackClient: ClientProxy,
+    @Inject(NOTIFICATION_CLIENT) private readonly notificationClient: ClientProxy
+  ) { }
 
   async createTask(createTaskDto: any) {
     try {
@@ -334,6 +340,126 @@ export class TaskService {
           error: 'Task Creation Failed'
         },
         statusCode
+      );
+    }
+  }
+
+  async notificationThankstoResident(taskId: string, scheduleJobId?: string) {
+    try {
+      console.log(`[TaskService] Sending thanks notification for task: ${taskId}, scheduleJob: ${scheduleJobId || 'N/A'}`);
+
+      // Call the Task microservice to process the task and get resident information
+      let taskResponse;
+      try {
+        taskResponse = await firstValueFrom(
+          this.taskClient.send(
+            TASKS_PATTERN.NOTIFICATION_THANKS_TO_RESIDENT,
+            { taskId, scheduleJobId }
+          ).pipe(
+            catchError(error => {
+              console.error('Error from task microservice:', error);
+              throw new HttpException(
+                `Failed to process notification: ${error.message || 'Unknown error'}`,
+                HttpStatus.INTERNAL_SERVER_ERROR
+              );
+            })
+          )
+        );
+      } catch (error) {
+        console.error('[TaskService] Failed to get response from task microservice:', error);
+        throw error;
+      }
+
+      // Check if the task microservice response was successful
+      if (!taskResponse || !taskResponse.isSuccess) {
+        throw new HttpException(
+          taskResponse?.message || 'Failed to process task notification',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      // Extract data from response with fallbacks for missing fields
+      const crackReportId = taskResponse.data?.crackReportId;
+      const residentId = taskResponse.data?.residentId;
+      const crackPosition = taskResponse.data?.crackPosition || 'unknown location';
+
+      if (!crackReportId) {
+        throw new HttpException('Missing crack report ID in task response', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+
+      if (!residentId) {
+        throw new HttpException('Missing resident ID in task response', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+
+      console.log(`[TaskService] Task processed successfully. Resident ID: ${residentId}, Crack Report ID: ${crackReportId}, Position: ${crackPosition}`);
+
+      // Make sure residentId is a string, not an object
+      let userId = residentId;
+      if (typeof userId === 'object' && userId !== null) {
+        userId = userId.userId || userId.id;
+        if (!userId) {
+          throw new HttpException(
+            'Invalid user ID in task response',
+            HttpStatus.INTERNAL_SERVER_ERROR
+          );
+        }
+      }
+
+      // Include the crack position in the notification content
+      const locationText = crackPosition ? ` at location "${crackPosition}"` : '';
+
+      // Send notification to the resident
+      const notificationData = {
+        userId: userId, // Using the extracted userId string
+        title: 'Thank You for Reporting the Crack',
+        content: `We would like to thank you for reporting the crack${locationText}. It has been included in our maintenance schedule and has been repaired. Your contribution helps maintain the building's safety and quality.`,
+        type: NotificationType.SYSTEM,
+        relatedId: crackReportId,
+        link: `/crack-reports/${crackReportId}`
+      };
+
+      console.log(`[TaskService] Sending notification with data:`, JSON.stringify(notificationData));
+
+      try {
+        await firstValueFrom(
+          this.notificationClient.emit(
+            NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION,
+            notificationData
+          )
+        );
+        console.log(`[TaskService] Notification sent to resident ${userId}`);
+      } catch (notificationError) {
+        console.error('[TaskService] Error sending notification:', notificationError);
+        // Continue even if notification fails, as the task and crack have been updated
+      }
+
+      // Return success response
+      return {
+        success: true,
+        message: 'Notification sent and statuses updated successfully',
+        data: {
+          taskId,
+          scheduleJobId: scheduleJobId || taskResponse.data.scheduleJobId,
+          crackReportId,
+          residentId: userId,
+          taskStatus: 'Completed',
+          crackReportStatus: 'Completed'
+        }
+      };
+    } catch (error) {
+      console.error('[TaskService] Error in notificationThankstoResident:', error);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: error.message || 'Failed to process notification and status updates',
+          error: 'Notification Process Failed'
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }

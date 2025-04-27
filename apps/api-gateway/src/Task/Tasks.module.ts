@@ -6,7 +6,7 @@ import {
 } from '@nestjs/microservices';
 import { ClientConfigService } from 'apps/configs/client-config.service';
 import { TaskService } from './Tasks.service';
-import { CRACK_CLIENT, TASK_CLIENT, USERS_CLIENT } from '../constraints';
+import { CRACK_CLIENT, NOTIFICATION_CLIENT, TASK_CLIENT, USERS_CLIENT } from '../constraints';
 import { TaskController as TasksController } from './Tasks.controller';
 import { ClientConfigModule } from 'apps/configs/client-config.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -30,6 +30,14 @@ import { PassportModule } from '@nestjs/passport';
       provide: CRACK_CLIENT,
       useFactory: (configService: ClientConfigService) => {
         const clientOptions = configService.cracksClientOptions;
+        return ClientProxyFactory.create(clientOptions);
+      },
+      inject: [ClientConfigService],
+    },
+    {
+      provide: NOTIFICATION_CLIENT,
+      useFactory: (configService: ClientConfigService) => {
+        const clientOptions = configService.NotificationsClientOptions;
         return ClientProxyFactory.create(clientOptions);
       },
       inject: [ClientConfigService],

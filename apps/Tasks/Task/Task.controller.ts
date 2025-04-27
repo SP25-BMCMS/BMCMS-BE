@@ -92,4 +92,26 @@ export class TasksController {
       throw error;
     }
   }
+
+  @MessagePattern(TASKS_PATTERN.NOTIFICATION_THANKS_TO_RESIDENT)
+  async notificationThankstoResident(@Payload() payload: { taskId: string; scheduleJobId?: string }) {
+    console.log('Received notification-thanks-to-resident request with payload:', payload);
+    try {
+      // Validate required fields
+      const { taskId, scheduleJobId } = payload;
+      if (!taskId) {
+        throw new Error('Missing taskId in request payload');
+      }
+
+      console.log(`Processing notification thanks to resident for task: ${taskId}`);
+
+      // Call the service method
+      const result = await this.taskService.notificationThankstoResident(taskId, scheduleJobId);
+      console.log('notificationThankstoResident completed with result:', JSON.stringify(result));
+      return result;
+    } catch (error) {
+      console.error('Error in notificationThankstoResident controller:', error);
+      throw error;
+    }
+  }
 }

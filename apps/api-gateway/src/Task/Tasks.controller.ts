@@ -229,6 +229,72 @@ export class TaskController {
     }
   }
 
+  @Post('notification-thanks-to-resident')
+  @ApiOperation({ summary: 'Send notification to resident and update task and crack report status' })
+  @ApiResponse({ status: 200, description: 'Notification sent and statuses updated successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request - Missing required parameters' })
+  @ApiResponse({ status: 404, description: 'Not found - Task or crack report not found' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['taskId'],
+      properties: {
+        taskId: { type: 'string', description: 'Task ID' },
+        scheduleJobId: { type: 'string', description: 'Schedule Job ID' }
+      }
+    }
+  })
+  async notificationThankstoResident(
+    @Body() body: { taskId: string; scheduleJobId?: string }
+  ) {
+    try {
+      if (!body.taskId) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.BAD_REQUEST,
+            message: 'taskId is required',
+            error: 'Validation Error'
+          },
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      const result = await this.taskService.notificationThankstoResident(body.taskId, body.scheduleJobId);
+      return result;
+    } catch (error) {
+      console.error('Controller error:', error);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      const errorMessage = error.message || 'Unknown error';
+
+      // Handle various error types
+      if (errorMessage.includes('not found') || errorMessage.includes('không tìm thấy')) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.NOT_FOUND,
+            message: errorMessage,
+            error: 'Resource Not Found'
+          },
+          HttpStatus.NOT_FOUND
+        );
+      }
+
+      // Default to internal server error
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: errorMessage,
+          error: 'Internal Server Error'
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   // @Post('repair-materials')
   // @ApiOperation({ summary: 'Create repair material' })
   // @ApiBody({ type: CreateRepairMaterialDto })

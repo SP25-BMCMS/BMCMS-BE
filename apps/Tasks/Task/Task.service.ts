@@ -93,22 +93,33 @@ export class TaskService {
     this.buildingsClient.connect().catch(err => console.error('Error connecting to buildings service:', err));
   }
 
-  // Helper để gọi crackClient với retry và timeout
+  // Improve helper method to handle timeouts better
   private async callCrackService(pattern: any, data: any) {
     try {
+      console.log(`[TaskService] Calling crack service with pattern ${JSON.stringify(pattern)} and data:`, typeof data === 'string' ? data : JSON.stringify(data));
       return await firstValueFrom(
         this.crackClient.send(pattern, data).pipe(
-          timeout(5000), // Tăng timeout lên 5 giây
-          retry(2),      // Thử lại 2 lần nếu thất bại
+          timeout(10000), // Increase timeout to 10 seconds
+          retry(3),      // Retry 3 times
           catchError(err => {
-            console.error(`Error calling crack service with pattern ${JSON.stringify(pattern)}: `, err)
-            return throwError(() => err)
+            console.error(`Error calling crack service with pattern ${JSON.stringify(pattern)}: `, err);
+            // Return a minimal response instead of throwing an error
+            return of({
+              isSuccess: false,
+              message: `Error retrieving data from crack service: ${err.message}`,
+              data: null
+            });
           })
         )
-      )
+      );
     } catch (error) {
-      console.error(`Failed to get response from crack service after retries: `, error)
-      throw error
+      console.error(`Failed to get response from crack service after retries: `, error);
+      // Return a minimal response instead of throwing an error
+      return {
+        isSuccess: false,
+        message: `Failed to communicate with crack service: ${error.message}`,
+        data: null
+      };
     }
   }
 
@@ -844,6 +855,142 @@ export class TaskService {
       }
       throw new RpcException(
         new ApiResponse(false, `Error: ${error.message}`)
+      );
+    }
+  }
+
+  async notificationThankstoResident(taskId: string, scheduleJobId?: string) {
+    try {
+      console.log(`[TaskService] Processing thanks notification for task: ${taskId}`);
+
+      // Step 1: Verify the task exists
+      const task = await this.prisma.task.findUnique({
+        where: { task_id: taskId }
+      });
+
+      if (!task) {
+        throw new RpcException(
+          new ApiResponse(false, `Task with ID ${taskId} not found`)
+        );
+      }
+
+      // Step 2: Check if task has crack_id
+      if (!task.crack_id) {
+        throw new RpcException(
+          new ApiResponse(false, 'Task does not have an associated crack report')
+        );
+      }
+
+      // Initialize default values in case we can't get crack report details
+      let residentId = null;
+      let crackPosition = "unknown location";
+
+      // Step 3: Get crack report details via crack microservice
+      console.log(`[TaskService] Getting crack report details for ID: ${task.crack_id}`);
+
+      try {
+        const crackResponse = await this.callCrackService(
+          CRACK_PATTERNS.GET_DETAILS,
+          task.crack_id
+        );
+
+        if (crackResponse?.isSuccess && crackResponse?.data && crackResponse.data.length > 0) {
+          const crackReport = crackResponse.data[0];
+
+          // Extract just the userId as a string, not the full object
+          residentId = crackReport.reportedBy;
+
+          // Handle if reportedBy is an object instead of string
+          if (typeof residentId === 'object' && residentId !== null) {
+            residentId = residentId.userId || residentId.id || null;
+          }
+
+          // Get crack position if available
+          crackPosition = crackReport.position || "unknown location";
+
+          console.log(`[TaskService] Successfully retrieved crack report details. Resident ID: ${residentId}, Position: ${crackPosition}`);
+        } else {
+          console.warn(`[TaskService] Couldn't retrieve crack details but will continue processing: ${crackResponse?.message}`);
+        }
+      } catch (crackError) {
+        console.error('[TaskService] Error getting crack report details but continuing:', crackError);
+        // Continue processing even if we can't get crack details
+      }
+
+      // If we still don't have a residentId, try to find it from the task's assignments
+      if (!residentId) {
+        try {
+          const taskAssignment = await this.prisma.taskAssignment.findFirst({
+            where: { task_id: taskId }
+          });
+
+          if (taskAssignment) {
+            console.log(`[TaskService] Found task assignment, using employee_id as fallback for resident: ${taskAssignment.employee_id}`);
+            residentId = taskAssignment.employee_id;
+          }
+        } catch (assignmentError) {
+          console.error('[TaskService] Error finding task assignment:', assignmentError);
+        }
+      }
+
+      // If we still don't have a residentId, we can't proceed
+      if (!residentId) {
+        throw new RpcException(
+          new ApiResponse(false, 'Could not determine resident ID for notification')
+        );
+      }
+
+      // Step 4: Update task status to Completed
+      await this.prisma.task.update({
+        where: { task_id: taskId },
+        data: { status: Status.Completed }
+      });
+
+      console.log(`[TaskService] Updated task ${taskId} status to Completed`);
+
+      // Step 5: Update crack report status to Completed
+      // Add suppressNotification flag to prevent automatic notifications from the crack service
+      try {
+        const crackUpdateResponse = await this.callCrackService(
+          { cmd: 'update-crack-report-for-all-status' },
+          {
+            crackReportId: task.crack_id,
+            dto: {
+              status: 'Completed',
+              suppressNotification: true // Add this flag to prevent automatic notification
+            }
+          }
+        );
+
+        if (crackUpdateResponse.isSuccess) {
+          console.log(`[TaskService] Updated crack report status to Completed: ${JSON.stringify(crackUpdateResponse)}`);
+        } else {
+          console.warn(`[TaskService] Failed to update crack report status but continuing: ${crackUpdateResponse.message}`);
+        }
+      } catch (crackUpdateError) {
+        console.error('[TaskService] Error updating crack report status:', crackUpdateError);
+        // Continue with the process even if crack update fails
+      }
+
+      // Return the data needed for notification - make sure to return just the userId string
+      return new ApiResponse(true, 'Task and crack report processed successfully', {
+        taskId,
+        scheduleJobId: scheduleJobId || task.schedule_job_id,
+        crackReportId: task.crack_id,
+        residentId: residentId, // This is now a string, not an object
+        crackPosition: crackPosition,
+        taskStatus: 'Completed',
+        crackReportStatus: 'Completed'
+      });
+    } catch (error) {
+      console.error('[TaskService] Error in notificationThankstoResident:', error);
+
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      throw new RpcException(
+        new ApiResponse(false, `Error processing notification: ${error.message}`)
       );
     }
   }
