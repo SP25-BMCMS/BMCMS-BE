@@ -122,7 +122,7 @@ export class MaintenanceCycleService {
 
       // Extract updated_by and reason if they exist in the updateDto
       const { updated_by, reason, ...updateData } = updateDto as any;
-      
+
       // Save the current state to history
       await this.prisma.maintenanceCycleHistory.create({
         data: {

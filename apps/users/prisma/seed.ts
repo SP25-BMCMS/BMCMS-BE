@@ -18,59 +18,98 @@ async function main() {
   await prisma.department.deleteMany({});
 
   console.log('Seeding departments...');
-  // 1. Seed Departments
-  const department1 = await prisma.department.create({
+  // 1. Seed Departments for Rainbow Area
+  const departmentRainbowPrimary = await prisma.department.create({
     data: {
       departmentName: 'Primary Technicians',
       area: 'The Rainbow',
-      description: 'Manage maintenance for the entire area'
+      description: 'Manage primary maintenance for The Rainbow area'
     }
   });
-  const department2 = await prisma.department.create({
+
+  const departmentRainbowHVAC = await prisma.department.create({
     data: {
       departmentName: 'HVAC Technicians',
       area: 'The Rainbow',
-      description: 'Manage crack maintenance'
+      description: 'Specialized in HVAC systems for The Rainbow area'
     }
   });
-  const department3 = await prisma.department.create({
+
+  const departmentRainbowCleaning = await prisma.department.create({
     data: {
       departmentName: 'Cleaning Technicians',
       area: 'The Rainbow',
-      description: 'Responsible for cleaning the entire area'
+      description: 'Responsible for cleaning The Rainbow area'
     }
   });
-  const department4 = await prisma.department.create({
+
+  const departmentRainbowElectrical = await prisma.department.create({
     data: {
-      departmentName: 'Maintenance Technicians',
+      departmentName: 'Electrical Technicians',
       area: 'The Rainbow',
-      description: 'Responsible for maintaining technical equipment'
+      description: 'Specialized in electrical systems for The Rainbow area'
+    }
+  });
+
+  // Departments for Origami Area
+  const departmentOrigamiPrimary = await prisma.department.create({
+    data: {
+      departmentName: 'Primary Technicians',
+      area: 'The Origami',
+      description: 'Manage primary maintenance for The Origami area'
+    }
+  });
+
+  const departmentOrigamiHVAC = await prisma.department.create({
+    data: {
+      departmentName: 'HVAC Technicians',
+      area: 'The Origami',
+      description: 'Specialized in HVAC systems for The Origami area'
+    }
+  });
+
+  const departmentOrigamiCleaning = await prisma.department.create({
+    data: {
+      departmentName: 'Cleaning Technicians',
+      area: 'The Origami',
+      description: 'Responsible for cleaning The Origami area'
+    }
+  });
+
+  const departmentOrigamiPlumbing = await prisma.department.create({
+    data: {
+      departmentName: 'Plumbing Technicians',
+      area: 'The Origami',
+      description: 'Specialized in plumbing systems for The Origami area'
     }
   });
 
   console.log('Seeding positions...');
-  const position1 = await prisma.workingPosition.create({
+  const positionLeader = await prisma.workingPosition.create({
     data: {
       positionName: 'Leader',
-      description: 'Lead Engineer'
+      description: 'Team Lead Engineer for department'
     }
   });
-  const position2 = await prisma.workingPosition.create({
+
+  const positionTechnician = await prisma.workingPosition.create({
     data: {
       positionName: 'Technician',
-      description: 'HVAC Technician'
+      description: 'Specialized Technician'
     }
   });
-  const position3 = await prisma.workingPosition.create({
+
+  const positionJanitor = await prisma.workingPosition.create({
     data: {
       positionName: 'Janitor',
-      description: 'Common area cleaning staff'
+      description: 'Cleaning and maintenance staff'
     }
   });
-  const position4 = await prisma.workingPosition.create({
+
+  const positionSupervisor = await prisma.workingPosition.create({
     data: {
       positionName: 'Maintenance_Technician',
-      description: 'General maintenance technician'
+      description: 'Department supervisor'
     }
   });
 
@@ -105,11 +144,11 @@ async function main() {
     }
   });
 
-  const resident = await prisma.user.create({
+  const resident1 = await prisma.user.create({
     data: {
       username: 'resident1',
       password: hashedPassword,
-      email: 'huyflamingo1@gmail.com',
+      email: 'resident1@example.com',
       phone: '0911628211',
       role: 'Resident',
       dateOfBirth: new Date('1990-01-01'),
@@ -118,107 +157,230 @@ async function main() {
     }
   });
 
-  const leader = await prisma.user.create({
+  const resident2 = await prisma.user.create({
     data: {
-      username: 'leader',
+      username: 'resident2',
       password: hashedPassword,
-      email: 'leader@example.com',
+      email: 'resident2@example.com',
+      phone: '0911628212',
+      role: 'Resident',
+      dateOfBirth: new Date('1992-05-15'),
+      gender: 'Female',
+      accountStatus: 'Active'
+    }
+  });
+
+  // Staff for Rainbow Area
+  const rainbowLeader = await prisma.user.create({
+    data: {
+      username: 'rainbow_leader',
+      password: hashedPassword,
+      email: 'rainbow_leader@example.com',
+      phone: '0901111111',
+      role: 'Staff',
+      dateOfBirth: new Date('1985-03-10'),
+      gender: 'Male',
+      accountStatus: 'Active',
+      userDetails: {
+        create: {
+          image: 'staff_rainbow_leader.jpg',
+          positionId: positionLeader.positionId,
+          departmentId: departmentRainbowPrimary.departmentId,
+          staffStatus: 'Active'
+        }
+      }
+    }
+  });
+
+  const rainbowHVAC = await prisma.user.create({
+    data: {
+      username: 'rainbow_hvac',
+      password: hashedPassword,
+      email: 'rainbow_hvac@example.com',
+      phone: '0902222222',
+      role: 'Staff',
+      dateOfBirth: new Date('1988-07-22'),
+      gender: 'Male',
+      accountStatus: 'Active',
+      userDetails: {
+        create: {
+          image: 'staff_rainbow_hvac.jpg',
+          positionId: positionTechnician.positionId,
+          departmentId: departmentRainbowHVAC.departmentId,
+          staffStatus: 'Active'
+        }
+      }
+    }
+  });
+
+  const rainbowCleaning = await prisma.user.create({
+    data: {
+      username: 'rainbow_cleaning',
+      password: hashedPassword,
+      email: 'rainbow_cleaning@example.com',
+      phone: '0903333333',
+      role: 'Staff',
+      dateOfBirth: new Date('1990-11-15'),
+      gender: 'Female',
+      accountStatus: 'Active',
+      userDetails: {
+        create: {
+          image: 'staff_rainbow_cleaning.jpg',
+          positionId: positionJanitor.positionId,
+          departmentId: departmentRainbowCleaning.departmentId,
+          staffStatus: 'Active'
+        }
+      }
+    }
+  });
+
+  const rainbowElectrical = await prisma.user.create({
+    data: {
+      username: 'rainbow_electrical',
+      password: hashedPassword,
+      email: 'rainbow_electrical@example.com',
+      phone: '0904444444',
+      role: 'Staff',
+      dateOfBirth: new Date('1987-04-30'),
+      gender: 'Male',
+      accountStatus: 'Active',
+      userDetails: {
+        create: {
+          image: 'staff_rainbow_electrical.jpg',
+          positionId: positionTechnician.positionId,
+          departmentId: departmentRainbowElectrical.departmentId,
+          staffStatus: 'Active'
+        }
+      }
+    }
+  });
+
+  // Staff for Origami Area
+  const origamiLeader = await prisma.user.create({
+    data: {
+      username: 'origami_leader',
+      password: hashedPassword,
+      email: 'origami_leader@example.com',
+      phone: '0905555555',
+      role: 'Staff',
+      dateOfBirth: new Date('1986-06-20'),
+      gender: 'Female',
+      accountStatus: 'Active',
+      userDetails: {
+        create: {
+          image: 'staff_origami_leader.jpg',
+          positionId: positionLeader.positionId,
+          departmentId: departmentOrigamiPrimary.departmentId,
+          staffStatus: 'Active'
+        }
+      }
+    }
+  });
+
+  const origamiHVAC = await prisma.user.create({
+    data: {
+      username: 'origami_hvac',
+      password: hashedPassword,
+      email: 'origami_hvac@example.com',
       phone: '0906666666',
       role: 'Staff',
-      dateOfBirth: new Date('1995-05-10'),
-      gender: 'Female',
+      dateOfBirth: new Date('1989-09-25'),
+      gender: 'Male',
       accountStatus: 'Active',
       userDetails: {
         create: {
-          image: 'staff1.jpg',
-          positionId: position1.positionId,
-          departmentId: department1.departmentId,
+          image: 'staff_origami_hvac.jpg',
+          positionId: positionTechnician.positionId,
+          departmentId: departmentOrigamiHVAC.departmentId,
           staffStatus: 'Active'
         }
       }
     }
   });
 
-  const technician = await prisma.user.create({
+  const origamiCleaning = await prisma.user.create({
     data: {
-      username: 'technician',
+      username: 'origami_cleaning',
       password: hashedPassword,
-      email: 'technician@example.com',
-      phone: '0906666661',
+      email: 'origami_cleaning@example.com',
+      phone: '0907777777',
       role: 'Staff',
-      dateOfBirth: new Date('1995-05-10'),
+      dateOfBirth: new Date('1991-12-05'),
       gender: 'Female',
       accountStatus: 'Active',
       userDetails: {
         create: {
-          image: 'staff2.jpg',
-          positionId: position2.positionId,
-          departmentId: department2.departmentId,
+          image: 'staff_origami_cleaning.jpg',
+          positionId: positionJanitor.positionId,
+          departmentId: departmentOrigamiCleaning.departmentId,
           staffStatus: 'Active'
         }
       }
     }
   });
 
-  const janitor = await prisma.user.create({
+  const origamiPlumbing = await prisma.user.create({
     data: {
-      username: 'janitor',
+      username: 'origami_plumbing',
       password: hashedPassword,
-      email: 'janitor@example.com',
-      phone: '0906666662',
+      email: 'origami_plumbing@example.com',
+      phone: '0908888889',
       role: 'Staff',
-      dateOfBirth: new Date('1995-05-10'),
-      gender: 'Female',
+      dateOfBirth: new Date('1988-02-15'),
+      gender: 'Male',
       accountStatus: 'Active',
       userDetails: {
         create: {
-          image: 'staff3.jpg',
-          positionId: position3.positionId,
-          departmentId: department3.departmentId,
+          image: 'staff_origami_plumbing.jpg',
+          positionId: positionTechnician.positionId,
+          departmentId: departmentOrigamiPlumbing.departmentId,
           staffStatus: 'Active'
         }
       }
     }
   });
 
-  const maintenance_technician = await prisma.user.create({
+  // Supervisor roles for both areas
+  const rainbowSupervisor = await prisma.user.create({
     data: {
-      username: 'maintenance_technician',
+      username: 'rainbow_supervisor',
       password: hashedPassword,
-      email: 'maintenance_technician@example.com',
-      phone: '0906666663',
+      email: 'rainbow_supervisor@example.com',
+      phone: '0909999991',
       role: 'Staff',
-      dateOfBirth: new Date('1995-05-10'),
-      gender: 'Female',
+      dateOfBirth: new Date('1982-08-10'),
+      gender: 'Male',
       accountStatus: 'Active',
       userDetails: {
         create: {
-          image: 'staff4.jpg',
-          positionId: position4.positionId,
-          departmentId: department4.departmentId,
+          image: 'staff_rainbow_supervisor.jpg',
+          positionId: positionSupervisor.positionId,
+          departmentId: departmentRainbowPrimary.departmentId,
           staffStatus: 'Active'
         }
       }
     }
   });
 
-  // 4. Seed Apartments for Resident
-  console.log('Seeding apartments...');
-  await prisma.apartment.createMany({
-    data: [
-      {
-        apartmentName: 'S107.15152',
-        buildingDetailId: 'cdc621f5-795c-4769-a7ec-34cb2b7cca72',
-        ownerId: resident.userId,
-        warrantyDate: '2035-04-11T00:00:00.000Z'
-      },
-      {
-        apartmentName: 'S106.12122',
-        buildingDetailId: 'a1ccc92a-05e2-4739-9afa-0e619e8c1551',
-        ownerId: resident.userId,
-        warrantyDate: '2035-04-11T00:00:00.000Z'
+  const origamiSupervisor = await prisma.user.create({
+    data: {
+      username: 'origami_supervisor',
+      password: hashedPassword,
+      email: 'origami_supervisor@example.com',
+      phone: '0909999992',
+      role: 'Staff',
+      dateOfBirth: new Date('1983-10-05'),
+      gender: 'Female',
+      accountStatus: 'Active',
+      userDetails: {
+        create: {
+          image: 'staff_origami_supervisor.jpg',
+          positionId: positionSupervisor.positionId,
+          departmentId: departmentOrigamiPrimary.departmentId,
+          staffStatus: 'Active'
+        }
       }
-    ]
+    }
   });
 
   console.log('✅ Seed complete.');
