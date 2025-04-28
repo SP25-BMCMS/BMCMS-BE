@@ -130,7 +130,7 @@ export class InspectionsService implements OnModuleInit {
         return {
           statusCode: 404,
           message:
-            'No inspections found for this task assignment id = ' +
+            'Không tìm thấy kiểm tra nào cho nhiệm vụ này với ID = ' +
             task_assignment_id,
         }
       }
@@ -166,13 +166,13 @@ export class InspectionsService implements OnModuleInit {
 
       return {
         statusCode: 200,
-        message: 'Inspections retrieved successfully',
+        message: 'Lấy danh sách kiểm tra thành công',
         data: inspections,
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving inspections for task assignment',
+        message: 'Lỗi khi lấy danh sách kiểm tra cho nhiệm vụ',
       })
     }
   }
@@ -184,7 +184,7 @@ export class InspectionsService implements OnModuleInit {
 
     if (!existingInspection) {
       throw new RpcException(
-        new ApiResponse(false, 'Inspection does not exist'),
+        new ApiResponse(false, 'Không tồn tại kiểm tra'),
       )
     }
 
@@ -193,11 +193,11 @@ export class InspectionsService implements OnModuleInit {
         where: { inspection_id },
         data: { ...dto },
       })
-      return new ApiResponse(true, 'Inspection has been updated successfully', [
+      return new ApiResponse(true, 'Cập nhật kiểm tra thành công', [
         updatedInspection,
       ])
     } catch (error) {
-      throw new RpcException(new ApiResponse(false, 'Invalid data'))
+      throw new RpcException(new ApiResponse(false, 'Dữ liệu không hợp lệ'))
     }
   }
 
@@ -242,7 +242,7 @@ export class InspectionsService implements OnModuleInit {
       if (inspections.length === 0) {
         return {
           statusCode: 404,
-          message: 'No inspections found',
+          message: 'Không tìm thấy kiểm tra nào',
           data: [],
         }
       }
@@ -278,7 +278,7 @@ export class InspectionsService implements OnModuleInit {
 
       return {
         statusCode: 200,
-        message: 'Inspections retrieved successfully',
+        message: 'Lấy danh sách kiểm tra thành công',
         data: inspections,
         total: inspections.length,
       }
@@ -286,7 +286,7 @@ export class InspectionsService implements OnModuleInit {
       console.error('Error in GetAllInspections:', error)
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving inspections',
+        message: 'Lỗi khi lấy danh sách kiểm tra',
         error: error.message,
       })
     }
@@ -314,12 +314,12 @@ export class InspectionsService implements OnModuleInit {
       })
 
       if (!taskAssignment) {
-        return new ApiResponse(false, 'Task assignment not found', null)
+        return new ApiResponse(false, 'Không tìm thấy nhiệm vụ được phân công', null)
       }
 
       // Ensure inspected_by is provided (this should always be set by the API Gateway from the token)
       if (!dto.inspected_by) {
-        return new ApiResponse(false, 'User ID not provided in token', null)
+        return new ApiResponse(false, 'Không tìm thấy ID người dùng trong token', null)
       }
 
       // Verify that the user is a Staff
@@ -354,11 +354,11 @@ export class InspectionsService implements OnModuleInit {
         } else if (Array.isArray(repairMaterials)) {
           repairMaterialsArray = repairMaterials
         } else {
-          throw new Error('Invalid repairMaterials format')
+          throw new Error('Định dạng vật liệu sửa chữa không hợp lệ')
         }
       } catch (error) {
         console.error('Error parsing repairMaterials:', error)
-        return new ApiResponse(false, 'Invalid repairMaterials format', null)
+        return new ApiResponse(false, 'Định dạng vật liệu sửa chữa không hợp lệ', null)
       }
 
       // Validate all materials and calculate total cost
@@ -376,20 +376,20 @@ export class InspectionsService implements OnModuleInit {
                 timeout(10000),
                 catchError(err => {
                   console.error('Error getting material info:', err)
-                  return of(new ApiResponse(false, 'Error getting material info', null))
+                  return of(new ApiResponse(false, 'Lỗi khi lấy thông tin vật liệu', null))
                 })
               )
             )
 
             if (!materialResponse || !materialResponse.isSuccess || !materialResponse.data) {
-              throw new Error(`Material not found or error retrieving material information for ID: ${repairMaterial.materialId}`)
+              throw new Error(`Không tìm thấy vật liệu hoặc lỗi khi lấy thông tin vật liệu với ID: ${repairMaterial.materialId}`)
             }
 
             const material = materialResponse.data
 
             // Check if there's enough stock
             if (material.stock_quantity < repairMaterial.quantity) {
-              throw new Error(`Not enough stock for material ${material.name}. Current stock: ${material.stock_quantity}, Required: ${repairMaterial.quantity}`)
+              throw new Error(`Không đủ số lượng tồn kho cho vật liệu ${material.name}. Số lượng hiện có: ${material.stock_quantity}, Yêu cầu: ${repairMaterial.quantity}`)
             }
 
             // Calculate cost for this material
@@ -455,7 +455,7 @@ export class InspectionsService implements OnModuleInit {
 
         return new ApiResponse(
           true,
-          'Inspection and repair materials created successfully',
+          'Tạo kiểm tra và vật liệu sửa chữa thành công',
           result
         )
       } else {
@@ -473,13 +473,13 @@ export class InspectionsService implements OnModuleInit {
 
         return new ApiResponse(
           true,
-          'Inspection created successfully with no repair materials',
+          'Tạo kiểm tra thành công không có vật liệu sửa chữa',
           inspection
         )
       }
     } catch (error) {
       console.error('Error in createInspection:', error)
-      return new ApiResponse(false, error.message || 'Error creating inspection and repair materials', null)
+      return new ApiResponse(false, error.message || 'Lỗi khi tạo kiểm tra và vật liệu sửa chữa', null)
     }
   }
 
@@ -511,7 +511,7 @@ export class InspectionsService implements OnModuleInit {
       })
 
       if (!inspection) {
-        return new ApiResponse(false, 'Inspection not found', null)
+        return new ApiResponse(false, 'Không tìm thấy kiểm tra', null)
       }
 
       // Get current image_urls array or initialize as empty array
@@ -525,9 +525,9 @@ export class InspectionsService implements OnModuleInit {
         data: { image_urls: updatedImageUrls },
       })
 
-      return new ApiResponse(true, 'Images added successfully', updatedInspection)
+      return new ApiResponse(true, 'Thêm hình ảnh thành công', updatedInspection)
     } catch (error) {
-      return new ApiResponse(false, 'Error adding images', error.message)
+      return new ApiResponse(false, 'Lỗi khi thêm hình ảnh', error.message)
     }
   }
 
@@ -546,7 +546,7 @@ export class InspectionsService implements OnModuleInit {
       })
 
       if (!inspection) {
-        return new ApiResponse(false, 'Inspection not found', null)
+        return new ApiResponse(false, 'Không tìm thấy kiểm tra', null)
       }
 
       const result: any = { ...inspection }
@@ -634,9 +634,9 @@ export class InspectionsService implements OnModuleInit {
         // Add schedule info retrieval here
       }
 
-      return new ApiResponse(true, 'Inspection details retrieved successfully', result)
+      return new ApiResponse(true, 'Lấy chi tiết kiểm tra thành công', result)
     } catch (error) {
-      return new ApiResponse(false, 'Error retrieving inspection details', error.message)
+      return new ApiResponse(false, 'Lỗi khi lấy chi tiết kiểm tra', error.message)
     }
   }
 
@@ -655,7 +655,7 @@ export class InspectionsService implements OnModuleInit {
       })
 
       if (!inspection) {
-        return new ApiResponse(false, 'Inspection not found', null)
+        return new ApiResponse(false, 'Không tìm thấy kiểm tra', null)
       }
 
       // Process image URLs
@@ -684,10 +684,10 @@ export class InspectionsService implements OnModuleInit {
         }
       }
 
-      return new ApiResponse(true, 'Inspection retrieved successfully', inspection)
+      return new ApiResponse(true, 'Lấy thông tin kiểm tra thành công', inspection)
     } catch (error) {
       console.error('Error retrieving inspection:', error)
-      return new ApiResponse(false, 'Error retrieving inspection', error.message)
+      return new ApiResponse(false, 'Lỗi khi lấy thông tin kiểm tra', error.message)
     }
   }
 
@@ -707,7 +707,7 @@ export class InspectionsService implements OnModuleInit {
 
       if (!taskAssignment || !taskAssignment.task) {
         console.log('TaskAssignment or Task not found:', task_assignment_id)
-        return new ApiResponse(false, 'TaskAssignment or Task not found', null)
+        return new ApiResponse(false, 'Không tìm thấy nhiệm vụ được phân công hoặc nhiệm vụ', null)
       }
 
       // Use the task_id to get the BuildingDetailId from Crack service
@@ -734,7 +734,7 @@ export class InspectionsService implements OnModuleInit {
 
       if (!crackResponse || !crackResponse.isSuccess || !crackResponse.data) {
         console.log('Failed to get building detail from crack service')
-        return new ApiResponse(false, 'Failed to get building detail', null)
+        return new ApiResponse(false, 'Không thể lấy thông tin tòa nhà', null)
       }
 
       // Extract buildingDetailId from the response
@@ -742,14 +742,14 @@ export class InspectionsService implements OnModuleInit {
 
       if (!buildingDetailId) {
         console.log('BuildingDetailId not found in crack response')
-        return new ApiResponse(false, 'BuildingDetailId not found', null)
+        return new ApiResponse(false, 'Không tìm thấy ID chi tiết tòa nhà', null)
       }
 
       console.log('Successfully retrieved buildingDetailId:', buildingDetailId)
-      return new ApiResponse(true, 'BuildingDetailId retrieved successfully', { buildingDetailId })
+      return new ApiResponse(true, 'Lấy ID chi tiết tòa nhà thành công', { buildingDetailId })
     } catch (error) {
       console.error('Error in getBuildingDetailIdFromTaskAssignment:', error)
-      return new ApiResponse(false, 'Error retrieving BuildingDetailId', null)
+      return new ApiResponse(false, 'Lỗi khi lấy ID chi tiết tòa nhà', null)
     }
   }
   async verifyStaffRole(userId: string): Promise<ApiResponse<boolean>> {
@@ -765,11 +765,11 @@ export class InspectionsService implements OnModuleInit {
 
           if (!this.userService) {
             console.error('userService still undefined after reinitialization attempt')
-            return new ApiResponse(false, 'Failed to initialize user service - gRPC client may not be connected', false)
+            return new ApiResponse(false, 'Không thể khởi tạo dịch vụ người dùng - gRPC client có thể không được kết nối', false)
           }
         } catch (error) {
           console.error('Error reinitializing userService:', error)
-          return new ApiResponse(false, `Error initializing service: ${error.message}`, false)
+          return new ApiResponse(false, `Lỗi khởi tạo dịch vụ: ${error.message}`, false)
         }
       }
 
@@ -779,7 +779,7 @@ export class InspectionsService implements OnModuleInit {
         // Try to get available methods
         const methods = Object.keys(this.userService)
         console.log('Available methods in userService:', methods)
-        return new ApiResponse(false, 'User service incorrectly initialized - getUserInfo not available', false)
+        return new ApiResponse(false, 'Dịch vụ người dùng được khởi tạo không đúng - getUserInfo không khả dụng', false)
       }
 
       // Get user details from User service using gRPC
@@ -798,14 +798,14 @@ export class InspectionsService implements OnModuleInit {
         )
       } catch (error) {
         console.error('Critical error calling getUserInfo:', error)
-        return new ApiResponse(false, `Error calling getUserInfo: ${error.message}`, false)
+        return new ApiResponse(false, `Lỗi khi gọi getUserInfo: ${error.message}`, false)
       }
 
       console.log('Tasks microservice - User info received:', JSON.stringify(userInfo, null, 2))
 
       if (!userInfo) {
         console.error('Tasks microservice - User info is null or undefined')
-        return new ApiResponse(false, 'User not found', false)
+        return new ApiResponse(false, 'Không tìm thấy người dùng', false)
       }
 
       // Check if user has role Staff
@@ -816,16 +816,16 @@ export class InspectionsService implements OnModuleInit {
         console.log(`Tasks microservice - User role ${role} is not Staff`)
         return new ApiResponse(
           false,
-          `Only Staff can create inspections. Current role: ${role}`,
+          `Chỉ nhân viên mới có thể tạo kiểm tra. Vai trò hiện tại: ${role}`,
           false
         )
       }
 
       console.log('Tasks microservice - User is a Staff, validation successful')
-      return new ApiResponse(true, 'User is a Staff', true)
+      return new ApiResponse(true, 'Người dùng là nhân viên', true)
     } catch (error) {
       console.error('Tasks microservice - Error in verifyStaffRole:', error)
-      return new ApiResponse(false, `Error validating user role: ${error.message}`, false)
+      return new ApiResponse(false, `Lỗi khi xác thực vai trò người dùng: ${error.message}`, false)
     }
   }
 
@@ -844,7 +844,7 @@ export class InspectionsService implements OnModuleInit {
       if (!inspection) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Inspection not found',
+          message: 'Không tìm thấy kiểm tra',
         });
       }
 
@@ -861,14 +861,14 @@ export class InspectionsService implements OnModuleInit {
 
       return new ApiResponse(
         true,
-        'Inspection private asset status updated successfully',
+        'Cập nhật trạng thái tài sản riêng của kiểm tra thành công',
         updatedInspection
       );
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({
         statusCode: 500,
-        message: `Failed to update inspection private asset status: ${error.message}`,
+        message: `Không thể cập nhật trạng thái tài sản riêng của kiểm tra: ${error.message}`,
       });
     }
   }
@@ -888,7 +888,7 @@ export class InspectionsService implements OnModuleInit {
       if (!inspection) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Inspection not found',
+          message: 'Không tìm thấy kiểm tra',
         });
       }
 
@@ -906,61 +906,30 @@ export class InspectionsService implements OnModuleInit {
 
       // Handle special cases for report status changes
       if (dto.report_status === 'Rejected' && inspection.isprivateasset === true) {
-        // If report is rejected and it's a private asset, mark task as not completed
-        // await this.taskAssignmentService.changeTaskAssignmentStatus(
-        //   inspection.task_assignment_id,
-        //   AssignmentStatus.Confirmed
-        // );
-
-        // if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
-        //   await this.taskService.changeTaskStatus(
-        //     inspection.taskAssignment.task_id,
-        //     'Completed'
-        //   );
-        // }
-
-        // updatedInspection.taskAssignment.status = AssignmentStatus.Confirmed;
-
         return new ApiResponse(
           true,
-          'It is already in our maintenance schedule system',
+          'Đã có trong hệ thống lịch trình bảo trì của chúng tôi',
           updatedInspection
         );
       }
       else if (dto.report_status === 'Approved') {
-        // If report is approved, mark task as completed
-        // await this.taskAssignmentService.changeTaskAssignmentStatus(
-        //   inspection.task_assignment_id,
-        //   AssignmentStatus.Confirmed // Using Confirmed status since Completed is not in the enum
-        // );
-
-        // // Also update the task status to Completed
-        // if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
-        //   await this.taskService.changeTaskStatus(
-        //     inspection.taskAssignment.task_id,
-        //     'Completed'
-        //   );
-        // }
-
-        // updatedInspection.taskAssignment.status = AssignmentStatus.Confirmed;
-
         return new ApiResponse(
           true,
-          'We acknowledge and will review',
+          'Chúng tôi đã nhận và sẽ xem xét',
           updatedInspection
         );
       }
 
       return new ApiResponse(
         true,
-        'Inspection report status updated successfully',
+        'Cập nhật trạng thái báo cáo kiểm tra thành công',
         updatedInspection
       );
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({
         statusCode: 500,
-        message: `Failed to update inspection report status: ${error.message}`,
+        message: `Không thể cập nhật trạng thái báo cáo kiểm tra: ${error.message}`,
       });
     }
   }
@@ -983,7 +952,7 @@ export class InspectionsService implements OnModuleInit {
       if (!inspection) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Inspection not found',
+          message: 'Không tìm thấy kiểm tra',
         });
       }
       console.log(inspection)
@@ -1024,73 +993,30 @@ export class InspectionsService implements OnModuleInit {
       console.log(updatedInspection)
       // Xử lý các trường hợp đặc biệt cho thay đổi trạng thái báo cáo
       if (report_status === 'Rejected' && inspection.isprivateasset === true) {
-        // Nếu báo cáo bị từ chối và là tài sản riêng, đánh dấu task là chưa hoàn thành
-        // await this.taskAssignmentService.changeTaskAssignmentStatus(
-        //   inspection.task_assignment_id,
-        //   AssignmentStatus.Confirmed
-        // );
-
-        // if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
-        //   await this.taskService.changeTaskStatus(
-        //     inspection.taskAssignment.task_id,
-        //     'Completed'
-        //   );
-        // }
-
-        // const taskAssignment = await this.prisma.taskAssignment.findUnique({
-        //   where: { assignment_id: inspection.task_assignment_id }
-        // });
-
-        // if (taskAssignment) {
-        //   taskAssignment.status = AssignmentStatus.Confirmed;
-        // }
-
         return new ApiResponse(
           true,
-          'It is already in our maintenance schedule system',
+          'Đã có trong hệ thống lịch trình bảo trì của chúng tôi',
           updatedInspection
         );
       }
       else if (report_status === 'Approved') {
-        // Nếu báo cáo được phê duyệt, đánh dấu task là đã hoàn thành
-        // await this.taskAssignmentService.changeTaskAssignmentStatus(
-        //   inspection.task_assignment_id,
-        //   AssignmentStatus.Confirmed
-        // );
-
-        // // Cập nhật trạng thái task thành Completed
-        // if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
-        //   await this.taskService.changeTaskStatus(
-        //     inspection.taskAssignment.task_id,
-        //     'Completed'
-        //   );
-        // }
-
-        // const taskAssignment = await this.prisma.taskAssignment.findUnique({
-        //   where: { assignment_id: inspection.task_assignment_id }
-        // });
-
-        // if (taskAssignment) {
-        //   taskAssignment.status = AssignmentStatus.Confirmed;
-        // }
-
         return new ApiResponse(
           true,
-          'We acknowledge and will review',
+          'Chúng tôi đã nhận và sẽ xem xét',
           updatedInspection
         );
       }
 
       return new ApiResponse(
         true,
-        'Inspection report status updated successfully',
+        'Cập nhật trạng thái báo cáo kiểm tra thành công',
         updatedInspection
       );
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({
         statusCode: 500,
-        message: `Failed to update inspection report status: ${error.message}`,
+        message: `Không thể cập nhật trạng thái báo cáo kiểm tra: ${error.message}`,
       });
     }
   }

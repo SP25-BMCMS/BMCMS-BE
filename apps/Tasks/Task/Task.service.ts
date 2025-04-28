@@ -136,13 +136,13 @@ export class TaskService {
       })
       return {
         statusCode: 201,
-        message: 'Task created successfully',
+        message: 'Nhiệm vụ đã được tạo thành công',
         data: newTask,
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Task creation failed',
+        message: 'Không thể tạo nhiệm vụ',
       })
     }
   }
@@ -161,13 +161,13 @@ export class TaskService {
       })
       return {
         statusCode: 200,
-        message: 'Task updated successfully',
+        message: 'Nhiệm vụ đã được cập nhật thành công',
         data: updatedTask,
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Task update failed',
+        message: 'Không thể cập nhật nhiệm vụ',
       })
     }
   }
@@ -180,7 +180,7 @@ export class TaskService {
       if (!task) {
         return {
           statusCode: 404,
-          message: 'Task not found',
+          message: 'Không tìm thấy nhiệm vụ',
         }
       }
 
@@ -198,7 +198,7 @@ export class TaskService {
                 console.error(`Error fetching crack info for task ${task.task_id}:`, err)
                 return of({
                   statusCode: 400,
-                  message: 'No crackReport found',
+                  message: 'Không tìm thấy báo cáo vết nứt',
                   data: null,
                 })
               })
@@ -216,7 +216,7 @@ export class TaskService {
                 console.error(`Error fetching schedule job info for task ${task.task_id}:`, err)
                 return of({
                   statusCode: 400,
-                  message: 'No schedule job found',
+                  message: 'Không tìm thấy lịch trình',
                   data: null,
                 })
               })
@@ -240,13 +240,13 @@ export class TaskService {
 
       return {
         statusCode: 200,
-        message: 'Task retrieved successfully',
+        message: 'Lấy thông tin nhiệm vụ thành công',
         data: result,
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving task',
+        message: 'Lỗi khi lấy thông tin nhiệm vụ',
       })
     }
   }
@@ -259,13 +259,13 @@ export class TaskService {
       })
       return {
         statusCode: 200,
-        message: 'Task deleted successfully',
+        message: 'Nhiệm vụ đã được xóa thành công',
         data: deletedTask,
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Task deletion failed',
+        message: 'Không thể xóa nhiệm vụ',
       })
     }
   }
@@ -309,7 +309,7 @@ export class TaskService {
       if (!task) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Task not found',
+          message: 'Không tìm thấy nhiệm vụ',
         })
       }
       const status: Status = changeTaskStatusDto as Status // This assumes changeTaskStatusDto is a valid status string
@@ -324,7 +324,7 @@ export class TaskService {
 
       return {
         statusCode: 200,
-        message: 'Task status updated successfully',
+        message: 'Cập nhật trạng thái nhiệm vụ thành công',
         data: updatedTask,
       }
     } catch (error) {
@@ -333,7 +333,7 @@ export class TaskService {
       // Return a meaningful response for the error
       throw new RpcException({
         statusCode: 400,
-        message: 'Error updating task status',
+        message: 'Lỗi khi cập nhật trạng thái nhiệm vụ',
         error: error.message, // Include the error message for debugging
       })
     }
@@ -387,7 +387,7 @@ export class TaskService {
                   console.error(`Error fetching crack info for task ${task.task_id}:`, err)
                   return of({
                     statusCode: 400,
-                    message: 'No crackReport found',
+                    message: 'Không tìm thấy báo cáo vết nứt',
                     data: null,
                   })
                 })
@@ -405,7 +405,7 @@ export class TaskService {
                   console.error(`Error fetching schedule job info for task ${task.task_id}:`, err)
                   return of({
                     statusCode: 400,
-                    message: 'No schedule job found',
+                    message: 'Không tìm thấy lịch trình',
                     data: null,
                   })
                 })
@@ -444,13 +444,13 @@ export class TaskService {
         page,
         limit,
         200,
-        tasks.length > 0 ? 'Tasks retrieved successfully' : 'No tasks found',
+        tasks.length > 0 ? 'Lấy danh sách nhiệm vụ thành công' : 'Không tìm thấy nhiệm vụ nào',
       )
     } catch (error) {
       console.error('Error retrieving tasks:', error)
       throw new RpcException({
         statusCode: 500,
-        message: `Error retrieving tasks: ${error.message}`,
+        message: `Lỗi khi lấy danh sách nhiệm vụ: ${error.message}`,
       })
     }
   }
@@ -479,13 +479,13 @@ export class TaskService {
 
       return {
         statusCode: 200,
-        message: 'Tasks by status fetched successfully',
+        message: 'Lấy danh sách nhiệm vụ theo trạng thái thành công',
         data: tasks,
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving tasks by status',
+        message: 'Lỗi khi lấy danh sách nhiệm vụ theo trạng thái',
       })
     }
   }
@@ -504,17 +504,17 @@ export class TaskService {
 
       if (!task) {
         console.log(`No task found with ID ${taskId}`)
-        return new ApiResponse(false, 'Task not found', null)
+        return new ApiResponse(false, 'Không tìm thấy nhiệm vụ', null)
       }
 
       console.log('Found task:', JSON.stringify(task, null, 2))
 
-      return new ApiResponse(true, 'Crack ID retrieved successfully', {
+      return new ApiResponse(true, 'Lấy ID vết nứt thành công', {
         crackReportId: task.crack_id
       })
     } catch (error) {
       console.error(`Error retrieving crack ID for task ${taskId}:`, error)
-      return new ApiResponse(false, 'Error retrieving crack ID', null)
+      return new ApiResponse(false, 'Lỗi khi lấy ID vết nứt', null)
     }
   }
 
@@ -523,7 +523,7 @@ export class TaskService {
       // Validate input
       if (!scheduleJobId) {
         throw new RpcException(
-          new ApiResponse(false, 'scheduleJobId is required')
+          new ApiResponse(false, 'Yêu cầu scheduleJobId')
         );
       }
 
@@ -544,12 +544,12 @@ export class TaskService {
 
         return new ApiResponse(
           true,
-          'Task already exists for this schedule job',
+          'Nhiệm vụ đã tồn tại cho lịch trình này',
           {
             task: existingTask,
             taskAssignment: existingAssignment ? {
               statusCode: 200,
-              message: 'Assignment already exists',
+              message: 'Phân công đã tồn tại',
               data: existingAssignment
             } : null,
             staffLeader: existingAssignment ? {
@@ -562,7 +562,7 @@ export class TaskService {
       // Biến để lưu trữ dữ liệu
       let matchedStaffId = staffId; // Sử dụng staffId được cung cấp (nếu có)
       let buildingDetailId: string = null;
-      let buildingName: string = "Unknown Building";
+      let buildingName: string = "Tòa nhà không xác định";
       let buildingAreaName: string = null;
 
       // Sử dụng transaction để đảm bảo toàn vẹn dữ liệu
@@ -596,7 +596,7 @@ export class TaskService {
                         console.error('All patterns failed:', err3);
                         return throwError(() => new RpcException({
                           statusCode: 404,
-                          message: `Schedule job not found: ${err.message}`
+                          message: `Không tìm thấy lịch trình: ${err.message}`
                         }));
                       })
                     );
@@ -610,7 +610,7 @@ export class TaskService {
           console.error('Invalid schedule job response:', JSON.stringify(scheduleJobResponse));
           throw new RpcException({
             statusCode: 404,
-            message: 'Schedule job not found or invalid data format'
+            message: 'Không tìm thấy lịch trình hoặc định dạng dữ liệu không hợp lệ'
           });
         }
 
@@ -629,7 +629,7 @@ export class TaskService {
         if (!buildingDetailId) {
           throw new RpcException({
             statusCode: 400,
-            message: 'Schedule job has no building information'
+            message: 'Lịch trình không có thông tin tòa nhà'
           });
         }
 
@@ -655,7 +655,7 @@ export class TaskService {
                         console.error('All building service patterns failed:', err3);
                         return throwError(() => new RpcException({
                           statusCode: 404,
-                          message: `Building not found: ${err.message}`
+                          message: `Không tìm thấy tòa nhà: ${err.message}`
                         }));
                       })
                     );
@@ -674,7 +674,7 @@ export class TaskService {
         if (!buildingData) {
           throw new RpcException({
             statusCode: 404,
-            message: 'Building information not found'
+            message: 'Không tìm thấy thông tin tòa nhà'
           });
         }
 
@@ -682,7 +682,7 @@ export class TaskService {
         buildingName = buildingData.name ||
           buildingData.buildingName ||
           buildingDetailResponse.name ||
-          "Unknown Building";
+          "Tòa nhà không xác định";
 
         // Trích xuất thông tin khu vực từ nhiều cấu trúc lồng nhau có thể có
         let areaId = null;
@@ -697,10 +697,10 @@ export class TaskService {
           areaName = buildingData.area.name || buildingData.area.areaName;
         } else if (buildingData.areaId) {
           areaId = buildingData.areaId;
-          areaName = buildingData.areaName || "Unknown Area";
+          areaName = buildingData.areaName || "Khu vực không xác định";
         } else if (buildingDetailResponse.areaId) {
           areaId = buildingDetailResponse.areaId;
-          areaName = buildingDetailResponse.areaName || "Unknown Area";
+          areaName = buildingDetailResponse.areaName || "Khu vực không xác định";
         }
 
         // Sử dụng buildingAreaName từ context hiện tại nếu có
@@ -711,7 +711,7 @@ export class TaskService {
         if (!areaId || !buildingAreaName) {
           throw new RpcException({
             statusCode: 404,
-            message: 'Building does not belong to any area'
+            message: 'Tòa nhà không thuộc khu vực nào'
           });
         }
 
@@ -735,7 +735,7 @@ export class TaskService {
             if (!staffResponse?.isSuccess || !staffResponse?.data || staffResponse.data.length === 0) {
               throw new RpcException({
                 statusCode: 404,
-                message: 'No suitable staff found'
+                message: 'Không tìm thấy nhân viên phù hợp'
               });
             }
 
@@ -753,7 +753,7 @@ export class TaskService {
             } else {
               throw new RpcException({
                 statusCode: 404,
-                message: `No Staff Leader found for area ${buildingAreaName}`
+                message: `Không tìm thấy Trưởng nhóm cho khu vực ${buildingAreaName}`
               });
             }
           } catch (error) {
@@ -762,7 +762,7 @@ export class TaskService {
             }
             throw new RpcException({
               statusCode: 500,
-              message: `Error finding Staff Leader: ${error.message}`
+              message: `Lỗi khi tìm Trưởng nhóm: ${error.message}`
             });
           }
         }
@@ -770,15 +770,15 @@ export class TaskService {
         if (!matchedStaffId) {
           throw new RpcException({
             statusCode: 404,
-            message: 'No Staff Leader found for assignment'
+            message: 'Không tìm thấy Trưởng nhóm để phân công'
           });
         }
 
         // BƯỚC 5: Tạo task cho schedule job
         console.log(`Creating task for schedule job ${scheduleJobId} in building ${buildingName}`);
 
-        const taskTitle = `Regular maintenance for building ${buildingName}`;
-        const taskDescription = `Regular maintenance assignment for building ${buildingName}`;
+        const taskTitle = `Bảo trì định kỳ cho tòa nhà ${buildingName}`;
+        const taskDescription = `Phân công bảo trì định kỳ cho tòa nhà ${buildingName}`;
 
         const createTaskResponse = await this.createTask({
           title: taskTitle,
@@ -793,7 +793,7 @@ export class TaskService {
 
         if (!createTaskResponse?.data?.task_id) {
           throw new RpcException(
-            new ApiResponse(false, `Error creating task: ${JSON.stringify(createTaskResponse)}`)
+            new ApiResponse(false, `Lỗi khi tạo nhiệm vụ: ${JSON.stringify(createTaskResponse)}`)
           );
         }
 
@@ -816,7 +816,7 @@ export class TaskService {
           if (taskAssignmentResponse?.statusCode >= 400) {
             console.error(`Error assigning task: ${JSON.stringify(taskAssignmentResponse)}`);
             throw new RpcException(
-              new ApiResponse(false, taskAssignmentResponse.message || 'Error assigning task')
+              new ApiResponse(false, taskAssignmentResponse.message || 'Lỗi khi phân công nhiệm vụ')
             );
           }
 
@@ -825,7 +825,7 @@ export class TaskService {
           // Trả về kết quả thành công
           return new ApiResponse(
             true,
-            'Task has been created and assigned to Staff Leader successfully',
+            'Nhiệm vụ đã được tạo và phân công cho Trưởng nhóm thành công',
             {
               task: createTaskResponse.data,
               taskAssignment: taskAssignmentResponse,
@@ -842,7 +842,7 @@ export class TaskService {
           });
 
           throw new RpcException(
-            new ApiResponse(false, `Error assigning task: ${assignmentError.message}`)
+            new ApiResponse(false, `Lỗi khi phân công nhiệm vụ: ${assignmentError.message}`)
           );
         }
       }, {
@@ -854,7 +854,7 @@ export class TaskService {
         throw error;
       }
       throw new RpcException(
-        new ApiResponse(false, `Error: ${error.message}`)
+        new ApiResponse(false, `Lỗi: ${error.message}`)
       );
     }
   }
@@ -870,20 +870,20 @@ export class TaskService {
 
       if (!task) {
         throw new RpcException(
-          new ApiResponse(false, `Task with ID ${taskId} not found`)
+          new ApiResponse(false, `Không tìm thấy nhiệm vụ với ID ${taskId}`)
         );
       }
 
       // Step 2: Check if task has crack_id
       if (!task.crack_id) {
         throw new RpcException(
-          new ApiResponse(false, 'Task does not have an associated crack report')
+          new ApiResponse(false, 'Nhiệm vụ không có báo cáo vết nứt liên kết')
         );
       }
 
       // Initialize default values in case we can't get crack report details
       let residentId = null;
-      let crackPosition = "unknown location";
+      let crackPosition = "vị trí không xác định";
 
       // Step 3: Get crack report details via crack microservice
       console.log(`[TaskService] Getting crack report details for ID: ${task.crack_id}`);
@@ -906,7 +906,7 @@ export class TaskService {
           }
 
           // Get crack position if available
-          crackPosition = crackReport.position || "unknown location";
+          crackPosition = crackReport.position || "vị trí không xác định";
 
           console.log(`[TaskService] Successfully retrieved crack report details. Resident ID: ${residentId}, Position: ${crackPosition}`);
         } else {
@@ -936,7 +936,7 @@ export class TaskService {
       // If we still don't have a residentId, we can't proceed
       if (!residentId) {
         throw new RpcException(
-          new ApiResponse(false, 'Could not determine resident ID for notification')
+          new ApiResponse(false, 'Không thể xác định ID cư dân cho thông báo')
         );
       }
 
@@ -973,7 +973,7 @@ export class TaskService {
       }
 
       // Return the data needed for notification - make sure to return just the userId string
-      return new ApiResponse(true, 'Task and crack report processed successfully', {
+      return new ApiResponse(true, 'Xử lý nhiệm vụ và báo cáo vết nứt thành công', {
         taskId,
         scheduleJobId: scheduleJobId || task.schedule_job_id,
         crackReportId: task.crack_id,
@@ -990,7 +990,7 @@ export class TaskService {
       }
 
       throw new RpcException(
-        new ApiResponse(false, `Error processing notification: ${error.message}`)
+        new ApiResponse(false, `Lỗi khi xử lý thông báo: ${error.message}`)
       );
     }
   }

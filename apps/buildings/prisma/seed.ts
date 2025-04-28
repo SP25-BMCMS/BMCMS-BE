@@ -1127,6 +1127,535 @@ async function main() {
         }
     });
 
+    // S202
+    const elevator1S202 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S202',
+            type: 'Elevator',
+            manufacturer: 'Otis',
+            model: 'GeN2-MR',
+            buildingDetailId: buildingDetailS202.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS202 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S202',
+            type: 'HVAC',
+            manufacturer: 'Carrier',
+            model: 'AquaEdge 19DV',
+            buildingDetailId: buildingDetailS202.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S203
+    const elevator1S203 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S203',
+            type: 'Elevator',
+            manufacturer: 'Otis',
+            model: 'GeN2-MR',
+            buildingDetailId: buildingDetailS203.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS203 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S203',
+            type: 'HVAC',
+            manufacturer: 'Carrier',
+            model: 'AquaEdge 19DV',
+            buildingDetailId: buildingDetailS203.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S205
+    const elevator1S205 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S205',
+            type: 'Elevator',
+            manufacturer: 'Otis',
+            model: 'GeN2-MR',
+            buildingDetailId: buildingDetailS205.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS205 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S205',
+            type: 'HVAC',
+            manufacturer: 'Carrier',
+            model: 'AquaEdge 19DV',
+            buildingDetailId: buildingDetailS205.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S302
+    const elevator1S302 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S302',
+            type: 'Elevator',
+            manufacturer: 'Mitsubishi',
+            model: 'NexWay',
+            buildingDetailId: buildingDetailS302.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS302 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S302',
+            type: 'HVAC',
+            manufacturer: 'Trane',
+            model: 'Series R',
+            buildingDetailId: buildingDetailS302.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S303
+    const elevator1S303 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S303',
+            type: 'Elevator',
+            manufacturer: 'Mitsubishi',
+            model: 'NexWay',
+            buildingDetailId: buildingDetailS303.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS303 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S303',
+            type: 'HVAC',
+            manufacturer: 'Trane',
+            model: 'Series R',
+            buildingDetailId: buildingDetailS303.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S305
+    const elevator1S305 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S305',
+            type: 'Elevator',
+            manufacturer: 'Mitsubishi',
+            model: 'NexWay',
+            buildingDetailId: buildingDetailS305.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS305 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S305',
+            type: 'HVAC',
+            manufacturer: 'Trane',
+            model: 'Series R',
+            buildingDetailId: buildingDetailS305.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S502
+    const elevator1S502 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S502',
+            type: 'Elevator',
+            manufacturer: 'KONE',
+            model: 'MonoSpace 700',
+            buildingDetailId: buildingDetailS502.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS502 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S502',
+            type: 'HVAC',
+            manufacturer: 'York',
+            model: 'YZ Magnetic Bearing Centrifugal',
+            buildingDetailId: buildingDetailS502.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S503
+    const elevator1S503 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S503',
+            type: 'Elevator',
+            manufacturer: 'KONE',
+            model: 'MonoSpace 700',
+            buildingDetailId: buildingDetailS503.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS503 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S503',
+            type: 'HVAC',
+            manufacturer: 'York',
+            model: 'YZ Magnetic Bearing Centrifugal',
+            buildingDetailId: buildingDetailS503.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S602
+    const elevator1S602 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S602',
+            type: 'Elevator',
+            manufacturer: 'Schindler',
+            model: 'SV-6000',
+            buildingDetailId: buildingDetailS602.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS602 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S602',
+            type: 'HVAC',
+            manufacturer: 'Daikin',
+            model: 'VRV IV',
+            buildingDetailId: buildingDetailS602.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S603
+    const elevator1S603 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S603',
+            type: 'Elevator',
+            manufacturer: 'Schindler',
+            model: 'SV-6000',
+            buildingDetailId: buildingDetailS603.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS603 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S603',
+            type: 'HVAC',
+            manufacturer: 'Daikin',
+            model: 'VRV IV',
+            buildingDetailId: buildingDetailS603.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S605
+    const elevator1S605 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S605',
+            type: 'Elevator',
+            manufacturer: 'Schindler',
+            model: 'SV-6000',
+            buildingDetailId: buildingDetailS605.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS605 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S605',
+            type: 'HVAC',
+            manufacturer: 'Daikin',
+            model: 'VRV IV',
+            buildingDetailId: buildingDetailS605.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S606
+    const elevator1S606 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S606',
+            type: 'Elevator',
+            manufacturer: 'Schindler',
+            model: 'SV-6000',
+            buildingDetailId: buildingDetailS606.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS606 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S606',
+            type: 'HVAC',
+            manufacturer: 'Daikin',
+            model: 'VRV IV',
+            buildingDetailId: buildingDetailS606.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S702
+    const elevator1S702 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S702',
+            type: 'Elevator',
+            manufacturer: 'ThyssenKrupp',
+            model: 'Evolution',
+            buildingDetailId: buildingDetailS702.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS702 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S702',
+            type: 'HVAC',
+            manufacturer: 'Mitsubishi Electric',
+            model: 'City Multi',
+            buildingDetailId: buildingDetailS702.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S703
+    const elevator1S703 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S703',
+            type: 'Elevator',
+            manufacturer: 'ThyssenKrupp',
+            model: 'Evolution',
+            buildingDetailId: buildingDetailS703.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS703 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S703',
+            type: 'HVAC',
+            manufacturer: 'Mitsubishi Electric',
+            model: 'City Multi',
+            buildingDetailId: buildingDetailS703.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S705
+    const elevator1S705 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S705',
+            type: 'Elevator',
+            manufacturer: 'ThyssenKrupp',
+            model: 'Evolution',
+            buildingDetailId: buildingDetailS705.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS705 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S705',
+            type: 'HVAC',
+            manufacturer: 'Mitsubishi Electric',
+            model: 'City Multi',
+            buildingDetailId: buildingDetailS705.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S802
+    const elevator1S802 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S802',
+            type: 'Elevator',
+            manufacturer: 'Fujitec',
+            model: 'GLVF-II',
+            buildingDetailId: buildingDetailS802.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS802 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S802',
+            type: 'HVAC',
+            manufacturer: 'Hitachi',
+            model: 'Set-Free',
+            buildingDetailId: buildingDetailS802.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S803
+    const elevator1S803 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S803',
+            type: 'Elevator',
+            manufacturer: 'Fujitec',
+            model: 'GLVF-II',
+            buildingDetailId: buildingDetailS803.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS803 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S803',
+            type: 'HVAC',
+            manufacturer: 'Hitachi',
+            model: 'Set-Free',
+            buildingDetailId: buildingDetailS803.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S902
+    const elevator1S902 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S902',
+            type: 'Elevator',
+            manufacturer: 'Hyundai',
+            model: 'LUXEN',
+            buildingDetailId: buildingDetailS902.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS902 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S902',
+            type: 'HVAC',
+            manufacturer: 'LG',
+            model: 'Multi V 5',
+            buildingDetailId: buildingDetailS902.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S903
+    const elevator1S903 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S903',
+            type: 'Elevator',
+            manufacturer: 'Hyundai',
+            model: 'LUXEN',
+            buildingDetailId: buildingDetailS903.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS903 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S903',
+            type: 'HVAC',
+            manufacturer: 'LG',
+            model: 'Multi V 5',
+            buildingDetailId: buildingDetailS903.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S1002
+    const elevator1S1002 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S1002',
+            type: 'Elevator',
+            manufacturer: 'Toshiba',
+            model: 'SPACEL-UNI',
+            buildingDetailId: buildingDetailS1002.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS1002 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S1002',
+            type: 'HVAC',
+            manufacturer: 'Gree',
+            model: 'GMV6',
+            buildingDetailId: buildingDetailS1002.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S1003
+    const elevator1S1003 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S1003',
+            type: 'Elevator',
+            manufacturer: 'Toshiba',
+            model: 'SPACEL-UNI',
+            buildingDetailId: buildingDetailS1003.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS1003 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S1003',
+            type: 'HVAC',
+            manufacturer: 'Gree',
+            model: 'GMV6',
+            buildingDetailId: buildingDetailS1003.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S1005
+    const elevator1S1005 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S1005',
+            type: 'Elevator',
+            manufacturer: 'Sigma',
+            model: 'IRIS',
+            buildingDetailId: buildingDetailS1005.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS1005 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S1005',
+            type: 'HVAC',
+            manufacturer: 'Mitsubishi',
+            model: 'VRF System',
+            buildingDetailId: buildingDetailS1005.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
+    // S1007
+    const elevator1S1007 = await prisma.device.create({
+        data: {
+            name: 'Elevator 1 - S1007',
+            type: 'Elevator',
+            manufacturer: 'Sigma',
+            model: 'IRIS',
+            buildingDetailId: buildingDetailS1007.buildingDetailId,
+            contract_id: elevatorContract.contract_id
+        }
+    });
+
+    const hvacS1007 = await prisma.device.create({
+        data: {
+            name: 'HVAC System - S1007',
+            type: 'HVAC',
+            manufacturer: 'Mitsubishi',
+            model: 'VRF System',
+            buildingDetailId: buildingDetailS1007.buildingDetailId,
+            contract_id: hvacContract.contract_id
+        }
+    });
+
     // Additional devices with different types to cover all DeviceType enum values
 
     // FireProtection devices
@@ -2163,6 +2692,1007 @@ async function main() {
             date_performed: new Date('2022-09-10'),
             description: 'Irrigation system winterization',
             cost: 750.00
+        }
+    });
+
+    // Additional maintenance history for newer devices
+    // S202, S203, S205 devices
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S202.device_id,
+            date_performed: new Date('2022-09-15'),
+            description: 'Annual maintenance check and safety testing',
+            cost: 1200.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS202.device_id,
+            date_performed: new Date('2022-09-18'),
+            description: 'Refrigerant pressure check and filter cleaning',
+            cost: 850.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S203.device_id,
+            date_performed: new Date('2022-09-20'),
+            description: 'Control panel upgrade and system testing',
+            cost: 1750.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS203.device_id,
+            date_performed: new Date('2022-09-22'),
+            description: 'Compressor inspection and thermostat calibration',
+            cost: 920.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S205.device_id,
+            date_performed: new Date('2022-09-25'),
+            description: 'Brake system maintenance and door alignment',
+            cost: 1350.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS205.device_id,
+            date_performed: new Date('2022-09-28'),
+            description: 'Condenser coil cleaning and system optimization',
+            cost: 780.00
+        }
+    });
+
+    // S302, S303, S305 devices
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S302.device_id,
+            date_performed: new Date('2022-10-01'),
+            description: 'Cable tension adjustment and lubricant application',
+            cost: 950.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS302.device_id,
+            date_performed: new Date('2022-10-03'),
+            description: 'Air handler inspection and fan motor maintenance',
+            cost: 820.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S303.device_id,
+            date_performed: new Date('2022-10-05'),
+            description: 'Pulley system maintenance and safety check',
+            cost: 1050.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS303.device_id,
+            date_performed: new Date('2022-10-08'),
+            description: 'Duct cleaning and air quality testing',
+            cost: 1200.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S305.device_id,
+            date_performed: new Date('2022-10-10'),
+            description: 'Control system testing and motor alignment',
+            cost: 1150.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS305.device_id,
+            date_performed: new Date('2022-10-12'),
+            description: 'Heat exchanger inspection and cleaning',
+            cost: 880.00
+        }
+    });
+
+    // S502, S503 devices
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S502.device_id,
+            date_performed: new Date('2022-10-15'),
+            description: 'Scheduled preventive maintenance',
+            cost: 1100.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS502.device_id,
+            date_performed: new Date('2022-10-18'),
+            description: 'System firmware update and performance testing',
+            cost: 900.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S503.device_id,
+            date_performed: new Date('2022-10-20'),
+            description: 'Annual certification and safety inspection',
+            cost: 1500.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS503.device_id,
+            date_performed: new Date('2022-10-22'),
+            description: 'Cooling tower maintenance and water treatment',
+            cost: 1250.00
+        }
+    });
+
+    // S602, S603, S605, S606 devices
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S602.device_id,
+            date_performed: new Date('2022-10-25'),
+            description: 'Emergency phone system testing and maintenance',
+            cost: 700.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS602.device_id,
+            date_performed: new Date('2022-10-28'),
+            description: 'Refrigerant leak testing and repair',
+            cost: 1100.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S603.device_id,
+            date_performed: new Date('2022-11-01'),
+            description: 'Door operator maintenance and adjustment',
+            cost: 850.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS603.device_id,
+            date_performed: new Date('2022-11-03'),
+            description: 'Control board replacement and system calibration',
+            cost: 1350.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S605.device_id,
+            date_performed: new Date('2022-11-05'),
+            description: 'Brake pad replacement and testing',
+            cost: 1200.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS605.device_id,
+            date_performed: new Date('2022-11-08'),
+            description: 'Annual preventive maintenance and filter change',
+            cost: 850.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S606.device_id,
+            date_performed: new Date('2022-11-10'),
+            description: 'Motor bearing replacement and lubrication',
+            cost: 1400.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS606.device_id,
+            date_performed: new Date('2022-11-12'),
+            description: 'Expansion valve adjustment and coolant top-up',
+            cost: 780.00
+        }
+    });
+
+    // S702, S703, S705 devices
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S702.device_id,
+            date_performed: new Date('2022-11-15'),
+            description: 'Control system testing and firmware update',
+            cost: 900.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS702.device_id,
+            date_performed: new Date('2022-11-18'),
+            description: 'Seasonal maintenance and system adjustment',
+            cost: 750.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S703.device_id,
+            date_performed: new Date('2022-11-20'),
+            description: 'Safety certification and emergency system testing',
+            cost: 1300.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS703.device_id,
+            date_performed: new Date('2022-11-22'),
+            description: 'Coil cleaning and refrigerant pressure check',
+            cost: 820.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S705.device_id,
+            date_performed: new Date('2022-11-25'),
+            description: 'Drive belt replacement and tension adjustment',
+            cost: 950.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS705.device_id,
+            date_performed: new Date('2022-11-28'),
+            description: 'Condenser fan motor maintenance and lubrication',
+            cost: 680.00
+        }
+    });
+
+    // S802, S803 devices
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S802.device_id,
+            date_performed: new Date('2022-12-01'),
+            description: 'Annual safety inspection and system testing',
+            cost: 1500.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS802.device_id,
+            date_performed: new Date('2022-12-03'),
+            description: 'Heating system maintenance for winter operation',
+            cost: 920.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S803.device_id,
+            date_performed: new Date('2022-12-05'),
+            description: 'Counterweight system inspection and adjustment',
+            cost: 1150.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS803.device_id,
+            date_performed: new Date('2022-12-08'),
+            description: 'Thermostat calibration and zone control testing',
+            cost: 750.00
+        }
+    });
+
+    // S902, S903 devices
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S902.device_id,
+            date_performed: new Date('2022-12-10'),
+            description: 'Monthly maintenance and inspection',
+            cost: 800.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS902.device_id,
+            date_performed: new Date('2022-12-12'),
+            description: 'Winter system preparation and humidity control setup',
+            cost: 950.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S903.device_id,
+            date_performed: new Date('2022-12-15'),
+            description: 'Door synchronization and sensor alignment',
+            cost: 720.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS903.device_id,
+            date_performed: new Date('2022-12-18'),
+            description: 'Air filter replacement and duct inspection',
+            cost: 680.00
+        }
+    });
+
+    // S1002, S1003, S1005, S1007 devices
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S1002.device_id,
+            date_performed: new Date('2022-12-20'),
+            description: 'Cable inspection and tension adjustment',
+            cost: 850.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS1002.device_id,
+            date_performed: new Date('2022-12-22'),
+            description: 'Heat pump inspection and seasonal adjustment',
+            cost: 780.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S1003.device_id,
+            date_performed: new Date('2022-12-25'),
+            description: 'Quarterly maintenance and safety check',
+            cost: 1050.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS1003.device_id,
+            date_performed: new Date('2022-12-28'),
+            description: 'System diagnostics and performance optimization',
+            cost: 850.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S1005.device_id,
+            date_performed: new Date('2023-01-02'),
+            description: 'Annual inspection and certification renewal',
+            cost: 1600.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS1005.device_id,
+            date_performed: new Date('2023-01-05'),
+            description: 'Compressor maintenance and performance testing',
+            cost: 920.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S1007.device_id,
+            date_performed: new Date('2023-01-08'),
+            description: 'Guide rail alignment and lubricant application',
+            cost: 1250.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS1007.device_id,
+            date_performed: new Date('2023-01-10'),
+            description: 'Control system update and sensor calibration',
+            cost: 780.00
+        }
+    });
+
+    // Second maintenance history record for devices that only have one
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: waterPumpS101.device_id,
+            date_performed: new Date('2023-01-15'),
+            description: 'Pump impeller inspection and bearing replacement',
+            cost: 1050.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: cctvS101.device_id,
+            date_performed: new Date('2023-01-18'),
+            description: 'Camera alignment and recording system upgrade',
+            cost: 1200.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: fireAlarmS102.device_id,
+            date_performed: new Date('2023-01-20'),
+            description: 'Sensor testing and control panel inspection',
+            cost: 950.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator2S201.device_id,
+            date_performed: new Date('2023-01-22'),
+            description: 'Safety system testing and door mechanism adjustment',
+            cost: 1150.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS301.device_id,
+            date_performed: new Date('2023-01-25'),
+            description: 'Seasonal maintenance and thermostat calibration',
+            cost: 780.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: waterTankS301.device_id,
+            date_performed: new Date('2023-01-28'),
+            description: 'Water quality testing and valve maintenance',
+            cost: 850.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS501.device_id,
+            date_performed: new Date('2023-02-01'),
+            description: 'Filter replacement and air handler maintenance',
+            cost: 720.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: generatorS501.device_id,
+            date_performed: new Date('2023-02-03'),
+            description: 'Fuel system cleaning and power output testing',
+            cost: 1800.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: securityGateS601.device_id,
+            date_performed: new Date('2023-02-05'),
+            description: 'Access control system update and sensor alignment',
+            cost: 1050.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: plumbingS701.device_id,
+            date_performed: new Date('2023-02-08'),
+            description: 'Pressure testing and connection inspection',
+            cost: 920.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS801.device_id,
+            date_performed: new Date('2023-02-10'),
+            description: 'Heating element inspection and thermostat calibration',
+            cost: 850.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS901.device_id,
+            date_performed: new Date('2023-02-12'),
+            description: 'Refrigerant level check and system optimization',
+            cost: 780.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS1001.device_id,
+            date_performed: new Date('2023-02-15'),
+            description: 'Annual maintenance and filter replacement',
+            cost: 820.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS103.device_id,
+            date_performed: new Date('2023-02-18'),
+            description: 'System diagnostics and performance tuning',
+            cost: 750.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: elevator1S105.device_id,
+            date_performed: new Date('2023-02-20'),
+            description: 'Quarterly inspection and safety certification',
+            cost: 1200.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS106.device_id,
+            date_performed: new Date('2023-02-22'),
+            description: 'Condenser cleaning and system pressure check',
+            cost: 880.00
+        }
+    });
+
+    await prisma.maintenanceHistory.create({
+        data: {
+            device_id: hvacS107.device_id,
+            date_performed: new Date('2023-02-25'),
+            description: 'Air filter replacement and duct cleaning',
+            cost: 920.00
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: irrigationS503.device_id,
+            file_name: 'irrigation_S503_operator_manual.pdf',
+            file_type: 'Operator Manual',
+            upload_date: new Date('2021-10-08')
+        }
+    });
+
+    // Technical records for remaining devices
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S202.device_id,
+            file_name: 'elevator1_S202_manual.pdf',
+            file_type: 'User Manual',
+            upload_date: new Date('2021-10-10')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS202.device_id,
+            file_name: 'hvac_S202_specifications.pdf',
+            file_type: 'Technical Specifications',
+            upload_date: new Date('2021-10-11')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S203.device_id,
+            file_name: 'elevator1_S203_manual.pdf',
+            file_type: 'User Manual',
+            upload_date: new Date('2021-10-12')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS203.device_id,
+            file_name: 'hvac_S203_specifications.pdf',
+            file_type: 'Technical Specifications',
+            upload_date: new Date('2021-10-13')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S205.device_id,
+            file_name: 'elevator1_S205_specifications.pdf',
+            file_type: 'Technical Specifications',
+            upload_date: new Date('2021-10-14')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS205.device_id,
+            file_name: 'hvac_S205_user_manual.pdf',
+            file_type: 'User Manual',
+            upload_date: new Date('2021-10-15')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S302.device_id,
+            file_name: 'elevator1_S302_installation_guide.pdf',
+            file_type: 'Installation Guide',
+            upload_date: new Date('2021-10-16')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS302.device_id,
+            file_name: 'hvac_S302_service_manual.pdf',
+            file_type: 'Service Manual',
+            upload_date: new Date('2021-10-17')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S303.device_id,
+            file_name: 'elevator1_S303_specifications.pdf',
+            file_type: 'Technical Specifications',
+            upload_date: new Date('2021-10-18')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS303.device_id,
+            file_name: 'hvac_S303_user_manual.pdf',
+            file_type: 'User Manual',
+            upload_date: new Date('2021-10-19')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S305.device_id,
+            file_name: 'elevator1_S305_operation_guide.pdf',
+            file_type: 'Operation Guide',
+            upload_date: new Date('2021-10-20')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS305.device_id,
+            file_name: 'hvac_S305_circuit_diagram.pdf',
+            file_type: 'Circuit Diagram',
+            upload_date: new Date('2021-10-21')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S502.device_id,
+            file_name: 'elevator1_S502_specifications.pdf',
+            file_type: 'Technical Specifications',
+            upload_date: new Date('2021-10-22')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS502.device_id,
+            file_name: 'hvac_S502_maintenance_guide.pdf',
+            file_type: 'Maintenance Guide',
+            upload_date: new Date('2021-10-23')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S503.device_id,
+            file_name: 'elevator1_S503_user_manual.pdf',
+            file_type: 'User Manual',
+            upload_date: new Date('2021-10-24')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS503.device_id,
+            file_name: 'hvac_S503_installation_guide.pdf',
+            file_type: 'Installation Guide',
+            upload_date: new Date('2021-10-25')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S602.device_id,
+            file_name: 'elevator1_S602_user_manual.pdf',
+            file_type: 'User Manual',
+            upload_date: new Date('2021-10-26')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS602.device_id,
+            file_name: 'hvac_S602_specifications.pdf',
+            file_type: 'Technical Specifications',
+            upload_date: new Date('2021-10-27')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S603.device_id,
+            file_name: 'elevator1_S603_maintenance_guide.pdf',
+            file_type: 'Maintenance Guide',
+            upload_date: new Date('2021-10-28')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS603.device_id,
+            file_name: 'hvac_S603_user_manual.pdf',
+            file_type: 'User Manual',
+            upload_date: new Date('2021-10-29')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S605.device_id,
+            file_name: 'elevator1_S605_specifications.pdf',
+            file_type: 'Technical Specifications',
+            upload_date: new Date('2021-10-30')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS605.device_id,
+            file_name: 'hvac_S605_installation_guide.pdf',
+            file_type: 'Installation Guide',
+            upload_date: new Date('2021-10-31')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S606.device_id,
+            file_name: 'elevator1_S606_safety_manual.pdf',
+            file_type: 'Safety Manual',
+            upload_date: new Date('2021-11-01')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS606.device_id,
+            file_name: 'hvac_S606_technical_guide.pdf',
+            file_type: 'Technical Guide',
+            upload_date: new Date('2021-11-02')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S702.device_id,
+            file_name: 'elevator1_S702_user_manual.pdf',
+            file_type: 'User Manual',
+            upload_date: new Date('2021-11-03')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS702.device_id,
+            file_name: 'hvac_S702_specifications.pdf',
+            file_type: 'Technical Specifications',
+            upload_date: new Date('2021-11-04')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S703.device_id,
+            file_name: 'elevator1_S703_installation_guide.pdf',
+            file_type: 'Installation Guide',
+            upload_date: new Date('2021-11-05')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS703.device_id,
+            file_name: 'hvac_S703_operation_manual.pdf',
+            file_type: 'Operation Manual',
+            upload_date: new Date('2021-11-06')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S705.device_id,
+            file_name: 'elevator1_S705_specifications.pdf',
+            file_type: 'Technical Specifications',
+            upload_date: new Date('2021-11-07')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS705.device_id,
+            file_name: 'hvac_S705_service_guide.pdf',
+            file_type: 'Service Guide',
+            upload_date: new Date('2021-11-08')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S802.device_id,
+            file_name: 'elevator1_S802_user_manual.pdf',
+            file_type: 'User Manual',
+            upload_date: new Date('2021-11-09')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS802.device_id,
+            file_name: 'hvac_S802_specifications.pdf',
+            file_type: 'Technical Specifications',
+            upload_date: new Date('2021-11-10')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S803.device_id,
+            file_name: 'elevator1_S803_maintenance_guide.pdf',
+            file_type: 'Maintenance Guide',
+            upload_date: new Date('2021-11-11')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS803.device_id,
+            file_name: 'hvac_S803_technical_manual.pdf',
+            file_type: 'Technical Manual',
+            upload_date: new Date('2021-11-12')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S902.device_id,
+            file_name: 'elevator1_S902_specifications.pdf',
+            file_type: 'Technical Specifications',
+            upload_date: new Date('2021-11-13')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS902.device_id,
+            file_name: 'hvac_S902_user_manual.pdf',
+            file_type: 'User Manual',
+            upload_date: new Date('2021-11-14')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S903.device_id,
+            file_name: 'elevator1_S903_installation_guide.pdf',
+            file_type: 'Installation Guide',
+            upload_date: new Date('2021-11-15')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS903.device_id,
+            file_name: 'hvac_S903_maintenance_schedule.pdf',
+            file_type: 'Maintenance Schedule',
+            upload_date: new Date('2021-11-16')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S1002.device_id,
+            file_name: 'elevator1_S1002_user_manual.pdf',
+            file_type: 'User Manual',
+            upload_date: new Date('2021-11-17')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS1002.device_id,
+            file_name: 'hvac_S1002_specifications.pdf',
+            file_type: 'Technical Specifications',
+            upload_date: new Date('2021-11-18')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S1003.device_id,
+            file_name: 'elevator1_S1003_service_manual.pdf',
+            file_type: 'Service Manual',
+            upload_date: new Date('2021-11-19')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS1003.device_id,
+            file_name: 'hvac_S1003_operation_guide.pdf',
+            file_type: 'Operation Guide',
+            upload_date: new Date('2021-11-20')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S1005.device_id,
+            file_name: 'elevator1_S1005_specifications.pdf',
+            file_type: 'Technical Specifications',
+            upload_date: new Date('2021-11-21')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS1005.device_id,
+            file_name: 'hvac_S1005_user_manual.pdf',
+            file_type: 'User Manual',
+            upload_date: new Date('2021-11-22')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: elevator1S1007.device_id,
+            file_name: 'elevator1_S1007_installation_guide.pdf',
+            file_type: 'Installation Guide',
+            upload_date: new Date('2021-11-23')
+        }
+    });
+
+    await prisma.technicalRecord.create({
+        data: {
+            device_id: hvacS1007.device_id,
+            file_name: 'hvac_S1007_maintenance_guide.pdf',
+            file_type: 'Maintenance Guide',
+            upload_date: new Date('2021-11-24')
         }
     });
 

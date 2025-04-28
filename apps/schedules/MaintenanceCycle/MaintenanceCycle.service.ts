@@ -23,14 +23,14 @@ export class MaintenanceCycleService {
 
       return new ApiResponse<MaintenanceCycleDto>(
         true,
-        'Maintenance cycle created successfully',
+        'Tạo chu kỳ bảo trì thành công',
         cycle
       )
     } catch (error) {
       this.logger.error('Error creating maintenance cycle:', error)
       throw new RpcException({
         statusCode: 400,
-        message: 'Failed to create maintenance cycle',
+        message: 'Không thể tạo chu kỳ bảo trì',
       })
     }
   }
@@ -68,13 +68,13 @@ export class MaintenanceCycleService {
         page,
         limit,
         200,
-        cycles.length > 0 ? 'Maintenance cycles retrieved successfully' : 'No maintenance cycles found',
+        cycles.length > 0 ? 'Lấy danh sách chu kỳ bảo trì thành công' : 'Không tìm thấy chu kỳ bảo trì nào',
       )
     } catch (error) {
       this.logger.error('Error retrieving maintenance cycles:', error)
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving maintenance cycles',
+        message: 'Lỗi khi lấy danh sách chu kỳ bảo trì',
       })
     }
   }
@@ -88,20 +88,20 @@ export class MaintenanceCycleService {
       if (!cycle) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Maintenance cycle not found',
+          message: 'Không tìm thấy chu kỳ bảo trì',
         })
       }
 
       return new ApiResponse<MaintenanceCycleDto>(
         true,
-        'Maintenance cycle retrieved successfully',
+        'Lấy thông tin chu kỳ bảo trì thành công',
         cycle
       )
     } catch (error) {
       this.logger.error(`Error retrieving maintenance cycle with ID ${cycle_id}:`, error)
       throw new RpcException({
         statusCode: error.statusCode || 500,
-        message: error.message || 'Error retrieving maintenance cycle',
+        message: error.message || 'Lỗi khi lấy thông tin chu kỳ bảo trì',
       })
     }
   }
@@ -116,7 +116,7 @@ export class MaintenanceCycleService {
       if (!currentCycle) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Maintenance cycle not found',
+          message: 'Không tìm thấy chu kỳ bảo trì',
         });
       }
 
@@ -143,14 +143,14 @@ export class MaintenanceCycleService {
 
       return new ApiResponse<MaintenanceCycleDto>(
         true,
-        'Maintenance cycle updated successfully',
+        'Cập nhật chu kỳ bảo trì thành công',
         updatedCycle
       );
     } catch (error) {
       this.logger.error(`Error updating maintenance cycle with ID ${cycle_id}:`, error)
       throw new RpcException({
         statusCode: error.code === 'P2025' ? 404 : 500,
-        message: error.code === 'P2025' ? 'Maintenance cycle not found' : 'Error updating maintenance cycle',
+        message: error.code === 'P2025' ? 'Không tìm thấy chu kỳ bảo trì' : 'Lỗi khi cập nhật chu kỳ bảo trì',
       })
     }
   }
@@ -163,14 +163,14 @@ export class MaintenanceCycleService {
 
       return new ApiResponse<MaintenanceCycleDto>(
         true,
-        'Maintenance cycle deleted successfully',
+        'Xóa chu kỳ bảo trì thành công',
         cycle
       )
     } catch (error) {
       this.logger.error(`Error deleting maintenance cycle with ID ${cycle_id}:`, error)
       throw new RpcException({
         statusCode: error.code === 'P2025' ? 404 : 500,
-        message: error.code === 'P2025' ? 'Maintenance cycle not found' : 'Error deleting maintenance cycle',
+        message: error.code === 'P2025' ? 'Không tìm thấy chu kỳ bảo trì' : 'Lỗi khi xóa chu kỳ bảo trì',
       })
     }
   }
@@ -187,20 +187,20 @@ export class MaintenanceCycleService {
       if (!cycle) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Maintenance cycle not found',
+          message: 'Không tìm thấy chu kỳ bảo trì',
         })
       }
 
       return new ApiResponse<MaintenanceCycleHistoryDto[]>(
         true,
-        'Maintenance cycle history retrieved successfully',
+        'Lấy lịch sử chu kỳ bảo trì thành công',
         cycle.history
       )
     } catch (error) {
       this.logger.error(`Error retrieving history for maintenance cycle with ID ${cycle_id}:`, error)
       throw new RpcException({
         statusCode: error.statusCode || 500,
-        message: error.message || 'Error retrieving maintenance cycle history',
+        message: error.message || 'Lỗi khi lấy lịch sử chu kỳ bảo trì',
       })
     }
   }

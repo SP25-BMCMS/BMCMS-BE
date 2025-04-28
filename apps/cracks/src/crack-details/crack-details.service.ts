@@ -37,7 +37,7 @@ export class CrackDetailsService {
 
     if (!detail) {
       throw new RpcException(
-        new ApiResponse(false, 'Crack Detail does not exist'),
+        new ApiResponse(false, 'Chi tiết vết nứt không tồn tại'),
       )
     }
 
@@ -53,10 +53,10 @@ export class CrackDetailsService {
           : null
       }
 
-      return new ApiResponse(true, 'Crack Detail found', [enrichedDetail])
+      return new ApiResponse(true, 'Đã tìm thấy chi tiết vết nứt', [enrichedDetail])
     } catch (error) {
       console.error('Lỗi khi tạo presigned URL:', error)
-      return new ApiResponse(true, 'Crack Detail found', [detail])
+      return new ApiResponse(true, 'Đã tìm thấy chi tiết vết nứt', [detail])
     }
   }
 
@@ -67,7 +67,7 @@ export class CrackDetailsService {
       return url.pathname.substring(1) // Bỏ dấu '/' đầu tiên
     } catch (error) {
       console.error('URL không hợp lệ:', urlString)
-      throw new Error('Invalid URL format')
+      throw new Error('Định dạng URL không hợp lệ')
     }
   }
 
@@ -87,14 +87,14 @@ export class CrackDetailsService {
     })
     if (!exists)
       throw new RpcException(
-        new ApiResponse(false, 'Crack Detail does not exist'),
+        new ApiResponse(false, 'Chi tiết vết nứt không tồn tại'),
       )
 
     const data = await this.prisma.crackDetail.update({
       where: { crackDetailsId: id },
       data: { ...dto },
     })
-    return new ApiResponse(true, 'Crack Detail has been updated', [data])
+    return new ApiResponse(true, 'Đã cập nhật chi tiết vết nứt', [data])
   }
 
   async deleteCrackDetail(id: string) {
@@ -103,10 +103,10 @@ export class CrackDetailsService {
     })
     if (!exists)
       throw new RpcException(
-        new ApiResponse(false, 'Crack Detail does not exist'),
+        new ApiResponse(false, 'Chi tiết vết nứt không tồn tại'),
       )
 
     await this.prisma.crackDetail.delete({ where: { crackDetailsId: id } })
-    return new ApiResponse(true, 'Crack Detail has been deleted')
+    return new ApiResponse(true, 'Đã xóa chi tiết vết nứt')
   }
 }

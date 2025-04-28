@@ -15,7 +15,7 @@ export class LocationDetailService {
   private prisma = new PrismaClient();
   private readonly logger = new Logger(LocationDetailService.name);
 
-  constructor(@Inject('TASK_CLIENT') private readonly taskClient: ClientProxy) {}
+  constructor(@Inject('TASK_CLIENT') private readonly taskClient: ClientProxy) { }
 
   async createLocationDetail(createLocationDetailDto: CreateLocationDetailDto) {
     try {
@@ -24,13 +24,13 @@ export class LocationDetailService {
       });
       return {
         statusCode: 201,
-        message: 'LocationDetail created successfully',
+        message: 'Tạo chi tiết vị trí thành công',
         data: newLocationDetail,
       };
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'LocationDetail creation failed :' + error.message,
+        message: 'Tạo chi tiết vị trí thất bại: ' + error.message,
       });
     }
   }
@@ -46,13 +46,13 @@ export class LocationDetailService {
       });
       return {
         statusCode: 200,
-        message: 'LocationDetail updated successfully',
+        message: 'Cập nhật chi tiết vị trí thành công',
         data: updatedLocationDetail,
       };
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'LocationDetail update failed',
+        message: 'Cập nhật chi tiết vị trí thất bại',
       });
     }
   }
@@ -79,7 +79,7 @@ export class LocationDetailService {
 
       const responseData = {
         statusCode: 200,
-        message: 'Location details retrieved successfully',
+        message: 'Lấy danh sách chi tiết vị trí thành công',
         data: locationDetails,
         pagination: {
           total,
@@ -121,7 +121,7 @@ export class LocationDetailService {
       if (!locationDetail) {
         throw new RpcException({
           statusCode: 404,
-          message: 'LocationDetail not found',
+          message: 'Không tìm thấy chi tiết vị trí',
         });
       }
 
@@ -137,7 +137,7 @@ export class LocationDetailService {
           // Thêm dữ liệu inspection vào response
           return {
             statusCode: 200,
-            message: 'LocationDetail retrieved successfully',
+            message: 'Lấy chi tiết vị trí thành công',
             data: {
               ...locationDetail,
               inspection: inspectionResponse && inspectionResponse.data ? inspectionResponse.data : null
@@ -148,7 +148,7 @@ export class LocationDetailService {
           // Vẫn trả về location detail dù không lấy được inspection
           return {
             statusCode: 200,
-            message: 'LocationDetail retrieved successfully (inspection data unavailable)',
+            message: 'Lấy chi tiết vị trí thành công (không có dữ liệu kiểm tra)',
             data: locationDetail,
           };
         }
@@ -156,15 +156,15 @@ export class LocationDetailService {
 
       return {
         statusCode: 200,
-        message: 'LocationDetail retrieved successfully',
+        message: 'Lấy chi tiết vị trí thành công',
         data: locationDetail,
       };
     } catch (error) {
       if (error instanceof RpcException) throw error;
-      
+
       throw new RpcException({
         statusCode: 404,
-        message: 'LocationDetail not found',
+        message: 'Không tìm thấy chi tiết vị trí',
       });
     }
   }
@@ -176,12 +176,12 @@ export class LocationDetailService {
       });
       return {
         statusCode: 200,
-        message: 'LocationDetail deleted successfully',
+        message: 'Xóa chi tiết vị trí thành công',
       };
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'LocationDetail deletion failed',
+        message: 'Xóa chi tiết vị trí thất bại',
       });
     }
   }

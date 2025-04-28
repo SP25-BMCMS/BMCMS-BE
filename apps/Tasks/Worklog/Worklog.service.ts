@@ -37,7 +37,7 @@ export class WorkLogService {
       })
       return new ApiResponse<WorkLogResponseDto>(
         true,
-        'WorkLog created successfully',
+        'Tạo nhật ký công việc thành công',
         newWorkLog,
       )
     } catch (error) {
@@ -58,13 +58,13 @@ export class WorkLogService {
       })
       return new ApiResponse<WorkLogResponseDto[]>(
         true,
-        'get WorkLog by taskId  successfully',
+        'Lấy nhật ký công việc theo mã công việc thành công',
         workLogs,
       )
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving WorkLogs by TaskId',
+        message: 'Lỗi khi lấy nhật ký công việc theo mã công việc',
       })
     }
   }
@@ -80,18 +80,18 @@ export class WorkLogService {
       if (!workLog) {
         throw new RpcException({
           statusCode: 404,
-          message: 'WorkLog not found',
+          message: 'Không tìm thấy nhật ký công việc',
         })
       }
       return new ApiResponse<WorkLogResponseDto>(
         true,
-        'WorkLog By Id successfully',
+        'Lấy nhật ký công việc theo ID thành công',
         workLog,
       )
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving WorkLog by ID',
+        message: 'Lỗi khi lấy nhật ký công việc theo ID',
       })
     }
   }
@@ -115,13 +115,13 @@ export class WorkLogService {
       })
       return new ApiResponse<WorkLogResponseDto>(
         true,
-        'WorkLog Update successfully',
+        'Cập nhật nhật ký công việc thành công',
         updatedWorkLog,
       )
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'WorkLog status update failed',
+        message: 'Cập nhật trạng thái nhật ký công việc thất bại',
       })
     }
   }
@@ -168,7 +168,7 @@ export class WorkLogService {
       if (worklogs.length === 0) {
         return {
           statusCode: 200,
-          message: 'No worklogs found',
+          message: 'Không tìm thấy nhật ký công việc nào',
           data: [],
           pagination: {
             total,
@@ -181,7 +181,7 @@ export class WorkLogService {
 
       return {
         statusCode: 200,
-        message: 'Worklogs retrieved successfully',
+        message: 'Lấy danh sách nhật ký công việc thành công',
         data: worklogs,
         pagination: {
           total,
@@ -194,7 +194,7 @@ export class WorkLogService {
       console.error('Error retrieving worklogs:', error)
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving worklogs!',
+        message: 'Lỗi khi lấy danh sách nhật ký công việc!',
       })
     }
   }
@@ -262,7 +262,7 @@ export class WorkLogService {
       if (filteredTasks.length === 0) {
         return new ApiResponse<any[]>(
           true,
-          'No worklogs found for this resident',
+          'Không tìm thấy nhật ký công việc nào cho cư dân này',
           []
         );
       }
@@ -282,7 +282,7 @@ export class WorkLogService {
 
       return new ApiResponse<any[]>(
         true,
-        'Worklogs retrieved successfully',
+        'Lấy nhật ký công việc thành công',
         result
       );
     } catch (error) {
@@ -291,7 +291,7 @@ export class WorkLogService {
       if (error instanceof RpcException) {
         throw error;
       }
-      throw new RpcException('Error retrieving worklogs by resident ID');
+      throw new RpcException('Lỗi khi lấy nhật ký công việc theo ID cư dân');
     }
   }
 }

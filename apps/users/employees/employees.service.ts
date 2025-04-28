@@ -68,7 +68,7 @@ export class EmployeesService {
       if (!staffMembers || staffMembers.length === 0) {
         return {
           isSuccess: true,
-          message: 'No staff members found',
+          message: 'Không tìm thấy nhân viên nào',
           data: [],
           pagination: {
             total: 0,
@@ -112,7 +112,7 @@ export class EmployeesService {
 
       return {
         isSuccess: true,
-        message: 'Successfully retrieved staff members',
+        message: 'Lấy danh sách nhân viên thành công',
         data: staffData,
         pagination: {
           total: totalCount,
@@ -124,7 +124,7 @@ export class EmployeesService {
     } catch (error) {
       return {
         isSuccess: false,
-        message: error.message || 'Failed to retrieve staff members',
+        message: error.message || 'Không thể lấy danh sách nhân viên',
         data: [],
         pagination: {
           total: 0,
@@ -154,7 +154,7 @@ export class EmployeesService {
       if (!staffLeader) {
         return {
           isSuccess: false,
-          message: 'Staff leader not found or not a leader',
+          message: 'Không tìm thấy leader hoặc người này không phải là leader',
           data: [],
           pagination: {
             total: 0,
@@ -211,7 +211,7 @@ export class EmployeesService {
 
       return {
         isSuccess: true,
-        message: 'Successfully retrieved staff members under leader',
+        message: 'Lấy danh sách nhân viên dưới quyền leader thành công',
         data: transformedData,
         pagination: {
           total: transformedData.length,
@@ -223,7 +223,7 @@ export class EmployeesService {
     } catch (error) {
       return {
         isSuccess: false,
-        message: 'Failed to retrieve staff members',
+        message: 'Không thể lấy danh sách nhân viên',
         data: [],
         pagination: {
           total: 0,
@@ -243,7 +243,7 @@ export class EmployeesService {
       if (!crackReportId) {
         return {
           isSuccess: false,
-          message: 'Invalid crack report ID',
+          message: 'Mã báo cáo nứt không hợp lệ',
           data: [],
           pagination: {
             total: 0,
@@ -270,7 +270,7 @@ export class EmployeesService {
         if (!crackResponse || !crackResponse.isSuccess) {
           return {
             isSuccess: false,
-            message: crackResponse?.message || `Crack report with ID ${crackReportId} not found`,
+            message: crackResponse?.message || `Không tìm thấy báo cáo nứt với ID ${crackReportId}`,
             data: [],
             pagination: {
               total: 0,
@@ -287,7 +287,7 @@ export class EmployeesService {
           console.log(`Crack report data missing in response for ID ${crackReportId}`);
           return {
             isSuccess: false,
-            message: `Crack report data not found`,
+            message: `Không tìm thấy dữ liệu báo cáo nứt`,
             data: [],
             pagination: {
               total: 0,
@@ -337,7 +337,7 @@ export class EmployeesService {
           console.log('buildingDetailId is missing in the crack report. Full response:', JSON.stringify(crackReport, null, 2));
           return {
             isSuccess: false,
-            message: 'Cannot determine building area from this crack report. Missing building detail information.',
+            message: 'Không thể xác định khu vực tòa nhà từ báo cáo nứt này. Thiếu thông tin chi tiết tòa nhà.',
             data: [],
             pagination: {
               total: 0,
@@ -363,7 +363,7 @@ export class EmployeesService {
         if (!buildingDetailResponse || buildingDetailResponse.statusCode !== 200) {
           return {
             isSuccess: false,
-            message: buildingDetailResponse?.message || `Building detail not found for this crack report`,
+            message: buildingDetailResponse?.message || `Không tìm thấy thông tin chi tiết tòa nhà cho báo cáo nứt này`,
             data: [],
             pagination: {
               total: 0,
@@ -380,7 +380,7 @@ export class EmployeesService {
           console.log('Area information missing in building detail response');
           return {
             isSuccess: false,
-            message: 'Area information not available for this building',
+            message: 'Thông tin khu vực không có sẵn cho tòa nhà này',
             data: [],
             pagination: {
               total: 0,
@@ -399,7 +399,7 @@ export class EmployeesService {
           console.log('Area name is missing');
           return {
             isSuccess: false,
-            message: 'Area name not available for this building',
+            message: 'Tên khu vực không có sẵn cho tòa nhà này',
             data: [],
             pagination: {
               total: 0,
@@ -414,7 +414,7 @@ export class EmployeesService {
         console.error('Error communicating with other services:', error);
         return {
           isSuccess: false,
-          message: "Cannot retrieve crack report information due to configuration error. Please contact the administrator.",
+          message: "Không thể lấy thông tin báo cáo vết nứt do lỗi cấu hình.",
           data: [],
           pagination: {
             total: 0,
@@ -452,7 +452,7 @@ export class EmployeesService {
       if (!staffLeaders || staffLeaders.length === 0) {
         return {
           isSuccess: false,
-          message: `No staff leaders found for area: ${areaName}`,
+          message: `Không tìm thấy leader nào trong khu vực: ${areaName}`,
           data: [],
           pagination: {
             total: 0,
@@ -496,7 +496,7 @@ export class EmployeesService {
 
       return {
         isSuccess: true,
-        message: `Successfully retrieved staff leaders for area: ${areaName}`,
+        message: `Lấy danh sách leader trong khu vực: ${areaName} thành công`,
         data: staffData,
         pagination: {
           total: staffData.length,
@@ -509,7 +509,7 @@ export class EmployeesService {
       console.error('Error in getStaffLeaderByCrackReport:', error);
       return {
         isSuccess: false,
-        message: 'Failed to retrieve staff leaders. Database error occurred.',
+        message: 'Không thể lấy danh sách leader. Đã xảy ra lỗi cơ sở dữ liệu.',
         data: [],
         pagination: {
           total: 0,
@@ -529,7 +529,7 @@ export class EmployeesService {
       if (!scheduleJobId) {
         return {
           isSuccess: false,
-          message: 'Invalid schedule job ID',
+          message: 'Mã công việc lịch trình không hợp lệ',
           data: [],
           pagination: {
             total: 0,
@@ -556,7 +556,7 @@ export class EmployeesService {
         if (!scheduleResponse || !scheduleResponse.isSuccess) {
           return {
             isSuccess: false,
-            message: scheduleResponse?.message || `Schedule job with ID ${scheduleJobId} not found`,
+            message: scheduleResponse?.message || `Không tìm thấy công việc lịch trình với ID ${scheduleJobId}`,
             data: [],
             pagination: {
               total: 0,
@@ -573,7 +573,7 @@ export class EmployeesService {
           console.log(`Schedule job data missing in response for ID ${scheduleJobId}`);
           return {
             isSuccess: false,
-            message: `Schedule job data not found`,
+            message: `Không tìm thấy dữ liệu công việc lịch trình`,
             data: [],
             pagination: {
               total: 0,
@@ -590,7 +590,7 @@ export class EmployeesService {
           console.log('buildingDetailId is missing in the schedule job');
           return {
             isSuccess: false,
-            message: 'Cannot determine building area from this schedule job',
+            message: 'Không thể xác định khu vực tòa nhà từ công việc lịch trình này',
             data: [],
             pagination: {
               total: 0,
@@ -614,7 +614,7 @@ export class EmployeesService {
         if (!buildingDetailResponse || buildingDetailResponse.statusCode !== 200) {
           return {
             isSuccess: false,
-            message: buildingDetailResponse?.message || `Building detail not found for this schedule job`,
+            message: buildingDetailResponse?.message || `Không tìm thấy thông tin chi tiết tòa nhà cho công việc lịch trình này`,
             data: [],
             pagination: {
               total: 0,
@@ -631,7 +631,7 @@ export class EmployeesService {
           console.log('Area information missing in building detail response');
           return {
             isSuccess: false,
-            message: 'Area information not available for this building',
+            message: 'Thông tin khu vực không có sẵn cho tòa nhà này',
             data: [],
             pagination: {
               total: 0,
@@ -650,7 +650,7 @@ export class EmployeesService {
           console.log('Area name is missing');
           return {
             isSuccess: false,
-            message: 'Area name not available for this building',
+            message: 'Tên khu vực không có sẵn cho tòa nhà này',
             data: [],
             pagination: {
               total: 0,
@@ -665,7 +665,7 @@ export class EmployeesService {
         console.error('Error communicating with other services:', error);
         return {
           isSuccess: false,
-          message: "Cannot retrieve schedule information.",
+          message: "Không thể lấy thông tin lịch trình.",
           data: [],
           pagination: {
             total: 0,
@@ -703,7 +703,7 @@ export class EmployeesService {
       if (!staffLeaders || staffLeaders.length === 0) {
         return {
           isSuccess: false,
-          message: `No staff leaders found for area: ${areaName}`,
+          message: `Không tìm thấy leader nào trong khu vực: ${areaName}`,
           data: [],
           pagination: {
             total: 0,
@@ -747,7 +747,7 @@ export class EmployeesService {
 
       return {
         isSuccess: true,
-        message: `Successfully retrieved staff leaders for area: ${areaName}`,
+        message: `Lấy danh sách leader trong khu vực: ${areaName} thành công`,
         data: staffData,
         pagination: {
           total: staffData.length,
@@ -760,7 +760,7 @@ export class EmployeesService {
       console.error('Error in getStaffLeaderByScheduleJob:', error);
       return {
         isSuccess: false,
-        message: 'Failed to retrieve staff leaders. Database error occurred.',
+        message: 'Không thể lấy danh sách leader. Đã xảy ra lỗi cơ sở dữ liệu.',
         data: [],
         pagination: {
           total: 0,
@@ -773,14 +773,14 @@ export class EmployeesService {
   }
 
   findAll() {
-    return `This action returns all employees`;
+    return `Hành động này trả về tất cả nhân viên`;
   }
 
   findOne(id: number) {
-    return `This action returns a #${id} employee`;
+    return `Hành động này trả về nhân viên #${id}`;
   }
 
   remove(id: number) {
-    return `This action removes a #${id} employee`;
+    return `Hành động này xóa nhân viên #${id}`;
   }
 }

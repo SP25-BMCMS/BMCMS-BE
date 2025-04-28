@@ -27,13 +27,13 @@ export class AreasService {
       });
       return {
         statusCode: 201,
-        message: 'Area created successfully',
+        message: 'Tạo khu vực thành công',
         data: newArea,
       };
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Area creation failed',
+        message: 'Tạo khu vực thất bại',
       });
     }
   }
@@ -55,7 +55,7 @@ export class AreasService {
       if (total === 0) {
         return {
           statusCode: 404,
-          message: 'No areas found',
+          message: 'Không tìm thấy khu vực nào',
           data: [],
           pagination: {
             total: 0,
@@ -82,8 +82,8 @@ export class AreasService {
         statusCode: 200,
         message:
           areas.length > 0
-            ? 'Areas fetched successfully'
-            : 'No areas found for this page',
+            ? 'Lấy danh sách khu vực thành công'
+            : 'Không tìm thấy khu vực nào cho trang này',
         data: areas,
         pagination: {
           total,
@@ -125,20 +125,20 @@ export class AreasService {
         console.log('AreasService: Area not found');
         return {
           statusCode: 404,
-          message: 'Area not found',
+          message: 'Không tìm thấy khu vực',
         };
       }
       console.log('AreasService: Returning area data');
       return {
         statusCode: 200,
-        message: 'Area retrieved successfully',
+        message: 'Lấy thông tin khu vực thành công',
         data: area,
       };
     } catch (error) {
       console.error('AreasService Error in getAreaById:', error);
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving area',
+        message: 'Lỗi khi lấy thông tin khu vực',
       });
     }
   }
@@ -155,13 +155,13 @@ export class AreasService {
       });
       return {
         statusCode: 200,
-        message: 'Area updated successfully',
+        message: 'Cập nhật khu vực thành công',
         data: updatedArea,
       };
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Area update failed',
+        message: 'Cập nhật khu vực thất bại',
       });
     }
   }
@@ -174,12 +174,12 @@ export class AreasService {
       });
       return {
         statusCode: 200,
-        message: 'Area deleted successfully',
+        message: 'Xóa khu vực thành công',
       };
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Area deletion failed',
+        message: 'Xóa khu vực thất bại',
       });
     }
   }

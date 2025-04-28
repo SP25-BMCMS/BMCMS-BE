@@ -19,7 +19,7 @@ export class RepairMaterialsService {
       })
 
       if (!existingInspection) {
-        return new ApiResponse(false, 'Inspection does not exist')
+        return new ApiResponse(false, 'Không tồn tại kiểm tra')
       }
 
       // Kiểm tra tính hợp lệ của material
@@ -28,7 +28,7 @@ export class RepairMaterialsService {
       })
 
       if (!existingMaterial) {
-        return new ApiResponse(false, 'Material does not exist')
+        return new ApiResponse(false, 'Không tồn tại vật liệu')
       }
 
       // Tạo repair material
@@ -52,13 +52,13 @@ export class RepairMaterialsService {
         },
       })
 
-      return new ApiResponse(true, 'Repair Material has been created successfully', [
+      return new ApiResponse(true, 'Vật liệu sửa chữa đã được tạo thành công', [
         repairMaterial,
       ])
     } catch (error) {
       console.error('Error creating repair material:', error)
       throw new RpcException(
-        new ApiResponse(false, 'Error when creating repair material', [error.message]),
+        new ApiResponse(false, 'Lỗi khi tạo vật liệu sửa chữa', [error.message]),
       )
     }
   }
@@ -77,12 +77,12 @@ export class RepairMaterialsService {
           })
 
           if (!materialInfo) {
-            throw new Error(`Material with ID ${material.material_id} not found`)
+            throw new Error(`Không tìm thấy vật liệu với ID ${material.material_id}`)
           }
 
           // Kiểm tra số lượng tồn kho
           if (materialInfo.stock_quantity < material.quantity) {
-            throw new Error(`Not enough stock for material ${materialInfo.name}. Current stock: ${materialInfo.stock_quantity}, Required: ${material.quantity}`)
+            throw new Error(`Không đủ số lượng tồn kho cho vật liệu ${materialInfo.name}. Số lượng hiện có: ${materialInfo.stock_quantity}, Yêu cầu: ${material.quantity}`)
           }
 
           // Tính toán chi phí
@@ -123,10 +123,10 @@ export class RepairMaterialsService {
           }
         })
 
-        return new ApiResponse<Inspection>(true, 'Materials added to inspection successfully', updatedInspection)
+        return new ApiResponse<Inspection>(true, 'Đã thêm vật liệu vào kiểm tra thành công', updatedInspection)
       })
     } catch (error) {
-      return new ApiResponse<Inspection>(false, 'Error adding materials to inspection', error.message)
+      return new ApiResponse<Inspection>(false, 'Lỗi khi thêm vật liệu vào kiểm tra', error.message)
     }
   }
 }

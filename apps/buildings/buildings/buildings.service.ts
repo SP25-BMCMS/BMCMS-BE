@@ -66,7 +66,7 @@ export class BuildingsService {
         if (!areaExists) {
           return {
             statusCode: 404,
-            message: `Area with ID ${CreateBuildingDto.areaId} not found`,
+            message: `Không tìm thấy khu vực với ID ${CreateBuildingDto.areaId}`,
             error: 'Not Found'
           };
         }
@@ -78,7 +78,7 @@ export class BuildingsService {
         if (!managerExists) {
           return {
             statusCode: 404,
-            message: `Manager with ID ${CreateBuildingDto.manager_id} not found`,
+            message: `Không tìm thấy quản lý với ID ${CreateBuildingDto.manager_id}`,
             error: 'Not Found'
           };
         }
@@ -101,7 +101,7 @@ export class BuildingsService {
 
       return {
         statusCode: 201,
-        message: 'Building created successfully',
+        message: 'Tạo tòa nhà thành công',
         data: newBuilding,
       }
     } catch (error) {
@@ -113,7 +113,7 @@ export class BuildingsService {
         if (error.code === 'P2003') {
           return {
             statusCode: 404,
-            message: 'Referenced record not found. Check areaId or managerId values.',
+            message: 'Không tìm thấy bản ghi tham chiếu. Kiểm tra giá trị areaId hoặc managerId.',
             error: 'Not Found'
           };
         }
@@ -121,7 +121,7 @@ export class BuildingsService {
         if (error.code === 'P2023') {
           return {
             statusCode: 400,
-            message: 'Invalid UUID format provided for areaId or managerId',
+            message: 'Định dạng UUID không hợp lệ cho areaId hoặc managerId',
             error: 'Bad Request'
           };
         }
@@ -129,7 +129,7 @@ export class BuildingsService {
 
       throw new RpcException({
         statusCode: 400,
-        message: `Building creation failed: ${error.message}`,
+        message: `Tạo tòa nhà thất bại: ${error.message}`,
       })
     }
   }
@@ -172,7 +172,7 @@ export class BuildingsService {
       if (buildings.length === 0) {
         return {
           statusCode: 200,
-          message: 'No buildings found',
+          message: 'Không tìm thấy tòa nhà nào',
           data: [],
           pagination: {
             total,
@@ -185,7 +185,7 @@ export class BuildingsService {
 
       return {
         statusCode: 200,
-        message: 'Buildings retrieved successfully',
+        message: 'Lấy danh sách tòa nhà thành công',
         data: buildings,
         pagination: {
           total,
@@ -198,7 +198,7 @@ export class BuildingsService {
       console.error('Error retrieving buildings:', error)
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving buildings!',
+        message: 'Lỗi khi lấy danh sách tòa nhà!',
       })
     }
   }
@@ -214,7 +214,7 @@ export class BuildingsService {
         console.error('[BuildingsService] Building ID is null or undefined')
         return {
           statusCode: 400,
-          message: 'Invalid building ID provided',
+          message: 'ID tòa nhà không hợp lệ',
         }
       }
 
@@ -236,7 +236,7 @@ export class BuildingsService {
         )
         return {
           statusCode: 404,
-          message: 'Building not found',
+          message: 'Không tìm thấy tòa nhà',
         }
       }
 
@@ -245,7 +245,7 @@ export class BuildingsService {
       )
       return {
         statusCode: 200,
-        message: 'Building retrieved successfully',
+        message: 'Lấy thông tin tòa nhà thành công',
         data: building,
       }
     } catch (error) {
@@ -255,18 +255,18 @@ export class BuildingsService {
         if (error.code === 'P2023') {
           return {
             statusCode: 400,
-            message: 'Invalid UUID format for building ID',
+            message: 'Định dạng UUID không hợp lệ cho ID tòa nhà',
           }
         }
         return {
           statusCode: 404,
-          message: 'Building not found or database error',
+          message: 'Không tìm thấy tòa nhà hoặc lỗi cơ sở dữ liệu',
         }
       }
 
       return {
         statusCode: 500,
-        message: 'Internal server error while retrieving building',
+        message: 'Lỗi máy chủ khi lấy thông tin tòa nhà',
       }
     }
   }
@@ -279,7 +279,7 @@ export class BuildingsService {
       if (!buildingExists) {
         return {
           statusCode: 404,
-          message: `Building with ID ${UpdateBuildingDto.buildingId} not found`,
+          message: `Không tìm thấy tòa nhà với ID ${UpdateBuildingDto.buildingId}`,
           error: 'Not Found'
         };
       }
@@ -290,7 +290,7 @@ export class BuildingsService {
         if (!areaExists) {
           return {
             statusCode: 404,
-            message: `Area with ID ${UpdateBuildingDto.areaId} not found`,
+            message: `Không tìm thấy khu vực với ID ${UpdateBuildingDto.areaId}`,
             error: 'Not Found'
           };
         }
@@ -302,7 +302,7 @@ export class BuildingsService {
         if (!managerExists) {
           return {
             statusCode: 404,
-            message: `Manager with ID ${UpdateBuildingDto.manager_id} not found`,
+            message: `Không tìm thấy quản lý với ID ${UpdateBuildingDto.manager_id}`,
             error: 'Not Found'
           };
         }
@@ -327,7 +327,7 @@ export class BuildingsService {
 
       return {
         statusCode: 200,
-        message: 'Building updated successfully',
+        message: 'Cập nhật tòa nhà thành công',
         data: updatedBuilding,
       }
     } catch (error) {
@@ -339,7 +339,7 @@ export class BuildingsService {
         if (error.code === 'P2025') {
           return {
             statusCode: 404,
-            message: `Building with ID ${UpdateBuildingDto.buildingId} not found`,
+            message: `Không tìm thấy tòa nhà với ID ${UpdateBuildingDto.buildingId}`,
             error: 'Not Found'
           };
         }
@@ -347,7 +347,7 @@ export class BuildingsService {
         if (error.code === 'P2003') {
           return {
             statusCode: 404,
-            message: 'Referenced record not found. Check areaId or managerId values.',
+            message: 'Không tìm thấy bản ghi tham chiếu. Kiểm tra giá trị areaId hoặc managerId.',
             error: 'Not Found'
           };
         }
@@ -355,7 +355,7 @@ export class BuildingsService {
         if (error.code === 'P2023') {
           return {
             statusCode: 400,
-            message: 'Invalid UUID format provided for areaId or managerId',
+            message: 'Định dạng UUID không hợp lệ cho areaId hoặc managerId',
             error: 'Bad Request'
           };
         }
@@ -363,7 +363,7 @@ export class BuildingsService {
 
       throw new RpcException({
         statusCode: 400,
-        message: `Building update failed: ${error.message}`,
+        message: `Cập nhật tòa nhà thất bại: ${error.message}`,
       })
     }
   }
@@ -377,13 +377,13 @@ export class BuildingsService {
 
       return {
         statusCode: 200,
-        message: 'Building deleted successfully',
+        message: 'Xóa tòa nhà thành công',
         data: deletedBuilding,
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Building deletion failed' + error.message,
+        message: 'Xóa tòa nhà thất bại' + error.message,
       })
     }
   }
@@ -479,7 +479,7 @@ export class BuildingsService {
         console.error('[BuildingsService] Building ID is null or undefined')
         return {
           statusCode: 400,
-          message: 'Building ID is required',
+          message: 'ID tòa nhà là bắt buộc',
           data: []
         }
       }
@@ -497,7 +497,7 @@ export class BuildingsService {
         console.error(`[BuildingsService] Building not found for ID: ${buildingId}`)
         return {
           statusCode: 404,
-          message: 'Building not found',
+          message: 'Không tìm thấy tòa nhà',
           data: []
         }
       }
@@ -508,7 +508,7 @@ export class BuildingsService {
         console.log(`[BuildingsService] No building details found for building ID: ${buildingId}`)
         return {
           statusCode: 200,
-          message: 'No building details found',
+          message: 'Không tìm thấy chi tiết tòa nhà',
           data: []
         }
       }
@@ -535,7 +535,7 @@ export class BuildingsService {
           console.log(`[BuildingsService] No apartments found for building ID: ${buildingId}`)
           return {
             statusCode: 200,
-            message: 'No apartments found',
+            message: 'Không tìm thấy căn hộ nào',
             data: []
           }
         }
@@ -554,14 +554,14 @@ export class BuildingsService {
 
         return {
           statusCode: 200,
-          message: 'Residents retrieved successfully',
+          message: 'Lấy danh sách cư dân thành công',
           data: uniqueResidents
         }
       } catch (error) {
         console.error('[BuildingsService] Error fetching apartments:', error)
         return {
           statusCode: 500,
-          message: 'Error retrieving apartments',
+          message: 'Lỗi khi lấy danh sách căn hộ',
           data: []
         }
       }
@@ -569,7 +569,7 @@ export class BuildingsService {
       console.error('[BuildingsService] Error getting residents:', error)
       return {
         statusCode: 500,
-        message: 'Error retrieving residents',
+        message: 'Lỗi khi lấy danh sách cư dân',
         data: []
       }
     }
@@ -582,7 +582,7 @@ export class BuildingsService {
         console.error('[BuildingsService] Building detail ID is null or undefined')
         return {
           statusCode: 400,
-          message: 'Building detail ID is required',
+          message: 'ID chi tiết tòa nhà là bắt buộc',
           data: []
         }
       }
@@ -604,7 +604,7 @@ export class BuildingsService {
           console.log(`[BuildingsService] No apartments found for building detail ID: ${buildingDetailId}`)
           return {
             statusCode: 200,
-            message: 'No apartments found',
+            message: 'Không tìm thấy căn hộ nào',
             data: []
           }
         }
@@ -623,14 +623,14 @@ export class BuildingsService {
 
         return {
           statusCode: 200,
-          message: 'Residents retrieved successfully',
+          message: 'Lấy danh sách cư dân thành công',
           data: uniqueResidents
         }
       } catch (error) {
         console.error('[BuildingsService] Error fetching apartments by building detail ID:', error)
         return {
           statusCode: 500,
-          message: 'Error retrieving apartments',
+          message: 'Lỗi khi lấy danh sách căn hộ',
           data: []
         }
       }
@@ -638,7 +638,7 @@ export class BuildingsService {
       console.error('[BuildingsService] Error getting residents by building detail ID:', error)
       return {
         statusCode: 500,
-        message: 'Error retrieving residents',
+        message: 'Lỗi khi lấy danh sách cư dân',
         data: []
       }
     }
@@ -650,7 +650,7 @@ export class BuildingsService {
       if (!managerId) {
         return {
           statusCode: 404,
-          message: 'Invalid manager ID provided',
+          message: 'ID quản lý không hợp lệ',
           data: []
         }
       }
@@ -690,7 +690,7 @@ export class BuildingsService {
       if (!buildings || buildings.length === 0) {
         return {
           statusCode: 404,
-          message: 'No buildings found for this manager',
+          message: 'Không tìm thấy tòa nhà nào cho quản lý này',
           data: [],
           meta: {
             total: 0,
@@ -703,7 +703,7 @@ export class BuildingsService {
 
       return {
         statusCode: 200,
-        message: 'Buildings retrieved successfully',
+        message: 'Lấy danh sách tòa nhà thành công',
         data: buildings,
         meta: {
           total,
@@ -715,7 +715,7 @@ export class BuildingsService {
     } catch (error) {
       return {
         statusCode: 500,
-        message: 'Internal server error while retrieving buildings for manager',
+        message: 'Lỗi máy chủ khi lấy danh sách tòa nhà cho quản lý',
         error: error.message
       }
     }

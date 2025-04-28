@@ -52,7 +52,7 @@ export class ScheduleJobsService {
       }
       return new ApiResponse<ScheduleJobResponseDto>(
         true,
-        'Schedule job created successfully',
+        'Tạo công việc lịch trình thành công',
         responseDto,
       )
     } catch (error) {
@@ -86,7 +86,7 @@ export class ScheduleJobsService {
           page,
           limit,
           404,
-          'No schedule jobs found',
+          'Không tìm thấy công việc lịch trình nào',
         )
       }
 
@@ -111,14 +111,14 @@ export class ScheduleJobsService {
         limit,
         200,
         scheduleJobs.length > 0
-          ? 'Schedule jobs fetched successfully'
-          : 'No schedule jobs found for this page',
+          ? 'Lấy danh sách công việc lịch trình thành công'
+          : 'Không tìm thấy công việc lịch trình nào cho trang này',
       )
     } catch (error) {
       console.error('Error retrieving schedule jobs:', error)
       throw new RpcException({
         statusCode: 500,
-        message: `Error retrieving schedule jobs: ${error.message}`,
+        message: `Lỗi khi lấy danh sách công việc lịch trình: ${error.message}`,
       })
     }
   }
@@ -142,7 +142,7 @@ export class ScheduleJobsService {
       if (!scheduleJob) {
         throw new RpcException({
           statusCode: 404,
-          mescsage: 'Shedule job not found',
+          mescsage: 'Không tìm thấy công việc lịch trình',
         })
       }
 
@@ -169,13 +169,13 @@ export class ScheduleJobsService {
 
       return new ApiResponse<ScheduleJobResponseDto>(
         true,
-        'Schedule job fetched successfully',
+        'Lấy thông tin công việc lịch trình thành công',
         responseDto,
       )
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving schedule job by IDD',
+        message: 'Lỗi khi lấy thông tin công việc lịch trình theo ID',
       })
     }
   }
@@ -204,13 +204,13 @@ export class ScheduleJobsService {
 
       return new ApiResponse<ScheduleJobResponseDto>(
         true,
-        'Schedule job status updated successfully',
+        'Cập nhật trạng thái công việc lịch trình thành công',
         responseDto,
       )
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Schedule job status update failed',
+        message: 'Cập nhật trạng thái công việc lịch trình thất bại',
       })
     }
   }
@@ -238,13 +238,13 @@ export class ScheduleJobsService {
 
       return new ApiResponse<ScheduleJobResponseDto>(
         true,
-        'Schedule job updated successfully',
+        'Cập nhật công việc lịch trình thành công',
         responseDto,
       )
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Schedule job update failed' + error.message,
+        message: 'Cập nhật công việc lịch trình thất bại: ' + error.message,
       })
     }
   }
@@ -325,7 +325,7 @@ export class ScheduleJobsService {
 
       return {
         statusCode: 200,
-        message: 'Schedule jobs retrieved successfully',
+        message: 'Lấy danh sách công việc lịch trình thành công',
         data: scheduleJobsWithBuildings,
         pagination: {
           total,
@@ -338,7 +338,7 @@ export class ScheduleJobsService {
       console.error('Error getting schedule jobs by schedule ID:', error)
       throw new RpcException({
         statusCode: 500,
-        message: 'Failed to get schedule jobs: ' + error.message,
+        message: 'Không thể lấy danh sách công việc lịch trình: ' + error.message,
       })
     }
   }
@@ -346,7 +346,7 @@ export class ScheduleJobsService {
   async sendMaintenanceEmail(scheduleJobId: string): Promise<ApiResponse<{ message: string }>> {
     try {
       if (!scheduleJobId) {
-        return new ApiResponse(false, 'Schedule job ID is required', null)
+        return new ApiResponse(false, 'Cần ID công việc lịch trình', null)
       }
 
       console.log(`Fetching schedule job with ID: ${scheduleJobId}`)
@@ -360,7 +360,7 @@ export class ScheduleJobsService {
 
       if (!scheduleJob) {
         console.error(`Schedule job not found with ID: ${scheduleJobId}`)
-        return new ApiResponse(false, 'Schedule job not found', null)
+        return new ApiResponse(false, 'Không tìm thấy công việc lịch trình', null)
       }
 
       console.log(`Fetching building detail with ID: ${scheduleJob.buildingDetailId}`)
@@ -373,7 +373,7 @@ export class ScheduleJobsService {
 
       if (!buildingDetailResponse || !buildingDetailResponse.data) {
         console.error(`Building detail not found with ID: ${scheduleJob.buildingDetailId}`)
-        return new ApiResponse(false, 'Building detail not found', null)
+        return new ApiResponse(false, 'Không tìm thấy thông tin chi tiết tòa nhà', null)
       }
 
       const buildingDetail = buildingDetailResponse.data
@@ -396,8 +396,8 @@ export class ScheduleJobsService {
         console.log(`No residents found for building detail ID: ${scheduleJob.buildingDetailId}`)
         return new ApiResponse(
           true,
-          'No residents found to send emails to',
-          { message: 'No emails sent' }
+          'Không tìm thấy cư dân để gửi email',
+          { message: 'Không gửi email nào' }
         )
       }
 
@@ -437,7 +437,7 @@ export class ScheduleJobsService {
         // Get resident's name using username, name, or firstName+lastName
         const residentName = resident.username || resident.name ||
           (resident.firstName && resident.lastName ? `${resident.firstName} ${resident.lastName}` : null) ||
-          'Valued Resident';
+          'Cư dân';
 
         // Get location details for the resident
         const locationDetails = buildingDetail.locationDetails?.find(
@@ -451,7 +451,7 @@ export class ScheduleJobsService {
             month: 'long',
             day: 'numeric'
           })
-          : 'Not specified';
+          : 'Chưa xác định';
 
         const endTime = scheduleJob.end_date
           ? new Date(scheduleJob.end_date).toLocaleDateString('vi-VN', {
@@ -459,7 +459,7 @@ export class ScheduleJobsService {
             month: 'long',
             day: 'numeric'
           })
-          : 'Not specified';
+          : 'Chưa xác định';
 
         console.log(`Sending email to resident: ${residentName} (${resident.email}) for maintenance from ${startTime} to ${endTime}`);
 
@@ -472,10 +472,10 @@ export class ScheduleJobsService {
             startTime: startTime,
             endTime: endTime,
             maintenanceType: scheduleJob.schedule.schedule_name,
-            description: scheduleJob.schedule.description || 'No detailed description',
-            floor: locationDetails?.floorNumber?.toString() || buildingDetail.numberFloor?.toString() || 'Not specified',
-            area: buildingDetail.area?.name || 'Not specified',
-            unit: locationDetails?.roomNumber || resident.apartmentNumber || 'Not specified'
+            description: scheduleJob.schedule.description || 'Không có mô tả chi tiết',
+            floor: locationDetails?.floorNumber?.toString() || buildingDetail.numberFloor?.toString() || 'Chưa xác định',
+            area: buildingDetail.area?.name || 'Chưa xác định',
+            unit: locationDetails?.roomNumber || resident.apartmentNumber || 'Chưa xác định'
           })
         )
       })
@@ -485,14 +485,14 @@ export class ScheduleJobsService {
 
       return new ApiResponse(
         true,
-        'Maintenance schedule emails sent successfully',
-        { message: `Emails sent to ${emailMap.size} residents` }
+        'Gửi email lịch trình bảo trì thành công',
+        { message: `Đã gửi email cho ${emailMap.size} cư dân` }
       )
     } catch (error) {
       console.error('Error sending maintenance emails:', error)
       return new ApiResponse(
         false,
-        `Failed to send maintenance schedule emails: ${error.message}`,
+        `Không thể gửi email lịch trình bảo trì: ${error.message}`,
         null
       )
     }

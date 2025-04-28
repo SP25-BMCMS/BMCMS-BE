@@ -55,7 +55,7 @@ export class AuthService {
   }
 
   async logout(): Promise<{ message: string }> {
-    return { message: 'Logged out successfully' }
+    return { message: 'Đăng xuất thành công' }
   }
 
   async validateUser(input: AuthInput) {
@@ -65,14 +65,14 @@ export class AuthService {
     if (!isPasswordValid)
       throw new RpcException({
         statusCode: 401,
-        message: 'invalid credentials!',
+        message: 'Thông tin đăng nhập không hợp lệ!',
       })
 
     // Check if account is inactive
     if (user.accountStatus === 'Inactive')
       throw new RpcException({
         statusCode: 403,
-        message: 'Account is inactive. Please contact admin for activation.',
+        message: 'Tài khoản đang không hoạt động. Vui lòng liên hệ quản trị viên để kích hoạt.',
       })
 
     return { userId: user.userId, username: user.username, role: user.role }
@@ -85,7 +85,7 @@ export class AuthService {
       if (user.role !== 'Resident') {
         throw new RpcException({
           statusCode: 401,
-          message: 'Incorrect phone number or password',
+          message: 'Số điện thoại hoặc mật khẩu không chính xác',
         })
       }
 
@@ -93,7 +93,7 @@ export class AuthService {
       if (!isPasswordValid) {
         throw new RpcException({
           statusCode: 401,
-          message: 'Incorrect phone number or password',
+          message: 'Số điện thoại hoặc mật khẩu không chính xác',
         })
       }
 
@@ -101,7 +101,7 @@ export class AuthService {
         throw new RpcException({
           statusCode: 401,
           message:
-            'Account has not been activated, please contact management for activation',
+            'Tài khoản chưa được kích hoạt, vui lòng liên hệ ban quản lý để kích hoạt',
         })
       }
 
@@ -115,7 +115,7 @@ export class AuthService {
 
       throw new RpcException({
         statusCode: 401,
-        message: 'Incorrect phone number or password',
+        message: 'Số điện thoại hoặc mật khẩu không chính xác',
       })
     }
   }
@@ -138,14 +138,14 @@ export class AuthService {
         if (existingUsername) {
           throw new RpcException({
             statusCode: 400,
-            message: 'Username already exists',
+            message: 'Tên đăng nhập đã tồn tại',
           })
         }
       } catch (error) {
         // Ignore error if user not found
         if (
           error instanceof RpcException &&
-          error.message !== 'Incorrect phone number or password'
+          error.message !== 'Số điện thoại hoặc mật khẩu không chính xác'
         ) {
           throw error
         }
@@ -159,14 +159,14 @@ export class AuthService {
         if (existingEmail) {
           throw new RpcException({
             statusCode: 400,
-            message: 'Email already exists',
+            message: 'Email đã tồn tại',
           })
         }
       } catch (error) {
         // Ignore error if user not found
         if (
           error instanceof RpcException &&
-          error.message !== 'Email does not exist'
+          error.message !== 'Email không tồn tại'
         ) {
           throw error
         }
@@ -180,14 +180,14 @@ export class AuthService {
         if (existingPhone) {
           throw new RpcException({
             statusCode: 400,
-            message: 'Phone number already exists',
+            message: 'Số điện thoại đã tồn tại',
           })
         }
       } catch (error) {
         // Ignore error if user not found
         if (
           error instanceof RpcException &&
-          error.message !== 'Incorrect phone number or password'
+          error.message !== 'Số điện thoại hoặc mật khẩu không chính xác'
         ) {
           throw error
         }
@@ -198,7 +198,7 @@ export class AuthService {
         // Use emit() with event pattern
         this.client.emit('send_otp_message', { email: data.email });
 
-        return new ApiResponse(true, 'OTP code has been sent to your email', {
+        return new ApiResponse(true, 'Mã OTP đã được gửi đến email của bạn', {
           email: data.email,
         });
       }
@@ -211,7 +211,7 @@ export class AuthService {
       }
       throw new RpcException({
         statusCode: 500,
-        message: 'System error during registration',
+        message: 'Lỗi hệ thống trong quá trình đăng ký',
       })
     }
   }
@@ -226,7 +226,7 @@ export class AuthService {
       if (data.email !== data.userData.email) {
         throw new RpcException({
           statusCode: 400,
-          message: 'OTP verification email must match the registration email',
+          message: 'Email xác thực OTP phải trùng với email đăng ký',
         })
       }
 
@@ -235,7 +235,7 @@ export class AuthService {
       if (!isValid) {
         throw new RpcException({
           statusCode: 400,
-          message: 'OTP verification failed',
+          message: 'Xác thực OTP thất bại',
         })
       }
 
@@ -262,7 +262,7 @@ export class AuthService {
         accountStatus: userData.accountStatus,
       }
 
-      return new ApiResponse(true, 'Registration successful', userResponse)
+      return new ApiResponse(true, 'Đăng ký thành công', userResponse)
     } catch (error) {
       console.error('Error in verifyOtpAndCompleteSignup:', error)
       if (error instanceof RpcException) {
@@ -270,7 +270,7 @@ export class AuthService {
       }
       throw new RpcException({
         statusCode: 400,
-        message: error.message || 'OTP verification failed',
+        message: error.message || 'Xác thực OTP thất bại',
       })
     }
   }

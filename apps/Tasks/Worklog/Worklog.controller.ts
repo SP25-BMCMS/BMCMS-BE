@@ -22,7 +22,7 @@ export class WorkLogController {
       console.error('Error in getAllWorkLogs:', error)
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving worklogs!',
+        message: 'Lỗi khi lấy danh sách nhật ký công việc!',
       })
     }
   }

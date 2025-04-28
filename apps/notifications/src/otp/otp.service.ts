@@ -28,7 +28,7 @@ export class OtpService {
     if (!storedOtp || storedOtp !== otp) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Unverified OTP!',
+        message: 'Mã OTP không hợp lệ!',
       })
     }
 

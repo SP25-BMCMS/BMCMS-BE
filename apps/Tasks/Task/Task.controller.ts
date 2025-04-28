@@ -76,7 +76,7 @@ export class TasksController {
         (typeof payload === 'string' ? payload : null);
 
       if (!scheduleJobId) {
-        throw new Error('Missing scheduleJobId in request payload');
+        throw new Error('Thiếu scheduleJobId trong yêu cầu');
       }
 
       console.log('Starting task creation for schedule job:', scheduleJobId);
@@ -100,7 +100,7 @@ export class TasksController {
       // Validate required fields
       const { taskId, scheduleJobId } = payload;
       if (!taskId) {
-        throw new Error('Missing taskId in request payload');
+        throw new Error('Thiếu taskId trong yêu cầu');
       }
 
       console.log(`Processing notification thanks to resident for task: ${taskId}`);

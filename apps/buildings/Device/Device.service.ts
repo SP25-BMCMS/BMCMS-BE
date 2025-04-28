@@ -9,7 +9,7 @@ import { DeviceType } from '@prisma/client-building';
 export class DeviceService {
   private readonly logger = new Logger(DeviceService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async create(createDeviceDto: CreateDeviceDto) {
     try {
@@ -20,14 +20,14 @@ export class DeviceService {
       this.logger.log(`Device created successfully: ${device.device_id}`);
       return {
         statusCode: 201,
-        message: 'Device created successfully',
+        message: 'Tạo thiết bị thành công',
         data: device,
       };
     } catch (error) {
       this.logger.error(`Error creating device: ${error.message}`);
       throw new RpcException({
         statusCode: 400,
-        message: 'Device creation failed: ' + error.message,
+        message: 'Tạo thiết bị thất bại: ' + error.message,
       });
     }
   }
@@ -39,8 +39,8 @@ export class DeviceService {
       const limitNum = Math.min(50, Math.max(1, params?.limit || 10));
       const skip = (pageNum - 1) * limitNum;
       this.logger.log(`Finding all devices with search: ${params?.search || 'none'}`);
-      
-      
+
+
       const where = {
         ...(params?.search ? {
           name: {
@@ -50,7 +50,7 @@ export class DeviceService {
         } : {}),
         ...(params?.type ? { type: params?.type } : {})
       };
-      
+
       const [devices, total] = await Promise.all([
         this.prisma.device.findMany({
           where,
@@ -62,11 +62,11 @@ export class DeviceService {
         }),
         this.prisma.device.count({ where })
       ]);
-      
+
       this.logger.log(`Found ${devices.length} devices`);
       return {
         statusCode: 200,
-        message: 'Devices retrieved successfully',
+        message: 'Lấy danh sách thiết bị thành công',
         data: devices,
         meta: {
           total,
@@ -79,7 +79,7 @@ export class DeviceService {
       this.logger.error(`Error finding all devices: ${error.message}`);
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving devices: ' + error.message,
+        message: 'Lỗi khi lấy danh sách thiết bị: ' + error.message,
       });
     }
   }
@@ -94,13 +94,13 @@ export class DeviceService {
         this.logger.warn(`Device not found with id: ${id}`);
         throw new RpcException({
           statusCode: 404,
-          message: 'Device not found',
+          message: 'Không tìm thấy thiết bị',
         });
       }
       this.logger.log(`Device found: ${device.device_id}`);
       return {
         statusCode: 200,
-        message: 'Device retrieved successfully',
+        message: 'Lấy thông tin thiết bị thành công',
         data: device,
       };
     } catch (error) {
@@ -108,7 +108,7 @@ export class DeviceService {
       if (error instanceof RpcException) throw error;
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving device: ' + error.message,
+        message: 'Lỗi khi lấy thông tin thiết bị: ' + error.message,
       });
     }
   }
@@ -123,14 +123,14 @@ export class DeviceService {
       this.logger.log(`Device updated successfully: ${device.device_id}`);
       return {
         statusCode: 200,
-        message: 'Device updated successfully',
+        message: 'Cập nhật thiết bị thành công',
         data: device,
       };
     } catch (error) {
       this.logger.error(`Error updating device: ${error.message}`);
       throw new RpcException({
         statusCode: 400,
-        message: 'Device update failed: ' + error.message,
+        message: 'Cập nhật thiết bị thất bại: ' + error.message,
       });
     }
   }
@@ -144,14 +144,14 @@ export class DeviceService {
       this.logger.log(`Device removed successfully: ${device.device_id}`);
       return {
         statusCode: 200,
-        message: 'Device deleted successfully',
+        message: 'Xóa thiết bị thành công',
         data: device,
       };
     } catch (error) {
       this.logger.error(`Error removing device: ${error.message}`);
       throw new RpcException({
         statusCode: 400,
-        message: 'Device deletion failed: ' + error.message,
+        message: 'Xóa thiết bị thất bại: ' + error.message,
       });
     }
   }
@@ -165,14 +165,14 @@ export class DeviceService {
       this.logger.log(`Found ${devices.length} devices for building detail: ${buildingDetailId}`);
       return {
         statusCode: 200,
-        message: 'Devices retrieved successfully',
+        message: 'Lấy danh sách thiết bị thành công',
         data: devices,
       };
     } catch (error) {
       this.logger.error(`Error finding devices by building detail: ${error.message}`);
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving devices by building detail: ' + error.message,
+        message: 'Lỗi khi lấy danh sách thiết bị theo chi tiết tòa nhà: ' + error.message,
       });
     }
   }
@@ -186,14 +186,14 @@ export class DeviceService {
       this.logger.log(`Found ${devices.length} devices for contract: ${contractId}`);
       return {
         statusCode: 200,
-        message: 'Devices retrieved successfully',
+        message: 'Lấy danh sách thiết bị thành công',
         data: devices,
       };
     } catch (error) {
       this.logger.error(`Error finding devices by contract: ${error.message}`);
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving devices by contract: ' + error.message,
+        message: 'Lỗi khi lấy danh sách thiết bị theo hợp đồng: ' + error.message,
       });
     }
   }

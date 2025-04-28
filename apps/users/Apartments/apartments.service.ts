@@ -19,13 +19,13 @@ export class ApartmentsService {
       if (!apartment) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Apartment not found',
+          message: 'Không tìm thấy căn hộ',
         })
       }
 
       return new ApiResponse<ApartmentDTO>(
         true,
-        'WorkLog By Id successfully',
+        'Lấy thông tin căn hộ thành công',
         apartment,
       )
     } catch (error) {
@@ -35,7 +35,7 @@ export class ApartmentsService {
       }
       throw new RpcException({
         statusCode: 500,
-        message: 'Internal server error',
+        message: 'Lỗi máy chủ nội bộ',
       })
     }
   }

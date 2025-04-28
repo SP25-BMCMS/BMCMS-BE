@@ -16,7 +16,7 @@ export class CrackRecordService {
   constructor(
     private prisma: PrismaService,
     @Inject('TASK_CLIENT') private readonly taskClient: ClientProxy
-  ) {}
+  ) { }
 
   async create(createDto: CreateCrackRecordDto): Promise<ApiResponse<CrackRecordDto>> {
     try {
@@ -38,13 +38,13 @@ export class CrackRecordService {
 
       return new ApiResponse<CrackRecordDto>(
         true,
-        'Crack record created successfully',
+        'Tạo bản ghi vết nứt thành công',
         crackRecord,
       );
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: `Failed to create crack record: ${error.message}`,
+        message: `Không thể tạo bản ghi vết nứt: ${error.message}`,
       });
     }
   }
@@ -70,13 +70,13 @@ export class CrackRecordService {
         page,
         limit,
         200,
-        crackRecords.length > 0 ? 'Crack records retrieved successfully' : 'No crack records found',
+        crackRecords.length > 0 ? 'Lấy danh sách bản ghi vết nứt thành công' : 'Không tìm thấy bản ghi vết nứt nào',
       );
     } catch (error) {
       this.logger.error('Error retrieving crack records:', error);
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving crack records',
+        message: 'Lỗi khi lấy danh sách bản ghi vết nứt',
       });
     }
   }
@@ -90,20 +90,20 @@ export class CrackRecordService {
       if (!crackRecord) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Crack record not found',
+          message: 'Không tìm thấy bản ghi vết nứt',
         });
       }
 
       return new ApiResponse<CrackRecordDto>(
         true,
-        'Crack record retrieved successfully',
+        'Lấy thông tin bản ghi vết nứt thành công',
         crackRecord,
       );
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({
         statusCode: 500,
-        message: `Failed to retrieve crack record: ${error.message}`,
+        message: `Lỗi khi lấy thông tin bản ghi vết nứt: ${error.message}`,
       });
     }
   }
@@ -120,13 +120,13 @@ export class CrackRecordService {
 
       return new ApiResponse<CrackRecordDto>(
         true,
-        'Crack record updated successfully',
+        'Cập nhật bản ghi vết nứt thành công',
         crackRecord,
       );
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: `Failed to update crack record: ${error.message}`,
+        message: `Không thể cập nhật bản ghi vết nứt: ${error.message}`,
       });
     }
   }
@@ -139,13 +139,13 @@ export class CrackRecordService {
 
       return new ApiResponse<CrackRecordDto>(
         true,
-        'Crack record deleted successfully',
+        'Xóa bản ghi vết nứt thành công',
         crackRecord,
       );
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: `Failed to delete crack record: ${error.message}`,
+        message: `Không thể xóa bản ghi vết nứt: ${error.message}`,
       });
     }
   }
@@ -156,7 +156,7 @@ export class CrackRecordService {
   ): Promise<PaginationResponseDto<CrackRecordDto>> {
     try {
       this.logger.log(`Getting crack records for building detail: ${buildingDetailId}`);
-      
+
       const page = Math.max(1, paginationParams?.page || 1);
       const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10));
       const skip = (page - 1) * limit;
@@ -177,13 +177,13 @@ export class CrackRecordService {
         page,
         limit,
         200,
-        crackRecords.length > 0 ? 'Crack records retrieved successfully' : 'No crack records found',
+        crackRecords.length > 0 ? 'Lấy danh sách bản ghi vết nứt thành công' : 'Không tìm thấy bản ghi vết nứt nào',
       );
     } catch (error) {
       this.logger.error(`Error getting crack records for building detail ${buildingDetailId}:`, error);
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving crack records',
+        message: 'Lỗi khi lấy danh sách bản ghi vết nứt',
       });
     }
   }
@@ -194,34 +194,34 @@ export class CrackRecordService {
   ): Promise<PaginationResponseDto<CrackRecordDto>> {
     try {
       this.logger.log(`Getting crack records for inspection: ${inspectionId}`);
-      
+
       // Tìm tất cả locationDetail dựa trên inspection_id
       const locationDetails = await this.prisma.locationDetail.findMany({
         where: { inspection_id: inspectionId }
       });
-      
+
       if (!locationDetails || locationDetails.length === 0) {
         throw new RpcException({
           statusCode: 404,
-          message: 'No location details found for this inspection',
+          message: 'Không tìm thấy chi tiết vị trí cho lần kiểm tra này',
         });
       }
 
       // này là tạo mảng chứa locationDetialId từ mảng locationDetails
       const locationDetailIds = locationDetails.map(location => location.locationDetailId);
-      
+
       const page = Math.max(1, paginationParams?.page || 1);
       const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10));
       const skip = (page - 1) * limit;
-      
+
       // Tìm tất cả crackRecord dựa trên danh sách locationDetailId
       const [crackRecords, total] = await Promise.all([
         this.prisma.crackRecord.findMany({
-          where: { 
+          where: {
             locationDetailId: {
               // này là tìm tất cả crackRecord dựa trên danh sách locationDetailId
               in: locationDetailIds
-            } 
+            }
           },
           skip,
           include: {
@@ -234,12 +234,12 @@ export class CrackRecordService {
           take: limit,
           orderBy: { createdAt: 'desc' },
         }),
-        this.prisma.crackRecord.count({ 
-          where: { 
+        this.prisma.crackRecord.count({
+          where: {
             locationDetailId: {
               in: locationDetailIds
-            } 
-          } 
+            }
+          }
         }),
       ]);
 
@@ -249,13 +249,13 @@ export class CrackRecordService {
         page,
         limit,
         200,
-        crackRecords.length > 0 ? 'Crack records retrieved successfully' : 'No crack records found',
+        crackRecords.length > 0 ? 'Lấy danh sách bản ghi vết nứt thành công' : 'Không tìm thấy bản ghi vết nứt nào',
       );
     } catch (error) {
       this.logger.error(`Error getting crack records for inspection ${inspectionId}:`, error);
       throw new RpcException({
         statusCode: error.statusCode || 500,
-        message: error.message || 'Error retrieving crack records',
+        message: error.message || 'Lỗi khi lấy danh sách bản ghi vết nứt',
       });
     }
   }
@@ -266,7 +266,7 @@ export class CrackRecordService {
   ): Promise<PaginationResponseDto<CrackRecordDto>> {
     try {
       this.logger.log(`Getting crack records for location detail: ${locationDetailId}`);
-      
+
       const page = Math.max(1, paginationParams?.page || 1);
       const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10));
       const skip = (page - 1) * limit;
@@ -290,13 +290,13 @@ export class CrackRecordService {
         page,
         limit,
         200,
-        crackRecords.length > 0 ? 'Crack records retrieved successfully' : 'No crack records found',
+        crackRecords.length > 0 ? 'Lấy danh sách bản ghi vết nứt thành công' : 'Không tìm thấy bản ghi vết nứt nào',
       );
     } catch (error) {
       this.logger.error(`Error getting crack records for location detail ${locationDetailId}:`, error);
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving crack records',
+        message: 'Lỗi khi lấy danh sách bản ghi vết nứt',
       });
     }
   }

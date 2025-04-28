@@ -235,8 +235,8 @@ export class TaskAssignmentsService {
         // Tạo notification cho user - sử dụng emit() thay vì send()
         this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, {
           userId: createTaskAssignmentDto.employee_id,
-          title: 'You have been assigned a new task',
-          content: `You have been assigned: ${taskName}`,
+          title: 'Bạn đã được phân công một nhiệm vụ mới',
+          content: `Bạn đã được phân công: ${taskName}`,
           type: NotificationType.TASK_ASSIGNMENT,
           relatedId: newAssignment.assignment_id,
           link: `/tasks/assignments/${newAssignment.assignment_id}`
@@ -993,10 +993,10 @@ export class TaskAssignmentsService {
           size: 'A4',
           margin: PAGE_MARGIN,
           info: {
-            Title: 'Inspection Report',
+            Title: 'Báo cáo kiểm tra',
             Author: 'BMCMS',
-            Subject: 'Crack Inspection Report',
-            Keywords: 'inspection, report, crack',
+            Subject: 'Báo cáo kiểm tra vết nứt',
+            Keywords: 'kiểm tra, báo cáo, vết nứt',
             CreationDate: new Date()
           }
         })
@@ -1052,11 +1052,11 @@ export class TaskAssignmentsService {
         doc.fillColor('white')
           .fontSize(16)
           .font('VietnameseFont')
-          .text('INSPECTION REPORT', PAGE_MARGIN + 10, yPos, { align: 'left' })
+          .text('BÁO CÁO KIỂM TRA', PAGE_MARGIN + 10, yPos, { align: 'left' })
 
         yPos += 20
         doc.fontSize(10)
-          .text('Generated: ' + new Date().toLocaleString(), PAGE_MARGIN + 10, yPos, { align: 'left' })
+          .text('Được tạo: ' + new Date().toLocaleString(), PAGE_MARGIN + 10, yPos, { align: 'left' })
 
         // Reset text color
         doc.fillColor('black')
@@ -1070,7 +1070,7 @@ export class TaskAssignmentsService {
         yPos += 10
         doc.fontSize(14)
           .fillColor('#000000')
-          .text('Crack Report Information', PAGE_MARGIN, yPos, { underline: true })
+          .text('Thông tin báo cáo vết nứt', PAGE_MARGIN, yPos, { underline: true })
         yPos += LINE_HEIGHT + 5
 
         // Two-column layout for crack info
@@ -1088,28 +1088,28 @@ export class TaskAssignmentsService {
           : 'N/A'
 
         // Left column
-        doc.text('Reporter:', PAGE_MARGIN, yPos)
+        doc.text('Người báo cáo:', PAGE_MARGIN, yPos)
         doc.text(reportby, PAGE_MARGIN + 90, yPos)
         yPos += LINE_HEIGHT
 
-        doc.text('Report Date:', PAGE_MARGIN, yPos)
+        doc.text('Ngày báo cáo:', PAGE_MARGIN, yPos)
         doc.text(reportDate, PAGE_MARGIN + 90, yPos)
         yPos += LINE_HEIGHT
 
         // Right column
-        doc.text('Severity Level:', PAGE_MARGIN + colWidth, yPos - LINE_HEIGHT * 2)
+        doc.text('Mức độ nghiêm trọng:', PAGE_MARGIN + colWidth, yPos - LINE_HEIGHT * 2)
         doc.text(severity, PAGE_MARGIN + colWidth + 140, yPos - LINE_HEIGHT * 2)
 
-        doc.text('Payment Confirmed:', PAGE_MARGIN + colWidth, yPos - LINE_HEIGHT)
-        doc.text('Confirm', PAGE_MARGIN + colWidth + 140, yPos - LINE_HEIGHT)
+        doc.text('Xác nhận thanh toán:', PAGE_MARGIN + colWidth, yPos - LINE_HEIGHT)
+        doc.text('Xác nhận', PAGE_MARGIN + colWidth + 140, yPos - LINE_HEIGHT)
 
         // Description (full width)
         yPos += LINE_HEIGHT
-        doc.text('Description:', PAGE_MARGIN, yPos)
+        doc.text('Mô tả:', PAGE_MARGIN, yPos)
         yPos += LINE_HEIGHT
 
         // Description text in a box
-        const descriptionText = task.description || 'N/A'
+        const descriptionText = task.description || 'Không có'
         doc.rect(PAGE_MARGIN, yPos, CONTENT_WIDTH, 30).fillAndStroke('#FFFFFF', '#000000')
         doc.fillColor('#000000')
           .fontSize(9)
@@ -1124,7 +1124,7 @@ export class TaskAssignmentsService {
         yPos += SECTION_SPACING
         doc.fontSize(14)
           .fillColor('#000000')
-          .text('Crack Detail Images', PAGE_MARGIN, yPos, { underline: true })
+          .text('Hình ảnh chi tiết vết nứt', PAGE_MARGIN, yPos, { underline: true })
         yPos += LINE_HEIGHT + 5
 
         // Draw frames for crack detail images
@@ -1133,11 +1133,11 @@ export class TaskAssignmentsService {
 
         // Box 1 - Original Photo
         doc.rect(PAGE_MARGIN, yPos, crackImageWidth, crackImageHeight).fillAndStroke('#FFFFFF', '#000000')
-        doc.fontSize(10).fillColor('#000000').text('Original Photo', PAGE_MARGIN + 5, yPos + 5)
+        doc.fontSize(10).fillColor('#000000').text('Ảnh gốc', PAGE_MARGIN + 5, yPos + 5)
 
         // Box 2 - AI Detection
         doc.rect(PAGE_MARGIN + crackImageWidth + 20, yPos, crackImageWidth, crackImageHeight).fillAndStroke('#FFFFFF', '#000000')
-        doc.fontSize(10).fillColor('#000000').text('AI Detection Photo', PAGE_MARGIN + crackImageWidth + 25, yPos + 5)
+        doc.fontSize(10).fillColor('#000000').text('Ảnh phát hiện bởi AI', PAGE_MARGIN + crackImageWidth + 25, yPos + 5)
 
         // Add images from crack detail if available
         if (crackInfo?.data && crackInfo.data[0]?.crackDetails && crackInfo.data[0].crackDetails.length > 0) {
@@ -1162,7 +1162,7 @@ export class TaskAssignmentsService {
               doc.rect(PAGE_MARGIN + 30, yPos + 30, crackImageWidth - 70, crackImageHeight - 60)
                 .fillAndStroke('#f8f8f8', '#cccccc')
               doc.fillColor('#999999').fontSize(10)
-              doc.text('No original photo', PAGE_MARGIN + crackImageWidth / 2 - 40, yPos + 50)
+              doc.text('Không có ảnh gốc', PAGE_MARGIN + crackImageWidth / 2 - 40, yPos + 50)
             }
 
             // Add AI detection photo in second rectangle if available
@@ -1182,19 +1182,19 @@ export class TaskAssignmentsService {
               doc.rect(PAGE_MARGIN + crackImageWidth + 55, yPos + 30, crackImageWidth - 70, crackImageHeight - 60)
                 .fillAndStroke('#f8f8f8', '#cccccc')
               doc.fillColor('#999999').fontSize(10)
-              doc.text('No AI detection photo', PAGE_MARGIN + crackImageWidth + crackImageWidth / 2 - 40, yPos + 50)
+              doc.text('Không có ảnh phát hiện bởi AI', PAGE_MARGIN + crackImageWidth + crackImageWidth / 2 - 40, yPos + 50)
             }
           } catch (imgError) {
             // Vẽ placeholders cho cả hai ảnh
             doc.fillColor('#999999').fontSize(10)
-            doc.text('No crack details available', PAGE_MARGIN + 30, yPos + 50)
-            doc.text('No crack details available', PAGE_MARGIN + crackImageWidth + 50, yPos + 50)
+            doc.text('Không có chi tiết vết nứt', PAGE_MARGIN + 30, yPos + 50)
+            doc.text('Không có chi tiết vết nứt', PAGE_MARGIN + crackImageWidth + 50, yPos + 50)
           }
         } else {
           // Vẽ placeholders cho cả hai ảnh
           doc.fillColor('#999999').fontSize(10)
-          doc.text('No crack details available', PAGE_MARGIN + 30, yPos + 50)
-          doc.text('No crack details available', PAGE_MARGIN + crackImageWidth + 50, yPos + 50)
+          doc.text('Không có chi tiết vết nứt', PAGE_MARGIN + 30, yPos + 50)
+          doc.text('Không có chi tiết vết nứt', PAGE_MARGIN + crackImageWidth + 50, yPos + 50)
         }
 
         // Show creation date from the crack detail
@@ -1204,16 +1204,16 @@ export class TaskAssignmentsService {
           const creationDate = crackDetail.createdAt
             ? new Date(crackDetail.createdAt).toLocaleString()
             : 'Date not available'
-          doc.fontSize(10).text(`Detection Date: ${creationDate}`, PAGE_MARGIN, yPos)
+          doc.fontSize(10).text(`Ngày phát hiện: ${creationDate}`, PAGE_MARGIN, yPos)
         } else {
-          doc.fontSize(10).text('Detection Date: Not available', PAGE_MARGIN, yPos)
+          doc.fontSize(10).text('Ngày phát hiện: Không có', PAGE_MARGIN, yPos)
         }
 
         // Section: Inspection Images - reduce spacing from previous section
         yPos += 40 // Reduced from SECTION_SPACING (20)
         doc.fontSize(14)
           .fillColor('#000000')
-          .text('Inspection Images', PAGE_MARGIN, yPos, { underline: true })
+          .text('Hình ảnh kiểm tra', PAGE_MARGIN, yPos, { underline: true })
         yPos += LINE_HEIGHT + 10 // Reduced by 5
 
         // Status order priority (for sorting)
@@ -1422,7 +1422,7 @@ export class TaskAssignmentsService {
 
                 // Reset text color and write header
                 doc.fillColor('white').text( // Changed to white for better contrast on colored header
-                  `Inspection (${inspectionDate}) - ID: ${inspection.inspection_id.substring(0, 8)}...`,
+                  `Kiểm tra (${inspectionDate}) - ID: ${inspection.inspection_id.substring(0, 8)}...`,
                   PAGE_MARGIN + 10,
                   yPos + 5
                 )
@@ -1434,7 +1434,7 @@ export class TaskAssignmentsService {
                 // Description title
                 doc.fontSize(10).font('VietnameseFont', 'bold') // Reduced font size
                   .fillColor('#000000')
-                  .text('Description:', detailsX, yPos + 25) // Reduced vertical space
+                  .text('Mô tả:', detailsX, yPos + 25) // Reduced vertical space
 
                 // Description content
                 doc.fontSize(9).font('VietnameseFont', 'normal')
@@ -1448,7 +1448,7 @@ export class TaskAssignmentsService {
                 // Materials section - reduced vertical space
                 doc.fontSize(10).font('VietnameseFont', 'bold') // Reduced font size
                   .fillColor('#000000')
-                  .text('Materials:', detailsX, yPos + 60) // Reduced vertical space
+                  .text('Vật liệu:', detailsX, yPos + 60) // Reduced vertical space
 
                 // Add a background to make ALL materials visible with stronger contrast
                 const materialsBoxHeight = materialCount * 30 + 20 // Additional padding
@@ -1475,7 +1475,7 @@ export class TaskAssignmentsService {
                 // Estimated cost - move it even further right to avoid overlap with materials
                 doc.fontSize(10).font('VietnameseFont', 'bold')
                   .fillColor('#000000')
-                  .text('Cost:', detailsX + detailsWidth - 90, yPos + 70)
+                  .text('Chi phí:', detailsX + detailsWidth - 90, yPos + 70)
 
                 doc.fontSize(10).fillColor('#d32f2f').font('VietnameseFont', 'bold')
                   .text(totalCost, detailsX + detailsWidth - 50, yPos + 70)
@@ -1583,14 +1583,14 @@ export class TaskAssignmentsService {
         yPos += 10
         doc.fontSize(14)
           .fillColor('#000000')
-          .text('Cost Summary:', PAGE_MARGIN + 10, yPos, { underline: true })
+          .text('Tổng kết chi phí:', PAGE_MARGIN + 10, yPos, { underline: true })
         doc.fillColor('black')
         yPos += LINE_HEIGHT + 5
 
         // Display cost information with more emphasis
         doc.fontSize(12)
           .fillColor('#333333')
-          .text(`Total Estimated Cost:`, PAGE_MARGIN + 20, yPos)
+          .text(`Tổng chi phí dự kiến:`, PAGE_MARGIN + 20, yPos)
         doc.fontSize(12)
           .fillColor('#d32f2f')
           .text(`${estimatedCost.toLocaleString('vi-VN')} VND`, PAGE_MARGIN + 200, yPos)
@@ -1598,7 +1598,7 @@ export class TaskAssignmentsService {
 
         doc.fontSize(12)
           .fillColor('#333333')
-          .text(`Total Actual Cost:`, PAGE_MARGIN + 20, yPos)
+          .text(`Tổng chi phí thực tế:`, PAGE_MARGIN + 20, yPos)
         doc.fontSize(12)
           .fillColor('#d32f2f')
           .text(`${actualCost.toLocaleString('vi-VN')} VND`, PAGE_MARGIN + 200, yPos)
@@ -1628,7 +1628,7 @@ export class TaskAssignmentsService {
         // Add date line
         doc.fontSize(10)
           .fillColor('#000000')
-          .text(`Ho Chi Minh, ngày ${new Date().getDate()} tháng ${new Date().getMonth() + 1} năm ${new Date().getFullYear()}`,
+          .text(`Hồ Chí Minh, ngày ${new Date().getDate()} tháng ${new Date().getMonth() + 1} năm ${new Date().getFullYear()}`,
             PAGE_MARGIN,
             footerY, // Use calculated footer position
             { align: 'right', width: CONTENT_WIDTH })
@@ -1643,17 +1643,17 @@ export class TaskAssignmentsService {
 
         // Manager signature
         doc.fillColor('#000000').fontSize(10).font('VietnameseFont', 'bold')
-        doc.text('Manager Signature', PAGE_MARGIN + sigMargin, sigY + 10, { align: 'center', width: sigWidth })
+        doc.text('Chữ ký quản lý', PAGE_MARGIN + sigMargin, sigY + 10, { align: 'center', width: sigWidth })
         doc.rect(PAGE_MARGIN + sigMargin, sigY + 30, sigWidth, 50).fillAndStroke('#FFFFFF', '#000000')
 
         // Leader signature
         doc.fillColor('#000000').fontSize(10).font('VietnameseFont', 'bold')
-        doc.text('Leader Signature', PAGE_MARGIN + sigMargin * 2 + sigWidth, sigY + 10, { align: 'center', width: sigWidth })
+        doc.text('Chữ ký trưởng nhóm', PAGE_MARGIN + sigMargin * 2 + sigWidth, sigY + 10, { align: 'center', width: sigWidth })
         doc.rect(PAGE_MARGIN + sigMargin * 2 + sigWidth, sigY + 30, sigWidth, 50).fillAndStroke('#FFFFFF', '#000000')
 
         // Resident signature
         doc.fillColor('#000000').fontSize(10).font('VietnameseFont', 'bold')
-        doc.text('Resident Signature', PAGE_MARGIN + sigMargin * 3 + sigWidth * 2, sigY + 10, { align: 'center', width: sigWidth })
+        doc.text('Chữ ký cư dân', PAGE_MARGIN + sigMargin * 3 + sigWidth * 2, sigY + 10, { align: 'center', width: sigWidth })
         doc.rect(PAGE_MARGIN + sigMargin * 3 + sigWidth * 2, sigY + 30, sigWidth, 50).fillAndStroke('#FFFFFF', '#000000')
 
 
@@ -1703,48 +1703,48 @@ export class TaskAssignmentsService {
       switch (payload.status) {
         case 'Pending':
           worklogStatus = 'INIT_INSPECTION'
-          worklog_title = 'New Task Created'
-          worklog_description = 'The task has been assigned and is waiting for inspection.'
+          worklog_title = 'Nhiệm vụ mới được tạo'
+          worklog_description = 'Nhiệm vụ đã được phân công và đang chờ kiểm tra.'
           break
         case 'Verified':
           worklogStatus = 'WAIT_FOR_DEPOSIT'
-          worklog_title = 'Task Has Been Verified'
-          worklog_description = 'The task has been verified and is waiting for deposit.'
+          worklog_title = 'Nhiệm vụ đã được xác minh'
+          worklog_description = 'Nhiệm vụ đã được xác minh và đang chờ đặt cọc.'
           break
         case 'InFixing':
           worklogStatus = 'EXECUTE_CRACKS'
-          worklog_title = 'Task Is Being Repaired'
-          worklog_description = 'The task is being repaired by the technician.'
+          worklog_title = 'Nhiệm vụ đang được sửa chữa'
+          worklog_description = 'Nhiệm vụ đang được kỹ thuật viên sửa chữa.'
           break
         case 'Fixed':
           worklogStatus = 'CONFIRM_NO_PENDING_ISSUES'
-          worklog_title = 'Task Has Been Repaired'
-          worklog_description = 'The task has been repaired and is waiting for confirmation that there are no remaining issues.'
+          worklog_title = 'Nhiệm vụ đã được sửa chữa'
+          worklog_description = 'Nhiệm vụ đã được sửa chữa và đang chờ xác nhận không còn vấn đề.'
           break
         case 'Confirmed':
           worklogStatus = 'FINAL_REVIEW'
-          worklog_title = 'Task Has Been Confirmed'
-          worklog_description = 'The task has been confirmed and is in the final review process.'
+          worklog_title = 'Nhiệm vụ đã được xác nhận'
+          worklog_description = 'Nhiệm vụ đã được xác nhận và đang trong quá trình xem xét cuối cùng.'
           break
         case 'Reassigned':
           worklogStatus = 'CANCELLED'
-          worklog_title = 'Task Has Been Reassigned'
-          worklog_description = 'The task has been reassigned to another technician.'
+          worklog_title = 'Nhiệm vụ đã được phân công lại'
+          worklog_description = 'Nhiệm vụ đã được phân công lại cho kỹ thuật viên khác.'
           break
         case 'Unverified':
           worklogStatus = 'CANCELLED'
-          worklog_title = 'Task Not Verified'
-          worklog_description = 'The task could not be verified and needs to be reviewed again.'
+          worklog_title = 'Nhiệm vụ không được xác minh'
+          worklog_description = 'Nhiệm vụ không thể được xác minh và cần được xem xét lại.'
           break
         case 'Notcompleted':
           worklogStatus = 'CANCELLED'
-          worklog_title = 'Task Not Completed'
-          worklog_description = 'The task could not be completed and has been cancelled.'
+          worklog_title = 'Nhiệm vụ không hoàn thành'
+          worklog_description = 'Nhiệm vụ không thể hoàn thành và đã bị hủy.'
           break
         default:
           worklogStatus = 'INIT_INSPECTION' // Default status
-          worklog_title = 'Task Status Update'
-          worklog_description = `The task status has been updated to ${payload.status}.`
+          worklog_title = 'Cập nhật trạng thái nhiệm vụ'
+          worklog_description = `Trạng thái nhiệm vụ đã được cập nhật thành ${payload.status}.`
       }
 
       // 4. Create a worklog entry for this status change

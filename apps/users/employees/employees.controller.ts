@@ -26,7 +26,7 @@ export class EmployeesController {
       console.error('Error in gRPC GetAllStaffByStaffLeader:', error);
       return {
         isSuccess: false,
-        message: error.message || 'Service unavailable',
+        message: error.message || 'Dịch vụ không khả dụng',
         data: [],
         pagination: {
           total: 0,
@@ -59,7 +59,7 @@ export class EmployeesController {
       console.error('Error in gRPC GetStaffLeaderByCrackReport:', error);
       return {
         isSuccess: false,
-        message: error.message || 'Service unavailable',
+        message: error.message || 'Dịch vụ không khả dụng',
         data: [],
         pagination: {
           total: 0,
@@ -82,7 +82,7 @@ export class EmployeesController {
       console.error('Error in gRPC GetStaffLeaderByScheduleJob:', error);
       return {
         isSuccess: false,
-        message: error.message || 'Service unavailable',
+        message: error.message || 'Dịch vụ không khả dụng',
         data: [],
         pagination: {
           total: 0,

@@ -43,7 +43,7 @@ export class TechnicalRecordsService {
                 this.logger.log(`File uploaded successfully to S3: ${s3Url}`);
             } else {
                 throw new RpcException({
-                    message: 'Either file or file_url is required',
+                    message: 'Cần có file hoặc file_url',
                     statusCode: 400
                 });
             }
@@ -55,7 +55,7 @@ export class TechnicalRecordsService {
 
             if (!device) {
                 throw new RpcException({
-                    message: `Device with ID ${createTechnicalRecordDto.device_id} not found`,
+                    message: `Không tìm thấy thiết bị với ID ${createTechnicalRecordDto.device_id}`,
                     statusCode: 404
                 });
             }
@@ -92,7 +92,7 @@ export class TechnicalRecordsService {
 
             return {
                 statusCode: 201,
-                message: 'Technical record created successfully',
+                message: 'Tạo hồ sơ kỹ thuật thành công',
                 data: newRecord
             };
         } catch (error) {
@@ -196,7 +196,7 @@ export class TechnicalRecordsService {
 
             if (!technicalRecord) {
                 throw new RpcException({
-                    message: `Technical record with ID ${id} not found`,
+                    message: `Không tìm thấy hồ sơ kỹ thuật với ID ${id}`,
                     statusCode: HttpStatus.NOT_FOUND
                 });
             }
@@ -216,7 +216,7 @@ export class TechnicalRecordsService {
 
             if (!device) {
                 throw new RpcException({
-                    message: `Device with ID ${deviceId} not found`,
+                    message: `Không tìm thấy thiết bị với ID ${deviceId}`,
                     statusCode: HttpStatus.NOT_FOUND
                 });
             }
@@ -300,7 +300,7 @@ export class TechnicalRecordsService {
 
             if (!building) {
                 throw new RpcException({
-                    message: `Building with ID ${buildingId} not found`,
+                    message: `Không tìm thấy tòa nhà với ID ${buildingId}`,
                     statusCode: HttpStatus.NOT_FOUND
                 });
             }
@@ -428,7 +428,7 @@ export class TechnicalRecordsService {
 
             if (!existingRecord) {
                 throw new RpcException({
-                    message: `Technical record with ID ${id} not found`,
+                    message: `Không tìm thấy hồ sơ kỹ thuật với ID ${id}`,
                     statusCode: 404
                 });
             }
@@ -441,7 +441,7 @@ export class TechnicalRecordsService {
 
                 if (!device) {
                     throw new RpcException({
-                        message: `Device with ID ${updateTechnicalRecordDto.device_id} not found`,
+                        message: `Không tìm thấy thiết bị với ID ${updateTechnicalRecordDto.device_id}`,
                         statusCode: HttpStatus.NOT_FOUND
                     });
                 }
@@ -465,7 +465,7 @@ export class TechnicalRecordsService {
                     }
 
                     if (!file.buffer) {
-                        throw new Error('No file buffer available for upload');
+                        throw new Error('Không có bộ đệm file để tải lên');
                     }
 
                     const s3Url = await this.s3UploaderService.uploadFile(file);
@@ -475,7 +475,7 @@ export class TechnicalRecordsService {
                 } catch (uploadError) {
                     this.logger.error(`Error uploading file: ${uploadError.message}`, uploadError.stack);
                     throw new RpcException({
-                        message: `Failed to upload file: ${uploadError.message}`,
+                        message: `Không thể tải lên file: ${uploadError.message}`,
                         statusCode: HttpStatus.INTERNAL_SERVER_ERROR
                     });
                 }
@@ -541,7 +541,7 @@ export class TechnicalRecordsService {
 
             if (!existingRecord) {
                 throw new RpcException({
-                    message: `Technical record with ID ${id} not found`,
+                    message: `Không tìm thấy hồ sơ kỹ thuật với ID ${id}`,
                     statusCode: HttpStatus.NOT_FOUND
                 });
             }
@@ -578,7 +578,7 @@ export class TechnicalRecordsService {
         } catch (error) {
             this.logger.error(`Error uploading file: ${error.message}`, error.stack);
             throw new RpcException({
-                message: `Failed to upload file: ${error.message}`,
+                message: `Không thể tải lên file: ${error.message}`,
                 statusCode: HttpStatus.INTERNAL_SERVER_ERROR
             });
         }
@@ -593,7 +593,7 @@ export class TechnicalRecordsService {
             if (error.code === 'P2003') {
                 throw new RpcException({
                     statusCode: HttpStatus.BAD_REQUEST,
-                    message: 'Foreign key constraint violation. The referenced record does not exist.',
+                    message: 'Vi phạm ràng buộc khóa ngoại. Bản ghi tham chiếu không tồn tại.',
                     error: error.message
                 });
             }
@@ -602,7 +602,7 @@ export class TechnicalRecordsService {
             if (error.code === 'P2002') {
                 throw new RpcException({
                     statusCode: HttpStatus.CONFLICT,
-                    message: 'A record with this value already exists.',
+                    message: 'Đã tồn tại bản ghi với giá trị này.',
                     error: error.message
                 });
             }
@@ -611,7 +611,7 @@ export class TechnicalRecordsService {
             if (error.code === 'P2001' || error.code === 'P2025') {
                 throw new RpcException({
                     statusCode: HttpStatus.NOT_FOUND,
-                    message: 'The record was not found.',
+                    message: 'Không tìm thấy bản ghi.',
                     error: error.message
                 });
             }
@@ -621,7 +621,7 @@ export class TechnicalRecordsService {
         if (error instanceof Prisma.PrismaClientValidationError) {
             throw new RpcException({
                 statusCode: HttpStatus.BAD_REQUEST,
-                message: 'Validation error in database query.',
+                message: 'Lỗi xác thực trong truy vấn cơ sở dữ liệu.',
                 error: error.message
             });
         }
@@ -640,7 +640,7 @@ export class TechnicalRecordsService {
                         throw new RpcException({
                             statusCode: HttpStatus.NOT_FOUND,
                             message: errorObj.message,
-                            error: errorObj.error || 'Not Found'
+                            error: errorObj.error || 'Không tìm thấy'
                         });
                     } else if (errorObj.message &&
                         (errorObj.message.includes('invalid') ||
@@ -649,13 +649,13 @@ export class TechnicalRecordsService {
                         throw new RpcException({
                             statusCode: HttpStatus.BAD_REQUEST,
                             message: errorObj.message,
-                            error: errorObj.error || 'Bad Request'
+                            error: errorObj.error || 'Yêu cầu không hợp lệ'
                         });
                     } else {
                         throw new RpcException({
                             statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-                            message: errorObj.message || 'An error occurred',
-                            error: errorObj.error || 'Internal Server Error'
+                            message: errorObj.message || 'Đã xảy ra lỗi',
+                            error: errorObj.error || 'Lỗi máy chủ nội bộ'
                         });
                     }
                 }
@@ -667,7 +667,7 @@ export class TechnicalRecordsService {
         // Unhandled error
         throw new RpcException({
             statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-            message: 'An unexpected error occurred.',
+            message: 'Đã xảy ra lỗi không mong muốn.',
             error: error.message
         });
     }

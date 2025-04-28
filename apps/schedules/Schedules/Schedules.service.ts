@@ -116,7 +116,7 @@ export class ScheduleService {
       console.error('Error retrieving schedules:', error)
       throw new RpcException({
         statusCode: 500,
-        message: `Error retrieving schedules: ${error.message}`,
+        message: `Lỗi khi lấy danh sách lịch trình: ${error.message}`,
       })
     }
   }
@@ -134,7 +134,7 @@ export class ScheduleService {
       if (!schedule) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Schedule not found',
+          message: 'Không tìm thấy lịch trình',
         })
       }
       console.log(
@@ -152,13 +152,13 @@ export class ScheduleService {
 
       return new ApiResponse<ScheduleResponseDto>(
         true,
-        'Schedule fetched successfully',
+        'Lấy thông tin lịch trình thành công',
         scheduleResponse,
       )
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving schedule',
+        message: 'Lỗi khi lấy thông tin lịch trình',
       })
     }
   }
@@ -175,7 +175,7 @@ export class ScheduleService {
       if (!existingSchedule) {
         return new ApiResponse<ScheduleResponseDto>(
           false,
-          `Schedule with ID ${schedule_id} not found`,
+          `Không tìm thấy lịch trình với ID ${schedule_id}`,
           null
         )
       }
@@ -210,14 +210,14 @@ export class ScheduleService {
 
       return new ApiResponse<ScheduleResponseDto>(
         true,
-        'Schedule and all related jobs have been soft deleted (status set to Cancel)',
+        'Đã hủy lịch trình và tất cả các công việc liên quan',
         scheduleResponse
       )
     } catch (error) {
       console.error('Error in deleteSchedule:', error)
       return new ApiResponse<ScheduleResponseDto>(
         false,
-        `Failed to soft delete schedule: ${error.message}`,
+        `Không thể hủy lịch trình: ${error.message}`,
         null
       )
     }
@@ -332,7 +332,7 @@ export class ScheduleService {
       if (!maintenanceCycle) {
         throw new RpcException({
           statusCode: 404,
-          message: `Maintenance cycle with ID ${dto.cycle_id} not found`,
+          message: `Không tìm thấy chu kỳ bảo trì với ID ${dto.cycle_id}`,
         })
       }
 
@@ -345,7 +345,7 @@ export class ScheduleService {
       if (startDate < now) {
         throw new RpcException({
           statusCode: 400,
-          message: 'Start date cannot be in the past',
+          message: 'Ngày bắt đầu không thể trong quá khứ',
         })
       }
 
@@ -353,7 +353,7 @@ export class ScheduleService {
       if (endDate <= startDate) {
         throw new RpcException({
           statusCode: 400,
-          message: 'End date must be after start date',
+          message: 'Ngày kết thúc phải sau ngày bắt đầu',
         })
       }
 
@@ -561,7 +561,7 @@ export class ScheduleService {
 
       return new ApiResponse<ScheduleResponseDto>(
         true,
-        'Automated maintenance schedule created successfully',
+        'Tạo lịch trình bảo trì tự động thành công',
         {
           ...newSchedule.schedule,
           start_date: newSchedule.schedule.start_date,
@@ -575,7 +575,7 @@ export class ScheduleService {
       if (error instanceof RpcException) throw error
       throw new RpcException({
         statusCode: 500,
-        message: `Failed to create automated maintenance schedule: ${error.message}`,
+        message: `Không thể tạo lịch trình bảo trì tự động: ${error.message}`,
       })
     }
   }
@@ -589,7 +589,7 @@ export class ScheduleService {
       if (!maintenanceCycles || maintenanceCycles.length === 0) {
         throw new RpcException({
           statusCode: 404,
-          message: 'No maintenance cycles found to create schedules',
+          message: 'Không tìm thấy chu kỳ bảo trì để tạo lịch trình',
         })
       }
 
@@ -601,7 +601,7 @@ export class ScheduleService {
       if (!buildings || buildings.length === 0) {
         throw new RpcException({
           statusCode: 404,
-          message: 'No buildings found to create maintenance schedules',
+          message: 'Không tìm thấy tòa nhà để tạo lịch trình bảo trì',
         })
       }
 
@@ -821,8 +821,8 @@ export class ScheduleService {
 
       return new ApiResponse<string>(
         true,
-        `Successfully triggered auto maintenance schedule creation. Created ${createdSchedulesCount} schedules.`,
-        `Created ${createdSchedulesCount} schedules from ${maintenanceCycles.length} maintenance cycles with ${allCreatedJobs.length} task assignments`
+        `Đã kích hoạt tạo lịch trình bảo trì tự động thành công. Đã tạo ${createdSchedulesCount} lịch trình.`,
+        `Đã tạo ${createdSchedulesCount} lịch trình từ ${maintenanceCycles.length} chu kỳ bảo trì với ${allCreatedJobs.length} nhiệm vụ được phân công`
       )
     } catch (error) {
       console.error('Error triggering auto maintenance schedules:', error)
@@ -831,7 +831,7 @@ export class ScheduleService {
       }
       throw new RpcException({
         statusCode: 500,
-        message: 'Error triggering auto maintenance schedules',
+        message: 'Lỗi khi kích hoạt tạo lịch trình bảo trì tự động',
       })
     }
   }
@@ -849,7 +849,7 @@ export class ScheduleService {
       if (!maintenanceCycle) {
         throw new RpcException({
           statusCode: 404,
-          message: `Maintenance cycle with ID ${createScheduleDto.cycle_id} not found`,
+          message: `Không tìm thấy chu kỳ bảo trì với ID ${createScheduleDto.cycle_id}`,
         })
       }
 
@@ -1092,7 +1092,7 @@ export class ScheduleService {
 
       return new ApiResponse<ScheduleResponseDto>(
         true,
-        'Schedule created successfully',
+        'Tạo lịch trình thành công',
         scheduleResponse,
       )
     } catch (error) {
@@ -1104,7 +1104,7 @@ export class ScheduleService {
 
       throw new RpcException({
         statusCode: 500,
-        message: `Failed to create schedule: ${error.message}`,
+        message: `Không thể tạo lịch trình: ${error.message}`,
       })
     }
   }
@@ -1126,7 +1126,7 @@ export class ScheduleService {
       if (!existingSchedule) {
         throw new RpcException({
           statusCode: 404,
-          message: `Schedule with ID ${schedule_id} not found`,
+          message: `Không tìm thấy lịch trình với ID ${schedule_id}`,
         })
       }
 
@@ -1313,7 +1313,7 @@ export class ScheduleService {
 
       return new ApiResponse<ScheduleResponseDto>(
         true,
-        'Schedule updated successfully',
+        'Cập nhật lịch trình thành công',
         scheduleResponse,
       );
     } catch (error) {
@@ -1325,7 +1325,7 @@ export class ScheduleService {
 
       throw new RpcException({
         statusCode: 500,
-        message: `Failed to update schedule: ${error.message}`,
+        message: `Không thể cập nhật lịch trình: ${error.message}`,
       });
     }
   }
@@ -1339,7 +1339,7 @@ export class ScheduleService {
       if (!buildingDetails || buildingDetails.length === 0) {
         throw new RpcException({
           statusCode: 400,
-          message: 'At least one building detail ID is required',
+          message: 'Cần ít nhất một ID chi tiết tòa nhà',
         });
       }
 
@@ -1577,14 +1577,14 @@ export class ScheduleService {
       if (createdSchedules.length === 0) {
         return new ApiResponse(
           false,
-          'No schedules could be created. Check that all cycle IDs and building detail IDs are valid.',
+          'Không thể tạo lịch trình nào. Vui lòng kiểm tra lại tất cả ID chu kỳ và ID chi tiết tòa nhà.',
           null
         );
       }
 
       return new ApiResponse(
         true,
-        `Successfully generated ${createdSchedules.length} schedules with ${allCreatedJobs.length} jobs`,
+        `Đã tạo thành công ${createdSchedules.length} lịch trình với ${allCreatedJobs.length} công việc`,
         {
           createdSchedules: createdSchedules.map(s => ({
             schedule_id: s.schedule.schedule_id,
@@ -1602,7 +1602,7 @@ export class ScheduleService {
       if (error instanceof RpcException) throw error;
       throw new RpcException({
         statusCode: 500,
-        message: `Failed to generate schedules: ${error.message}`,
+        message: `Không thể tạo lịch trình: ${error.message}`,
       });
     }
   }

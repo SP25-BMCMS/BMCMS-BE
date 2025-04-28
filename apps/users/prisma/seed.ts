@@ -131,15 +131,28 @@ async function main() {
     }
   });
 
-  const manager = await prisma.user.create({
+  const rainbowManager = await prisma.user.create({
     data: {
-      username: 'manager',
+      username: 'rainbow_manager',
       password: hashedPassword,
-      email: 'manager@example.com',
+      email: 'rainbow_manager@example.com',
       phone: '0908888888',
       role: 'Manager',
       dateOfBirth: new Date('1990-01-01'),
       gender: 'Male',
+      accountStatus: 'Active'
+    }
+  });
+
+  const origamiManager = await prisma.user.create({
+    data: {
+      username: 'origami_manager',
+      password: hashedPassword,
+      email: 'origami_manager@example.com',
+      phone: '0909876543',
+      role: 'Manager',
+      dateOfBirth: new Date('1985-05-12'),
+      gender: 'Female',
       accountStatus: 'Active'
     }
   });
