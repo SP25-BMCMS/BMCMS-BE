@@ -13,34 +13,6 @@ export class ClientConfigService {
     return { url, queueName }
   }
 
-  private getRabbitMQOptions(queue: string): ClientOptions {
-    const { url } = this.getRabbitMQConfig()
-    return {
-      transport: Transport.RMQ,
-      options: {
-        urls: [url],
-        queue: queue,
-        queueOptions: {
-          durable: true,
-          arguments: {
-            'x-max-priority': 10,
-            'x-message-ttl': 3600000,
-            'x-expires': 20800000,
-          },
-        },
-        socketOptions: {
-          heartbeatIntervalInSeconds: 30,
-          reconnectTimeInSeconds: 5,
-        },
-        noAck: false,
-        persistent: true,
-        prefetchCount: 1,
-        isGlobalPrefetchCount: true,
-        maxConnectionAttempts: 5,
-      },
-    }
-  }
-
   getUsersClientPort(): number {
     return this.config.get<number>('USERS_CLIENT_PORT')
   }
@@ -62,27 +34,77 @@ export class ClientConfigService {
   }
 
   get cracksClientOptions(): ClientOptions {
-    return this.getRabbitMQOptions('cracks_queue')
+    const { url, queueName } = this.getRabbitMQConfig()
+    return {
+      transport: Transport.RMQ,
+      options: {
+        urls: [url],
+        queue: 'cracks_queue',
+        queueOptions: {
+          durable: true,
+        },
+      },
+    }
   }
 
   get buildingsClientOptions(): ClientOptions {
-    return this.getRabbitMQOptions('buildings_queue')
+    const { url, queueName } = this.getRabbitMQConfig()
+    return {
+      transport: Transport.RMQ,
+      options: {
+        urls: [url],
+        queue: 'buildings_queue',
+        queueOptions: {
+          durable: true,
+        },
+      },
+    }
   }
 
   get TasksClientOptions(): ClientOptions {
-    return this.getRabbitMQOptions('tasks_queue')
+    const { url, queueName } = this.getRabbitMQConfig()
+    return {
+      transport: Transport.RMQ,
+      options: {
+        urls: [url],
+        queue: 'tasks_queue',
+        queueOptions: {
+          durable: true,
+        },
+      },
+    }
   }
 
   get SchedulesClientOptions(): ClientOptions {
-    return this.getRabbitMQOptions('schedules_queue')
+    const { url, queueName } = this.getRabbitMQConfig()
+    return {
+      transport: Transport.RMQ,
+      options: {
+        urls: [url],
+        queue: 'schedules_queue',
+        queueOptions: {
+          durable: true,
+        },
+      },
+    }
   }
 
   get NotificationsClientOptions(): ClientOptions {
-    return this.getRabbitMQOptions('notifications_queue')
+    const { url, queueName } = this.getRabbitMQConfig()
+    return {
+      transport: Transport.RMQ,
+      options: {
+        urls: [url],
+        queue: 'notifications_queue',
+        queueOptions: {
+          durable: true,
+        },
+      },
+    }
   }
 
   get chatbotClientOptions(): ClientOptions {
-    const { url } = this.getRabbitMQConfig()
+    const { url, queueName } = this.getRabbitMQConfig()
     return {
       transport: Transport.RMQ,
       options: {
@@ -90,21 +112,17 @@ export class ClientConfigService {
         queue: 'chatbot_queue',
         queueOptions: {
           durable: true,
-          arguments: {
-            'x-max-priority': 10,
-            'x-message-ttl': 3600000,
-            'x-expires': 86400000,
-          },
         },
+        prefetchCount: 1,
         socketOptions: {
-          heartbeatIntervalInSeconds: 30,
-          reconnectTimeInSeconds: 5,
+          heartbeatIntervalInSeconds: 60,
+          reconnectTimeInSeconds: 10,
         },
         noAck: true,
-        persistent: false,
-        prefetchCount: 1,
-        isGlobalPrefetchCount: true,
-        maxConnectionAttempts: 5,
+        persistent: false
+
+
+
       },
     }
   }
