@@ -25,7 +25,7 @@ export class ClientConfigService {
           arguments: {
             'x-max-priority': 10,
             'x-message-ttl': 3600000,
-            'x-expires': 86400000,
+            'x-expires': 20800000,
           },
         },
         socketOptions: {
