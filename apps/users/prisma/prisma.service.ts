@@ -1,21 +1,15 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common'
-import { PrismaClient } from '@prisma/client-users'
-import { withAccelerate } from '@prisma/extension-accelerate'
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { withOptimize } from "@prisma/extension-optimize"
+import { PrismaClient } from '@prisma/client-users'
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor(private configService: ConfigService) {
-    // const accelerateUrl = configService.get<string>('USER_PRISMA_ACCELERATE_URL')
-    // if (!accelerateUrl) {
-    //   throw new Error('USER_PRISMA_ACCELERATE_URL is not defined')
-    // }
+
     const url = configService.get<string>('DB_USER_SERVICE')
     super({
       log: ['error', 'warn'],
       datasources: {
         db: {
-          // url: accelerateUrl
           url: url
         }
       }
@@ -30,10 +24,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         this.$queryRaw`SELECT 1` // Simple query to warm up connection
       ])
 
-      // Apply Accelerate extension
-      // this.$extends(withAccelerate())
-      // this.$extends(withOptimize({ apiKey: this.configService.get<string>('USER_PRISMA_OPTIMIZE_KEY') }))
-      // console.log('Successfully connected to database with Accelerate')
     } catch (error) {
       console.error('Failed to connect to database:', error)
       throw error
