@@ -22,6 +22,11 @@ export class ClientConfigService {
         queue: queue,
         queueOptions: {
           durable: true,
+          arguments: {
+            'x-max-priority': 10,
+            'x-message-ttl': 3600000,
+            'x-expires': 86400000,
+          },
         },
         socketOptions: {
           heartbeatIntervalInSeconds: 30,
@@ -85,6 +90,11 @@ export class ClientConfigService {
         queue: 'chatbot_queue',
         queueOptions: {
           durable: true,
+          arguments: {
+            'x-max-priority': 10,
+            'x-message-ttl': 3600000,
+            'x-expires': 86400000,
+          },
         },
         socketOptions: {
           heartbeatIntervalInSeconds: 30,
