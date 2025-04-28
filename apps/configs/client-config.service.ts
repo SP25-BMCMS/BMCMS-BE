@@ -13,6 +13,29 @@ export class ClientConfigService {
     return { url, queueName }
   }
 
+  private getRabbitMQOptions(queue: string): ClientOptions {
+    const { url } = this.getRabbitMQConfig()
+    return {
+      transport: Transport.RMQ,
+      options: {
+        urls: [url],
+        queue: queue,
+        queueOptions: {
+          durable: true,
+        },
+        socketOptions: {
+          heartbeatIntervalInSeconds: 30,
+          reconnectTimeInSeconds: 5,
+        },
+        noAck: false,
+        persistent: true,
+        prefetchCount: 1,
+        isGlobalPrefetchCount: true,
+        maxConnectionAttempts: 5,
+      },
+    }
+  }
+
   getUsersClientPort(): number {
     return this.config.get<number>('USERS_CLIENT_PORT')
   }
@@ -34,77 +57,27 @@ export class ClientConfigService {
   }
 
   get cracksClientOptions(): ClientOptions {
-    const { url, queueName } = this.getRabbitMQConfig()
-    return {
-      transport: Transport.RMQ,
-      options: {
-        urls: [url],
-        queue: 'cracks_queue',
-        queueOptions: {
-          durable: true,
-        },
-      },
-    }
+    return this.getRabbitMQOptions('cracks_queue')
   }
 
   get buildingsClientOptions(): ClientOptions {
-    const { url, queueName } = this.getRabbitMQConfig()
-    return {
-      transport: Transport.RMQ,
-      options: {
-        urls: [url],
-        queue: 'buildings_queue',
-        queueOptions: {
-          durable: true,
-        },
-      },
-    }
+    return this.getRabbitMQOptions('buildings_queue')
   }
 
   get TasksClientOptions(): ClientOptions {
-    const { url, queueName } = this.getRabbitMQConfig()
-    return {
-      transport: Transport.RMQ,
-      options: {
-        urls: [url],
-        queue: 'tasks_queue',
-        queueOptions: {
-          durable: true,
-        },
-      },
-    }
+    return this.getRabbitMQOptions('tasks_queue')
   }
 
   get SchedulesClientOptions(): ClientOptions {
-    const { url, queueName } = this.getRabbitMQConfig()
-    return {
-      transport: Transport.RMQ,
-      options: {
-        urls: [url],
-        queue: 'schedules_queue',
-        queueOptions: {
-          durable: true,
-        },
-      },
-    }
+    return this.getRabbitMQOptions('schedules_queue')
   }
 
   get NotificationsClientOptions(): ClientOptions {
-    const { url, queueName } = this.getRabbitMQConfig()
-    return {
-      transport: Transport.RMQ,
-      options: {
-        urls: [url],
-        queue: 'notifications_queue',
-        queueOptions: {
-          durable: true,
-        },
-      },
-    }
+    return this.getRabbitMQOptions('notifications_queue')
   }
 
   get chatbotClientOptions(): ClientOptions {
-    const { url, queueName } = this.getRabbitMQConfig()
+    const { url } = this.getRabbitMQConfig()
     return {
       transport: Transport.RMQ,
       options: {
@@ -113,13 +86,15 @@ export class ClientConfigService {
         queueOptions: {
           durable: true,
         },
-        prefetchCount: 1,
         socketOptions: {
-          heartbeatIntervalInSeconds: 60,
-          reconnectTimeInSeconds: 10,
+          heartbeatIntervalInSeconds: 30,
+          reconnectTimeInSeconds: 5,
         },
         noAck: true,
-        persistent: false
+        persistent: false,
+        prefetchCount: 1,
+        isGlobalPrefetchCount: true,
+        maxConnectionAttempts: 5,
       },
     }
   }
