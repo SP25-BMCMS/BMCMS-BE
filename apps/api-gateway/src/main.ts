@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core'
 import { BuildingMaintenanceApiGatewayModule } from './building-maintenance-api-gateway.module'
 import { HttpExceptionFilter } from './exception-filters/http-exception.filter'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import { EnumLabelInterceptor } from './common/interceptors/enum-label.interceptor'
 
 async function bootstrap() {
   const app = await NestFactory.create(BuildingMaintenanceApiGatewayModule)
@@ -79,6 +80,9 @@ async function bootstrap() {
   }
 
   SwaggerModule.setup('api', app, document, customOptions)
+
+  // Apply EnumLabelInterceptor globally
+  app.useGlobalInterceptors(new EnumLabelInterceptor())
 
   const PORT = process.env.PORT || 3000
   await app.listen(PORT)

@@ -802,27 +802,29 @@ export class UsersService {
         const { password, ...userWithoutPassword } = staff
         return {
           ...userWithoutPassword,
+          roleLabel: this.getRoleLabel(staff.role),
+          genderLabel: this.getGenderLabel(staff.gender),
+          accountStatusLabel: this.getAccountStatusLabel(staff.accountStatus),
           dateOfBirth: staff.dateOfBirth
             ? staff.dateOfBirth.toISOString()
             : null,
           userDetails: staff.userDetails
             ? {
               ...staff.userDetails,
+              staffStatusLabel: this.getStaffStatusLabel(staff.userDetails.staffStatus),
               position: staff.userDetails.position
                 ? {
                   positionId: staff.userDetails.position.positionId,
-                  positionName:
-                    staff.userDetails.position.positionName.toString(),
+                  positionName: staff.userDetails.position.positionName.toString(),
+                  positionNameLabel: this.getPositionNameLabel(staff.userDetails.position.positionName.toString()),
                   description: staff.userDetails.position.description || '',
                 }
                 : null,
               department: staff.userDetails.department
                 ? {
                   departmentId: staff.userDetails.department.departmentId,
-                  departmentName:
-                    staff.userDetails.department.departmentName,
-                  description:
-                    staff.userDetails.department.description || '',
+                  departmentName: staff.userDetails.department.departmentName,
+                  description: staff.userDetails.department.description || '',
                   area: staff.userDetails.department.area || '',
                 }
                 : null,
@@ -1243,16 +1245,20 @@ export class UsersService {
     email: string
     phone: string
     role: string
+    roleLabel: string
     dateOfBirth: string | null
     gender: string | null
+    genderLabel: string | null
     userDetails?: {
       positionId: string | null
       departmentId: string | null
       staffStatus: string | null
+      staffStatusLabel: string | null
       image: string | null
       position?: {
         positionId: string
         positionName: string
+        positionNameLabel: string
         description: string | null
       } | null
       department?: {
@@ -1263,6 +1269,7 @@ export class UsersService {
       } | null
     } | null
     accountStatus: string
+    accountStatusLabel: string
   }> {
     try {
       const { userId, username } = data
@@ -1382,17 +1389,24 @@ export class UsersService {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        roleLabel: this.getRoleLabel(user.role),
         dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString() : null,
         gender: user.gender,
+        genderLabel: this.getGenderLabel(user.gender),
         userDetails: user.userDetails ? {
           positionId: user.userDetails.positionId,
           departmentId: user.userDetails.departmentId,
           staffStatus: user.userDetails.staffStatus,
+          staffStatusLabel: this.getStaffStatusLabel(user.userDetails.staffStatus),
           image: user.userDetails.image,
-          position: positionDetails,
+          position: positionDetails ? {
+            ...positionDetails,
+            positionNameLabel: this.getPositionNameLabel(positionDetails.positionName)
+          } : null,
           department: departmentDetails
         } : null,
-        accountStatus: user.accountStatus
+        accountStatus: user.accountStatus,
+        accountStatusLabel: this.getAccountStatusLabel(user.accountStatus)
       }
 
       return response
@@ -1405,6 +1419,52 @@ export class UsersService {
         message: error.message || 'Lỗi khi lấy thông tin người dùng',
       })
     }
+  }
+
+  // Helper methods to get labels
+  private getRoleLabel(role: string): string {
+    const roleLabels = {
+      'Admin': 'Quản trị viên',
+      'Manager': 'Quản lý',
+      'Resident': 'Cư dân',
+      'Staff': 'Nhân viên'
+    };
+    return roleLabels[role] || role;
+  }
+
+  private getGenderLabel(gender: string): string {
+    const genderLabels = {
+      'Male': 'Nam',
+      'Female': 'Nữ',
+      'Other': 'Khác'
+    };
+    return genderLabels[gender] || gender;
+  }
+
+  private getStaffStatusLabel(status: string): string {
+    const statusLabels = {
+      'Active': 'Đang hoạt động',
+      'Inactive': 'Không hoạt động'
+    };
+    return statusLabels[status] || status;
+  }
+
+  private getPositionNameLabel(position: string): string {
+    const positionLabels = {
+      'Leader': 'Trưởng nhóm',
+      'Technician': 'Kỹ thuật viên',
+      'Janitor': 'Nhân viên vệ sinh',
+      'Maintenance_Technician': 'Kỹ thuật viên bảo trì'
+    };
+    return positionLabels[position] || position;
+  }
+
+  private getAccountStatusLabel(status: string): string {
+    const statusLabels = {
+      'Active': 'Đang hoạt động',
+      'Inactive': 'Không hoạt động'
+    };
+    return statusLabels[status] || status;
   }
 
   async getDepartmentById(departmentId: string): Promise<{
@@ -1782,7 +1842,6 @@ export class UsersService {
           )
 
           console.log(`[users.service] Area response:`, JSON.stringify(areaResponse))
-
           // Kiểm tra xem có lấy được thông tin area không
           if (!areaResponse || areaResponse.statusCode !== 200 || !areaResponse.data) {
             return {
@@ -1910,3 +1969,4 @@ export class UsersService {
     }
   }
 }
+
