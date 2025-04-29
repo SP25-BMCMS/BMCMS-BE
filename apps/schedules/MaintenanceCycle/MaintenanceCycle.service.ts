@@ -157,6 +157,16 @@ export class MaintenanceCycleService {
 
   async delete(cycle_id: string): Promise<ApiResponse<MaintenanceCycleDto>> {
     try {
+      // Delete all history records for the cycle 
+      const history = await this.prisma.maintenanceCycleHistory.findFirst({
+        where: { cycle_id }
+      })
+      if (history) {
+        await this.prisma.maintenanceCycleHistory.deleteMany({
+          where: { cycle_id },
+        })
+      }
+
       const cycle = await this.prisma.maintenanceCycle.delete({
         where: { cycle_id },
       })
