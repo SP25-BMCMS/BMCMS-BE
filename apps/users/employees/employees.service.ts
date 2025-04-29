@@ -154,7 +154,7 @@ export class EmployeesService {
       if (!staffLeader) {
         return {
           isSuccess: false,
-          message: 'Không tìm thấy leader hoặc người này không phải là leader',
+          message: 'Không tìm thấy trưởng nhóm hoặc người này không phải là trưởng nhóm',
           data: [],
           pagination: {
             total: 0,
@@ -173,7 +173,7 @@ export class EmployeesService {
           },
           position: {
             positionName: {
-              in: ['Technician', 'Janitor']
+              in: ['Technician']
             }
           }
         },
@@ -211,7 +211,7 @@ export class EmployeesService {
 
       return {
         isSuccess: true,
-        message: 'Lấy danh sách nhân viên dưới quyền leader thành công',
+        message: 'Lấy danh sách nhân viên dưới quyền trưởng nhóm thành công',
         data: transformedData,
         pagination: {
           total: transformedData.length,
@@ -452,7 +452,7 @@ export class EmployeesService {
       if (!staffLeaders || staffLeaders.length === 0) {
         return {
           isSuccess: false,
-          message: `Không tìm thấy leader nào trong khu vực: ${areaName}`,
+          message: `Không tìm thấy trưởng nhóm nào trong khu vực: ${areaName}`,
           data: [],
           pagination: {
             total: 0,
@@ -496,7 +496,7 @@ export class EmployeesService {
 
       return {
         isSuccess: true,
-        message: `Lấy danh sách leader trong khu vực: ${areaName} thành công`,
+        message: `Lấy danh sách trưởng nhóm trong khu vực: ${areaName} thành công`,
         data: staffData,
         pagination: {
           total: staffData.length,
@@ -509,7 +509,7 @@ export class EmployeesService {
       console.error('Error in getStaffLeaderByCrackReport:', error);
       return {
         isSuccess: false,
-        message: 'Không thể lấy danh sách leader. Đã xảy ra lỗi cơ sở dữ liệu.',
+        message: 'Không thể lấy danh sách trưởng nhóm. Đã xảy ra lỗi cơ sở dữ liệu.',
         data: [],
         pagination: {
           total: 0,
@@ -703,7 +703,7 @@ export class EmployeesService {
       if (!staffLeaders || staffLeaders.length === 0) {
         return {
           isSuccess: false,
-          message: `Không tìm thấy leader nào trong khu vực: ${areaName}`,
+          message: `Không tìm thấy trưởng nhóm nào trong khu vực: ${areaName}`,
           data: [],
           pagination: {
             total: 0,
@@ -747,7 +747,7 @@ export class EmployeesService {
 
       return {
         isSuccess: true,
-        message: `Lấy danh sách leader trong khu vực: ${areaName} thành công`,
+        message: `Lấy danh sách trưởng nhóm trong khu vực: ${areaName} thành công`,
         data: staffData,
         pagination: {
           total: staffData.length,
@@ -760,7 +760,7 @@ export class EmployeesService {
       console.error('Error in getStaffLeaderByScheduleJob:', error);
       return {
         isSuccess: false,
-        message: 'Không thể lấy danh sách leader. Đã xảy ra lỗi cơ sở dữ liệu.',
+        message: 'Không thể lấy danh sách trưởng nhóm. Đã xảy ra lỗi cơ sở dữ liệu.',
         data: [],
         pagination: {
           total: 0,

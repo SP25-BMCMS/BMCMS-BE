@@ -422,9 +422,6 @@ export class UsersService {
         case 'Technician':
           positionNameEnum = PositionName.Technician
           break
-        case 'Janitor':
-          positionNameEnum = PositionName.Janitor
-          break
         case 'Maintenance_Technician':
           positionNameEnum = PositionName.Maintenance_Technician
           break
@@ -1453,7 +1450,6 @@ export class UsersService {
     const positionLabels = {
       'Leader': 'Trưởng nhóm',
       'Technician': 'Kỹ thuật viên',
-      'Janitor': 'Nhân viên vệ sinh',
       'Maintenance_Technician': 'Kỹ thuật viên bảo trì'
     };
     return positionLabels[position] || position;

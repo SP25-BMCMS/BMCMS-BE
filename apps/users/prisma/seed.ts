@@ -88,30 +88,23 @@ async function main() {
   const positionLeader = await prisma.workingPosition.create({
     data: {
       positionName: 'Leader',
-      description: 'Team Lead Engineer for department'
-    }
-  });
+      description: 'Trưởng nhóm',
+    },
+  })
 
   const positionTechnician = await prisma.workingPosition.create({
     data: {
       positionName: 'Technician',
-      description: 'Specialized Technician'
-    }
-  });
+      description: 'Kỹ thuật viên',
+    },
+  })
 
-  const positionJanitor = await prisma.workingPosition.create({
-    data: {
-      positionName: 'Janitor',
-      description: 'Cleaning and maintenance staff'
-    }
-  });
-
-  const positionSupervisor = await prisma.workingPosition.create({
+  const positionMaintenanceTechnician = await prisma.workingPosition.create({
     data: {
       positionName: 'Maintenance_Technician',
-      description: 'Department supervisor'
-    }
-  });
+      description: 'Kỹ thuật viên bảo trì',
+    },
+  })
 
   // Hash passwords for security
   const hashedPassword = await hashPassword('123456');
@@ -239,7 +232,7 @@ async function main() {
       userDetails: {
         create: {
           image: 'staff_rainbow_cleaning.jpg',
-          positionId: positionJanitor.positionId,
+          positionId: positionMaintenanceTechnician.positionId,
           departmentId: departmentRainbowCleaning.departmentId,
           staffStatus: 'Active'
         }
@@ -324,7 +317,7 @@ async function main() {
       userDetails: {
         create: {
           image: 'staff_origami_cleaning.jpg',
-          positionId: positionJanitor.positionId,
+          positionId: positionMaintenanceTechnician.positionId,
           departmentId: departmentOrigamiCleaning.departmentId,
           staffStatus: 'Active'
         }
@@ -367,7 +360,7 @@ async function main() {
       userDetails: {
         create: {
           image: 'staff_rainbow_supervisor.jpg',
-          positionId: positionSupervisor.positionId,
+          positionId: positionMaintenanceTechnician.positionId,
           departmentId: departmentRainbowPrimary.departmentId,
           staffStatus: 'Active'
         }
@@ -388,7 +381,7 @@ async function main() {
       userDetails: {
         create: {
           image: 'staff_origami_supervisor.jpg',
-          positionId: positionSupervisor.positionId,
+          positionId: positionMaintenanceTechnician.positionId,
           departmentId: departmentOrigamiPrimary.departmentId,
           staffStatus: 'Active'
         }
