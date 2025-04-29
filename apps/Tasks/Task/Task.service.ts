@@ -18,6 +18,7 @@ import { catchError, retry, timeout } from 'rxjs/operators'
 import { AREAS_PATTERN } from '@app/contracts/Areas/Areas.patterns'
 import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
 import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
+import { GetTasksByTypeDto } from '@app/contracts/tasks/get-tasks-by-type.dto'
 
 const CRACK_PATTERNS = {
   GET_DETAILS: { cmd: 'get-crack-report-by-id' }
@@ -992,6 +993,141 @@ export class TaskService {
       throw new RpcException(
         new ApiResponse(false, `Lỗi khi xử lý thông báo: ${error.message}`)
       );
+    }
+  }
+
+  async getTasksByType(query: GetTasksByTypeDto) {
+    const startTime = performance.now();
+    try {
+      // Default values if not provided
+      const page = Math.max(1, query?.page || 1);
+      const limit = Math.min(50, Math.max(1, query?.limit || 10));
+      const statusFilter = query?.statusFilter;
+      const taskType = query?.taskType || 'all';
+
+      // Calculate skip value for pagination
+      const skip = (page - 1) * limit;
+
+      // Build where clause for filtering
+      let whereClause: any = {};
+
+      // Add status filter if provided
+      if (statusFilter) {
+        whereClause.status = statusFilter as Status;
+      }
+
+      // Add task type filter
+      if (taskType !== 'all') {
+        if (taskType === 'crack') {
+          whereClause.crack_id = {
+            not: ''
+          };
+        } else if (taskType === 'schedule') {
+          whereClause.schedule_job_id = {
+            not: ''
+          };
+        }
+      }
+
+      // Get paginated data with caching
+      const [tasks, total] = await Promise.all([
+        this.prisma.task.findMany({
+          where: whereClause,
+          skip,
+          take: limit,
+          orderBy: { created_at: 'desc' },
+          include: {
+            taskAssignments: true,
+            workLogs: true,
+            feedbacks: true
+          }
+        }),
+        this.prisma.task.count({
+          where: whereClause
+        }),
+      ]);
+
+      const dbQueryTime = performance.now() - startTime;
+      console.log(`Database query time: ${dbQueryTime.toFixed(2)}ms`);
+
+      // Fetch both crack info and schedule job info for each task
+      const additionalInfoPromises = tasks.map(task => {
+        const promises = [];
+
+        if (task.crack_id) {
+          promises.push(
+            firstValueFrom(
+              this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id).pipe(
+                timeout(15000),
+                catchError(err => {
+                  console.error(`Error fetching crack info for task ${task.task_id}:`, err);
+                  return of({
+                    statusCode: 400,
+                    message: 'Không tìm thấy báo cáo vết nứt',
+                    data: null,
+                  });
+                })
+              )
+            ).then(response => ({ type: 'crack', data: response }))
+          );
+        }
+
+        if (task.schedule_job_id) {
+          promises.push(
+            firstValueFrom(
+              this.scheduleClient.send(SCHEDULEJOB_PATTERN.GET_BY_ID, { schedule_job_id: task.schedule_job_id }).pipe(
+                timeout(15000),
+                catchError(err => {
+                  console.error(`Error fetching schedule job info for task ${task.task_id}:`, err);
+                  return of({
+                    statusCode: 400,
+                    message: 'Không tìm thấy lịch trình',
+                    data: null,
+                  });
+                })
+              )
+            ).then(response => ({ type: 'scheduleJob', data: response }))
+          );
+        }
+
+        return Promise.all(promises);
+      });
+
+      const additionalInfoStartTime = performance.now();
+      const additionalInfos = await Promise.all(additionalInfoPromises);
+      const additionalInfoTime = performance.now() - additionalInfoStartTime;
+      console.log(`Additional info fetch time: ${additionalInfoTime.toFixed(2)}ms`);
+
+      // Attach all available info to tasks
+      tasks.forEach((task, index) => {
+        const infos = additionalInfos[index];
+        infos.forEach(info => {
+          if (info?.type === 'crack') {
+            task['crackInfo'] = info.data;
+          }
+          if (info?.type === 'scheduleJob') {
+            task['schedulesjobInfo'] = info.data;
+          }
+        });
+      });
+
+      const totalTime = performance.now() - startTime;
+      console.log(`Total execution time: ${totalTime.toFixed(2)}ms`);
+
+      return new PaginationResponseDto(
+        tasks,
+        total,
+        page,
+        limit,
+        200,
+        tasks.length > 0 ? 'Lấy danh sách nhiệm vụ thành công' : 'Không tìm thấy nhiệm vụ nào',
+      );
+    } catch (error) {
+      console.error('Error retrieving tasks by type:', error);
+      throw new RpcException({
+        statusCode: 500,
+        message: `Lỗi khi lấy danh sách nhiệm vụ: ${error.message}`,
+      });
     }
   }
 }

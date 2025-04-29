@@ -18,6 +18,7 @@ import { CreateRepairMaterialDto } from '@app/contracts/repairmaterials/create-r
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns';
 import { NotificationType } from '@app/contracts/notifications/notification.dto';
+import { GetTasksByTypeDto } from '@app/contracts/tasks/get-tasks-by-type.dto';
 
 // import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto'
 // import { buildingsDto } from '@app/contracts/buildings/buildings.dto'
@@ -461,6 +462,32 @@ export class TaskService {
         },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
+    }
+  }
+
+  async getTasksByType(query: GetTasksByTypeDto) {
+    try {
+      return await firstValueFrom(
+        this.taskClient.send(
+          TASKS_PATTERN.GET_BY_TYPE,
+          query
+        ).pipe(
+          catchError(error => {
+            console.error('Error from task microservice:', error);
+            throw new HttpException(
+              {
+                statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                message: error.message || 'Failed to get tasks by type',
+                error: 'Task Service Error'
+              },
+              HttpStatus.INTERNAL_SERVER_ERROR
+            );
+          })
+        )
+      );
+    } catch (error) {
+      console.error('Error in getTasksByType service:', error);
+      throw error;
     }
   }
 

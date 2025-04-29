@@ -7,6 +7,7 @@ import { CreateTaskDto } from 'libs/contracts/src/tasks/create-Task.dto';
 import { ChangeTaskStatusDto } from 'libs/contracts/src/tasks/ChangeTaskStatus.Dto ';
 import { Status } from '@prisma/client-Task'; // Make sure Status is imported correctly
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
+import { GetTasksByTypeDto } from '@app/contracts/tasks/get-tasks-by-type.dto';
 
 @Controller('task')
 export class TasksController {
@@ -111,6 +112,19 @@ export class TasksController {
       return result;
     } catch (error) {
       console.error('Error in notificationThankstoResident controller:', error);
+      throw error;
+    }
+  }
+
+  @MessagePattern(TASKS_PATTERN.GET_BY_TYPE)
+  async getTasksByType(@Payload() query: GetTasksByTypeDto) {
+    console.log('Received get-tasks-by-type request with query:', query);
+    try {
+      const result = await this.taskService.getTasksByType(query);
+      console.log('getTasksByType completed with result:', JSON.stringify(result));
+      return result;
+    } catch (error) {
+      console.error('Error in getTasksByType controller:', error);
       throw error;
     }
   }

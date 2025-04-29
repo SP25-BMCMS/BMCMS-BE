@@ -36,6 +36,7 @@ import { UpdateInspectionDto } from '../../../../libs/contracts/src/inspections/
 import { CreateRepairMaterialDto } from '@app/contracts/repairmaterials/create-repair-material.dto';
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 import { Status } from '@prisma/client-Task';
+import { GetTasksByTypeDto } from '@app/contracts/tasks/get-tasks-by-type.dto';
 
 @Controller('tasks')
 @ApiTags('tasks')
@@ -303,4 +304,18 @@ export class TaskController {
   // async createRepairMaterial(@Body() createRepairMaterialDto: CreateRepairMaterialDto) {
   //   return this.taskService.createRepairMaterial(createRepairMaterialDto);
   // }
+
+  @Get('tasks/by-type')
+  @ApiOperation({ summary: 'Get tasks by type (crack, schedule, or all)' })
+  @ApiResponse({ status: 200, description: 'Returns tasks filtered by type' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async getTasksByType(@Query() query: GetTasksByTypeDto) {
+    try {
+      return this.taskService.getTasksByType(query);
+    } catch (error) {
+      console.error('Error in getTasksByType controller:', error);
+      throw new Error(`Failed to get tasks: ${error.message}`);
+    }
+  }
 }
