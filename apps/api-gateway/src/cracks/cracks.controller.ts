@@ -16,6 +16,7 @@ import {
   UploadedFiles,
   UseGuards,
   UseInterceptors,
+  SetMetadata,
 } from '@nestjs/common'
 import { ClientProxy } from '@nestjs/microservices'
 import { FilesInterceptor } from '@nestjs/platform-express'
@@ -35,12 +36,15 @@ import {
 } from '@nestjs/swagger'
 import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard'
 import { CRACK_CLIENT } from '../constraints'
+import { UpdateCrackDetailDto } from '@app/contracts/cracks/update-crack-detail.dto'
+
+export const SkipAuth = () => SetMetadata('skip-auth', true)
 
 @Controller('cracks')
 @ApiTags('cracks')
 // @UseGuards(PassportJwtAuthGuard)
-@UseGuards(PassportJwtAuthGuard)
-@ApiBearerAuth('access-token')
+// @UseGuards(PassportJwtAuthGuard)
+// @ApiBearerAuth('access-token')
 export class CracksController {
   constructor(
     @Inject(CRACK_CLIENT) private readonly crackService: ClientProxy,
@@ -70,6 +74,8 @@ export class CracksController {
   @ApiQuery({ name: 'severityFilter', required: false, example: 'Unknown' })
   @ApiResponse({ status: 200, description: 'Returns paginated crack reports' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   async getAllCrackReports(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
@@ -97,7 +103,9 @@ export class CracksController {
     )
   }
 
-  @Get('crack-reports/:id')
+
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token') @Get('crack-reports/:id')
   @ApiOperation({ summary: 'Get crack report by ID with all associated crack details' })
   @ApiParam({ name: 'id', description: 'Crack report ID' })
   @ApiResponse({
@@ -253,6 +261,8 @@ export class CracksController {
     }
   })
   @UseInterceptors(FilesInterceptor('files', 10))
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   async createCrackReport(
     @Body() dto: AddCrackReportDto,
     @UploadedFiles() files: Express.Multer.File[],
@@ -283,6 +293,8 @@ export class CracksController {
     )
   }
 
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @Patch('crack-reports/:id')
   @ApiOperation({ summary: 'Update a crack report' })
   @ApiParam({ name: 'id', description: 'Crack report ID' })
@@ -307,6 +319,8 @@ export class CracksController {
     )
   }
 
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @Delete('crack-reports/:id')
   @ApiOperation({ summary: 'Delete a crack report' })
   @ApiParam({ name: 'id', description: 'Crack report ID' })
@@ -424,7 +438,7 @@ export class CracksController {
   @Patch('crack-details/:id')
   @ApiOperation({ summary: 'Update a crack detail' })
   @ApiParam({ name: 'id', description: 'Crack detail ID' })
-  @ApiBody({ type: UpdateCrackReportDto })
+  @ApiBody({ type: UpdateCrackDetailDto })
   @ApiResponse({
     status: 200,
     description: 'Crack detail updated successfully',
@@ -432,7 +446,7 @@ export class CracksController {
   @ApiResponse({ status: 404, description: 'Crack detail not found' })
   async updateCrackDetails(
     @Param('id') id: string,
-    @Body() dto: UpdateCrackReportDto,
+    @Body() dto: UpdateCrackDetailDto,
   ) {
     return firstValueFrom(
       this.crackService
@@ -486,6 +500,8 @@ export class CracksController {
   @ApiResponse({ status: 201, description: 'Images uploaded successfully' })
   @ApiResponse({ status: 400, description: 'Bad request - No files uploaded' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @UseInterceptors(FilesInterceptor('image', 10))
   async uploadImage(@UploadedFiles() files: Express.Multer.File[]) {
     if (!files || files.length === 0) {
@@ -537,6 +553,8 @@ export class CracksController {
   @ApiResponse({ status: 400, description: 'Bad request - No files uploaded' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   @UseInterceptors(FilesInterceptor('image', 10))
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   async uploadInspectionImage(@UploadedFiles() files: Express.Multer.File[]) {
     if (!files || files.length === 0) {
       throw new BadRequestException('No files uploaded')
