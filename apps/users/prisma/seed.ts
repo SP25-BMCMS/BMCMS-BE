@@ -35,14 +35,6 @@ async function main() {
     }
   });
 
-  const departmentRainbowCleaning = await prisma.department.create({
-    data: {
-      departmentName: 'Cleaning Technicians',
-      area: 'The Rainbow',
-      description: 'Responsible for cleaning The Rainbow area'
-    }
-  });
-
   const departmentRainbowElectrical = await prisma.department.create({
     data: {
       departmentName: 'Electrical Technicians',
@@ -65,14 +57,6 @@ async function main() {
       departmentName: 'HVAC Technicians',
       area: 'The Origami',
       description: 'Specialized in HVAC systems for The Origami area'
-    }
-  });
-
-  const departmentOrigamiCleaning = await prisma.department.create({
-    data: {
-      departmentName: 'Cleaning Technicians',
-      area: 'The Origami',
-      description: 'Responsible for cleaning The Origami area'
     }
   });
 
@@ -219,27 +203,6 @@ async function main() {
     }
   });
 
-  const rainbowCleaning = await prisma.user.create({
-    data: {
-      username: 'rainbow_cleaning',
-      password: hashedPassword,
-      email: 'rainbow_cleaning@example.com',
-      phone: '0903333333',
-      role: 'Staff',
-      dateOfBirth: new Date('1990-11-15'),
-      gender: 'Female',
-      accountStatus: 'Active',
-      userDetails: {
-        create: {
-          image: 'staff_rainbow_cleaning.jpg',
-          positionId: positionMaintenanceTechnician.positionId,
-          departmentId: departmentRainbowCleaning.departmentId,
-          staffStatus: 'Active'
-        }
-      }
-    }
-  });
-
   const rainbowElectrical = await prisma.user.create({
     data: {
       username: 'rainbow_electrical',
@@ -298,27 +261,6 @@ async function main() {
           image: 'staff_origami_hvac.jpg',
           positionId: positionTechnician.positionId,
           departmentId: departmentOrigamiHVAC.departmentId,
-          staffStatus: 'Active'
-        }
-      }
-    }
-  });
-
-  const origamiCleaning = await prisma.user.create({
-    data: {
-      username: 'origami_cleaning',
-      password: hashedPassword,
-      email: 'origami_cleaning@example.com',
-      phone: '0907777777',
-      role: 'Staff',
-      dateOfBirth: new Date('1991-12-05'),
-      gender: 'Female',
-      accountStatus: 'Active',
-      userDetails: {
-        create: {
-          image: 'staff_origami_cleaning.jpg',
-          positionId: positionMaintenanceTechnician.positionId,
-          departmentId: departmentOrigamiCleaning.departmentId,
           staffStatus: 'Active'
         }
       }
