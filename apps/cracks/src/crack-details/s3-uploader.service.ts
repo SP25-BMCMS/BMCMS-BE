@@ -33,36 +33,36 @@ export class S3UploaderService {
     this.bucketName = this.configService.get<string>('AWS_S3_BUCKET')
   }
 
-  async uploadFiles(files: ProcessedFile[]): Promise<ApiResponse<UploadResult>> {
+  async uploadFiles(files: { file: ProcessedFile, crackDetailId: string }[]): Promise<ApiResponse<UploadResult>> {
     if (files.length === 0) {
       throw new RpcException(new ApiResponse(false, 'Files not found!'))
     }
-
+  
     try {
       // Upload ảnh gốc lên S3
-      const uploadPromises = files.map(async (file) => {
-        const fileName = `${uuidv4()}${path.extname(file.originalname)}`
-
+      const uploadPromises = files.map(async ({ file, crackDetailId }) => {
+        const fileName = `${crackDetailId}${path.extname(file.originalname)}`
+  
         // Convert base64 string back to buffer if necessary
         const fileBuffer = typeof file.buffer === 'string'
           ? Buffer.from(file.buffer, 'base64')
           : file.buffer
-
+  
         const uploadParams = {
           Bucket: this.bucketName,
           Key: `uploads/${fileName}`,
           Body: fileBuffer,
           ContentType: file.mimetype,
         }
-
+  
         await this.s3.send(new PutObjectCommand(uploadParams))
-
+  
         return fileName // Chỉ lưu tên file
       })
-
+  
       // Chờ tất cả ảnh upload xong
       const fileNames = await Promise.all(uploadPromises)
-
+  
       // Tạo URL cho ảnh gốc và ảnh đã annotate
       const uploadImage = fileNames.map(
         (fileName) =>
@@ -72,7 +72,7 @@ export class S3UploaderService {
         (fileName) =>
           `https://${this.bucketName}.s3.amazonaws.com/annotated/${fileName}`,
       )
-
+  
       return new ApiResponse(true, 'Upload Image success!', {
         uploadImage,
         annotatedImage,

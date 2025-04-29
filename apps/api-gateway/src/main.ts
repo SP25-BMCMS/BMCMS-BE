@@ -15,7 +15,8 @@ async function bootstrap() {
         'http://buildingmaintennace.tech',
         'https://buildingmaintennace.tech',
         'http://app.buildingmaintennace.tech',
-        'https://app.buildingmaintennace.tech'
+        'https://app.buildingmaintennace.tech',
+        'https://us-east-1.console.aws.amazon.com'
       ]
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true)

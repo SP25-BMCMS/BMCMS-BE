@@ -326,11 +326,31 @@ export class CrackReportsService {
 
         console.log('🚀 CrackReport created:', newCrackReport)
 
-        // 2. Create CrackDetails if isPrivatesAsset is true
+        // 2. Create CrackDetails trước để lấy crackDetailId
         let newCrackDetails = []
         if (dto.files?.length > 0) {
-          // Upload files to S3
-          const uploadResult = await this.s3UploaderService.uploadFiles(dto.files)
+          // Bước 1: Tạo crackDetail trước (chỉ có crackReportId, chưa có photoUrl)
+          newCrackDetails = await Promise.all(
+            dto.files.map(() =>
+              prisma.crackDetail.create({
+                data: {
+                  crackReportId: newCrackReport.crackReportId,
+                  photoUrl: '',
+                  severity: $Enums.Severity.Unknown,
+                  aiDetectionUrl: '',
+                },
+              })
+            )
+          )
+
+          // Bước 2: Chuẩn bị files kèm crackDetailId để upload
+          const filesWithIds = dto.files.map((file, idx) => ({
+            file,
+            crackDetailId: newCrackDetails[idx].crackDetailsId,
+          }))
+
+          // Bước 3: Upload files lên S3
+          const uploadResult = await this.s3UploaderService.uploadFiles(filesWithIds)
 
           if (!uploadResult.isSuccess) {
             throw new RpcException({
@@ -339,18 +359,17 @@ export class CrackReportsService {
             })
           }
 
-          // Create crack details with uploaded URLs
+          // Bước 4: Cập nhật lại crackDetail với photoUrl và aiDetectionUrl
           newCrackDetails = await Promise.all(
-            (uploadResult.data as UploadResult).uploadImage.map((photoUrl, index) => {
-              return prisma.crackDetail.create({
+            newCrackDetails.map(async (detail, idx) => {
+              return prisma.crackDetail.update({
+                where: { crackDetailsId: detail.crackDetailsId },
                 data: {
-                  crackReportId: newCrackReport.crackReportId,
-                  photoUrl: photoUrl,
-                  severity: $Enums.Severity.Low,
-                  aiDetectionUrl: (uploadResult.data as UploadResult).annotatedImage[index],
+                  photoUrl: (uploadResult.data as UploadResult).uploadImage[idx],
+                  aiDetectionUrl: (uploadResult.data as UploadResult).annotatedImage[idx],
                 },
               })
-            }),
+            })
           )
         }
 
@@ -358,20 +377,20 @@ export class CrackReportsService {
 
         // Send notification to managers about the new crack report
         try {
-          let buildingName = "Tòa nhà không xác định";
-          let managerId = null;
-          let retryCount = 0;
-          const maxRetries = 3;
+          let buildingName = "Tòa nhà không xác định"
+          let managerId = null
+          let retryCount = 0
+          const maxRetries = 3
 
           if (!dto.buildingDetailId) {
-            this.logger.error(`Missing buildingDetailId in crack report. Cannot send notification to manager.`);
-            throw new Error('Thiếu buildingDetailId cho thông báo');
+            this.logger.error(`Missing buildingDetailId in crack report. Cannot send notification to manager.`)
+            throw new Error('Thiếu buildingDetailId cho thông báo')
           }
 
           // Lấy buildingDetail với retry logic
           while (!managerId && retryCount < maxRetries) {
             try {
-              this.logger.log(`Attempt ${retryCount + 1} to get building info for buildingDetailId: ${dto.buildingDetailId}`);
+              this.logger.log(`Attempt ${retryCount + 1} to get building info for buildingDetailId: ${dto.buildingDetailId}`)
 
               // Step 1: Get buildingDetail to get buildingId
               const buildingDetailResponse = await firstValueFrom(
@@ -381,24 +400,24 @@ export class CrackReportsService {
                     timeout(10000),
                     retry(2),
                     catchError(error => {
-                      this.logger.error(`Error getting building detail: ${error.message}`);
-                      return of(null);
+                      this.logger.error(`Error getting building detail: ${error.message}`)
+                      return of(null)
                     })
                   )
-              );
+              )
 
               if (!buildingDetailResponse || !buildingDetailResponse.data) {
-                throw new Error(`Failed to get building detail data for ID: ${dto.buildingDetailId}`);
+                throw new Error(`Failed to get building detail data for ID: ${dto.buildingDetailId}`)
               }
 
-              buildingName = buildingDetailResponse.data.name || "Unknown Building";
-              const buildingId = buildingDetailResponse.data.buildingId;
+              buildingName = buildingDetailResponse.data.name || "Unknown Building"
+              const buildingId = buildingDetailResponse.data.buildingId
 
               if (!buildingId) {
-                throw new Error(`Building detail ${dto.buildingDetailId} has no associated buildingId`);
+                throw new Error(`Building detail ${dto.buildingDetailId} has no associated buildingId`)
               }
 
-              this.logger.log(`Found buildingId: ${buildingId} for buildingDetail: ${dto.buildingDetailId}`);
+              this.logger.log(`Found buildingId: ${buildingId} for buildingDetail: ${dto.buildingDetailId}`)
 
               // Step 2: Get building info to get managerId
               const buildingResponse = await firstValueFrom(
@@ -408,18 +427,18 @@ export class CrackReportsService {
                     timeout(10000),
                     retry(2),
                     catchError(error => {
-                      this.logger.error(`Error getting building info: ${error.message}`);
-                      return of(null);
+                      this.logger.error(`Error getting building info: ${error.message}`)
+                      return of(null)
                     })
                   )
-              );
+              )
 
               if (!buildingResponse || !buildingResponse.data) {
-                throw new Error(`Failed to get building data for ID: ${buildingId}`);
+                throw new Error(`Failed to get building data for ID: ${buildingId}`)
               }
 
               // Log full response để xem cấu trúc dữ liệu thực tế
-              this.logger.log(`Building response data: ${JSON.stringify(buildingResponse.data)}`);
+              this.logger.log(`Building response data: ${JSON.stringify(buildingResponse.data)}`)
 
               // Kiểm tra nhiều tên trường khác nhau
               managerId = buildingResponse.data.managerId ||
@@ -427,20 +446,20 @@ export class CrackReportsService {
                 buildingResponse.data.managerID ||
                 buildingResponse.data.ManagerId ||
                 buildingResponse.data.manager?.id ||
-                (buildingResponse.data.manager && buildingResponse.data.manager.id);
+                (buildingResponse.data.manager && buildingResponse.data.manager.id)
 
               if (!managerId && buildingResponse.data) {
-                this.logger.log(`Could not find manager ID in keys: ${Object.keys(buildingResponse.data).join(', ')}`);
+                this.logger.log(`Could not find manager ID in keys: ${Object.keys(buildingResponse.data).join(', ')}`)
 
                 // Fallback: If manager not found from field names, try to get from raw response
                 if (buildingResponse.data instanceof Object) {
                   for (const key of Object.keys(buildingResponse.data)) {
                     if (key.toLowerCase().includes('manager') && buildingResponse.data[key]) {
-                      this.logger.log(`Found potential manager field: ${key} = ${buildingResponse.data[key]}`);
+                      this.logger.log(`Found potential manager field: ${key} = ${buildingResponse.data[key]}`)
                       if (typeof buildingResponse.data[key] === 'string') {
-                        managerId = buildingResponse.data[key];
-                        this.logger.log(`Using ${key} as managerId: ${managerId}`);
-                        break;
+                        managerId = buildingResponse.data[key]
+                        this.logger.log(`Using ${key} as managerId: ${managerId}`)
+                        break
                       }
                     }
                   }
@@ -448,25 +467,25 @@ export class CrackReportsService {
               }
 
               if (!managerId) {
-                throw new Error(`Building ${buildingId} has no assigned manager in response`);
+                throw new Error(`Building ${buildingId} has no assigned manager in response`)
               }
 
-              this.logger.log(`Successfully found manager ID: ${managerId} for building: ${buildingId}`);
+              this.logger.log(`Successfully found manager ID: ${managerId} for building: ${buildingId}`)
 
             } catch (error) {
-              retryCount++;
-              this.logger.error(`Attempt ${retryCount} failed: ${error.message}`);
+              retryCount++
+              this.logger.error(`Attempt ${retryCount} failed: ${error.message}`)
               if (retryCount < maxRetries) {
-                this.logger.log(`Will retry in 1 second...`);
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Đợi 1 giây trước khi retry
+                this.logger.log(`Will retry in 1 second...`)
+                await new Promise(resolve => setTimeout(resolve, 1000)) // Đợi 1 giây trước khi retry
               }
             }
           }
 
           // Bắt buộc phải có managerId
           if (!managerId) {
-            this.logger.error(`Failed to find manager after ${maxRetries} attempts. Cannot send notification for crack report ${newCrackReport.crackReportId}`);
-            throw new Error('Could not determine managerId for notification');
+            this.logger.error(`Failed to find manager after ${maxRetries} attempts. Cannot send notification for crack report ${newCrackReport.crackReportId}`)
+            throw new Error('Could not determine managerId for notification')
           }
 
           // Tạo và gửi thông báo - lúc này chắc chắn có managerId
@@ -477,22 +496,22 @@ export class CrackReportsService {
             link: `/crack-reports/${newCrackReport.crackReportId}`,
             relatedId: newCrackReport.crackReportId,
             userId: managerId
-          };
+          }
 
-          this.logger.log(`Sending notification about new crack report to manager: ${managerId}`);
-          this.logger.log(`Notification data: ${JSON.stringify(notificationData)}`);
+          this.logger.log(`Sending notification about new crack report to manager: ${managerId}`)
+          this.logger.log(`Notification data: ${JSON.stringify(notificationData)}`)
 
           // Only use emit (event pattern) to send notification
           try {
             // Emit notification WITHOUT waiting for response (no need for firstValueFrom)
-            this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, notificationData);
-            this.logger.log(`Notification about new crack report emitted successfully`);
+            this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, notificationData)
+            this.logger.log(`Notification about new crack report emitted successfully`)
           } catch (error) {
-            this.logger.error(`Error emitting notification: ${error.message}`);
+            this.logger.error(`Error emitting notification: ${error.message}`)
           }
 
         } catch (notifyError) {
-          this.logger.error(`Error in notification process for new crack report: ${notifyError.message}`);
+          this.logger.error(`Error in notification process for new crack report: ${notifyError.message}`)
         }
 
         return new ApiResponse(
@@ -745,7 +764,7 @@ export class CrackReportsService {
               timeout(30000),
               retry(3),
               catchError((error) => {
-                console.error('Task creation error:', error);
+                console.error('Task creation error:', error)
                 throw new RpcException(
                   new ApiResponse(false, 'Không thể tạo nhiệm vụ, vui lòng thử lại sau')
                 )
@@ -773,7 +792,7 @@ export class CrackReportsService {
               timeout(30000),
               retry(2),
               catchError((error) => {
-                console.error('Task assignment error:', error);
+                console.error('Task assignment error:', error)
                 throw new RpcException(
                   new ApiResponse(false, error.message || 'Cannot create task assignment, please try again later')
                 )
@@ -1003,14 +1022,14 @@ export class CrackReportsService {
       }
 
       // Save old status for comparison after update
-      const oldStatus = existingReport.status;
+      const oldStatus = existingReport.status
 
       // Extract suppressNotification flag and remove it from DTO data before updating
-      const suppressNotification = dto.suppressNotification;
+      const suppressNotification = dto.suppressNotification
 
       // Create a new object without suppressNotification to avoid Prisma error
-      const prismaUpdateData = { ...dto };
-      delete prismaUpdateData.suppressNotification;
+      const prismaUpdateData = { ...dto }
+      delete prismaUpdateData.suppressNotification
 
       // Update crack report with cleaned data
       const updatedReport = await this.prismaService.crackReport.update({
@@ -1026,7 +1045,7 @@ export class CrackReportsService {
 
       // Skip notification if suppressNotification is true
       if (suppressNotification) {
-        console.log(`Suppressing notification for crack report ${crackReportId} as requested`);
+        console.log(`Suppressing notification for crack report ${crackReportId} as requested`)
         return new ApiResponse(
           true,
           'Cập nhật báo cáo vết nứt thành công',
@@ -1035,29 +1054,29 @@ export class CrackReportsService {
       }
 
       // TEMPORARY: Force notification for testing regardless of status change
-      const forceNotification = true;
+      const forceNotification = true
 
       if (forceNotification || (dto.status && dto.status !== oldStatus)) {
-        const validStatus = forceNotification || (dto.status === 'InProgress' || dto.status === 'Rejected' || dto.status === 'Completed');
+        const validStatus = forceNotification || (dto.status === 'InProgress' || dto.status === 'Rejected' || dto.status === 'Completed')
 
         if (validStatus) {
           try {
-            let title = '';
-            let content = '';
+            let title = ''
+            let content = ''
 
             switch (dto.status) {
               case 'InProgress':
-                title = 'Báo cáo vết nứt đang được xử lý';
-                content = `Báo cáo vết nứt của bạn tại vị trí "${existingReport.position}" đã được nhận và đang được xử lý.`;
-                break;
+                title = 'Báo cáo vết nứt đang được xử lý'
+                content = `Báo cáo vết nứt của bạn tại vị trí "${existingReport.position}" đã được nhận và đang được xử lý.`
+                break
               case 'Rejected':
-                title = 'Báo cáo vết nứt đã bị từ chối';
-                content = `Báo cáo vết nứt của bạn tại vị trí "${existingReport.position}" đã bị từ chối. Vui lòng liên hệ quản lý để biết thêm chi tiết.`;
-                break;
+                title = 'Báo cáo vết nứt đã bị từ chối'
+                content = `Báo cáo vết nứt của bạn tại vị trí "${existingReport.position}" đã bị từ chối. Vui lòng liên hệ quản lý để biết thêm chi tiết.`
+                break
               case 'Completed':
-                title = 'Báo cáo vết nứt đã được xử lý hoàn tất';
-                content = `Báo cáo vết nứt của bạn tại vị trí "${existingReport.position}" đã được xử lý thành công.`;
-                break;
+                title = 'Báo cáo vết nứt đã được xử lý hoàn tất'
+                content = `Báo cáo vết nứt của bạn tại vị trí "${existingReport.position}" đã được xử lý thành công.`
+                break
             }
 
             const notificationData = {
@@ -1067,9 +1086,9 @@ export class CrackReportsService {
               type: NotificationType.SYSTEM,
               relatedId: crackReportId,
               link: `/crack-reports/${crackReportId}`
-            };
+            }
 
-            const notificationPattern = NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION;
+            const notificationPattern = NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION
             // Directly send without any promise handling or complex approach, to simplify
             try {
               // Use message pattern for guaranteed delivery
@@ -1077,10 +1096,10 @@ export class CrackReportsService {
                 this.notificationsClient.emit(notificationPattern, notificationData).pipe(
                   timeout(15000),
                   catchError(err => {
-                    return of({ success: false, error: err.message });
+                    return of({ success: false, error: err.message })
                   })
                 )
-              );
+              )
 
             } catch (error) {
               // Last resort: try event pattern
