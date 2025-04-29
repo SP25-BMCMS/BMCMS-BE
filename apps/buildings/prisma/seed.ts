@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 async function main() {
     // Clean up existing data to avoid unique constraint errors
-    console.log('Cleaning up existing data...');
+    console.log('Đang xóa dữ liệu hiện có...');
     await prisma.maintenanceHistory.deleteMany({});
     await prisma.technicalRecord.deleteMany({});
     await prisma.device.deleteMany({});
@@ -15,30 +15,30 @@ async function main() {
     await prisma.area.deleteMany({});
     await prisma.contract.deleteMany({});
 
-    console.log('Seeding areas...');
+    console.log('Đang tạo dữ liệu khu vực...');
     // Seed Areas
     const rainbowArea = await prisma.area.create({
         data: {
             name: 'The Rainbow',
-            description: 'Rainbow area consists of 17 buildings in 4 clusters: S1, S2, S3, S5'
+            description: 'Khu vực Rainbow bao gồm 17 tòa nhà trong 4 cụm: S1, S2, S3, S5'
         }
     });
 
     const origamiArea = await prisma.area.create({
         data: {
             name: 'The Origami',
-            description: 'Origami area consists of 21 buildings in 5 clusters: S6, S7, S8, S9, S10'
+            description: 'Khu vực Origami bao gồm 21 tòa nhà trong 5 cụm: S6, S7, S8, S9, S10'
         }
     });
 
-    console.log('Seeding buildings...');
+    console.log('Đang tạo dữ liệu tòa nhà...');
     // Seed Buildings in Rainbow Area - 17 tòa
 
     // Cluster S1 (6 tòa: S1.01, S1.02, S1.03, S1.05, S1.06, S1.07)
     const buildingS1 = await prisma.building.create({
         data: {
             name: 'S1',
-            description: 'Building S1 - 6 towers - Rainbow Area',
+            description: 'Tòa nhà S1 - 6 tòa - Khu vực Rainbow',
             numberFloor: 25,
             imageCover: 'https://th.bing.com/th/id/OIP.x16cxXtPkaps_wRoVQvSVwHaHa?rs=1&pid=ImgDetMain',
             areaId: rainbowArea.areaId,
@@ -53,7 +53,7 @@ async function main() {
     const buildingS2 = await prisma.building.create({
         data: {
             name: 'S2',
-            description: 'Building S2 - 4 towers - Rainbow Area',
+            description: 'Tòa nhà S2 - 4 tòa - Khu vực Rainbow',
             numberFloor: 30,
             imageCover: 'https://th.bing.com/th/id/OIP.x16cxXtPkaps_wRoVQvSVwHaHa?rs=1&pid=ImgDetMain',
             areaId: rainbowArea.areaId,
@@ -68,7 +68,7 @@ async function main() {
     const buildingS3 = await prisma.building.create({
         data: {
             name: 'S3',
-            description: 'Building S3 - 4 towers - Rainbow Area',
+            description: 'Tòa nhà S3 - 4 tòa - Khu vực Rainbow',
             numberFloor: 28,
             imageCover: 'https://th.bing.com/th/id/OIP.x16cxXtPkaps_wRoVQvSVwHaHa?rs=1&pid=ImgDetMain',
             areaId: rainbowArea.areaId,
@@ -83,7 +83,7 @@ async function main() {
     const buildingS5 = await prisma.building.create({
         data: {
             name: 'S5',
-            description: 'Building S5 - 3 towers - Rainbow Area',
+            description: 'Tòa nhà S5 - 3 tòa - Khu vực Rainbow',
             numberFloor: 22,
             imageCover: 'https://th.bing.com/th/id/OIP.x16cxXtPkaps_wRoVQvSVwHaHa?rs=1&pid=ImgDetMain',
             areaId: rainbowArea.areaId,
@@ -100,7 +100,7 @@ async function main() {
     const buildingS6 = await prisma.building.create({
         data: {
             name: 'S6',
-            description: 'Building S6 - 5 towers - Origami Area',
+            description: 'Tòa nhà S6 - 5 tòa - Khu vực Origami',
             numberFloor: 20,
             imageCover: 'https://www.vinhomeland.com.vn/wp-content/uploads/2020/04/the-origami-vinhomes-grand-park-48.jpg',
             areaId: origamiArea.areaId,
@@ -115,7 +115,7 @@ async function main() {
     const buildingS7 = await prisma.building.create({
         data: {
             name: 'S7',
-            description: 'Building S7 - 4 towers - Origami Area',
+            description: 'Tòa nhà S7 - 4 tòa - Khu vực Origami',
             numberFloor: 24,
             imageCover: 'https://www.vinhomeland.com.vn/wp-content/uploads/2020/04/the-origami-vinhomes-grand-park-48.jpg',
             areaId: origamiArea.areaId,
@@ -130,7 +130,7 @@ async function main() {
     const buildingS8 = await prisma.building.create({
         data: {
             name: 'S8',
-            description: 'Building S8 - 3 towers - Origami Area',
+            description: 'Tòa nhà S8 - 3 tòa - Khu vực Origami',
             numberFloor: 23,
             imageCover: 'https://www.vinhomeland.com.vn/wp-content/uploads/2020/04/the-origami-vinhomes-grand-park-48.jpg',
             areaId: origamiArea.areaId,
@@ -145,7 +145,7 @@ async function main() {
     const buildingS9 = await prisma.building.create({
         data: {
             name: 'S9',
-            description: 'Building S9 - 3 towers - Origami Area',
+            description: 'Tòa nhà S9 - 3 tòa - Khu vực Origami',
             numberFloor: 22,
             imageCover: 'https://www.vinhomeland.com.vn/wp-content/uploads/2020/04/the-origami-vinhomes-grand-park-48.jpg',
             areaId: origamiArea.areaId,
@@ -160,7 +160,7 @@ async function main() {
     const buildingS10 = await prisma.building.create({
         data: {
             name: 'S10',
-            description: 'Building S10 - 6 towers - Origami Area',
+            description: 'Tòa nhà S10 - 6 tòa - Khu vực Origami',
             numberFloor: 21,
             imageCover: 'https://www.vinhomeland.com.vn/wp-content/uploads/2020/04/the-origami-vinhomes-grand-park-48.jpg',
             areaId: origamiArea.areaId,
@@ -171,8 +171,7 @@ async function main() {
         }
     });
 
-
-    console.log('Seeding building details...');
+    console.log('Đang tạo dữ liệu chi tiết tòa nhà...');
     // Seed BuildingDetails for Rainbow Area
 
     // Cluster S1 details
@@ -490,14 +489,14 @@ async function main() {
         }
     });
 
-    console.log('Seeding contracts...');
+    console.log('Đang tạo dữ liệu hợp đồng...');
     // Seed Contract for devices
     const elevatorContract = await prisma.contract.create({
         data: {
             start_date: new Date('2021-01-01'),
             end_date: new Date('2026-01-01'),
-            vendor: 'Schindler Elevator Co.',
-            file_name: 'schindler_contract.pdf'
+            vendor: 'Công ty Thang máy Schindler',
+            file_name: 'hop_dong_thang_may.pdf'
         }
     });
 
@@ -505,8 +504,8 @@ async function main() {
         data: {
             start_date: new Date('2021-03-15'),
             end_date: new Date('2026-03-15'),
-            vendor: 'Daikin HVAC Solutions',
-            file_name: 'daikin_contract.pdf'
+            vendor: 'Công ty Điều hòa Daikin',
+            file_name: 'hop_dong_dieu_hoa.pdf'
         }
     });
 
@@ -514,8 +513,8 @@ async function main() {
         data: {
             start_date: new Date('2021-05-10'),
             end_date: new Date('2026-05-10'),
-            vendor: 'ABB Electrical Systems',
-            file_name: 'abb_contract.pdf'
+            vendor: 'Công ty Điện ABB',
+            file_name: 'hop_dong_dien.pdf'
         }
     });
 
@@ -523,8 +522,8 @@ async function main() {
         data: {
             start_date: new Date('2021-07-20'),
             end_date: new Date('2026-07-20'),
-            vendor: 'Modern Plumbing Solutions',
-            file_name: 'plumbing_contract.pdf'
+            vendor: 'Công ty Cấp thoát nước',
+            file_name: 'hop_dong_cap_thoat_nuoc.pdf'
         }
     });
 
@@ -532,8 +531,8 @@ async function main() {
         data: {
             start_date: new Date('2021-09-05'),
             end_date: new Date('2026-09-05'),
-            vendor: 'Security Vision Inc.',
-            file_name: 'cctv_contract.pdf'
+            vendor: 'Công ty An ninh Security Vision',
+            file_name: 'hop_dong_camera.pdf'
         }
     });
 
@@ -541,8 +540,8 @@ async function main() {
         data: {
             start_date: new Date('2021-04-01'),
             end_date: new Date('2026-04-01'),
-            vendor: 'Johnson Controls Fire Protection',
-            file_name: 'johnson_fire_contract.pdf'
+            vendor: 'Công ty PCCC Johnson Controls',
+            file_name: 'hop_dong_pccc.pdf'
         }
     });
 
@@ -550,8 +549,8 @@ async function main() {
         data: {
             start_date: new Date('2021-06-15'),
             end_date: new Date('2026-06-15'),
-            vendor: 'Caterpillar Power Systems',
-            file_name: 'caterpillar_contract.pdf'
+            vendor: 'Công ty Máy phát điện Caterpillar',
+            file_name: 'hop_dong_may_phat_dien.pdf'
         }
     });
 
@@ -559,8 +558,8 @@ async function main() {
         data: {
             start_date: new Date('2021-08-01'),
             end_date: new Date('2026-08-01'),
-            vendor: 'Signify Lighting (Philips)',
-            file_name: 'signify_contract.pdf'
+            vendor: 'Công ty Chiếu sáng Signify (Philips)',
+            file_name: 'hop_dong_chieu_sang.pdf'
         }
     });
 
@@ -568,8 +567,8 @@ async function main() {
         data: {
             start_date: new Date('2021-10-10'),
             end_date: new Date('2026-10-10'),
-            vendor: 'ASSA ABLOY Entrance Systems',
-            file_name: 'assaabloy_contract.pdf'
+            vendor: 'Công ty Cửa tự động ASSA ABLOY',
+            file_name: 'hop_dong_cua_tu_dong.pdf'
         }
     });
 
@@ -577,8 +576,8 @@ async function main() {
         data: {
             start_date: new Date('2021-11-15'),
             end_date: new Date('2026-11-15'),
-            vendor: 'Minimax Fire Protection',
-            file_name: 'minimax_contract.pdf'
+            vendor: 'Công ty PCCC Minimax',
+            file_name: 'hop_dong_binh_chua_chay.pdf'
         }
     });
 
@@ -587,8 +586,8 @@ async function main() {
         data: {
             start_date: new Date('2021-12-01'),
             end_date: new Date('2026-12-01'),
-            vendor: 'General Equipment Services',
-            file_name: 'general_equipment_contract.pdf'
+            vendor: 'Công ty Dịch vụ Thiết bị Tổng hợp',
+            file_name: 'hop_dong_thiet_bi_khac.pdf'
         }
     });
 
@@ -596,7 +595,7 @@ async function main() {
     // Seed Devices for Rainbow Area - S1 Cluster
     const elevator1S101 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S101',
+            name: 'Thang máy 1 - S101',
             type: 'Elevator',
             manufacturer: 'Schindler',
             model: 'SV-5000',
@@ -607,7 +606,7 @@ async function main() {
 
     const elevator2S101 = await prisma.device.create({
         data: {
-            name: 'Elevator 2 - S101',
+            name: 'Thang máy 2 - S101',
             type: 'Elevator',
             manufacturer: 'Schindler',
             model: 'SV-5000',
@@ -618,7 +617,7 @@ async function main() {
 
     const hvacS101 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S101',
+            name: 'Hệ thống điều hòa - S101',
             type: 'HVAC',
             manufacturer: 'Daikin',
             model: 'VRV-X Series',
@@ -629,8 +628,8 @@ async function main() {
 
     const fireAlarmS101 = await prisma.device.create({
         data: {
-            name: 'Fire Alarm System - S101',
-            type: 'Electrical',
+            name: 'Hệ thống báo cháy - S101',
+            type: 'FireProtection',
             manufacturer: 'Honeywell',
             model: 'Notifier NFS2-3030',
             buildingDetailId: buildingDetailS101.buildingDetailId,
@@ -640,7 +639,7 @@ async function main() {
 
     const waterPumpS101 = await prisma.device.create({
         data: {
-            name: 'Water Pump System - S101',
+            name: 'Hệ thống bơm nước - S101',
             type: 'Plumbing',
             manufacturer: 'Grundfos',
             model: 'CR-95-2',
@@ -651,7 +650,7 @@ async function main() {
 
     const cctvS101 = await prisma.device.create({
         data: {
-            name: 'CCTV System - S101',
+            name: 'Hệ thống camera - S101',
             type: 'CCTV',
             manufacturer: 'Hikvision',
             model: 'DS-7716NI-K4',
@@ -663,7 +662,7 @@ async function main() {
     // Devices for S102
     const elevator1S102 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S102',
+            name: 'Thang máy 1 - S102',
             type: 'Elevator',
             manufacturer: 'Schindler',
             model: 'SV-5000',
@@ -674,7 +673,7 @@ async function main() {
 
     const elevator2S102 = await prisma.device.create({
         data: {
-            name: 'Elevator 2 - S102',
+            name: 'Thang máy 2 - S102',
             type: 'Elevator',
             manufacturer: 'Schindler',
             model: 'SV-5000',
@@ -685,7 +684,7 @@ async function main() {
 
     const hvacS102 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S102',
+            name: 'Hệ thống điều hòa - S102',
             type: 'HVAC',
             manufacturer: 'Daikin',
             model: 'VRV-X Series',
@@ -696,7 +695,7 @@ async function main() {
 
     const fireAlarmS102 = await prisma.device.create({
         data: {
-            name: 'Fire Alarm System - S102',
+            name: 'Hệ thống báo cháy - S102',
             type: 'Electrical',
             manufacturer: 'Honeywell',
             model: 'Notifier NFS2-3030',
@@ -708,7 +707,7 @@ async function main() {
     // Devices for S201
     const elevator1S201 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S201',
+            name: 'Thang máy 1 - S201',
             type: 'Elevator',
             manufacturer: 'Otis',
             model: 'GeN2-MR',
@@ -719,7 +718,7 @@ async function main() {
 
     const elevator2S201 = await prisma.device.create({
         data: {
-            name: 'Elevator 2 - S201',
+            name: 'Thang máy 2 - S201',
             type: 'Elevator',
             manufacturer: 'Otis',
             model: 'GeN2-MR',
@@ -730,7 +729,7 @@ async function main() {
 
     const hvacS201 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S201',
+            name: 'Hệ thống điều hòa - S201',
             type: 'HVAC',
             manufacturer: 'Carrier',
             model: 'AquaEdge 19DV',
@@ -741,7 +740,7 @@ async function main() {
 
     const electricalS201 = await prisma.device.create({
         data: {
-            name: 'Main Electrical Panel - S201',
+            name: 'Tủ điện chính - S201',
             type: 'Electrical',
             manufacturer: 'ABB',
             model: 'Power Distribution Panel XL',
@@ -753,7 +752,7 @@ async function main() {
     // Devices for S301
     const elevator1S301 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S301',
+            name: 'Thang máy 1 - S301',
             type: 'Elevator',
             manufacturer: 'Mitsubishi',
             model: 'NexWay',
@@ -764,7 +763,7 @@ async function main() {
 
     const hvacS301 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S301',
+            name: 'Hệ thống điều hòa - S301',
             type: 'HVAC',
             manufacturer: 'Trane',
             model: 'Series R',
@@ -775,7 +774,7 @@ async function main() {
 
     const waterTankS301 = await prisma.device.create({
         data: {
-            name: 'Water Storage Tank - S301',
+            name: 'Bể chứa nước - S301',
             type: 'Plumbing',
             manufacturer: 'Pentair',
             model: 'Commercial Grade',
@@ -787,7 +786,7 @@ async function main() {
     // Devices for S501
     const elevator1S501 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S501',
+            name: 'Thang máy 1 - S501',
             type: 'Elevator',
             manufacturer: 'KONE',
             model: 'MonoSpace 700',
@@ -798,7 +797,7 @@ async function main() {
 
     const hvacS501 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S501',
+            name: 'Hệ thống điều hòa - S501',
             type: 'HVAC',
             manufacturer: 'York',
             model: 'YZ Magnetic Bearing Centrifugal',
@@ -809,7 +808,7 @@ async function main() {
 
     const generatorS501 = await prisma.device.create({
         data: {
-            name: 'Backup Generator - S501',
+            name: 'Máy phát điện dự phòng - S501',
             type: 'Electrical',
             manufacturer: 'Cummins',
             model: 'C150D6R',
@@ -822,7 +821,7 @@ async function main() {
     // Devices for S601
     const elevator1S601 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S601',
+            name: 'Thang máy 1 - S601',
             type: 'Elevator',
             manufacturer: 'Schindler',
             model: 'SV-6000',
@@ -833,7 +832,7 @@ async function main() {
 
     const elevator2S601 = await prisma.device.create({
         data: {
-            name: 'Elevator 2 - S601',
+            name: 'Thang máy 2 - S601',
             type: 'Elevator',
             manufacturer: 'Schindler',
             model: 'SV-6000',
@@ -844,7 +843,7 @@ async function main() {
 
     const hvacS601 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S601',
+            name: 'Hệ thống điều hòa - S601',
             type: 'HVAC',
             manufacturer: 'Daikin',
             model: 'VRV IV',
@@ -855,7 +854,7 @@ async function main() {
 
     const securityGateS601 = await prisma.device.create({
         data: {
-            name: 'Security Gate System - S601',
+            name: 'Hệ thống cổng an ninh - S601',
             type: 'CCTV',
             manufacturer: 'HID Global',
             model: 'iCLASS SE',
@@ -867,7 +866,7 @@ async function main() {
     // Devices for S701
     const elevator1S701 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S701',
+            name: 'Thang máy 1 - S701',
             type: 'Elevator',
             manufacturer: 'ThyssenKrupp',
             model: 'Evolution',
@@ -878,7 +877,7 @@ async function main() {
 
     const hvacS701 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S701',
+            name: 'Hệ thống điều hòa - S701',
             type: 'HVAC',
             manufacturer: 'Mitsubishi Electric',
             model: 'City Multi',
@@ -889,7 +888,7 @@ async function main() {
 
     const plumbingS701 = await prisma.device.create({
         data: {
-            name: 'Main Water System - S701',
+            name: 'Hệ thống cấp nước chính - S701',
             type: 'Plumbing',
             manufacturer: 'Wilo',
             model: 'Stratos GIGA',
@@ -901,7 +900,7 @@ async function main() {
     // Devices for S801
     const elevator1S801 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S801',
+            name: 'Thang máy 1 - S801',
             type: 'Elevator',
             manufacturer: 'Fujitec',
             model: 'GLVF-II',
@@ -912,7 +911,7 @@ async function main() {
 
     const hvacS801 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S801',
+            name: 'Hệ thống điều hòa - S801',
             type: 'HVAC',
             manufacturer: 'Hitachi',
             model: 'Set-Free',
@@ -923,7 +922,7 @@ async function main() {
 
     const electricalS801 = await prisma.device.create({
         data: {
-            name: 'Electrical Distribution - S801',
+            name: 'Hệ thống phân phối điện - S801',
             type: 'Electrical',
             manufacturer: 'Schneider Electric',
             model: 'Prisma Plus',
@@ -935,7 +934,7 @@ async function main() {
     // Devices for S901
     const elevator1S901 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S901',
+            name: 'Thang máy 1 - S901',
             type: 'Elevator',
             manufacturer: 'Hyundai',
             model: 'LUXEN',
@@ -946,7 +945,7 @@ async function main() {
 
     const hvacS901 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S901',
+            name: 'Hệ thống điều hòa - S901',
             type: 'HVAC',
             manufacturer: 'LG',
             model: 'Multi V 5',
@@ -957,7 +956,7 @@ async function main() {
 
     const securityS901 = await prisma.device.create({
         data: {
-            name: 'Security System - S901',
+            name: 'Hệ thống an ninh - S901',
             type: 'CCTV',
             manufacturer: 'Bosch',
             model: 'B Series',
@@ -969,7 +968,7 @@ async function main() {
     // Devices for S1001
     const elevator1S1001 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S1001',
+            name: 'Thang máy 1 - S1001',
             type: 'Elevator',
             manufacturer: 'Toshiba',
             model: 'SPACEL-UNI',
@@ -977,10 +976,9 @@ async function main() {
             contract_id: elevatorContract.contract_id
         }
     });
-
     const hvacS1001 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S1001',
+            name: 'Hệ thống điều hòa - S1001',
             type: 'HVAC',
             manufacturer: 'Gree',
             model: 'GMV6',
@@ -992,7 +990,7 @@ async function main() {
     // Devices for S1006
     const elevator1S1006 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S1006',
+            name: 'Thang máy 1 - S1006',
             type: 'Elevator',
             manufacturer: 'Sigma',
             model: 'IRIS',
@@ -1003,7 +1001,7 @@ async function main() {
 
     const hvacS1006 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S1006',
+            name: 'Hệ thống điều hòa - S1006',
             type: 'HVAC',
             manufacturer: 'Mitsubishi',
             model: 'VRF System',
@@ -1014,7 +1012,7 @@ async function main() {
 
     const fireSprinklerS1006 = await prisma.device.create({
         data: {
-            name: 'Fire Sprinkler System - S1006',
+            name: 'Hệ thống chữa cháy - S1006',
             type: 'Plumbing',
             manufacturer: 'Tyco',
             model: 'LFII Residential',
@@ -1027,7 +1025,7 @@ async function main() {
     // S103
     const elevator1S103 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S103',
+            name: 'Thang máy 1 - S103',
             type: 'Elevator',
             manufacturer: 'Schindler',
             model: 'SV-5000',
@@ -1038,7 +1036,7 @@ async function main() {
 
     const hvacS103 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S103',
+            name: 'Hệ thống điều hòa - S103',
             type: 'HVAC',
             manufacturer: 'Daikin',
             model: 'VRV-X Series',
@@ -1050,7 +1048,7 @@ async function main() {
     // S105
     const elevator1S105 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S105',
+            name: 'Thang máy 1 - S105',
             type: 'Elevator',
             manufacturer: 'Schindler',
             model: 'SV-5000',
@@ -1061,7 +1059,7 @@ async function main() {
 
     const hvacS105 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S105',
+            name: 'Hệ thống điều hòa - S105',
             type: 'HVAC',
             manufacturer: 'Daikin',
             model: 'VRV-X Series',
@@ -1073,7 +1071,7 @@ async function main() {
     // S106
     const elevator1S106 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S106',
+            name: 'Thang máy 1 - S106',
             type: 'Elevator',
             manufacturer: 'Schindler',
             model: 'SV-5000',
@@ -1084,7 +1082,7 @@ async function main() {
 
     const hvacS106 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S106',
+            name: 'Hệ thống điều hòa - S106',
             type: 'HVAC',
             manufacturer: 'Daikin',
             model: 'VRV-X Series',
@@ -1096,7 +1094,7 @@ async function main() {
     // S107
     const elevator1S107 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S107',
+            name: 'Thang máy 1 - S107',
             type: 'Elevator',
             manufacturer: 'Schindler',
             model: 'SV-5000',
@@ -1107,7 +1105,7 @@ async function main() {
 
     const hvacS107 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S107',
+            name: 'Hệ thống điều hòa - S107',
             type: 'HVAC',
             manufacturer: 'Daikin',
             model: 'VRV-X Series',
@@ -1118,7 +1116,7 @@ async function main() {
 
     const waterPumpS107 = await prisma.device.create({
         data: {
-            name: 'Water Pump System - S107',
+            name: 'Hệ thống bơm nước - S107',
             type: 'Plumbing',
             manufacturer: 'Grundfos',
             model: 'CR-95-2',
@@ -1130,7 +1128,7 @@ async function main() {
     // S202
     const elevator1S202 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S202',
+            name: 'Thang máy 1 - S202',
             type: 'Elevator',
             manufacturer: 'Otis',
             model: 'GeN2-MR',
@@ -1141,7 +1139,7 @@ async function main() {
 
     const hvacS202 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S202',
+            name: 'Hệ thống điều hòa - S202',
             type: 'HVAC',
             manufacturer: 'Carrier',
             model: 'AquaEdge 19DV',
@@ -1153,7 +1151,7 @@ async function main() {
     // S203
     const elevator1S203 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S203',
+            name: 'Thang máy 1 - S203',
             type: 'Elevator',
             manufacturer: 'Otis',
             model: 'GeN2-MR',
@@ -1164,7 +1162,7 @@ async function main() {
 
     const hvacS203 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S203',
+            name: 'Hệ thống điều hòa - S203',
             type: 'HVAC',
             manufacturer: 'Carrier',
             model: 'AquaEdge 19DV',
@@ -1176,7 +1174,7 @@ async function main() {
     // S205
     const elevator1S205 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S205',
+            name: 'Thang máy 1 - S205',
             type: 'Elevator',
             manufacturer: 'Otis',
             model: 'GeN2-MR',
@@ -1187,7 +1185,7 @@ async function main() {
 
     const hvacS205 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S205',
+            name: 'Hệ thống điều hòa - S205',
             type: 'HVAC',
             manufacturer: 'Carrier',
             model: 'AquaEdge 19DV',
@@ -1199,7 +1197,7 @@ async function main() {
     // S302
     const elevator1S302 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S302',
+            name: 'Thang máy 1 - S302',
             type: 'Elevator',
             manufacturer: 'Mitsubishi',
             model: 'NexWay',
@@ -1210,7 +1208,7 @@ async function main() {
 
     const hvacS302 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S302',
+            name: 'Hệ thống điều hòa - S302',
             type: 'HVAC',
             manufacturer: 'Trane',
             model: 'Series R',
@@ -1222,7 +1220,7 @@ async function main() {
     // S303
     const elevator1S303 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S303',
+            name: 'Thang máy 1 - S303',
             type: 'Elevator',
             manufacturer: 'Mitsubishi',
             model: 'NexWay',
@@ -1233,7 +1231,7 @@ async function main() {
 
     const hvacS303 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S303',
+            name: 'Hệ thống điều hòa - S303',
             type: 'HVAC',
             manufacturer: 'Trane',
             model: 'Series R',
@@ -1245,7 +1243,7 @@ async function main() {
     // S305
     const elevator1S305 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S305',
+            name: 'Thang máy 1 - S305',
             type: 'Elevator',
             manufacturer: 'Mitsubishi',
             model: 'NexWay',
@@ -1256,7 +1254,7 @@ async function main() {
 
     const hvacS305 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S305',
+            name: 'Hệ thống điều hòa - S305',
             type: 'HVAC',
             manufacturer: 'Trane',
             model: 'Series R',
@@ -1268,7 +1266,7 @@ async function main() {
     // S502
     const elevator1S502 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S502',
+            name: 'Thang máy 1 - S502',
             type: 'Elevator',
             manufacturer: 'KONE',
             model: 'MonoSpace 700',
@@ -1279,7 +1277,7 @@ async function main() {
 
     const hvacS502 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S502',
+            name: 'Hệ thống điều hòa - S502',
             type: 'HVAC',
             manufacturer: 'York',
             model: 'YZ Magnetic Bearing Centrifugal',
@@ -1291,7 +1289,7 @@ async function main() {
     // S503
     const elevator1S503 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S503',
+            name: 'Thang máy 1 - S503',
             type: 'Elevator',
             manufacturer: 'KONE',
             model: 'MonoSpace 700',
@@ -1302,7 +1300,7 @@ async function main() {
 
     const hvacS503 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S503',
+            name: 'Hệ thống điều hòa - S503',
             type: 'HVAC',
             manufacturer: 'York',
             model: 'YZ Magnetic Bearing Centrifugal',
@@ -1314,7 +1312,7 @@ async function main() {
     // S602
     const elevator1S602 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S602',
+            name: 'Thang máy 1 - S602',
             type: 'Elevator',
             manufacturer: 'Schindler',
             model: 'SV-6000',
@@ -1325,7 +1323,7 @@ async function main() {
 
     const hvacS602 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S602',
+            name: 'Hệ thống điều hòa - S602',
             type: 'HVAC',
             manufacturer: 'Daikin',
             model: 'VRV IV',
@@ -1337,7 +1335,7 @@ async function main() {
     // S603
     const elevator1S603 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S603',
+            name: 'Thang máy 1 - S603',
             type: 'Elevator',
             manufacturer: 'Schindler',
             model: 'SV-6000',
@@ -1348,7 +1346,7 @@ async function main() {
 
     const hvacS603 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S603',
+            name: 'Hệ thống điều hòa - S603',
             type: 'HVAC',
             manufacturer: 'Daikin',
             model: 'VRV IV',
@@ -1360,7 +1358,7 @@ async function main() {
     // S605
     const elevator1S605 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S605',
+            name: 'Thang máy 1 - S605',
             type: 'Elevator',
             manufacturer: 'Schindler',
             model: 'SV-6000',
@@ -1371,7 +1369,7 @@ async function main() {
 
     const hvacS605 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S605',
+            name: 'Hệ thống điều hòa - S605',
             type: 'HVAC',
             manufacturer: 'Daikin',
             model: 'VRV IV',
@@ -1383,7 +1381,7 @@ async function main() {
     // S606
     const elevator1S606 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S606',
+            name: 'Thang máy 1 - S606',
             type: 'Elevator',
             manufacturer: 'Schindler',
             model: 'SV-6000',
@@ -1394,7 +1392,7 @@ async function main() {
 
     const hvacS606 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S606',
+            name: 'Hệ thống điều hòa - S606',
             type: 'HVAC',
             manufacturer: 'Daikin',
             model: 'VRV IV',
@@ -1406,7 +1404,7 @@ async function main() {
     // S702
     const elevator1S702 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S702',
+            name: 'Thang máy 1 - S702',
             type: 'Elevator',
             manufacturer: 'ThyssenKrupp',
             model: 'Evolution',
@@ -1417,7 +1415,7 @@ async function main() {
 
     const hvacS702 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S702',
+            name: 'Hệ thống điều hòa - S702',
             type: 'HVAC',
             manufacturer: 'Mitsubishi Electric',
             model: 'City Multi',
@@ -1429,7 +1427,7 @@ async function main() {
     // S703
     const elevator1S703 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S703',
+            name: 'Thang máy 1 - S703',
             type: 'Elevator',
             manufacturer: 'ThyssenKrupp',
             model: 'Evolution',
@@ -1440,7 +1438,7 @@ async function main() {
 
     const hvacS703 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S703',
+            name: 'Hệ thống điều hòa - S703',
             type: 'HVAC',
             manufacturer: 'Mitsubishi Electric',
             model: 'City Multi',
@@ -1452,7 +1450,7 @@ async function main() {
     // S705
     const elevator1S705 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S705',
+            name: 'Thang máy 1 - S705',
             type: 'Elevator',
             manufacturer: 'ThyssenKrupp',
             model: 'Evolution',
@@ -1463,7 +1461,7 @@ async function main() {
 
     const hvacS705 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S705',
+            name: 'Hệ thống điều hòa - S705',
             type: 'HVAC',
             manufacturer: 'Mitsubishi Electric',
             model: 'City Multi',
@@ -1475,7 +1473,7 @@ async function main() {
     // S802
     const elevator1S802 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S802',
+            name: 'Thang máy 1 - S802',
             type: 'Elevator',
             manufacturer: 'Fujitec',
             model: 'GLVF-II',
@@ -1486,7 +1484,7 @@ async function main() {
 
     const hvacS802 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S802',
+            name: 'Hệ thống điều hòa - S802',
             type: 'HVAC',
             manufacturer: 'Hitachi',
             model: 'Set-Free',
@@ -1498,7 +1496,7 @@ async function main() {
     // S803
     const elevator1S803 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S803',
+            name: 'Thang máy 1 - S803',
             type: 'Elevator',
             manufacturer: 'Fujitec',
             model: 'GLVF-II',
@@ -1509,7 +1507,7 @@ async function main() {
 
     const hvacS803 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S803',
+            name: 'Hệ thống điều hòa - S803',
             type: 'HVAC',
             manufacturer: 'Hitachi',
             model: 'Set-Free',
@@ -1521,7 +1519,7 @@ async function main() {
     // S902
     const elevator1S902 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S902',
+            name: 'Thang máy 1 - S902',
             type: 'Elevator',
             manufacturer: 'Hyundai',
             model: 'LUXEN',
@@ -1532,7 +1530,7 @@ async function main() {
 
     const hvacS902 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S902',
+            name: 'Hệ thống điều hòa - S902',
             type: 'HVAC',
             manufacturer: 'LG',
             model: 'Multi V 5',
@@ -1544,7 +1542,7 @@ async function main() {
     // S903
     const elevator1S903 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S903',
+            name: 'Thang máy 1 - S903',
             type: 'Elevator',
             manufacturer: 'Hyundai',
             model: 'LUXEN',
@@ -1555,7 +1553,7 @@ async function main() {
 
     const hvacS903 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S903',
+            name: 'Hệ thống điều hòa - S903',
             type: 'HVAC',
             manufacturer: 'LG',
             model: 'Multi V 5',
@@ -1567,7 +1565,7 @@ async function main() {
     // S1002
     const elevator1S1002 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S1002',
+            name: 'Thang máy 1 - S1002',
             type: 'Elevator',
             manufacturer: 'Toshiba',
             model: 'SPACEL-UNI',
@@ -1578,7 +1576,7 @@ async function main() {
 
     const hvacS1002 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S1002',
+            name: 'Hệ thống điều hòa - S1002',
             type: 'HVAC',
             manufacturer: 'Gree',
             model: 'GMV6',
@@ -1590,7 +1588,7 @@ async function main() {
     // S1003
     const elevator1S1003 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S1003',
+            name: 'Thang máy 1 - S1003',
             type: 'Elevator',
             manufacturer: 'Toshiba',
             model: 'SPACEL-UNI',
@@ -1601,7 +1599,7 @@ async function main() {
 
     const hvacS1003 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S1003',
+            name: 'Hệ thống điều hòa - S1003',
             type: 'HVAC',
             manufacturer: 'Gree',
             model: 'GMV6',
@@ -1613,7 +1611,7 @@ async function main() {
     // S1005
     const elevator1S1005 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S1005',
+            name: 'Thang máy 1 - S1005',
             type: 'Elevator',
             manufacturer: 'Sigma',
             model: 'IRIS',
@@ -1624,7 +1622,7 @@ async function main() {
 
     const hvacS1005 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S1005',
+            name: 'Hệ thống điều hòa - S1005',
             type: 'HVAC',
             manufacturer: 'Mitsubishi',
             model: 'VRF System',
@@ -1636,7 +1634,7 @@ async function main() {
     // S1007
     const elevator1S1007 = await prisma.device.create({
         data: {
-            name: 'Elevator 1 - S1007',
+            name: 'Thang máy 1 - S1007',
             type: 'Elevator',
             manufacturer: 'Sigma',
             model: 'IRIS',
@@ -1647,7 +1645,7 @@ async function main() {
 
     const hvacS1007 = await prisma.device.create({
         data: {
-            name: 'HVAC System - S1007',
+            name: 'Hệ thống điều hòa - S1007',
             type: 'HVAC',
             manufacturer: 'Mitsubishi',
             model: 'VRF System',
@@ -1661,7 +1659,7 @@ async function main() {
     // FireProtection devices
     const fireSystemS101 = await prisma.device.create({
         data: {
-            name: 'Fire Protection System - S101',
+            name: 'Hệ thống bảo vệ cháy - S101',
             type: 'FireProtection',
             manufacturer: 'Johnson Controls',
             model: 'FireClass Series',
@@ -1672,7 +1670,7 @@ async function main() {
 
     const fireSystemS201 = await prisma.device.create({
         data: {
-            name: 'Fire Protection System - S201',
+            name: 'Hệ thống bảo vệ cháy - S201',
             type: 'FireProtection',
             manufacturer: 'Siemens',
             model: 'Cerberus PRO',
@@ -1684,7 +1682,7 @@ async function main() {
     // Generator devices
     const generatorS301 = await prisma.device.create({
         data: {
-            name: 'Emergency Generator - S301',
+            name: 'Máy phát điện khẩn cấp - S301',
             type: 'Generator',
             manufacturer: 'Caterpillar',
             model: 'C15 ACERT',
@@ -1695,7 +1693,7 @@ async function main() {
 
     const generatorS601 = await prisma.device.create({
         data: {
-            name: 'Backup Generator - S601',
+            name: 'Máy phát điện dự phòng - S601',
             type: 'Generator',
             manufacturer: 'Cummins',
             model: 'QSX15-G9',
@@ -1707,7 +1705,7 @@ async function main() {
     // Lighting devices
     const lightingS701 = await prisma.device.create({
         data: {
-            name: 'Common Area Lighting - S701',
+            name: 'Chiếu sáng khu vực chung - S701',
             type: 'Lighting',
             manufacturer: 'Philips',
             model: 'LED SmartControl',
@@ -1718,7 +1716,7 @@ async function main() {
 
     const lightingS801 = await prisma.device.create({
         data: {
-            name: 'Emergency Lighting - S801',
+            name: 'Chiếu sáng khẩn cấp - S801',
             type: 'Lighting',
             manufacturer: 'Eaton',
             model: 'Safety Series',
@@ -1730,7 +1728,7 @@ async function main() {
     // AutomaticDoor devices
     const autoGateS901 = await prisma.device.create({
         data: {
-            name: 'Parking Gate - S901',
+            name: 'Cổng bãi đỗ xe - S901',
             type: 'AutomaticDoor',
             manufacturer: 'FAAC',
             model: '640 Barrier',
@@ -1741,7 +1739,7 @@ async function main() {
 
     const autoDoorsS1001 = await prisma.device.create({
         data: {
-            name: 'Lobby Automatic Doors - S1001',
+            name: 'Cửa tự động sảnh - S1001',
             type: 'AutomaticDoor',
             manufacturer: 'ASSA ABLOY',
             model: 'Besam SL500',
@@ -1753,7 +1751,7 @@ async function main() {
     // FireExtinguisher devices
     const fireExtS102 = await prisma.device.create({
         data: {
-            name: 'Portable Fire Extinguishers - S102',
+            name: 'Bình chữa cháy di động - S102',
             type: 'FireExtinguisher',
             manufacturer: 'Amerex',
             model: 'B456 ABC Dry Chemical',
@@ -1764,7 +1762,7 @@ async function main() {
 
     const fireExtS202 = await prisma.device.create({
         data: {
-            name: 'Fixed Fire Extinguisher System - S202',
+            name: 'Hệ thống bình chữa cháy cố định - S202',
             type: 'FireExtinguisher',
             manufacturer: 'Kidde',
             model: 'FM-200 Clean Agent',
@@ -1776,7 +1774,7 @@ async function main() {
     // Other type devices
     const solarPanelS302 = await prisma.device.create({
         data: {
-            name: 'Rooftop Solar Panels - S302',
+            name: 'Tấm pin năng lượng mặt trời trên mái - S302',
             type: 'Other',
             manufacturer: 'SunPower',
             model: 'Maxeon 5 AC',
@@ -1787,7 +1785,7 @@ async function main() {
 
     const irrigationS503 = await prisma.device.create({
         data: {
-            name: 'Landscape Irrigation System - S503',
+            name: 'Hệ thống tưới tiêu cảnh quan - S503',
             type: 'Other',
             manufacturer: 'Rain Bird',
             model: 'ESP-LXME Controller',
@@ -1802,7 +1800,7 @@ async function main() {
         data: {
             device_id: elevator1S101.device_id,
             file_name: 'elevator1_S101_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-07-10')
         }
     });
@@ -1811,7 +1809,7 @@ async function main() {
         data: {
             device_id: elevator2S101.device_id,
             file_name: 'elevator2_S101_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-07-11')
         }
     });
@@ -1820,7 +1818,7 @@ async function main() {
         data: {
             device_id: hvacS101.device_id,
             file_name: 'hvac_S101_maintenance_guide.pdf',
-            file_type: 'Maintenance Guide',
+            file_type: 'Hướng dẫn bảo trì',
             upload_date: new Date('2021-07-12')
         }
     });
@@ -1829,7 +1827,7 @@ async function main() {
         data: {
             device_id: fireAlarmS101.device_id,
             file_name: 'fire_alarm_S101_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-07-13')
         }
     });
@@ -1838,7 +1836,7 @@ async function main() {
         data: {
             device_id: waterPumpS101.device_id,
             file_name: 'water_pump_S101_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-07-14')
         }
     });
@@ -1847,7 +1845,7 @@ async function main() {
         data: {
             device_id: cctvS101.device_id,
             file_name: 'cctv_S101_installation_guide.pdf',
-            file_type: 'Installation Guide',
+            file_type: 'Hướng dẫn lắp đặt',
             upload_date: new Date('2021-07-15')
         }
     });
@@ -1857,7 +1855,7 @@ async function main() {
         data: {
             device_id: elevator1S102.device_id,
             file_name: 'elevator1_S102_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-07-16')
         }
     });
@@ -1866,7 +1864,7 @@ async function main() {
         data: {
             device_id: elevator2S102.device_id,
             file_name: 'elevator2_S102_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-07-17')
         }
     });
@@ -1875,7 +1873,7 @@ async function main() {
         data: {
             device_id: hvacS102.device_id,
             file_name: 'hvac_S102_maintenance_guide.pdf',
-            file_type: 'Maintenance Guide',
+            file_type: 'Hướng dẫn bảo trì',
             upload_date: new Date('2021-08-15')
         }
     });
@@ -1884,7 +1882,7 @@ async function main() {
         data: {
             device_id: fireAlarmS102.device_id,
             file_name: 'fire_alarm_S102_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-08-16')
         }
     });
@@ -1894,7 +1892,7 @@ async function main() {
         data: {
             device_id: elevator1S201.device_id,
             file_name: 'elevator1_S201_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-08-17')
         }
     });
@@ -1903,7 +1901,7 @@ async function main() {
         data: {
             device_id: elevator2S201.device_id,
             file_name: 'elevator2_S201_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-08-18')
         }
     });
@@ -1912,7 +1910,7 @@ async function main() {
         data: {
             device_id: hvacS201.device_id,
             file_name: 'hvac_S201_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-08-19')
         }
     });
@@ -1921,7 +1919,7 @@ async function main() {
         data: {
             device_id: electricalS201.device_id,
             file_name: 'electrical_S201_wiring_diagram.pdf',
-            file_type: 'Wiring Diagram',
+            file_type: 'Sơ đồ đấu dây',
             upload_date: new Date('2021-08-20')
         }
     });
@@ -1931,7 +1929,7 @@ async function main() {
         data: {
             device_id: elevator1S301.device_id,
             file_name: 'elevator1_S301_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-08-21')
         }
     });
@@ -1940,7 +1938,7 @@ async function main() {
         data: {
             device_id: hvacS301.device_id,
             file_name: 'hvac_S301_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-08-22')
         }
     });
@@ -1949,7 +1947,7 @@ async function main() {
         data: {
             device_id: waterTankS301.device_id,
             file_name: 'water_tank_S301_installation_guide.pdf',
-            file_type: 'Installation Guide',
+            file_type: 'Hướng dẫn lắp đặt',
             upload_date: new Date('2021-08-23')
         }
     });
@@ -1959,7 +1957,7 @@ async function main() {
         data: {
             device_id: elevator1S501.device_id,
             file_name: 'elevator1_S501_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-08-24')
         }
     });
@@ -1968,7 +1966,7 @@ async function main() {
         data: {
             device_id: hvacS501.device_id,
             file_name: 'hvac_S501_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-08-25')
         }
     });
@@ -1977,7 +1975,7 @@ async function main() {
         data: {
             device_id: generatorS501.device_id,
             file_name: 'generator_S501_service_manual.pdf',
-            file_type: 'Service Manual',
+            file_type: 'Hướng dẫn sửa chữa',
             upload_date: new Date('2021-08-26')
         }
     });
@@ -1987,7 +1985,7 @@ async function main() {
         data: {
             device_id: elevator1S601.device_id,
             file_name: 'elevator1_S601_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-10-05')
         }
     });
@@ -1996,7 +1994,7 @@ async function main() {
         data: {
             device_id: elevator2S601.device_id,
             file_name: 'elevator2_S601_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-09-01')
         }
     });
@@ -2005,7 +2003,7 @@ async function main() {
         data: {
             device_id: hvacS601.device_id,
             file_name: 'hvac_S601_installation_guide.pdf',
-            file_type: 'Installation Guide',
+            file_type: 'Hướng dẫn lắp đặt',
             upload_date: new Date('2021-09-02')
         }
     });
@@ -2014,7 +2012,7 @@ async function main() {
         data: {
             device_id: securityGateS601.device_id,
             file_name: 'security_gate_S601_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-09-03')
         }
     });
@@ -2024,7 +2022,7 @@ async function main() {
         data: {
             device_id: elevator1S701.device_id,
             file_name: 'elevator1_S701_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-09-04')
         }
     });
@@ -2033,7 +2031,7 @@ async function main() {
         data: {
             device_id: hvacS701.device_id,
             file_name: 'hvac_S701_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-09-05')
         }
     });
@@ -2042,7 +2040,7 @@ async function main() {
         data: {
             device_id: plumbingS701.device_id,
             file_name: 'plumbing_S701_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-09-06')
         }
     });
@@ -2052,7 +2050,7 @@ async function main() {
         data: {
             device_id: elevator1S801.device_id,
             file_name: 'elevator1_S801_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-09-07')
         }
     });
@@ -2061,7 +2059,7 @@ async function main() {
         data: {
             device_id: hvacS801.device_id,
             file_name: 'hvac_S801_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-09-08')
         }
     });
@@ -2070,7 +2068,7 @@ async function main() {
         data: {
             device_id: electricalS801.device_id,
             file_name: 'electrical_S801_circuit_diagram.pdf',
-            file_type: 'Circuit Diagram',
+            file_type: 'Sơ đồ mạch điện',
             upload_date: new Date('2021-09-09')
         }
     });
@@ -2080,7 +2078,7 @@ async function main() {
         data: {
             device_id: elevator1S901.device_id,
             file_name: 'elevator1_S901_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-09-10')
         }
     });
@@ -2089,7 +2087,7 @@ async function main() {
         data: {
             device_id: hvacS901.device_id,
             file_name: 'hvac_S901_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-09-11')
         }
     });
@@ -2098,7 +2096,7 @@ async function main() {
         data: {
             device_id: securityS901.device_id,
             file_name: 'security_S901_installation_guide.pdf',
-            file_type: 'Installation Guide',
+            file_type: 'Hướng dẫn lắp đặt',
             upload_date: new Date('2021-09-12')
         }
     });
@@ -2108,7 +2106,7 @@ async function main() {
         data: {
             device_id: elevator1S1001.device_id,
             file_name: 'elevator1_S1001_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-09-13')
         }
     });
@@ -2117,7 +2115,7 @@ async function main() {
         data: {
             device_id: hvacS1001.device_id,
             file_name: 'hvac_S1001_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-09-14')
         }
     });
@@ -2127,7 +2125,7 @@ async function main() {
         data: {
             device_id: elevator1S1006.device_id,
             file_name: 'elevator1_S1006_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-09-15')
         }
     });
@@ -2136,7 +2134,7 @@ async function main() {
         data: {
             device_id: hvacS1006.device_id,
             file_name: 'hvac_S1006_maintenance_guide.pdf',
-            file_type: 'Maintenance Guide',
+            file_type: 'Hướng dẫn bảo trì',
             upload_date: new Date('2021-09-16')
         }
     });
@@ -2145,7 +2143,7 @@ async function main() {
         data: {
             device_id: fireSprinklerS1006.device_id,
             file_name: 'fire_sprinkler_S1006_installation_diagram.pdf',
-            file_type: 'Installation Diagram',
+            file_type: 'Sơ đồ lắp đặt',
             upload_date: new Date('2021-09-17')
         }
     });
@@ -2155,7 +2153,7 @@ async function main() {
         data: {
             device_id: elevator1S103.device_id,
             file_name: 'elevator1_S103_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-09-18')
         }
     });
@@ -2164,7 +2162,7 @@ async function main() {
         data: {
             device_id: hvacS103.device_id,
             file_name: 'hvac_S103_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-09-19')
         }
     });
@@ -2173,7 +2171,7 @@ async function main() {
         data: {
             device_id: elevator1S105.device_id,
             file_name: 'elevator1_S105_maintenance_guide.pdf',
-            file_type: 'Maintenance Guide',
+            file_type: 'Hướng dẫn bảo trì',
             upload_date: new Date('2021-09-20')
         }
     });
@@ -2182,7 +2180,7 @@ async function main() {
         data: {
             device_id: hvacS105.device_id,
             file_name: 'hvac_S105_commissioning_report.pdf',
-            file_type: 'Commissioning Report',
+            file_type: 'Báo cáo đưa vào vận hành',
             upload_date: new Date('2021-09-21')
         }
     });
@@ -2191,7 +2189,7 @@ async function main() {
         data: {
             device_id: elevator1S106.device_id,
             file_name: 'elevator1_S106_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-09-22')
         }
     });
@@ -2200,7 +2198,7 @@ async function main() {
         data: {
             device_id: hvacS106.device_id,
             file_name: 'hvac_S106_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-09-23')
         }
     });
@@ -2209,7 +2207,7 @@ async function main() {
         data: {
             device_id: elevator1S107.device_id,
             file_name: 'elevator1_S107_safety_compliance.pdf',
-            file_type: 'Safety Compliance',
+            file_type: 'Bảo đảm an toàn',
             upload_date: new Date('2021-09-24')
         }
     });
@@ -2218,7 +2216,7 @@ async function main() {
         data: {
             device_id: hvacS107.device_id,
             file_name: 'hvac_S107_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-09-25')
         }
     });
@@ -2227,7 +2225,7 @@ async function main() {
         data: {
             device_id: waterPumpS107.device_id,
             file_name: 'water_pump_S107_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-09-26')
         }
     });
@@ -2237,7 +2235,7 @@ async function main() {
         data: {
             device_id: fireSystemS101.device_id,
             file_name: 'fire_system_S101_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-09-27')
         }
     });
@@ -2246,7 +2244,7 @@ async function main() {
         data: {
             device_id: fireSystemS201.device_id,
             file_name: 'fire_system_S201_installation_guide.pdf',
-            file_type: 'Installation Guide',
+            file_type: 'Hướng dẫn lắp đặt',
             upload_date: new Date('2021-09-28')
         }
     });
@@ -2255,7 +2253,7 @@ async function main() {
         data: {
             device_id: generatorS301.device_id,
             file_name: 'generator_S301_operation_manual.pdf',
-            file_type: 'Operation Manual',
+            file_type: 'Hướng dẫn vận hành',
             upload_date: new Date('2021-09-29')
         }
     });
@@ -2264,7 +2262,7 @@ async function main() {
         data: {
             device_id: generatorS601.device_id,
             file_name: 'generator_S601_maintenance_schedule.pdf',
-            file_type: 'Maintenance Schedule',
+            file_type: 'Lịch bảo trì',
             upload_date: new Date('2021-09-30')
         }
     });
@@ -2273,7 +2271,7 @@ async function main() {
         data: {
             device_id: lightingS701.device_id,
             file_name: 'lighting_S701_specification_sheet.pdf',
-            file_type: 'Specification Sheet',
+            file_type: 'Bảng thông số kỹ thuật',
             upload_date: new Date('2021-10-01')
         }
     });
@@ -2282,7 +2280,7 @@ async function main() {
         data: {
             device_id: lightingS801.device_id,
             file_name: 'lighting_S801_emergency_compliance.pdf',
-            file_type: 'Compliance Certificate',
+            file_type: 'Chứng nhận đạt tiêu chuẩn',
             upload_date: new Date('2021-10-02')
         }
     });
@@ -2291,7 +2289,7 @@ async function main() {
         data: {
             device_id: autoGateS901.device_id,
             file_name: 'gate_S901_user_guide.pdf',
-            file_type: 'User Guide',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-10-03')
         }
     });
@@ -2300,7 +2298,7 @@ async function main() {
         data: {
             device_id: autoDoorsS1001.device_id,
             file_name: 'doors_S1001_installation_manual.pdf',
-            file_type: 'Installation Manual',
+            file_type: 'Hướng dẫn lắp đặt',
             upload_date: new Date('2021-10-04')
         }
     });
@@ -2309,7 +2307,7 @@ async function main() {
         data: {
             device_id: fireExtS102.device_id,
             file_name: 'fire_ext_S102_inspection_requirements.pdf',
-            file_type: 'Inspection Requirements',
+            file_type: 'Yêu cầu kiểm tra',
             upload_date: new Date('2021-10-05')
         }
     });
@@ -2318,7 +2316,7 @@ async function main() {
         data: {
             device_id: fireExtS202.device_id,
             file_name: 'fire_ext_S202_technical_manual.pdf',
-            file_type: 'Technical Manual',
+            file_type: 'Hướng dẫn kỹ thuật',
             upload_date: new Date('2021-10-06')
         }
     });
@@ -2327,7 +2325,7 @@ async function main() {
         data: {
             device_id: solarPanelS302.device_id,
             file_name: 'solar_S302_installation_manual.pdf',
-            file_type: 'Installation Manual',
+            file_type: 'Hướng dẫn lắp đặt',
             upload_date: new Date('2021-10-07')
         }
     });
@@ -2336,7 +2334,7 @@ async function main() {
         data: {
             device_id: irrigationS503.device_id,
             file_name: 'irrigation_S503_operator_manual.pdf',
-            file_type: 'Operator Manual',
+            file_type: 'Hướng dẫn vận hành',
             upload_date: new Date('2021-10-08')
         }
     });
@@ -2347,7 +2345,7 @@ async function main() {
         data: {
             device_id: elevator1S101.device_id,
             date_performed: new Date('2022-01-15'),
-            description: 'Quarterly maintenance check',
+            description: 'Kiểm tra bảo trì định kỳ hàng quý',
             cost: 1500.00
         }
     });
@@ -2356,7 +2354,7 @@ async function main() {
         data: {
             device_id: elevator2S101.device_id,
             date_performed: new Date('2022-01-20'),
-            description: 'Monthly safety inspection',
+            description: 'Kiểm tra an toàn định kỳ hàng tháng',
             cost: 800.00
         }
     });
@@ -2365,7 +2363,7 @@ async function main() {
         data: {
             device_id: hvacS101.device_id,
             date_performed: new Date('2022-01-25'),
-            description: 'Filter cleaning and system check',
+            description: 'Vệ sinh bộ lọc và kiểm tra toàn bộ hệ thống',
             cost: 600.00
         }
     });
@@ -2374,7 +2372,7 @@ async function main() {
         data: {
             device_id: fireAlarmS101.device_id,
             date_performed: new Date('2022-02-01'),
-            description: 'Annual fire safety certification',
+            description: 'Chứng nhận an toàn phòng cháy hàng năm',
             cost: 1200.00
         }
     });
@@ -2384,7 +2382,7 @@ async function main() {
         data: {
             device_id: hvacS102.device_id,
             date_performed: new Date('2022-02-20'),
-            description: 'Filter replacement and system check',
+            description: 'Thay bộ lọc và kiểm tra hệ thống',
             cost: 800.00
         }
     });
@@ -2393,7 +2391,7 @@ async function main() {
         data: {
             device_id: elevator1S102.device_id,
             date_performed: new Date('2022-02-22'),
-            description: 'Cable inspection and lubrication',
+            description: 'Kiểm tra cáp và bôi trơn',
             cost: 950.00
         }
     });
@@ -2402,7 +2400,7 @@ async function main() {
         data: {
             device_id: elevator2S102.device_id,
             date_performed: new Date('2022-02-25'),
-            description: 'Door mechanism adjustment',
+            description: 'Điều chỉnh cơ chế cửa',
             cost: 650.00
         }
     });
@@ -2412,7 +2410,7 @@ async function main() {
         data: {
             device_id: elevator1S201.device_id,
             date_performed: new Date('2022-03-05'),
-            description: 'Emergency brake testing',
+            description: 'Kiểm tra và bảo trì hệ thống phanh khẩn cấp',
             cost: 1100.00
         }
     });
@@ -2421,7 +2419,7 @@ async function main() {
         data: {
             device_id: hvacS201.device_id,
             date_performed: new Date('2022-03-10'),
-            description: 'Condenser cleaning and refrigerant check',
+            description: 'Vệ sinh dàn ngưng tụ và kiểm tra hệ thống làm lạnh',
             cost: 750.00
         }
     });
@@ -2430,7 +2428,7 @@ async function main() {
         data: {
             device_id: electricalS201.device_id,
             date_performed: new Date('2022-03-15'),
-            description: 'Circuit breaker testing and panel inspection',
+            description: 'Kiểm tra toàn diện hệ thống điện và bảo trì tủ điện',
             cost: 900.00
         }
     });
@@ -2440,7 +2438,7 @@ async function main() {
         data: {
             device_id: elevator1S601.device_id,
             date_performed: new Date('2022-04-10'),
-            description: 'Annual safety inspection',
+            description: 'Kiểm định an toàn định kỳ hàng năm',
             cost: 2000.00
         }
     });
@@ -2449,7 +2447,7 @@ async function main() {
         data: {
             device_id: elevator2S601.device_id,
             date_performed: new Date('2022-04-12'),
-            description: 'Motor and pulley system maintenance',
+            description: 'Bảo trì hệ thống động cơ và hệ thống ròng rọc',
             cost: 1800.00
         }
     });
@@ -2458,7 +2456,7 @@ async function main() {
         data: {
             device_id: hvacS601.device_id,
             date_performed: new Date('2022-04-15'),
-            description: 'Quarterly performance check and cleaning',
+            description: 'Kiểm tra hiệu suất và vệ sinh định kỳ hàng quý',
             cost: 700.00
         }
     });
@@ -2468,7 +2466,7 @@ async function main() {
         data: {
             device_id: elevator1S701.device_id,
             date_performed: new Date('2022-04-20'),
-            description: 'Control system firmware update',
+            description: 'Cập nhật phần mềm điều khiển và kiểm tra hệ thống',
             cost: 1500.00
         }
     });
@@ -2477,7 +2475,7 @@ async function main() {
         data: {
             device_id: hvacS701.device_id,
             date_performed: new Date('2022-04-25'),
-            description: 'Compressor inspection and fan belt replacement',
+            description: 'Kiểm tra máy nén và thay thế dây đai quạt gió',
             cost: 900.00
         }
     });
@@ -2487,7 +2485,7 @@ async function main() {
         data: {
             device_id: elevator1S801.device_id,
             date_performed: new Date('2022-05-05'),
-            description: 'Bi-annual comprehensive maintenance',
+            description: 'Bảo trì tổng thể định kỳ 6 tháng',
             cost: 2500.00
         }
     });
@@ -2496,7 +2494,7 @@ async function main() {
         data: {
             device_id: electricalS801.device_id,
             date_performed: new Date('2022-05-10'),
-            description: 'Main switchboard cleaning and testing',
+            description: 'Vệ sinh và kiểm tra tủ điện chính',
             cost: 1200.00
         }
     });
@@ -2506,7 +2504,7 @@ async function main() {
         data: {
             device_id: elevator1S901.device_id,
             date_performed: new Date('2022-05-15'),
-            description: 'Door sensor calibration and safety edge testing',
+            description: 'Hiệu chỉnh cảm biến cửa và kiểm tra hệ thống an toàn',
             cost: 850.00
         }
     });
@@ -2515,7 +2513,7 @@ async function main() {
         data: {
             device_id: securityS901.device_id,
             date_performed: new Date('2022-05-20'),
-            description: 'Security system software update and camera alignment',
+            description: 'Cập nhật phần mềm an ninh và điều chỉnh camera',
             cost: 650.00
         }
     });
@@ -2525,7 +2523,7 @@ async function main() {
         data: {
             device_id: elevator1S1001.device_id,
             date_performed: new Date('2022-06-05'),
-            description: 'Speed governor testing and adjustment',
+            description: 'Kiểm tra và điều chỉnh bộ điều tốc',
             cost: 1150.00
         }
     });
@@ -2535,7 +2533,7 @@ async function main() {
         data: {
             device_id: hvacS1006.device_id,
             date_performed: new Date('2022-06-10'),
-            description: 'Annual maintenance and performance optimization',
+            description: 'Bảo trì định kỳ hàng năm và tối ưu hóa hiệu suất',
             cost: 1300.00
         }
     });
@@ -2544,7 +2542,7 @@ async function main() {
         data: {
             device_id: fireSprinklerS1006.device_id,
             date_performed: new Date('2022-06-15'),
-            description: 'Sprinkler head inspection and water flow testing',
+            description: 'Kiểm tra đầu phun sprinkler và thử nghiệm dòng chảy',
             cost: 950.00
         }
     });
@@ -2554,7 +2552,7 @@ async function main() {
         data: {
             device_id: elevator1S103.device_id,
             date_performed: new Date('2022-06-20'),
-            description: 'Monthly preventive maintenance',
+            description: 'Bảo trì phòng ngừa hàng tháng',
             cost: 750.00
         }
     });
@@ -2563,7 +2561,7 @@ async function main() {
         data: {
             device_id: hvacS105.device_id,
             date_performed: new Date('2022-06-25'),
-            description: 'Seasonal service and filter replacement',
+            description: 'Bảo trì theo mùa và thay thế bộ lọc',
             cost: 800.00
         }
     });
@@ -2572,7 +2570,7 @@ async function main() {
         data: {
             device_id: elevator1S106.device_id,
             date_performed: new Date('2022-07-05'),
-            description: 'Traction machine maintenance',
+            description: 'Bảo trì máy kéo',
             cost: 1350.00
         }
     });
@@ -2581,7 +2579,7 @@ async function main() {
         data: {
             device_id: waterPumpS107.device_id,
             date_performed: new Date('2022-07-10'),
-            description: 'Pump system pressure testing and seal replacement',
+            description: 'Kiểm tra và thay thế bộ lọc hệ thống bơm',
             cost: 900.00
         }
     });
@@ -2591,7 +2589,7 @@ async function main() {
         data: {
             device_id: fireSystemS101.device_id,
             date_performed: new Date('2022-07-15'),
-            description: 'Annual fire system certification and testing',
+            description: 'Chứng nhận và kiểm tra hệ thống chữa cháy',
             cost: 2200.00
         }
     });
@@ -2600,7 +2598,7 @@ async function main() {
         data: {
             device_id: fireSystemS201.device_id,
             date_performed: new Date('2022-07-20'),
-            description: 'Fire detection sensors calibration',
+            description: 'Hiệu chỉnh cảm biến phát hiện cháy',
             cost: 1800.00
         }
     });
@@ -2609,7 +2607,7 @@ async function main() {
         data: {
             device_id: generatorS301.device_id,
             date_performed: new Date('2022-07-25'),
-            description: 'Generator load testing and oil change',
+            description: 'Kiểm tra tải và thay dầu',
             cost: 1500.00
         }
     });
@@ -2618,7 +2616,7 @@ async function main() {
         data: {
             device_id: generatorS601.device_id,
             date_performed: new Date('2022-08-01'),
-            description: 'Fuel system cleaning and inspection',
+            description: 'Vệ sinh và kiểm tra hệ thống nhiên liệu',
             cost: 1200.00
         }
     });
@@ -2627,7 +2625,7 @@ async function main() {
         data: {
             device_id: lightingS701.device_id,
             date_performed: new Date('2022-08-05'),
-            description: 'LED driver replacement and fixture cleaning',
+            description: 'Thay thế bộ điều khiển LED và vệ sinh bộ đèn',
             cost: 850.00
         }
     });
@@ -2636,7 +2634,7 @@ async function main() {
         data: {
             device_id: lightingS801.device_id,
             date_performed: new Date('2022-08-10'),
-            description: 'Emergency lighting battery replacement',
+            description: 'Thay thế bộ nạp pin cho đèn khẩn cấp',
             cost: 950.00
         }
     });
@@ -2645,7 +2643,7 @@ async function main() {
         data: {
             device_id: autoGateS901.device_id,
             date_performed: new Date('2022-08-15'),
-            description: 'Gate motor and sensor adjustment',
+            description: 'Hiệu chỉnh động cơ và cảm biến',
             cost: 750.00
         }
     });
@@ -2654,7 +2652,7 @@ async function main() {
         data: {
             device_id: autoDoorsS1001.device_id,
             date_performed: new Date('2022-08-20'),
-            description: 'Door mechanism lubrication and track cleaning',
+            description: 'Bôi trơn và vệ sinh đường ray',
             cost: 600.00
         }
     });
@@ -2663,7 +2661,7 @@ async function main() {
         data: {
             device_id: fireExtS102.device_id,
             date_performed: new Date('2022-08-25'),
-            description: 'Fire extinguisher annual inspection and certification',
+            description: 'Kiểm tra và chứng nhận bình chữa cháy hàng năm',
             cost: 1200.00
         }
     });
@@ -2672,7 +2670,7 @@ async function main() {
         data: {
             device_id: fireExtS202.device_id,
             date_performed: new Date('2022-09-01'),
-            description: 'Clean agent system pressure testing',
+            description: 'Kiểm tra và chứng nhận hệ thống khí bảo vệ',
             cost: 1600.00
         }
     });
@@ -2681,7 +2679,7 @@ async function main() {
         data: {
             device_id: solarPanelS302.device_id,
             date_performed: new Date('2022-09-05'),
-            description: 'Solar panel cleaning and connection inspection',
+            description: 'Vệ sinh và kiểm tra kết nối',
             cost: 900.00
         }
     });
@@ -2690,7 +2688,7 @@ async function main() {
         data: {
             device_id: irrigationS503.device_id,
             date_performed: new Date('2022-09-10'),
-            description: 'Irrigation system winterization',
+            description: 'Bảo trì hệ thống tưới phun hàng năm',
             cost: 750.00
         }
     });
@@ -2701,7 +2699,7 @@ async function main() {
         data: {
             device_id: elevator1S202.device_id,
             date_performed: new Date('2022-09-15'),
-            description: 'Annual maintenance check and safety testing',
+            description: 'Kiểm tra và bảo trì định kỳ và kiểm tra an toàn',
             cost: 1200.00
         }
     });
@@ -2710,7 +2708,7 @@ async function main() {
         data: {
             device_id: hvacS202.device_id,
             date_performed: new Date('2022-09-18'),
-            description: 'Refrigerant pressure check and filter cleaning',
+            description: 'Kiểm tra áp suất và vệ sinh bộ lọc',
             cost: 850.00
         }
     });
@@ -2719,7 +2717,7 @@ async function main() {
         data: {
             device_id: elevator1S203.device_id,
             date_performed: new Date('2022-09-20'),
-            description: 'Control panel upgrade and system testing',
+            description: 'Cập nhật bảng điều khiển và kiểm tra hệ thống',
             cost: 1750.00
         }
     });
@@ -2728,7 +2726,7 @@ async function main() {
         data: {
             device_id: hvacS203.device_id,
             date_performed: new Date('2022-09-22'),
-            description: 'Compressor inspection and thermostat calibration',
+            description: 'Kiểm tra và hiệu chỉnh bộ nén và cảm biến',
             cost: 920.00
         }
     });
@@ -2737,7 +2735,7 @@ async function main() {
         data: {
             device_id: elevator1S205.device_id,
             date_performed: new Date('2022-09-25'),
-            description: 'Brake system maintenance and door alignment',
+            description: 'Bảo trì hệ thống phanh và hiệu chỉnh cửa',
             cost: 1350.00
         }
     });
@@ -2746,7 +2744,7 @@ async function main() {
         data: {
             device_id: hvacS205.device_id,
             date_performed: new Date('2022-09-28'),
-            description: 'Condenser coil cleaning and system optimization',
+            description: 'Vệ sinh và tối ưu hóa hệ thống',
             cost: 780.00
         }
     });
@@ -2756,7 +2754,7 @@ async function main() {
         data: {
             device_id: elevator1S302.device_id,
             date_performed: new Date('2022-10-01'),
-            description: 'Cable tension adjustment and lubricant application',
+            description: 'Điều chỉnh độ căng dây và bôi trơn',
             cost: 950.00
         }
     });
@@ -2765,7 +2763,7 @@ async function main() {
         data: {
             device_id: hvacS302.device_id,
             date_performed: new Date('2022-10-03'),
-            description: 'Air handler inspection and fan motor maintenance',
+            description: 'Kiểm tra và bảo trì hệ thống',
             cost: 820.00
         }
     });
@@ -2774,7 +2772,7 @@ async function main() {
         data: {
             device_id: elevator1S303.device_id,
             date_performed: new Date('2022-10-05'),
-            description: 'Pulley system maintenance and safety check',
+            description: 'Bảo trì hệ thống ròng rọc và kiểm tra an toàn',
             cost: 1050.00
         }
     });
@@ -2783,7 +2781,7 @@ async function main() {
         data: {
             device_id: hvacS303.device_id,
             date_performed: new Date('2022-10-08'),
-            description: 'Duct cleaning and air quality testing',
+            description: 'Vệ sinh và kiểm tra chất lượng không khí',
             cost: 1200.00
         }
     });
@@ -2792,7 +2790,7 @@ async function main() {
         data: {
             device_id: elevator1S305.device_id,
             date_performed: new Date('2022-10-10'),
-            description: 'Control system testing and motor alignment',
+            description: 'Kiểm tra và hiệu chỉnh hệ thống',
             cost: 1150.00
         }
     });
@@ -2801,7 +2799,7 @@ async function main() {
         data: {
             device_id: hvacS305.device_id,
             date_performed: new Date('2022-10-12'),
-            description: 'Heat exchanger inspection and cleaning',
+            description: 'Kiểm tra và vệ sinh hệ thống trao đổi nhiệt',
             cost: 880.00
         }
     });
@@ -2811,7 +2809,7 @@ async function main() {
         data: {
             device_id: elevator1S502.device_id,
             date_performed: new Date('2022-10-15'),
-            description: 'Scheduled preventive maintenance',
+            description: 'Bảo trì định kỳ',
             cost: 1100.00
         }
     });
@@ -2820,7 +2818,7 @@ async function main() {
         data: {
             device_id: hvacS502.device_id,
             date_performed: new Date('2022-10-18'),
-            description: 'System firmware update and performance testing',
+            description: 'Cập nhật phần mềm và kiểm tra hiệu suất',
             cost: 900.00
         }
     });
@@ -2829,7 +2827,7 @@ async function main() {
         data: {
             device_id: elevator1S503.device_id,
             date_performed: new Date('2022-10-20'),
-            description: 'Annual certification and safety inspection',
+            description: 'Chứng nhận và kiểm tra an toàn',
             cost: 1500.00
         }
     });
@@ -2838,7 +2836,7 @@ async function main() {
         data: {
             device_id: hvacS503.device_id,
             date_performed: new Date('2022-10-22'),
-            description: 'Cooling tower maintenance and water treatment',
+            description: 'Bảo trì tháp làm mát và xử lý nước',
             cost: 1250.00
         }
     });
@@ -2848,7 +2846,7 @@ async function main() {
         data: {
             device_id: elevator1S602.device_id,
             date_performed: new Date('2022-10-25'),
-            description: 'Emergency phone system testing and maintenance',
+            description: 'Kiểm tra và bảo trì hệ thống điện thoại khẩn cấp',
             cost: 700.00
         }
     });
@@ -2857,7 +2855,7 @@ async function main() {
         data: {
             device_id: hvacS602.device_id,
             date_performed: new Date('2022-10-28'),
-            description: 'Refrigerant leak testing and repair',
+            description: 'Kiểm tra và sửa chữa rò rỉ dầu',
             cost: 1100.00
         }
     });
@@ -2866,7 +2864,7 @@ async function main() {
         data: {
             device_id: elevator1S603.device_id,
             date_performed: new Date('2022-11-01'),
-            description: 'Door operator maintenance and adjustment',
+            description: 'Bảo trì và hiệu chỉnh cửa',
             cost: 850.00
         }
     });
@@ -2875,7 +2873,7 @@ async function main() {
         data: {
             device_id: hvacS603.device_id,
             date_performed: new Date('2022-11-03'),
-            description: 'Control board replacement and system calibration',
+            description: 'Thay thế bảng điều khiển và hiệu chỉnh hệ thống',
             cost: 1350.00
         }
     });
@@ -2884,7 +2882,7 @@ async function main() {
         data: {
             device_id: elevator1S605.device_id,
             date_performed: new Date('2022-11-05'),
-            description: 'Brake pad replacement and testing',
+            description: 'Thay thế bánh phanh và kiểm tra',
             cost: 1200.00
         }
     });
@@ -2893,7 +2891,7 @@ async function main() {
         data: {
             device_id: hvacS605.device_id,
             date_performed: new Date('2022-11-08'),
-            description: 'Annual preventive maintenance and filter change',
+            description: 'Bảo trì định kỳ và thay bộ lọc',
             cost: 850.00
         }
     });
@@ -2902,7 +2900,7 @@ async function main() {
         data: {
             device_id: elevator1S606.device_id,
             date_performed: new Date('2022-11-10'),
-            description: 'Motor bearing replacement and lubrication',
+            description: 'Thay thế ổ trục và bôi trơn',
             cost: 1400.00
         }
     });
@@ -2911,7 +2909,7 @@ async function main() {
         data: {
             device_id: hvacS606.device_id,
             date_performed: new Date('2022-11-12'),
-            description: 'Expansion valve adjustment and coolant top-up',
+            description: 'Điều chỉnh van mở rộng và bổ sung chất làm mát',
             cost: 780.00
         }
     });
@@ -2921,7 +2919,7 @@ async function main() {
         data: {
             device_id: elevator1S702.device_id,
             date_performed: new Date('2022-11-15'),
-            description: 'Control system testing and firmware update',
+            description: 'Kiểm tra và cập nhật hệ thống',
             cost: 900.00
         }
     });
@@ -2930,7 +2928,7 @@ async function main() {
         data: {
             device_id: hvacS702.device_id,
             date_performed: new Date('2022-11-18'),
-            description: 'Seasonal maintenance and system adjustment',
+            description: 'Bảo trì hàng năm và hiệu chỉnh hệ thống',
             cost: 750.00
         }
     });
@@ -2939,7 +2937,7 @@ async function main() {
         data: {
             device_id: elevator1S703.device_id,
             date_performed: new Date('2022-11-20'),
-            description: 'Safety certification and emergency system testing',
+            description: 'Chứng nhận và kiểm tra an toàn',
             cost: 1300.00
         }
     });
@@ -2948,7 +2946,7 @@ async function main() {
         data: {
             device_id: hvacS703.device_id,
             date_performed: new Date('2022-11-22'),
-            description: 'Coil cleaning and refrigerant pressure check',
+            description: 'Vệ sinh và kiểm tra áp suất dầu',
             cost: 820.00
         }
     });
@@ -2957,7 +2955,7 @@ async function main() {
         data: {
             device_id: elevator1S705.device_id,
             date_performed: new Date('2022-11-25'),
-            description: 'Drive belt replacement and tension adjustment',
+            description: 'Thay thế dây đai và điều chỉnh độ căng',
             cost: 950.00
         }
     });
@@ -2966,7 +2964,7 @@ async function main() {
         data: {
             device_id: hvacS705.device_id,
             date_performed: new Date('2022-11-28'),
-            description: 'Condenser fan motor maintenance and lubrication',
+            description: 'Bảo trì quạt tháp làm mát và bôi trơn',
             cost: 680.00
         }
     });
@@ -2976,7 +2974,7 @@ async function main() {
         data: {
             device_id: elevator1S802.device_id,
             date_performed: new Date('2022-12-01'),
-            description: 'Annual safety inspection and system testing',
+            description: 'Kiểm tra và chứng nhận an toàn hàng năm',
             cost: 1500.00
         }
     });
@@ -2985,7 +2983,7 @@ async function main() {
         data: {
             device_id: hvacS802.device_id,
             date_performed: new Date('2022-12-03'),
-            description: 'Heating system maintenance for winter operation',
+            description: 'Bảo trì hệ thống sưởi hàng năm',
             cost: 920.00
         }
     });
@@ -2994,7 +2992,7 @@ async function main() {
         data: {
             device_id: elevator1S803.device_id,
             date_performed: new Date('2022-12-05'),
-            description: 'Counterweight system inspection and adjustment',
+            description: 'Kiểm tra và điều chỉnh hệ thống cân bằng',
             cost: 1150.00
         }
     });
@@ -3003,7 +3001,7 @@ async function main() {
         data: {
             device_id: hvacS803.device_id,
             date_performed: new Date('2022-12-08'),
-            description: 'Thermostat calibration and zone control testing',
+            description: 'Hiệu chỉnh cảm biến và kiểm tra vùng điều khiển',
             cost: 750.00
         }
     });
@@ -3013,7 +3011,7 @@ async function main() {
         data: {
             device_id: elevator1S902.device_id,
             date_performed: new Date('2022-12-10'),
-            description: 'Monthly maintenance and inspection',
+            description: 'Bảo trì và kiểm tra tháng',
             cost: 800.00
         }
     });
@@ -3022,7 +3020,7 @@ async function main() {
         data: {
             device_id: hvacS902.device_id,
             date_performed: new Date('2022-12-12'),
-            description: 'Winter system preparation and humidity control setup',
+            description: 'Chuẩn bị hệ thống sưởi hàng năm và điều chỉnh độ ẩm',
             cost: 950.00
         }
     });
@@ -3031,7 +3029,7 @@ async function main() {
         data: {
             device_id: elevator1S903.device_id,
             date_performed: new Date('2022-12-15'),
-            description: 'Door synchronization and sensor alignment',
+            description: 'Đồng bộ cửa và hiệu chỉnh cảm biến',
             cost: 720.00
         }
     });
@@ -3040,7 +3038,7 @@ async function main() {
         data: {
             device_id: hvacS903.device_id,
             date_performed: new Date('2022-12-18'),
-            description: 'Air filter replacement and duct inspection',
+            description: 'Thay thế bộ lọc không khí và kiểm tra hệ thống',
             cost: 680.00
         }
     });
@@ -3050,7 +3048,7 @@ async function main() {
         data: {
             device_id: elevator1S1002.device_id,
             date_performed: new Date('2022-12-20'),
-            description: 'Cable inspection and tension adjustment',
+            description: 'Kiểm tra và điều chỉnh độ căng dây',
             cost: 850.00
         }
     });
@@ -3059,7 +3057,7 @@ async function main() {
         data: {
             device_id: hvacS1002.device_id,
             date_performed: new Date('2022-12-22'),
-            description: 'Heat pump inspection and seasonal adjustment',
+            description: 'Kiểm tra và điều chỉnh hệ thống bơm nhiệt hàng năm',
             cost: 780.00
         }
     });
@@ -3068,7 +3066,7 @@ async function main() {
         data: {
             device_id: elevator1S1003.device_id,
             date_performed: new Date('2022-12-25'),
-            description: 'Quarterly maintenance and safety check',
+            description: 'Bảo trì định kỳ và kiểm tra an toàn',
             cost: 1050.00
         }
     });
@@ -3077,7 +3075,7 @@ async function main() {
         data: {
             device_id: hvacS1003.device_id,
             date_performed: new Date('2022-12-28'),
-            description: 'System diagnostics and performance optimization',
+            description: 'Kiểm tra và tối ưu hóa hiệu suất hệ thống',
             cost: 850.00
         }
     });
@@ -3086,7 +3084,7 @@ async function main() {
         data: {
             device_id: elevator1S1005.device_id,
             date_performed: new Date('2023-01-02'),
-            description: 'Annual inspection and certification renewal',
+            description: 'Kiểm tra và chứng nhận lại hàng năm',
             cost: 1600.00
         }
     });
@@ -3095,7 +3093,7 @@ async function main() {
         data: {
             device_id: hvacS1005.device_id,
             date_performed: new Date('2023-01-05'),
-            description: 'Compressor maintenance and performance testing',
+            description: 'Bảo trì và kiểm tra hiệu suất',
             cost: 920.00
         }
     });
@@ -3104,7 +3102,7 @@ async function main() {
         data: {
             device_id: elevator1S1007.device_id,
             date_performed: new Date('2023-01-08'),
-            description: 'Guide rail alignment and lubricant application',
+            description: 'Hiệu chỉnh ray dẫn và bôi trơn',
             cost: 1250.00
         }
     });
@@ -3113,7 +3111,7 @@ async function main() {
         data: {
             device_id: hvacS1007.device_id,
             date_performed: new Date('2023-01-10'),
-            description: 'Control system update and sensor calibration',
+            description: 'Cập nhật hệ thống và hiệu chỉnh cảm biến',
             cost: 780.00
         }
     });
@@ -3123,7 +3121,7 @@ async function main() {
         data: {
             device_id: waterPumpS101.device_id,
             date_performed: new Date('2023-01-15'),
-            description: 'Pump impeller inspection and bearing replacement',
+            description: 'Kiểm tra và thay thế bánh công tác',
             cost: 1050.00
         }
     });
@@ -3132,7 +3130,7 @@ async function main() {
         data: {
             device_id: cctvS101.device_id,
             date_performed: new Date('2023-01-18'),
-            description: 'Camera alignment and recording system upgrade',
+            description: 'Hiệu chỉnh và cập nhật hệ thống ghi hình',
             cost: 1200.00
         }
     });
@@ -3141,7 +3139,7 @@ async function main() {
         data: {
             device_id: fireAlarmS102.device_id,
             date_performed: new Date('2023-01-20'),
-            description: 'Sensor testing and control panel inspection',
+            description: 'Kiểm tra và kiểm tra bảng điều khiển',
             cost: 950.00
         }
     });
@@ -3150,7 +3148,7 @@ async function main() {
         data: {
             device_id: elevator2S201.device_id,
             date_performed: new Date('2023-01-22'),
-            description: 'Safety system testing and door mechanism adjustment',
+            description: 'Kiểm tra và điều chỉnh hệ thống an toàn và cơ cấu cửa',
             cost: 1150.00
         }
     });
@@ -3159,7 +3157,7 @@ async function main() {
         data: {
             device_id: hvacS301.device_id,
             date_performed: new Date('2023-01-25'),
-            description: 'Seasonal maintenance and thermostat calibration',
+            description: 'Bảo trì hàng năm và hiệu chỉnh cảm biến',
             cost: 780.00
         }
     });
@@ -3168,7 +3166,7 @@ async function main() {
         data: {
             device_id: waterTankS301.device_id,
             date_performed: new Date('2023-01-28'),
-            description: 'Water quality testing and valve maintenance',
+            description: 'Kiểm tra chất lượng nước và bảo trì van',
             cost: 850.00
         }
     });
@@ -3177,7 +3175,7 @@ async function main() {
         data: {
             device_id: hvacS501.device_id,
             date_performed: new Date('2023-02-01'),
-            description: 'Filter replacement and air handler maintenance',
+            description: 'Thay thế bộ lọc và bảo trì hệ thống xử lý không khí',
             cost: 720.00
         }
     });
@@ -3186,7 +3184,7 @@ async function main() {
         data: {
             device_id: generatorS501.device_id,
             date_performed: new Date('2023-02-03'),
-            description: 'Fuel system cleaning and power output testing',
+            description: 'Vệ sinh hệ thống nhiên liệu và kiểm tra công suất',
             cost: 1800.00
         }
     });
@@ -3195,7 +3193,7 @@ async function main() {
         data: {
             device_id: securityGateS601.device_id,
             date_performed: new Date('2023-02-05'),
-            description: 'Access control system update and sensor alignment',
+            description: 'Cập nhật hệ thống kiểm soát truy cập và hiệu chỉnh cảm biến',
             cost: 1050.00
         }
     });
@@ -3204,7 +3202,7 @@ async function main() {
         data: {
             device_id: plumbingS701.device_id,
             date_performed: new Date('2023-02-08'),
-            description: 'Pressure testing and connection inspection',
+            description: 'Kiểm tra áp suất và kiểm tra kết nối',
             cost: 920.00
         }
     });
@@ -3213,7 +3211,7 @@ async function main() {
         data: {
             device_id: hvacS801.device_id,
             date_performed: new Date('2023-02-10'),
-            description: 'Heating element inspection and thermostat calibration',
+            description: 'Kiểm tra phần tử sưởi và hiệu chỉnh cảm biến',
             cost: 850.00
         }
     });
@@ -3222,7 +3220,7 @@ async function main() {
         data: {
             device_id: hvacS901.device_id,
             date_performed: new Date('2023-02-12'),
-            description: 'Refrigerant level check and system optimization',
+            description: 'Kiểm tra mức dầu và tối ưu hóa hệ thống',
             cost: 780.00
         }
     });
@@ -3231,7 +3229,7 @@ async function main() {
         data: {
             device_id: hvacS1001.device_id,
             date_performed: new Date('2023-02-15'),
-            description: 'Annual maintenance and filter replacement',
+            description: 'Bảo trì hàng năm và thay thế bộ lọc',
             cost: 820.00
         }
     });
@@ -3240,7 +3238,7 @@ async function main() {
         data: {
             device_id: hvacS103.device_id,
             date_performed: new Date('2023-02-18'),
-            description: 'System diagnostics and performance tuning',
+            description: 'Kiểm tra và tối ưu hóa hiệu suất hệ thống',
             cost: 750.00
         }
     });
@@ -3249,7 +3247,7 @@ async function main() {
         data: {
             device_id: elevator1S105.device_id,
             date_performed: new Date('2023-02-20'),
-            description: 'Quarterly inspection and safety certification',
+            description: 'Kiểm tra định kỳ và chứng nhận an toàn',
             cost: 1200.00
         }
     });
@@ -3258,7 +3256,7 @@ async function main() {
         data: {
             device_id: hvacS106.device_id,
             date_performed: new Date('2023-02-22'),
-            description: 'Condenser cleaning and system pressure check',
+            description: 'Vệ sinh tháp làm mát và kiểm tra áp suất hệ thống',
             cost: 880.00
         }
     });
@@ -3267,7 +3265,7 @@ async function main() {
         data: {
             device_id: hvacS107.device_id,
             date_performed: new Date('2023-02-25'),
-            description: 'Air filter replacement and duct cleaning',
+            description: 'Thay thế bộ lọc không khí và vệ sinh hệ thống',
             cost: 920.00
         }
     });
@@ -3276,7 +3274,7 @@ async function main() {
         data: {
             device_id: irrigationS503.device_id,
             file_name: 'irrigation_S503_operator_manual.pdf',
-            file_type: 'Operator Manual',
+            file_type: 'Hướng dẫn vận hành',
             upload_date: new Date('2021-10-08')
         }
     });
@@ -3286,7 +3284,7 @@ async function main() {
         data: {
             device_id: elevator1S202.device_id,
             file_name: 'elevator1_S202_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-10-10')
         }
     });
@@ -3295,7 +3293,7 @@ async function main() {
         data: {
             device_id: hvacS202.device_id,
             file_name: 'hvac_S202_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-10-11')
         }
     });
@@ -3304,7 +3302,7 @@ async function main() {
         data: {
             device_id: elevator1S203.device_id,
             file_name: 'elevator1_S203_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-10-12')
         }
     });
@@ -3313,7 +3311,7 @@ async function main() {
         data: {
             device_id: hvacS203.device_id,
             file_name: 'hvac_S203_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-10-13')
         }
     });
@@ -3322,7 +3320,7 @@ async function main() {
         data: {
             device_id: elevator1S205.device_id,
             file_name: 'elevator1_S205_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-10-14')
         }
     });
@@ -3331,7 +3329,7 @@ async function main() {
         data: {
             device_id: hvacS205.device_id,
             file_name: 'hvac_S205_user_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-10-15')
         }
     });
@@ -3340,7 +3338,7 @@ async function main() {
         data: {
             device_id: elevator1S302.device_id,
             file_name: 'elevator1_S302_installation_guide.pdf',
-            file_type: 'Installation Guide',
+            file_type: 'Hướng dẫn lắp đặt',
             upload_date: new Date('2021-10-16')
         }
     });
@@ -3349,7 +3347,7 @@ async function main() {
         data: {
             device_id: hvacS302.device_id,
             file_name: 'hvac_S302_service_manual.pdf',
-            file_type: 'Service Manual',
+            file_type: 'Hướng dẫn bảo trì',
             upload_date: new Date('2021-10-17')
         }
     });
@@ -3358,7 +3356,7 @@ async function main() {
         data: {
             device_id: elevator1S303.device_id,
             file_name: 'elevator1_S303_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-10-18')
         }
     });
@@ -3367,7 +3365,7 @@ async function main() {
         data: {
             device_id: hvacS303.device_id,
             file_name: 'hvac_S303_user_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-10-19')
         }
     });
@@ -3376,7 +3374,7 @@ async function main() {
         data: {
             device_id: elevator1S305.device_id,
             file_name: 'elevator1_S305_operation_guide.pdf',
-            file_type: 'Operation Guide',
+            file_type: 'Hướng dẫn vận hành',
             upload_date: new Date('2021-10-20')
         }
     });
@@ -3385,7 +3383,7 @@ async function main() {
         data: {
             device_id: hvacS305.device_id,
             file_name: 'hvac_S305_circuit_diagram.pdf',
-            file_type: 'Circuit Diagram',
+            file_type: 'Sơ đồ mạch điện',
             upload_date: new Date('2021-10-21')
         }
     });
@@ -3394,7 +3392,7 @@ async function main() {
         data: {
             device_id: elevator1S502.device_id,
             file_name: 'elevator1_S502_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-10-22')
         }
     });
@@ -3403,7 +3401,7 @@ async function main() {
         data: {
             device_id: hvacS502.device_id,
             file_name: 'hvac_S502_maintenance_guide.pdf',
-            file_type: 'Maintenance Guide',
+            file_type: 'Hướng dẫn bảo trì',
             upload_date: new Date('2021-10-23')
         }
     });
@@ -3412,7 +3410,7 @@ async function main() {
         data: {
             device_id: elevator1S503.device_id,
             file_name: 'elevator1_S503_user_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-10-24')
         }
     });
@@ -3421,7 +3419,7 @@ async function main() {
         data: {
             device_id: hvacS503.device_id,
             file_name: 'hvac_S503_installation_guide.pdf',
-            file_type: 'Installation Guide',
+            file_type: 'Hướng dẫn lắp đặt',
             upload_date: new Date('2021-10-25')
         }
     });
@@ -3430,7 +3428,7 @@ async function main() {
         data: {
             device_id: elevator1S602.device_id,
             file_name: 'elevator1_S602_user_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-10-26')
         }
     });
@@ -3439,7 +3437,7 @@ async function main() {
         data: {
             device_id: hvacS602.device_id,
             file_name: 'hvac_S602_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-10-27')
         }
     });
@@ -3448,7 +3446,7 @@ async function main() {
         data: {
             device_id: elevator1S603.device_id,
             file_name: 'elevator1_S603_maintenance_guide.pdf',
-            file_type: 'Maintenance Guide',
+            file_type: 'Hướng dẫn bảo trì',
             upload_date: new Date('2021-10-28')
         }
     });
@@ -3457,7 +3455,7 @@ async function main() {
         data: {
             device_id: hvacS603.device_id,
             file_name: 'hvac_S603_user_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-10-29')
         }
     });
@@ -3466,7 +3464,7 @@ async function main() {
         data: {
             device_id: elevator1S605.device_id,
             file_name: 'elevator1_S605_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-10-30')
         }
     });
@@ -3475,7 +3473,7 @@ async function main() {
         data: {
             device_id: hvacS605.device_id,
             file_name: 'hvac_S605_installation_guide.pdf',
-            file_type: 'Installation Guide',
+            file_type: 'Hướng dẫn lắp đặt',
             upload_date: new Date('2021-10-31')
         }
     });
@@ -3484,7 +3482,7 @@ async function main() {
         data: {
             device_id: elevator1S606.device_id,
             file_name: 'elevator1_S606_safety_manual.pdf',
-            file_type: 'Safety Manual',
+            file_type: 'Hướng dẫn an toàn',
             upload_date: new Date('2021-11-01')
         }
     });
@@ -3493,7 +3491,7 @@ async function main() {
         data: {
             device_id: hvacS606.device_id,
             file_name: 'hvac_S606_technical_guide.pdf',
-            file_type: 'Technical Guide',
+            file_type: 'Hướng dẫn kỹ thuật',
             upload_date: new Date('2021-11-02')
         }
     });
@@ -3502,7 +3500,7 @@ async function main() {
         data: {
             device_id: elevator1S702.device_id,
             file_name: 'elevator1_S702_user_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-11-03')
         }
     });
@@ -3511,7 +3509,7 @@ async function main() {
         data: {
             device_id: hvacS702.device_id,
             file_name: 'hvac_S702_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-11-04')
         }
     });
@@ -3520,7 +3518,7 @@ async function main() {
         data: {
             device_id: elevator1S703.device_id,
             file_name: 'elevator1_S703_installation_guide.pdf',
-            file_type: 'Installation Guide',
+            file_type: 'Hướng dẫn lắp đặt',
             upload_date: new Date('2021-11-05')
         }
     });
@@ -3529,7 +3527,7 @@ async function main() {
         data: {
             device_id: hvacS703.device_id,
             file_name: 'hvac_S703_operation_manual.pdf',
-            file_type: 'Operation Manual',
+            file_type: 'Hướng dẫn vận hành',
             upload_date: new Date('2021-11-06')
         }
     });
@@ -3538,7 +3536,7 @@ async function main() {
         data: {
             device_id: elevator1S705.device_id,
             file_name: 'elevator1_S705_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-11-07')
         }
     });
@@ -3547,7 +3545,7 @@ async function main() {
         data: {
             device_id: hvacS705.device_id,
             file_name: 'hvac_S705_service_guide.pdf',
-            file_type: 'Service Guide',
+            file_type: 'Hướng dẫn bảo trì',
             upload_date: new Date('2021-11-08')
         }
     });
@@ -3556,7 +3554,7 @@ async function main() {
         data: {
             device_id: elevator1S802.device_id,
             file_name: 'elevator1_S802_user_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-11-09')
         }
     });
@@ -3565,7 +3563,7 @@ async function main() {
         data: {
             device_id: hvacS802.device_id,
             file_name: 'hvac_S802_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-11-10')
         }
     });
@@ -3574,7 +3572,7 @@ async function main() {
         data: {
             device_id: elevator1S803.device_id,
             file_name: 'elevator1_S803_maintenance_guide.pdf',
-            file_type: 'Maintenance Guide',
+            file_type: 'Hướng dẫn bảo trì',
             upload_date: new Date('2021-11-11')
         }
     });
@@ -3583,7 +3581,7 @@ async function main() {
         data: {
             device_id: hvacS803.device_id,
             file_name: 'hvac_S803_technical_manual.pdf',
-            file_type: 'Technical Manual',
+            file_type: 'Hướng dẫn kỹ thuật',
             upload_date: new Date('2021-11-12')
         }
     });
@@ -3592,7 +3590,7 @@ async function main() {
         data: {
             device_id: elevator1S902.device_id,
             file_name: 'elevator1_S902_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-11-13')
         }
     });
@@ -3601,7 +3599,7 @@ async function main() {
         data: {
             device_id: hvacS902.device_id,
             file_name: 'hvac_S902_user_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-11-14')
         }
     });
@@ -3610,7 +3608,7 @@ async function main() {
         data: {
             device_id: elevator1S903.device_id,
             file_name: 'elevator1_S903_installation_guide.pdf',
-            file_type: 'Installation Guide',
+            file_type: 'Hướng dẫn lắp đặt',
             upload_date: new Date('2021-11-15')
         }
     });
@@ -3619,7 +3617,7 @@ async function main() {
         data: {
             device_id: hvacS903.device_id,
             file_name: 'hvac_S903_maintenance_schedule.pdf',
-            file_type: 'Maintenance Schedule',
+            file_type: 'Lịch bảo trì',
             upload_date: new Date('2021-11-16')
         }
     });
@@ -3628,7 +3626,7 @@ async function main() {
         data: {
             device_id: elevator1S1002.device_id,
             file_name: 'elevator1_S1002_user_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-11-17')
         }
     });
@@ -3637,7 +3635,7 @@ async function main() {
         data: {
             device_id: hvacS1002.device_id,
             file_name: 'hvac_S1002_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-11-18')
         }
     });
@@ -3646,7 +3644,7 @@ async function main() {
         data: {
             device_id: elevator1S1003.device_id,
             file_name: 'elevator1_S1003_service_manual.pdf',
-            file_type: 'Service Manual',
+            file_type: 'Hướng dẫn bảo trì',
             upload_date: new Date('2021-11-19')
         }
     });
@@ -3655,7 +3653,7 @@ async function main() {
         data: {
             device_id: hvacS1003.device_id,
             file_name: 'hvac_S1003_operation_guide.pdf',
-            file_type: 'Operation Guide',
+            file_type: 'Hướng dẫn vận hành',
             upload_date: new Date('2021-11-20')
         }
     });
@@ -3664,7 +3662,7 @@ async function main() {
         data: {
             device_id: elevator1S1005.device_id,
             file_name: 'elevator1_S1005_specifications.pdf',
-            file_type: 'Technical Specifications',
+            file_type: 'Thông số kỹ thuật',
             upload_date: new Date('2021-11-21')
         }
     });
@@ -3673,7 +3671,7 @@ async function main() {
         data: {
             device_id: hvacS1005.device_id,
             file_name: 'hvac_S1005_user_manual.pdf',
-            file_type: 'User Manual',
+            file_type: 'Hướng dẫn sử dụng',
             upload_date: new Date('2021-11-22')
         }
     });
@@ -3682,7 +3680,7 @@ async function main() {
         data: {
             device_id: elevator1S1007.device_id,
             file_name: 'elevator1_S1007_installation_guide.pdf',
-            file_type: 'Installation Guide',
+            file_type: 'Hướng dẫn lắp đặt',
             upload_date: new Date('2021-11-23')
         }
     });
@@ -3691,7 +3689,7 @@ async function main() {
         data: {
             device_id: hvacS1007.device_id,
             file_name: 'hvac_S1007_maintenance_guide.pdf',
-            file_type: 'Maintenance Guide',
+            file_type: 'Hướng dẫn bảo trì',
             upload_date: new Date('2021-11-24')
         }
     });
@@ -3704,3 +3702,4 @@ main()
     .finally(async () => {
         await prisma.$disconnect();
     });
+

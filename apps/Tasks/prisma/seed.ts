@@ -3,124 +3,135 @@ import { PrismaClient } from '@prisma/client-Task'
 const prisma = new PrismaClient()
 
 async function main() {
+  // Delete all existing data in correct order
+  console.log('🗑️  Deleting existing data...')
+
+  // First delete from RepairMaterial (child table)
+  await prisma.repairMaterial.deleteMany()
+  console.log('✅ Existing repair materials deleted successfully!')
+
+  // Then delete from Material (parent table)
+  await prisma.material.deleteMany()
+  console.log('✅ Existing materials deleted successfully!')
+
   const materials = [
     {
-      name: "Wall plastering mortar",
-      description: "Used to patch small cracks or hairline cracks on concrete or brick walls.",
+      name: "Vữa trát tường",
+      description: "Dùng để trám các vết nứt nhỏ hoặc vết nứt tóc trên tường bê tông hoặc gạch",
       unit_price: 50000.00,
       stock_quantity: 100
     },
     {
-      name: "Wall putty powder",
-      description: "Fine powder used before painting to smooth wall surfaces.",
+      name: "Bột bả tường",
+      description: "Bột mịn dùng trước khi sơn để làm phẳng bề mặt tường",
       unit_price: 45000.00,
       stock_quantity: 80
     },
     {
-      name: "Waterproof paint",
-      description: "Used for areas frequently exposed to water such as exterior walls, bathrooms.",
+      name: "Sơn chống thấm",
+      description: "Dùng cho các khu vực thường xuyên tiếp xúc với nước như tường ngoài, phòng tắm",
       unit_price: 120000.00,
       stock_quantity: 60
     },
     {
-      name: "Moisture-resistant MDF board",
-      description: "Engineered MDF wood used for doors, partitions, with moisture resistance capabilities.",
+      name: "Ván MDF chống ẩm",
+      description: "Ván gỗ công nghiệp dùng cho cửa, vách ngăn, có khả năng chống ẩm",
       unit_price: 250000.00,
       stock_quantity: 30
     },
     {
-      name: "Stainless steel door hinges",
-      description: "Accessories used for installing wooden and metal doors in apartments.",
+      name: "Bản lề cửa inox",
+      description: "Phụ kiện dùng để lắp đặt cửa gỗ và cửa kim loại trong căn hộ",
       unit_price: 20000.00,
       stock_quantity: 200
     },
     {
-      name: "Elevator cable",
-      description: "Steel cable used to pull elevator cabins.",
+      name: "Cáp thang máy",
+      description: "Cáp thép dùng để kéo cabin thang máy",
       unit_price: 500000.00,
       stock_quantity: 10
     },
     {
-      name: "Silicone sealant",
-      description: "Sealant used to fill gaps between walls, glass, wood, or in humid areas.",
+      name: "Keo silicon",
+      description: "Keo dùng để trám các khe hở giữa tường, kính, gỗ hoặc trong khu vực ẩm ướt",
       unit_price: 35000.00,
       stock_quantity: 150
     },
     {
-      name: "Elevator door sensor",
-      description: "Sensor device for automatic elevator door opening and closing.",
+      name: "Cảm biến cửa thang máy",
+      description: "Thiết bị cảm biến để đóng mở cửa thang máy tự động",
       unit_price: 900000.00,
       stock_quantity: 5
     },
     {
-      name: "Wooden door handle",
-      description: "Stainless steel or alloy door handles for wooden doors.",
+      name: "Tay nắm cửa gỗ",
+      description: "Tay nắm cửa gỗ bằng inox hoặc hợp kim",
       unit_price: 75000.00,
       stock_quantity: 50
     },
     {
-      name: "Water-resistant gypsum board",
-      description: "Board used for ceilings or partitions with water resistance, commonly used in bathrooms.",
+      name: "Tấm thạch cao chống ẩm",
+      description: "Tấm dùng cho trần hoặc vách ngăn có khả năng chống ẩm, thường dùng trong phòng tắm",
       unit_price: 180000.00,
       stock_quantity: 40
     },
     {
-      name: "PPR water pipe",
-      description: "Heat and pressure resistant plastic pipes used in apartment building water supply systems.",
+      name: "Ống nước PPR",
+      description: "Ống nhựa chịu nhiệt và áp lực dùng trong hệ thống cấp nước của tòa nhà",
       unit_price: 65000.00,
       stock_quantity: 120
     },
     {
-      name: "Motion sensor light switch",
-      description: "Automatic light control device based on movement, used in hallways or bathrooms.",
+      name: "Công tắc đèn cảm biến",
+      description: "Thiết bị điều khiển đèn tự động dựa trên chuyển động, dùng cho hành lang hoặc phòng tắm",
       unit_price: 220000.00,
       stock_quantity: 30
     },
     {
-      name: "Epoxy floor paint",
-      description: "Specialized floor paint to create a hard, easy-to-clean, and non-slip surface.",
+      name: "Sơn sàn epoxy",
+      description: "Sơn sàn chuyên dụng tạo bề mặt cứng, dễ vệ sinh và chống trơn trượt",
       unit_price: 180000.00,
       stock_quantity: 40
     },
     {
-      name: "Self-drilling screws",
-      description: "Quick and convenient installation accessories for gypsum boards, wood, or metal.",
+      name: "Vít tự khoan",
+      description: "Phụ kiện lắp đặt nhanh chóng và tiện lợi cho tấm thạch cao, gỗ hoặc kim loại",
       unit_price: 150.00,
       stock_quantity: 10000
     },
     {
-      name: "Aluminum profile strip",
-      description: "Aluminum strips for door frames, ceiling frames, or interior decoration.",
+      name: "Thanh nhôm định hình",
+      description: "Thanh nhôm dùng cho khung cửa, khung trần hoặc trang trí nội thất",
       unit_price: 75000.00,
       stock_quantity: 70
     },
     {
-      name: "PE foam soundproofing panel",
-      description: "Noise reduction material used for partitions between apartments.",
+      name: "Tấm cách âm PE foam",
+      description: "Vật liệu giảm tiếng ồn dùng cho vách ngăn giữa các căn hộ",
       unit_price: 55000.00,
       stock_quantity: 90
     },
     {
-      name: "Magnetic door lock",
-      description: "Modern locking device using key cards or passcodes, typically installed on main doors.",
+      name: "Khóa cửa từ",
+      description: "Thiết bị khóa hiện đại sử dụng thẻ từ hoặc mã số, thường lắp đặt ở cửa chính",
       unit_price: 1500000.00,
       stock_quantity: 15
     },
     {
-      name: "Elevator control circuit board",
-      description: "Central control device for elevator operation.",
+      name: "Bảng mạch điều khiển thang máy",
+      description: "Thiết bị điều khiển trung tâm cho hoạt động của thang máy",
       unit_price: 3200000.00,
       stock_quantity: 3
     },
     {
-      name: "Stainless steel stair handrail",
-      description: "Safety handrail for apartment building staircases, made of rust-resistant stainless steel.",
+      name: "Tay vịn cầu thang inox",
+      description: "Tay vịn an toàn cho cầu thang tòa nhà, làm bằng inox chống gỉ",
       unit_price: 130000.00,
       stock_quantity: 25
     },
     {
-      name: "Ceramic tiles",
-      description: "Durable, non-slip tiles used for flooring or wall tiling in bathrooms and kitchens.",
+      name: "Gạch ceramic",
+      description: "Gạch bền, chống trơn trượt dùng cho sàn hoặc ốp tường trong phòng tắm và nhà bếp",
       unit_price: 110000.00,
       stock_quantity: 100
     }
