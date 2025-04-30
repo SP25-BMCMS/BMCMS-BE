@@ -1147,7 +1147,7 @@ export class TaskService {
             to: resident.email,
             residentName: residentName,
             buildingName: buildingDetail.name || buildingDetail.building?.name || 'Chưa xác định',
-            maintenanceDate: maintenanceDate,
+            maintenanceDate: scheduleJob.run_date,
             startTime: startTime,
             endTime: endTime,
             maintenanceType: scheduleJob.schedule?.schedule_name || 'Bảo trì công trình',
@@ -1155,8 +1155,6 @@ export class TaskService {
             floor: locationDetails?.floorNumber?.toString() || buildingDetail.numberFloor?.toString() || buildingDetail.building?.numberFloor?.toString() || 'Chưa xác định',
             area: buildingDetail.area?.name || buildingDetail.building?.area?.name || 'Chưa xác định',
             unit: locationDetails?.roomNumber || resident.apartmentNumber || 'Chưa xác định',
-            crackPosition: crackPosition || 'Không xác định',
-            template: 'maintenance-notification'
           };
 
           console.log(`[TaskService] Preparing to send email with data:`, JSON.stringify(emailData));
@@ -1164,7 +1162,7 @@ export class TaskService {
           // Send email notification using the appropriate client and pattern
           await firstValueFrom(
             this.notificationsClient.emit(
-              NOTIFICATIONS_PATTERN.SEND_EMAIL,
+              NOTIFICATIONS_PATTERN.SEND_MAINTENANCE_SCHEDULE_EMAIL,
               emailData
             )
           );

@@ -7,7 +7,7 @@ import { MailerService } from '@nestjs-modules/mailer'
 export class EmailService {
   private readonly logger = new Logger(EmailService.name)
   private recentEmails = new Map<string, number>() // Store email keys with timestamps
-  private readonly DEDUPLICATION_WINDOW_MS = 10000 // 10 seconds deduplication window
+  private deduplicationWindowMs = 30000 // 30 seconds default deduplication window
 
   constructor(
     private configService: ConfigService,
@@ -21,23 +21,27 @@ export class EmailService {
   private cleanupRecentEmails() {
     const now = Date.now();
     for (const [key, timestamp] of this.recentEmails.entries()) {
-      if (now - timestamp > this.DEDUPLICATION_WINDOW_MS) {
+      if (now - timestamp > this.deduplicationWindowMs) {
         this.recentEmails.delete(key);
       }
     }
   }
 
   // Create a unique key for the email to prevent duplicates
-  private createEmailKey(to: string, subject: string): string {
-    return `${to}:${subject}`;
+  private createEmailKey(to: string, subject: string, deduplicationKey?: string): string {
+    if (deduplicationKey) {
+      return `${to}:${subject}:${deduplicationKey}`;
+    }
+    return `${to}:${subject}:${new Date().toISOString().split('T')[0]}`;
   }
 
   // Check if this is a duplicate email sent within the deduplication window
-  private isDuplicateEmail(key: string): boolean {
+  private isDuplicateEmail(key: string, customWindowMs?: number): boolean {
     const now = Date.now();
     if (this.recentEmails.has(key)) {
       const timestamp = this.recentEmails.get(key);
-      return now - timestamp < this.DEDUPLICATION_WINDOW_MS;
+      const windowMs = customWindowMs || this.deduplicationWindowMs;
+      return now - timestamp < windowMs;
     }
     return false;
   }
@@ -101,22 +105,25 @@ export class EmailService {
     floor: string
     area: string
     unit: string
+    deduplicationKey?: string
+    deduplicationWindow?: number
   }): Promise<boolean> {
     try {
       // Create a unique key for this email
       const subject = `Thông báo lịch bảo trì - ${data.buildingName}`;
-      const emailKey = this.createEmailKey(data.to, subject);
+      const emailKey = this.createEmailKey(data.to, subject, data.deduplicationKey);
+      const customWindowMs = data.deduplicationWindow ? data.deduplicationWindow * 1000 : undefined;
 
       // Check if we just sent this exact email
-      if (this.isDuplicateEmail(emailKey)) {
-        this.logger.warn(`Duplicate email detected to: ${data.to} - skipping send`);
+      if (this.isDuplicateEmail(emailKey, customWindowMs)) {
+        this.logger.warn(`Duplicate email detected to: ${data.to} with key: ${emailKey} - skipping send`);
         return true; // Return true to avoid triggering error flows
       }
 
       // Mark this email as sent
       this.recentEmails.set(emailKey, Date.now());
 
-      this.logger.log(`Sending maintenance email to: ${data.to}`)
+      this.logger.log(`Sending maintenance email to: ${data.to} with key: ${emailKey}`)
       this.logger.debug(`Maintenance details:`, {
         building: data.buildingName,
         date: data.maintenanceDate,
@@ -128,6 +135,8 @@ export class EmailService {
           area: data.area,
           unit: data.unit,
         },
+        deduplicationKey: data.deduplicationKey,
+        deduplicationWindow: customWindowMs
       })
 
       const formattedDate = new Date(data.maintenanceDate).toLocaleDateString('vi-VN', {
@@ -162,7 +171,7 @@ export class EmailService {
         },
       })
 
-      this.logger.log(`Maintenance email sent successfully to: ${data.to}`)
+      this.logger.log(`Maintenance email sent successfully to: ${data.to} with key: ${emailKey}`)
       this.logger.debug(`Message ID: ${result.messageId}`)
       return true
     } catch (error) {
