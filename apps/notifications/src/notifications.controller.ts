@@ -39,19 +39,60 @@ export class NotificationsController {
 
   @EventPattern('send_otp')
   async handleSendOtp(data: { email: string }) {
-    return await this.otpService.createOTP(data.email)
+    try {
+      this.logger.log(`[EventPattern] Received OTP request for: ${data.email}, time: ${new Date().toISOString()}`)
+
+      // Add deduplication key
+      const deduplicationKey = `otp-${data.email}-${new Date().toISOString().split('T')[0]}`
+      this.logger.debug(`Using deduplication key: ${deduplicationKey}`)
+
+      // Check if we've sent an OTP recently
+      if (this.emailService.checkDuplicateEmail(deduplicationKey, 300)) { // 5 minutes window
+        this.logger.warn(`Duplicate OTP request detected for ${data.email} - skipping`)
+        return {
+          success: false,
+          message: 'An OTP was recently sent to this email. Please wait before requesting another one.'
+        }
+      }
+
+      const otp = await this.otpService.createOTP(data.email)
+      if (!otp) {
+        throw new Error('Failed to generate OTP')
+      }
+
+      return { success: true, otp }
+    } catch (error) {
+      this.logger.error(`Error sending OTP: ${error.message}`, error.stack)
+      return {
+        success: false,
+        message: `Failed to send OTP: ${error.message}`,
+        error: error.stack
+      }
+    }
   }
 
   @EventPattern('send_otp_message')
   async handleSendOtpMessage(data: { email: string }) {
-    this.logger.log(`[MessagePattern] Received OTP request for: ${data.email}, time: ${new Date().toISOString()}`)
-    const otp = await this.otpService.createOTP(data.email)
-    return { success: true, otp }
+    this.logger.warn(`[MessagePattern] This handler is disabled to prevent duplicate OTP emails. Using EventPattern instead.`)
+    return {
+      success: false,
+      message: 'This message pattern is disabled. Please use event pattern for sending OTP emails.'
+    }
   }
 
   @EventPattern('verify_otp')
   async handleVerifyOtp(data: { email: string; otp: string }) {
-    return this.otpService.verifyOTP(data.email, data.otp)
+    try {
+      this.logger.log(`[EventPattern] Verifying OTP for: ${data.email}`)
+      return await this.otpService.verifyOTP(data.email, data.otp)
+    } catch (error) {
+      this.logger.error(`Error verifying OTP: ${error.message}`, error.stack)
+      return {
+        success: false,
+        message: `Failed to verify OTP: ${error.message}`,
+        error: error.stack
+      }
+    }
   }
 
   @MessagePattern('maintenance.email.disabled')

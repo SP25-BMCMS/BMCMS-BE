@@ -180,4 +180,8 @@ export class EmailService {
       return false
     }
   }
+
+  public checkDuplicateEmail(key: string, windowInSeconds: number = 300): boolean {
+    return this.isDuplicateEmail(key, windowInSeconds);
+  }
 }
