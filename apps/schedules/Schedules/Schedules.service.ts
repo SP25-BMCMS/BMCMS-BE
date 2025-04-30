@@ -105,8 +105,8 @@ export class ScheduleService {
         limit,
         200,
         schedules.length > 0
-          ? 'Schedules retrieved successfully'
-          : 'No schedules found',
+          ? 'Lấy lịch trình thành công'
+          : 'Không tìm thấy lịch trình',
       )
       console.timeEnd('Response creation')
 
@@ -375,7 +375,7 @@ export class ScheduleService {
                       console.error(`Error checking building detail ${buildingDetailId}:`, err.message || err)
                       return of({
                         statusCode: 404,
-                        message: `Building detail check timed out`,
+                        message: `Kiểm tra chi tiết tòa nhà hết thời gian chờ`,
                         isTimeout: true
                       })
                     })
@@ -398,14 +398,14 @@ export class ScheduleService {
           if (invalidBuildingDetailIds.length > 0) {
             throw new RpcException({
               statusCode: 404,
-              message: `The following building detail IDs do not exist: ${invalidBuildingDetailIds.join(', ')}`,
+              message: `Các ID chi tiết tòa nhà sau không tồn tại: ${invalidBuildingDetailIds.join(', ')}`,
             })
           }
         } catch (error) {
           if (error instanceof RpcException) throw error
           throw new RpcException({
             statusCode: 500,
-            message: `Error validating building detail IDs: ${error.message}`,
+            message: `Lỗi khi xác thực ID chi tiết tòa nhà: ${error.message}`,
           })
         }
       }
@@ -430,7 +430,7 @@ export class ScheduleService {
         const schedule = await prisma.schedule.create({
           data: {
             schedule_name: dto.schedule_name,
-            description: dto.description || `Auto-generated maintenance schedule for ${maintenanceCycle.device_type}`,
+            description: dto.description || `Lịch bảo trì tự động tạo cho ${maintenanceCycle.device_type}`,
             cycle_id: dto.cycle_id,
             start_date: startDate,
             end_date: endDate,
@@ -522,7 +522,7 @@ export class ScheduleService {
 
           const buildingNames = buildingResults
             .filter(result => result && result.data)
-            .map(result => result.data.name || 'Unnamed Building')
+            .map(result => result.data.name || 'Tòa nhà không tên')
             .join(', ')
 
           const formattedStartDate = startDate.toLocaleDateString('vi-VN', {
@@ -539,8 +539,8 @@ export class ScheduleService {
 
           // Create system notification
           const notificationData = {
-            title: `New maintenance schedule ${maintenanceCycle.device_type} created`,
-            content: `Maintenance schedule ${dto.schedule_name} for ${maintenanceCycle.device_type} at ${buildingNames} has been scheduled from ${formattedStartDate} to ${formattedEndDate}.`,
+            title: `Lịch bảo trì mới ${maintenanceCycle.device_type} đã được tạo`,
+            content: `Lịch bảo trì ${dto.schedule_name} cho ${maintenanceCycle.device_type} tại ${buildingNames} đã được lên lịch từ ${formattedStartDate} đến ${formattedEndDate}.`,
             type: NotificationType.SYSTEM,
             broadcastToAll: true,
             link: `/schedules/${newSchedule.schedule.schedule_id}`,
@@ -641,8 +641,8 @@ export class ScheduleService {
           // Tạo một lịch bảo trì mới
           const schedule = await this.prisma.schedule.create({
             data: {
-              schedule_name: `Auto ${cycle.device_type} Maintenance - ${now.toISOString().slice(0, 10)}`,
-              description: `Automatically generated maintenance schedule for ${cycle.device_type}`,
+              schedule_name: `Tự động Bảo trì ${cycle.device_type} - ${now.toISOString().slice(0, 10)}`,
+              description: `Lịch bảo trì tự động tạo cho ${cycle.device_type}`,
               cycle_id: cycle.cycle_id,
               start_date: now,
               end_date: endDate,
@@ -774,7 +774,7 @@ export class ScheduleService {
           const buildingResults = await Promise.all(buildingPromises)
           const buildingNames = buildingResults
             .filter(result => result && result.data)
-            .map(result => result.data.name || 'Unnamed Building')
+            .map(result => result.data.name || 'Tòa nhà không tên')
             .join(', ')
 
           // Tạo thông báo hệ thống về các lịch bảo trì tự động mới
@@ -796,8 +796,8 @@ export class ScheduleService {
 
           // Tạo và gửi thông báo cho tất cả người dùng
           const notificationData = {
-            title: `New automatic maintenance schedules created`,
-            content: `The system has automatically created ${createdSchedules.length} new maintenance schedules: ${formattedSchedules} for buildings: ${buildingNames}.`,
+            title: `Lịch bảo trì tự động mới đã được tạo`,
+            content: `Hệ thống đã tự động tạo ${createdSchedules.length} lịch bảo trì mới: ${formattedSchedules} cho các tòa nhà: ${buildingNames}.`,
             type: NotificationType.SYSTEM,
             broadcastToAll: true,
             link: `/schedules`
@@ -873,7 +873,7 @@ export class ScheduleService {
                       // For timeout errors, return a structured response rather than throwing
                       return of({
                         statusCode: 404,
-                        message: `Building detail check timed out`,
+                        message: `Kiểm tra chi tiết tòa nhà hết thời gian chờ`,
                         isTimeout: true
                       })
                     })
@@ -908,7 +908,7 @@ export class ScheduleService {
             console.error(`Found ${invalidBuildingDetailIds.length} invalid building detail IDs:`, invalidBuildingDetailIds)
             throw new RpcException({
               statusCode: 404,
-              message: `The following building detail IDs do not exist: ${invalidBuildingDetailIds.join(', ')}`,
+              message: `Các ID chi tiết tòa nhà sau không tồn tại: ${invalidBuildingDetailIds.join(', ')}`,
             })
           }
 
@@ -923,7 +923,7 @@ export class ScheduleService {
           console.error('Error validating building detail IDs:', error)
           throw new RpcException({
             statusCode: 500,
-            message: `Error validating building detail IDs: ${error.message}`,
+            message: `Lỗi khi xác thực ID chi tiết tòa nhà: ${error.message}`,
           })
         }
       }
@@ -966,7 +966,7 @@ export class ScheduleService {
           const buildingResults = await Promise.all(buildingPromises)
           const buildingNames = buildingResults
             .filter(result => result && result.data)
-            .map(result => result.data.name || 'Unnamed Building')
+            .map(result => result.data.name || 'Tòa nhà không tên')
             .join(', ')
 
           // Format dates for notification
@@ -989,8 +989,8 @@ export class ScheduleService {
 
           // Create and send notification for all users
           const notificationData = {
-            title: `New maintenance schedule created`,
-            content: `New maintenance schedule "${newSchedule.schedule_name}" has been created for ${cycle?.device_type || 'device'} from ${formattedStartDate} to ${formattedEndDate} for buildings: ${buildingNames}.`,
+            title: `Lịch bảo trì mới đã được tạo`,
+            content: `Lịch bảo trì mới "${newSchedule.schedule_name}" đã được tạo cho ${cycle?.device_type || 'thiết bị'} từ ${formattedStartDate} đến ${formattedEndDate} cho các tòa nhà: ${buildingNames}.`,
             type: NotificationType.SYSTEM,
             broadcastToAll: true,
             link: `/schedules/${newSchedule.schedule_id}`
@@ -1153,7 +1153,7 @@ export class ScheduleService {
         if (!maintenanceCycle) {
           throw new RpcException({
             statusCode: 404,
-            message: 'Maintenance cycle not found',
+            message: `Chu kỳ bảo trì với ID ${updateScheduleDto.cycle_id || existingSchedule.cycle_id} không tìm thấy`,
           })
         }
 
@@ -1358,7 +1358,7 @@ export class ScheduleService {
                     logger.error(`Error checking building detail ${buildingDetailId}:`, err.message || err);
                     return of({
                       statusCode: 404,
-                      message: `Building detail check timed out`,
+                      message: `Kiểm tra chi tiết tòa nhà hết thời gian chờ`,
                       isTimeout: true
                     });
                   })
@@ -1381,14 +1381,14 @@ export class ScheduleService {
         if (invalidBuildingDetailIds.length > 0) {
           throw new RpcException({
             statusCode: 404,
-            message: `The following building detail IDs do not exist: ${invalidBuildingDetailIds.join(', ')}`,
+            message: `Các ID chi tiết tòa nhà sau không tồn tại: ${invalidBuildingDetailIds.join(', ')}`,
           });
         }
       } catch (error) {
         if (error instanceof RpcException) throw error;
         throw new RpcException({
           statusCode: 500,
-          message: `Error validating building detail IDs: ${error.message}`,
+          message: `Lỗi khi xác thực ID chi tiết tòa nhà: ${error.message}`,
         });
       }
 
@@ -1407,7 +1407,7 @@ export class ScheduleService {
             logger.error(`Maintenance cycle with ID ${cycleConfig.cycle_id} not found`);
             throw new RpcException({
               statusCode: 404,
-              message: `Maintenance cycle with ID ${cycleConfig.cycle_id} not found`,
+              message: `Chu kỳ bảo trì với ID ${cycleConfig.cycle_id} không tìm thấy`,
             });
           }
 
@@ -1425,8 +1425,8 @@ export class ScheduleService {
           // Create the schedule
           const schedule = await this.prisma.schedule.create({
             data: {
-              schedule_name: `${maintenanceCycle.device_type} Maintenance - ${startDate.toISOString().slice(0, 10)}`,
-              description: `Generated maintenance schedule for ${maintenanceCycle.device_type}`,
+              schedule_name: `Bảo trì ${maintenanceCycle.device_type}  - ${startDate.toISOString().slice(0, 10)}`,
+              description: `Lịch bảo trì được tạo cho ${maintenanceCycle.device_type}`,
               cycle_id: maintenanceCycle.cycle_id,
               start_date: startDate,
               end_date: endDate,
@@ -1534,7 +1534,7 @@ export class ScheduleService {
           const buildingResults = await Promise.all(buildingPromises);
           const buildingNames = buildingResults
             .filter(result => result && result.data)
-            .map(result => result.data.name || 'Unnamed Building')
+            .map(result => result.data.name || 'Tòa nhà không tên')
             .join(', ');
 
           // Create notification for each schedule
@@ -1552,8 +1552,8 @@ export class ScheduleService {
             });
 
             const notificationData = {
-              title: `New maintenance schedule created for ${scheduleInfo.maintenanceCycle.device_type}`,
-              content: `Maintenance schedule "${scheduleInfo.schedule.schedule_name}" has been created from ${formattedStartDate} to ${formattedEndDate} for buildings: ${buildingNames}.`,
+              title: `Lịch bảo trì mới đã tạo cho ${scheduleInfo.maintenanceCycle.device_type}`,
+              content: `Lịch bảo trì "${scheduleInfo.schedule.schedule_name}" đã được tạo từ ${formattedStartDate} đến ${formattedEndDate} cho các tòa nhà: ${buildingNames}.`,
               type: NotificationType.SYSTEM,
               broadcastToAll: true,
               link: `/schedules/${scheduleInfo.schedule.schedule_id}`,
