@@ -407,13 +407,13 @@ export class TaskService {
       }
 
       // Include the crack position in the notification content
-      const locationText = crackPosition ? ` at location "${crackPosition}"` : '';
+      const locationText = crackPosition ? ` tại địa điểm "${crackPosition}"` : '';
 
       // Send notification to the resident
       const notificationData = {
         userId: userId, // Using the extracted userId string
-        title: 'Thank You for Reporting the Crack',
-        content: `We would like to thank you for reporting the crack${locationText}. It has been included in our maintenance schedule and has been repaired. Your contribution helps maintain the building's safety and quality.`,
+        title: 'Cảm ơn bạn đã báo cáo vết nứt.',
+        content: `Chúng tôi đã ghi nhận vết nứt${locationText}. Nó đã được đưa vào lịch trình bảo trì và đã được sửa chữa. Cảm ơn bạn đã đóng góp để duy trì tòa nhà an toàn và chất lượng.`,
         type: NotificationType.SYSTEM,
         relatedId: crackReportId,
         link: `/crack-reports/${crackReportId}`

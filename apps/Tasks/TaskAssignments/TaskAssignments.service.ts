@@ -583,8 +583,8 @@ export class TaskAssignmentsService {
         // Đảm bảo dữ liệu notification đầy đủ và đúng định dạng
         const notificationData = {
           userId: employeeId,
-          title: 'You have been assigned a new task',
-          content: `You have been assigned: ${taskName}`,
+          title: 'Bạn đã được phân công một nhiệm vụ mới',
+          content: `Bạn đã được phân công: ${taskName}`,
           type: NotificationType.TASK_ASSIGNMENT, // Đảm bảo dùng đúng enum
           relatedId: newAssignment.assignment_id,
           link: `/tasks/assignments/${newAssignment.assignment_id}`

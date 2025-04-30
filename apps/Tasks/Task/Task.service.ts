@@ -19,6 +19,7 @@ import { AREAS_PATTERN } from '@app/contracts/Areas/Areas.patterns'
 import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
 import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
 import { GetTasksByTypeDto } from '@app/contracts/tasks/get-tasks-by-type.dto'
+import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
 
 const CRACK_PATTERNS = {
   GET_DETAILS: { cmd: 'get-crack-report-by-id' }
@@ -55,6 +56,23 @@ interface UserService {
     message: string;
     data?: { userId: string; role: string } | null;
   }>;
+
+  // Thêm phương thức để lấy thông tin người dùng
+  getUserById(data: { userId: string }): Observable<{
+    userId: string;
+    username: string;
+    email: string;
+    phone: string;
+    role: string;
+    roleLabel: string;
+    dateOfBirth: string;
+    gender: string;
+    genderLabel: string;
+    userDetails: any;
+    apartments: any[];
+    accountStatus: string;
+    accountStatusLabel: string;
+  }>;
 }
 
 interface AreaManagerResponse {
@@ -84,7 +102,8 @@ export class TaskService {
     @Inject('SCHEDULE_CLIENT') private readonly scheduleClient: ClientProxy,
     @Inject('CRACK_CLIENT') private readonly crackClient: ClientProxy,
     @Inject('BUILDINGS_CLIENT') private readonly buildingsClient: ClientProxy,
-    private taskAssignmentService: TaskAssignmentsService
+    private taskAssignmentService: TaskAssignmentsService,
+    @Inject('NOTIFICATION_CLIENT') private readonly notificationsClient: ClientProxy
   ) {
     this.userService = this.usersClient.getService<UserService>('UserService')
     console.log('TaskService initialized with all clients')
@@ -92,6 +111,7 @@ export class TaskService {
     // Add debug info for clients
     this.scheduleClient.connect().catch(err => console.error('Error connecting to schedule service:', err));
     this.buildingsClient.connect().catch(err => console.error('Error connecting to buildings service:', err));
+    this.notificationsClient.connect().catch(err => console.error('Error connecting to notifications service:', err));
   }
 
   // Improve helper method to handle timeouts better
@@ -973,6 +993,190 @@ export class TaskService {
         // Continue with the process even if crack update fails
       }
 
+      // Step 6: Send maintenance email notification if scheduleJobId is provided
+      let emailSent = false;
+      if (scheduleJobId) {
+        try {
+          console.log(`[TaskService] Sending maintenance email for scheduleJobId: ${scheduleJobId} to resident: ${residentId}`);
+
+          // Get schedule job details using proper pattern constant
+          const scheduleJobResponse = await firstValueFrom(
+            this.scheduleClient.send(
+              SCHEDULEJOB_PATTERN.GET_BY_ID,
+              { schedule_job_id: scheduleJobId }
+            ).pipe(
+              catchError(error => {
+                console.error('[TaskService] Error fetching schedule job details:', error);
+                throw new RpcException(
+                  new ApiResponse(false, `Không thể lấy thông tin lịch công việc: ${error.message}`)
+                );
+              })
+            )
+          );
+
+          if (!scheduleJobResponse || !scheduleJobResponse.isSuccess) {
+            console.warn(`[TaskService] Schedule job not found or invalid response`);
+            throw new RpcException(
+              new ApiResponse(false, 'Không tìm thấy thông tin lịch công việc')
+            );
+          }
+
+          const scheduleJob = scheduleJobResponse.data;
+
+          // Get building details
+          const buildingDetailResponse = await firstValueFrom(
+            this.buildingsClient.send(
+              BUILDINGDETAIL_PATTERN.GET_BY_ID,
+              { buildingDetailId: scheduleJob.buildingDetailId }
+            ).pipe(
+              catchError(error => {
+                console.error('[TaskService] Error fetching building details:', error);
+                throw new RpcException(
+                  new ApiResponse(false, `Không thể lấy thông tin tòa nhà: ${error.message}`)
+                );
+              })
+            )
+          );
+
+          console.log(`[TaskService] Building detail response:`, buildingDetailResponse);
+
+          if (!buildingDetailResponse) {
+            console.warn(`[TaskService] Building detail response is null or undefined`);
+            throw new RpcException(
+              new ApiResponse(false, 'Không nhận được phản hồi từ building service')
+            );
+          }
+
+          // Kiểm tra cấu trúc phản hồi
+          if (!buildingDetailResponse.isSuccess && !buildingDetailResponse.data) {
+            console.warn(`[TaskService] Building detail not found or invalid response structure: ${JSON.stringify(buildingDetailResponse)}`);
+            throw new RpcException(
+              new ApiResponse(false, 'Không tìm thấy thông tin chi tiết tòa nhà hoặc dữ liệu không hợp lệ')
+            );
+          }
+
+          // Nếu không có isSuccess nhưng có data, coi như thành công
+          const buildingDetail = buildingDetailResponse.data || buildingDetailResponse;
+
+          if (!buildingDetail) {
+            console.warn(`[TaskService] Building detail data is missing`);
+            throw new RpcException(
+              new ApiResponse(false, 'Dữ liệu chi tiết tòa nhà bị thiếu')
+            );
+          }
+
+          // Lấy thông tin cư dân thực sự từ UserService thay vì tạo dữ liệu mẫu
+          console.log(`[TaskService] Getting resident information for ID: ${residentId}`);
+          const residentResponse = await firstValueFrom(
+            this.userService.getUserById({ userId: residentId }).pipe(
+              catchError(error => {
+                console.error('[TaskService] Error fetching resident details:', error);
+                throw new RpcException(
+                  new ApiResponse(false, `Không thể lấy thông tin cư dân: ${error.message}`)
+                );
+              })
+            )
+          );
+
+          if (!residentResponse) {
+            console.warn(`[TaskService] User service returned null or undefined response`);
+            throw new RpcException(
+              new ApiResponse(false, 'Không nhận được phản hồi từ user service')
+            );
+          }
+
+          // Debug thông tin người dùng trả về
+          console.log(`[TaskService] Got resident info with email: ${residentResponse.email}`);
+
+          // Kiểm tra email có tồn tại không
+          if (!residentResponse.email) {
+            console.warn(`[TaskService] User ${residentId} has no email address`);
+            throw new RpcException(
+              new ApiResponse(false, 'Cư dân không có địa chỉ email')
+            );
+          }
+
+          // Sử dụng thông tin cư dân thực từ UserService
+          const resident = {
+            userId: residentId,
+            email: residentResponse.email,
+            username: residentResponse.username,
+            name: residentResponse.username,
+            apartmentNumber: residentResponse.apartments && residentResponse.apartments.length > 0
+              ? residentResponse.apartments[0].apartmentName
+              : '101'
+          };
+
+          // Get resident's name
+          const residentName = resident.username || resident.name || 'Cư dân';
+
+          // Get location details for the resident
+          const locationDetails = buildingDetail.locationDetails?.find(
+            loc => loc.roomNumber === resident.apartmentNumber
+          );
+
+          // Format times for display
+          const startTime = scheduleJob.start_date
+            ? new Date(scheduleJob.start_date).toLocaleDateString('vi-VN', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })
+            : 'Chưa xác định';
+
+          const endTime = scheduleJob.end_date
+            ? new Date(scheduleJob.end_date).toLocaleDateString('vi-VN', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })
+            : 'Chưa xác định';
+
+          const maintenanceDate = scheduleJob.run_date
+            ? new Date(scheduleJob.run_date).toLocaleDateString('vi-VN', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })
+            : 'Chưa xác định';
+
+          console.log(`[TaskService] Sending email to resident: ${residentName} (${resident.email}) for maintenance from ${startTime} to ${endTime}`);
+
+          // Prepare email data
+          const emailData = {
+            to: resident.email,
+            residentName: residentName,
+            buildingName: buildingDetail.name || buildingDetail.building?.name || 'Chưa xác định',
+            maintenanceDate: maintenanceDate,
+            startTime: startTime,
+            endTime: endTime,
+            maintenanceType: scheduleJob.schedule?.schedule_name || 'Bảo trì công trình',
+            description: scheduleJob.schedule?.description || 'Không có mô tả chi tiết',
+            floor: locationDetails?.floorNumber?.toString() || buildingDetail.numberFloor?.toString() || buildingDetail.building?.numberFloor?.toString() || 'Chưa xác định',
+            area: buildingDetail.area?.name || buildingDetail.building?.area?.name || 'Chưa xác định',
+            unit: locationDetails?.roomNumber || resident.apartmentNumber || 'Chưa xác định',
+            crackPosition: crackPosition || 'Không xác định',
+            template: 'maintenance-notification'
+          };
+
+          console.log(`[TaskService] Preparing to send email with data:`, JSON.stringify(emailData));
+
+          // Send email notification using the appropriate client and pattern
+          await firstValueFrom(
+            this.notificationsClient.emit(
+              NOTIFICATIONS_PATTERN.SEND_EMAIL,
+              emailData
+            )
+          );
+
+          emailSent = true;
+          console.log(`[TaskService] Maintenance email sent successfully to resident ${residentName} (${resident.email})`);
+        } catch (error) {
+          console.error('[TaskService] Error sending maintenance email:', error);
+          // Continue with the process even if email fails
+        }
+      }
+
       // Return the data needed for notification - make sure to return just the userId string
       return new ApiResponse(true, 'Xử lý nhiệm vụ và báo cáo vết nứt thành công', {
         taskId,
@@ -981,7 +1185,8 @@ export class TaskService {
         residentId: residentId, // This is now a string, not an object
         crackPosition: crackPosition,
         taskStatus: 'Completed',
-        crackReportStatus: 'Completed'
+        crackReportStatus: 'Completed',
+        emailSent: emailSent
       });
     } catch (error) {
       console.error('[TaskService] Error in notificationThankstoResident:', error);

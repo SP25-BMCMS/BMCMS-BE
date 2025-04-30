@@ -42,9 +42,8 @@ export const SkipAuth = () => SetMetadata('skip-auth', true)
 
 @Controller('cracks')
 @ApiTags('cracks')
-// @UseGuards(PassportJwtAuthGuard)
-// @UseGuards(PassportJwtAuthGuard)
-// @ApiBearerAuth('access-token')
+@UseGuards(PassportJwtAuthGuard)
+@ApiBearerAuth('access-token')
 export class CracksController {
   constructor(
     @Inject(CRACK_CLIENT) private readonly crackService: ClientProxy,
@@ -361,6 +360,11 @@ export class CracksController {
     @Body('staffId') staffId: string,
     @Req() req
   ) {
+    // Check if req.user exists before accessing its properties
+    if (!req.user || !req.user.userId) {
+      throw new BadRequestException('Người dùng chưa xác thực hoặc thiếu thông tin người dùng');
+    }
+
     const managerId = req.user.userId // Get manager ID from token
 
     return firstValueFrom(
