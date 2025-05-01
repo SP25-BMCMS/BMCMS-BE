@@ -112,4 +112,9 @@ export class CrackReportsController {
       payload.dto,
     )
   }
+
+  @MessagePattern({ cmd: 'get-crack-reports-by-manager-id' })
+  async getCrackReportsByManagerId(@Payload() payload: { managerid: string }) {
+    return await this.crackReportsService.getCrackReportsByManagerId(payload.managerid);
+  }
 }
