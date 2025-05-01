@@ -362,7 +362,7 @@ export class CracksController {
   ) {
     // Check if req.user exists before accessing its properties
     if (!req.user || !req.user.userId) {
-      throw new BadRequestException('Người dùng chưa xác thực hoặc thiếu thông tin người dùng');
+      throw new BadRequestException('Người dùng chưa xác thực hoặc thiếu thông tin người dùng')
     }
 
     const managerId = req.user.userId // Get manager ID from token
@@ -677,44 +677,38 @@ export class CracksController {
     )
   }
 
-  @Get('crack-reports/manager/:managerid')
+  @Get('crack-reports/manager')
   @ApiOperation({ summary: 'Get all crack reports for buildings managed by the specified manager' })
-  @ApiParam({ name: 'managerid', description: 'ID of the manager whose buildings to check for crack reports' })
   @ApiResponse({ status: 200, description: 'Returns all crack reports for buildings managed by the manager' })
   @ApiResponse({ status: 404, description: 'No crack reports found for buildings managed by this manager' })
-  @SkipAuth()
   async getCrackReportsByManager(
-    @Param('managerid') managerid: string,
+    @Req() req
   ) {
-    console.log("🚀 Manager ID:", managerid)
-    
-    if (!managerid || managerid.trim() === '') {
-      throw new BadRequestException('Manager ID is required');
-    }
-    
+    const userId = req.user.userId
+
     try {
       const result = await firstValueFrom(
-        this.crackService.send({ cmd: 'get-crack-reports-by-manager-id' }, { managerid }).pipe(
+        this.crackService.send({ cmd: 'get-crack-reports-by-manager-id' }, { userId }).pipe(
           catchError((err) => {
-            console.error(`Error fetching crack reports: ${JSON.stringify(err)}`);
+            console.error(`Error fetching crack reports: ${JSON.stringify(err)}`)
             if (err.status === 404) {
-              throw new NotFoundException(err.message || 'No crack reports found for buildings managed by this manager');
+              throw new NotFoundException(err.message || 'No crack reports found for buildings managed by this manager')
             }
-            throw new InternalServerErrorException(err.message || 'Error fetching crack reports');
+            throw new InternalServerErrorException(err.message || 'Error fetching crack reports')
           }),
         ),
-      );
-      
-      return result;
+      )
+
+      return result
     } catch (error) {
-      console.error(`Error in getCrackReportsByManager: ${error}`);
+      console.error(`Error in getCrackReportsByManager: ${error}`)
       if (error instanceof NotFoundException) {
-        throw error;
+        throw error
       }
       if (error instanceof BadRequestException) {
-        throw error;
+        throw error
       }
-      throw new InternalServerErrorException('Failed to retrieve crack reports for manager');
+      throw new InternalServerErrorException('Failed to retrieve crack reports for manager')
     }
   }
 
