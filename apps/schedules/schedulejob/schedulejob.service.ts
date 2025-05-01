@@ -15,6 +15,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
 import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
 import { isUUID } from 'class-validator'
+import { catchError } from 'rxjs/operators'
 
 const NOTIFICATION_CLIENT = 'NOTIFICATION_CLIENT'
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
@@ -495,6 +496,123 @@ export class ScheduleJobsService {
         `Không thể gửi email lịch trình bảo trì: ${error.message}`,
         null
       )
+    }
+  }
+
+  // Get Schedule Jobs by Manager ID
+  async getScheduleJobsByManagerId(managerid: string): Promise<ApiResponse<any>> {
+    try {
+      console.log(`Getting schedule jobs for manager with ID: ${managerid}`);
+      
+      // 1. Get all buildings managed by this manager
+      const buildingsResponse = await firstValueFrom(
+        this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_MANAGER_ID, { managerId: managerid }).pipe(
+          catchError(error => {
+            console.error(`Error fetching buildings for manager ${managerid}:`, error);
+            throw new RpcException({
+              statusCode: 500,
+              message: 'Failed to fetch buildings for manager'
+            });
+          })
+        )
+      );
+
+      console.log(`Buildings response status: ${buildingsResponse.statusCode}`);
+
+      if (!buildingsResponse || buildingsResponse.statusCode !== 200 || !buildingsResponse.data || buildingsResponse.data.length === 0) {
+        console.warn(`No buildings found for manager ${managerid}`);
+        return new ApiResponse(false, 'No buildings found for this manager', []);
+      }
+
+      // 2. Extract all building detail IDs from the buildings
+      const buildingDetails = buildingsResponse.data.flatMap(building => building.buildingDetails || []);
+      const buildingDetailIds = buildingDetails.map(detail => detail.buildingDetailId);
+      
+      console.log(`Found ${buildingDetailIds.length} building details for manager ${managerid}`);
+      
+      if (buildingDetailIds.length === 0) {
+        console.warn(`No building details found for manager ${managerid}`);
+        return new ApiResponse(false, 'No building details found for buildings managed by this manager', []);
+      }
+
+      // 3. Find all schedule jobs related to these building detail IDs
+      const scheduleJobs = await this.prismaService.scheduleJob.findMany({
+        where: {
+          buildingDetailId: {
+            in: buildingDetailIds
+          }
+        },
+        include: {
+          schedule: {
+            include: {
+              cycle: true
+            }
+          }
+        },
+        orderBy: {
+          created_at: 'desc'
+        }
+      });
+
+      console.log(`Found ${scheduleJobs.length} schedule jobs for manager ${managerid}`);
+
+      if (!scheduleJobs || scheduleJobs.length === 0) {
+        console.warn(`No schedule jobs found for building details managed by manager ${managerid}`);
+        return new ApiResponse(false, 'No schedule jobs found for buildings managed by this manager', []);
+      }
+
+      // 4. Create a map of buildingDetailId to buildingDetail and building info for faster lookup
+      const buildingDetailMap = new Map();
+      const buildingMap = new Map();
+      
+      buildingDetails.forEach(detail => {
+        buildingDetailMap.set(detail.buildingDetailId, detail);
+        
+        // Find the building for this detail
+        const building = buildingsResponse.data.find(b => b.buildingId === detail.buildingId);
+        if (building) {
+          buildingMap.set(detail.buildingId, building);
+        }
+      });
+
+      // 5. Enhance the schedule jobs with additional information
+      const enhancedJobs = scheduleJobs.map(job => {
+        // Find the building detail info from our map
+        const buildingDetail = buildingDetailMap.get(job.buildingDetailId);
+        
+        // Find the building info from our map
+        let building = null;
+        if (buildingDetail) {
+          building = buildingMap.get(buildingDetail.buildingId);
+        }
+
+        return {
+          ...job,
+          buildingDetailId: job.buildingDetailId, // For backwards compatibility
+          building: building ? {
+            buildingId: building.buildingId,
+            name: building.name,
+            area: building.area ? {
+              areaId: building.area.areaId,
+              name: building.area.name
+            } : null
+          } : null,
+          buildingDetail: buildingDetail ? {
+            buildingDetailId: buildingDetail.buildingDetailId,
+            name: buildingDetail.name
+          } : null
+        };
+      });
+
+      console.log(`Successfully enhanced ${enhancedJobs.length} schedule jobs`);
+      return new ApiResponse(true, 'Schedule jobs retrieved successfully', enhancedJobs);
+
+    } catch (error) {
+      console.error(`Error getting schedule jobs for manager ${managerid}:`, error);
+      throw new RpcException({
+        statusCode: 500,
+        message: 'Error fetching schedule jobs for this manager'
+      });
     }
   }
 

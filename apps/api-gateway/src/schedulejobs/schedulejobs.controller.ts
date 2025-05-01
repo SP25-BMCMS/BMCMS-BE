@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query, UseGuards, Patch } from '@nestjs/common'
+import { Body, Controller, Get, Param, Post, Put, Query, UseGuards, Patch, HttpException, HttpStatus } from '@nestjs/common'
 import { schedulejobsService } from './schedulejobs.service'
 import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status'
@@ -16,6 +16,9 @@ import {
 } from '@nestjs/swagger'
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
 import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard'
+import { SetMetadata } from '@nestjs/common'
+
+export const SkipAuth = () => SetMetadata('skip-auth', true)
 
 @Controller('schedule-jobs')
 @ApiTags('schedules-jobs')
@@ -144,6 +147,19 @@ export class ScheduleJobsController {
   @ApiParam({ name: 'id', description: 'Schedule job ID' })
   async sendMaintenanceEmail(@Param('id') scheduleJobId: string) {
     return this.scheduleJobsService.sendMaintenanceEmail(scheduleJobId)
+  }
+
+  @Get('manager/:managerid')
+  @ApiOperation({ summary: 'Get all schedule jobs for buildings managed by the specified manager' })
+  @ApiParam({ name: 'managerid', description: 'ID of the manager whose buildings to check for schedule jobs' })
+  @SwaggerResponse({ status: 200, description: 'Returns all schedule jobs for buildings managed by the manager' })
+  @SwaggerResponse({ status: 404, description: 'No schedule jobs found for buildings managed by this manager' })
+  @SkipAuth()
+  async getScheduleJobsByManagerId(@Param('managerid') managerid: string) {
+    if (!managerid || managerid.trim() === '') {
+      throw new HttpException('Manager ID is required', HttpStatus.BAD_REQUEST);
+    }
+    return this.scheduleJobsService.getScheduleJobsByManagerId(managerid);
   }
 
   // @Patch(':id/status')

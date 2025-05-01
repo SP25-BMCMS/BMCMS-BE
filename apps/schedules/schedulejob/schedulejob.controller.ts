@@ -73,6 +73,11 @@ export class ScheduleJobController {
     return this.ScheduleJobsService.sendMaintenanceEmail(data.scheduleJobId)
   }
 
+  @MessagePattern(SCHEDULEJOB_PATTERN.GET_BY_MANAGER_ID)
+  async getScheduleJobsByManagerId(@Payload() payload: { managerid: string }) {
+    return this.ScheduleJobsService.getScheduleJobsByManagerId(payload.managerid);
+  }
+
   // @MessagePattern(SCHEDULEJOB_PATTERN.CHANGE_STATUS)
   // async changeStatus(
   //   @Payload() payload: { schedule_job_id: string; status: string },

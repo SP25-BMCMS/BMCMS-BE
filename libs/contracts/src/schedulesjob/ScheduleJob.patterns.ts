@@ -6,6 +6,7 @@ export const SCHEDULEJOB_PATTERN = {
   UPDATE: 'update_ScheduleJob',
   GET_BY_SCHEDULE_ID: 'get_ScheduleJob_by_schedule_id',
   SEND_MAINTENANCE_EMAIL: 'send_maintenance_email',
+  GET_BY_MANAGER_ID: 'get_schedule_jobs_by_manager_id',
   //CHANGE_STATUS: 'change-schedule-job-status'
 
 }
