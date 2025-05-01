@@ -55,10 +55,10 @@ export class AutoMaintenanceScheduleDto {
 
     @IsOptional()
     @IsString()
-    @ApiProperty({
-        description: 'ID of the manager creating this schedule (automatically set from token)',
-        example: 'd290f1ee-6c54-4b01-90e6-d701748f0851',
-        required: false
-    })
+    // @ApiProperty({
+    //     description: 'ID of the manager creating this schedule (automatically set from token)',
+    //     example: 'd290f1ee-6c54-4b01-90e6-d701748f0851',
+    //     required: false
+    // })
     managerId?: string
 } 

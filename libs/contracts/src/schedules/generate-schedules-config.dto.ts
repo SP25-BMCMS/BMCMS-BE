@@ -33,7 +33,7 @@ export class GenerateSchedulesConfigDto {
     @IsString({ each: true })
     buildingDetails: string[];
     
-    @ApiProperty({ description: 'ID of the manager creating these schedules (automatically set from token)', example: '0bae50eb-da6e-410d-b4a1-487087885b2d', required: false })
+    // @ApiProperty({ description: 'ID of the manager creating these schedules (automatically set from token)', example: '0bae50eb-da6e-410d-b4a1-487087885b2d', required: false })
     @IsOptional()
     @IsString()
     managerId?: string;
