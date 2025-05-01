@@ -11,13 +11,19 @@ import { SchedulesController as SchedulesController } from './Schedules.controll
 import { ClientConfigModule } from 'apps/configs/client-config.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
+import { JwtStrategy } from '../strategies/jwt.strategy';
+import { JwtConfigModule } from 'apps/configs/jwt-config.module';
 
 @Module({
-  imports: [ClientConfigModule, ConfigModule],
+  imports: [
+    ClientConfigModule, 
+    ConfigModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    JwtConfigModule
+  ],
   providers: [
     SchedulesService,
-    PassportModule,
-
+    JwtStrategy,
     {
       provide: SCHEDULE_CLIENT,
       useFactory: (configService: ClientConfigService) => {

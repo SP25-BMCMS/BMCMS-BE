@@ -17,7 +17,6 @@ import {
 } from '../../../libs/contracts/src/Pagination/pagination.dto'
 import { AutoMaintenanceScheduleDto } from '@app/contracts/schedules/auto-maintenance-schedule.dto'
 import { GenerateSchedulesConfigDto } from '@app/contracts/schedules/generate-schedules-config.dto'
-import { GetSchedulesByManagerDto } from '@app/contracts/schedules/get-schedules-by-manager.dto'
 
 @Controller('schedules')
 export class ScheduleController {
@@ -84,8 +83,10 @@ export class ScheduleController {
   }
 
   @MessagePattern(SCHEDULES_PATTERN.TRIGGER_AUTO_MAINTENANCE)
-  async triggerAutoMaintenanceSchedule(): Promise<ApiResponse<string>> {
-    return this.scheduleService.triggerAutoMaintenanceSchedule();
+  async triggerAutoMaintenanceSchedule(
+    @Payload() { managerId }: { managerId: string }
+  ): Promise<ApiResponse<string>> {
+    return this.scheduleService.triggerAutoMaintenanceSchedule(managerId);
   }
 
   @MessagePattern(SCHEDULES_PATTERN.GENERATE_SCHEDULES)

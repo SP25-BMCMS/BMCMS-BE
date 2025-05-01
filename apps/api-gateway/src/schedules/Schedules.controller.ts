@@ -136,9 +136,31 @@ export class SchedulesController {
   @SwaggerResponse({ status: 400, description: 'Bad request' })
   @SwaggerResponse({ status: 404, description: 'Maintenance cycle not found' })
   async createAutoMaintenanceSchedule(
+    @Req() req,
     @Body() autoMaintenanceDto: AutoMaintenanceScheduleDto,
   ): Promise<ApiResponse<ScheduleResponseDto>> {
-    return this.schedulesService.createAutoMaintenanceSchedule(autoMaintenanceDto);
+    try {
+      // Get user ID from token/request
+      const managerId = req.user.userId;
+      
+      if (!managerId) {
+        throw new HttpException('User not authenticated or invalid token', HttpStatus.UNAUTHORIZED);
+      }
+      
+      // Add managerId to the DTO
+      autoMaintenanceDto.managerId = managerId;
+      
+      return this.schedulesService.createAutoMaintenanceSchedule(autoMaintenanceDto);
+    } catch (error) {
+      console.error('Error in createAutoMaintenanceSchedule controller:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        `Failed to create auto maintenance schedule: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @Post('trigger-auto-maintenance')
@@ -150,8 +172,69 @@ export class SchedulesController {
   @SwaggerResponse({ status: 404, description: 'No maintenance cycles or buildings found' })
   @SwaggerResponse({ status: 500, description: 'Server error' })
   @SwaggerResponse({ status: 408, description: 'Request timeout - operation may still be processing' })
-  async triggerAutoMaintenanceSchedule(): Promise<ApiResponse<string>> {
-    return this.schedulesService.triggerAutoMaintenanceSchedule();
+  async triggerAutoMaintenanceSchedule(
+    @Req() req
+  ): Promise<ApiResponse<string>> {
+    try {
+      // Get user ID from token/request
+      const managerId = req.user.userId;
+      
+      if (!managerId) {
+        throw new HttpException('User not authenticated or invalid token', HttpStatus.UNAUTHORIZED);
+      }
+      
+      // Call service with managerId
+      return this.schedulesService.triggerAutoMaintenanceSchedule(managerId);
+    } catch (error) {
+      console.error('Error in triggerAutoMaintenanceSchedule controller:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        `Failed to trigger auto maintenance: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  @Post('generate-schedules')
+  @ApiOperation({ summary: 'Generate schedules from maintenance cycles with custom configurations' })
+  @ApiBody({ type: GenerateSchedulesConfigDto })
+  @SwaggerResponse({
+    status: 201,
+    description: 'Schedules generated successfully',
+  })
+  @SwaggerResponse({ status: 400, description: 'Bad request - Missing required fields or invalid data' })
+  @SwaggerResponse({ status: 404, description: 'Maintenance cycle or building details not found' })
+  @SwaggerResponse({ status: 408, description: 'Request timeout - Service may be unavailable' })
+  @SwaggerResponse({ status: 500, description: 'Internal server error' })
+  @HttpCode(HttpStatus.CREATED)
+  async generateSchedules(
+    @Req() req,
+    @Body() configDto: GenerateSchedulesConfigDto,
+  ): Promise<any> {
+    try {
+      // Get user ID from token/request
+      const managerId = req.user.userId;
+      
+      if (!managerId) {
+        throw new HttpException('User not authenticated or invalid token', HttpStatus.UNAUTHORIZED);
+      }
+      
+      // Add managerId to the DTO
+      configDto.managerId = managerId;
+      
+      return this.schedulesService.generateSchedulesFromConfig(configDto);
+    } catch (error) {
+      console.error('Error in generateSchedules controller:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        `Failed to generate schedules: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   // Get all schedules
@@ -188,16 +271,6 @@ export class SchedulesController {
     }
   }
 
-  // Get schedule by ID
-  @Get(':schedule_id')
-  @ApiOperation({ summary: 'Get schedule by ID' })
-  @ApiParam({ name: 'schedule_id', description: 'Schedule ID' })
-  @SwaggerResponse({ status: 200, description: 'Schedule retrieved successfully' })
-  @SwaggerResponse({ status: 404, description: 'Schedule not found' })
-  async getScheduleById(@Param('schedule_id') schedule_id: string) {
-    return this.schedulesService.getScheduleById(schedule_id)
-  }
-
   @Delete(':schedule_id')
   @ApiOperation({ summary: 'Delete schedule (soft delete)' })
   @ApiParam({ name: 'schedule_id', description: 'Schedule ID' })
@@ -207,28 +280,9 @@ export class SchedulesController {
     return this.schedulesService.deleteSchedule(schedule_id)
   }
 
-  @Post('generate-schedules')
-  @ApiOperation({ summary: 'Generate schedules from maintenance cycles with custom configurations' })
-  @ApiBody({ type: GenerateSchedulesConfigDto })
-  @SwaggerResponse({
-    status: 201,
-    description: 'Schedules generated successfully',
-  })
-  @SwaggerResponse({ status: 400, description: 'Bad request - Missing required fields or invalid data' })
-  @SwaggerResponse({ status: 404, description: 'Maintenance cycle or building details not found' })
-  @SwaggerResponse({ status: 408, description: 'Request timeout - Service may be unavailable' })
-  @SwaggerResponse({ status: 500, description: 'Internal server error' })
-  @HttpCode(HttpStatus.CREATED)
-  async generateSchedules(
-    @Body() configDto: GenerateSchedulesConfigDto,
-  ): Promise<any> {
-    return this.schedulesService.generateSchedulesFromConfig(configDto);
-  }
-
   @Get('manager')
   @ApiBearerAuth('access-token')
   @UseGuards(PassportJwtAuthGuard)
-
   @ApiOperation({ summary: 'Get schedules by manager ID from authenticated user token' })
   @SwaggerResponse({ status: 200, description: 'Returns schedules managed by the currently authenticated manager' })
   @SwaggerResponse({ status: 401, description: 'Unauthorized - User not authenticated' })
@@ -245,26 +299,45 @@ export class SchedulesController {
     type: Number,
     description: 'Items per page',
   })
+  @HttpCode(HttpStatus.CREATED)
   async getSchedulesByManagerId(
     @Req() req,
-          @Query('page') page?: number,
+    @Query('page') page?: number,
     @Query('limit') limit?: number,
   ): Promise<any> {
+   
     try {
       // Create pagination params object
       const paginationParams: PaginationParams = {
         page: page ? parseInt(page.toString()) : 1,
         limit: limit ? parseInt(limit.toString()) : 10,
       }
-      const managerId = req.user?.id;
-      
+      const managerId = req.user.userId;
       if (!managerId) {
+        console.log("Manager ID is missing, throwing 401");
         throw new HttpException('User not authenticated or invalid token', HttpStatus.UNAUTHORIZED);
       }
+      console.log("Calling schedulesService.getSchedulesByManagerId with managerId:", managerId);
       return this.schedulesService.getSchedulesByManagerId(managerId, paginationParams)
     } catch (error) {
-      console.error('Error in getSchedulesByManagerId controller:', error)
-      throw new Error(`Failed to get schedules for manager: ${error.message}`)
+      console.error('Error in getSchedulesByManagerId controller:', error);
+      console.error('Full error stack:', error.stack);
+      throw new HttpException(
+        `Failed to get schedules for manager: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    } finally {
+      console.log("===== END getSchedulesByManagerId =====");
     }
+  }
+
+  // Get schedule by ID
+  @Get(':schedule_id')
+  @ApiOperation({ summary: 'Get schedule by ID' })
+  @ApiParam({ name: 'schedule_id', description: 'Schedule ID' })
+  @SwaggerResponse({ status: 200, description: 'Schedule retrieved successfully' })
+  @SwaggerResponse({ status: 404, description: 'Schedule not found' })
+  async getScheduleById(@Param('schedule_id') schedule_id: string) {
+    return this.schedulesService.getScheduleById(schedule_id)
   }
 }

@@ -400,14 +400,14 @@ export class SchedulesService {
   }
 
   // Kích hoạt tạo lịch bảo trì tự động
-  async triggerAutoMaintenanceSchedule(): Promise<any> {
+  async triggerAutoMaintenanceSchedule(managerId: string): Promise<any> {
     try {
-      console.log('Triggering automatic maintenance schedule creation');
+      console.log('Triggering automatic maintenance schedule creation for manager:', managerId);
 
       // Gửi yêu cầu đến microservice với timeout để tránh treo
       const response = await firstValueFrom(
         this.scheduleClient
-          .send(SCHEDULES_PATTERN.TRIGGER_AUTO_MAINTENANCE, {})
+          .send(SCHEDULES_PATTERN.TRIGGER_AUTO_MAINTENANCE, { managerId })
           .pipe(
             timeout(60000), // 60 second timeout
             catchError(err => {
@@ -536,6 +536,7 @@ export class SchedulesService {
     }
   }
   async getSchedulesByManagerId(managerId: string, paginationParams: PaginationParams = {}): Promise<any> {
+    console.log("🚀 ~ SchedulesService ~ getSchedulesByManagerId ~ managerId:", managerId)
     try {
       // Validate the manager ID
       if (!managerId) {
@@ -544,6 +545,7 @@ export class SchedulesService {
           HttpStatus.BAD_REQUEST
         );
       }
+      
 
       console.log(`Getting schedules for manager ID: ${managerId}`);
 

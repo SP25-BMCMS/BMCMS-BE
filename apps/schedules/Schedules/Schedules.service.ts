@@ -435,6 +435,7 @@ export class ScheduleService {
             start_date: startDate,
             end_date: endDate,
             schedule_status: $Enums.ScheduleStatus.InProgress,
+            managerid: dto.managerId, // Add manager ID from the DTO
           },
         })
 
@@ -581,8 +582,10 @@ export class ScheduleService {
   }
 
   // Cập nhật method triggerAutoMaintenanceSchedule để tạo tasks tự động
-  async triggerAutoMaintenanceSchedule(): Promise<ApiResponse<string>> {
+  async triggerAutoMaintenanceSchedule(managerId: string): Promise<ApiResponse<string>> {
     try {
+      this.logger.log(`Triggering auto maintenance schedule for manager: ${managerId}`);
+      
       // Lấy tất cả các MaintenanceCycle
       const maintenanceCycles = await this.prisma.maintenanceCycle.findMany()
 
@@ -647,6 +650,7 @@ export class ScheduleService {
               start_date: now,
               end_date: endDate,
               schedule_status: $Enums.ScheduleStatus.InProgress,
+              managerid: managerId, // Add manager ID to schedule (using correct field name)
             },
           })
 
@@ -1432,6 +1436,7 @@ export class ScheduleService {
               start_date: startDate,
               end_date: endDate,
               schedule_status: $Enums.ScheduleStatus.InProgress,
+              managerid: configDto.managerId, // Add manager ID from the DTO
             },
           });
 
