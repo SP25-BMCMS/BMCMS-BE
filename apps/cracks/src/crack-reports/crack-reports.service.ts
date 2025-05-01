@@ -197,9 +197,61 @@ export class CrackReportsService {
 
       // Đo thời gian lấy presigned URLs
       const presignedUrlStartTime = performance.now()
+
+      // --------------------------------------------------------------------------------------------------------------------------------------
+      
+      // Collect all unique buildingDetailIds from the crack reports
+      const buildingDetailIds = [...new Set(crackReports.map(report => report.buildingDetailId))];
+      const buildingDetailsMap = new Map();
+      
+      // Fetch all building details in parallel
+      if (buildingDetailIds.length > 0) {
+        console.log(`Fetching building details for ${buildingDetailIds.length} unique buildingDetailIds`);
+        
+        await Promise.all(
+          buildingDetailIds.map(async (buildingDetailId) => {
+            if (buildingDetailId) {
+              try {
+                const buildingDetailResponse = await firstValueFrom(
+                  this.buildingClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId }).pipe(
+                    catchError(error => {
+                      console.error(`Error fetching building detail for ID ${buildingDetailId}:`, error);
+                      return of(null);
+                    })
+                  )
+                );
+                
+                if (buildingDetailResponse && buildingDetailResponse.data) {
+                  buildingDetailsMap.set(buildingDetailId, {
+                    buildingId: buildingDetailResponse.data.buildingId,
+                    name: buildingDetailResponse.data.name
+                  });
+                }
+              } catch (error) {
+                console.error(`Failed to get building detail for ID ${buildingDetailId}:`, error);
+              }
+            }
+          })
+        );
+        console.log(`Successfully fetched building details for ${buildingDetailsMap.size} out of ${buildingDetailIds.length} building details`);
+      }
+            // --------------------------------------------------------------------------------------------------------------------------------------
+
       const enhancedDetails = await Promise.all(crackReports.map(async report => {
         const userData = userMap.get(report.reportedBy)
         const verifierData = userMap.get(report.verifiedBy)
+              // ------------------------------------------------------------------------------------------------
+
+        // Get building details from map
+        // console.log(`Building details map:`, buildingDetailsMap);
+
+        // console.log(`Building details map:`, buildingDetailsMap.get(report.buildingDetailId));
+
+        const buildingDetail = buildingDetailsMap.get(report.buildingDetailId);
+        // console.log(`Building detail for report ${report.crackReportId}:`, buildingDetail.name);
+        // console.log(`Building detail for report ${report.crackReportId}:`, buildingDetail.buildingId);
+
+      // ------------------------------------------------------------------------------------------------
 
         return {
           ...report,
@@ -211,6 +263,8 @@ export class CrackReportsService {
             userId: report.verifiedBy,
             username: verifierData?.username || 'Unknown'
           },
+          buildingId: buildingDetail?.buildingId || null,
+          buildingName: buildingDetail?.name || null  ,
           crackDetails: await Promise.all(report.crackDetails.map(async detail => ({
             ...detail,
             photoUrl: detail.photoUrl ? await this.getPreSignedUrl(this.extractFileKey(detail.photoUrl)) : null,
@@ -218,6 +272,7 @@ export class CrackReportsService {
           })))
         }
       }))
+
       const presignedUrlTime = performance.now() - presignedUrlStartTime
       console.log(`Presigned URL generation time: ${presignedUrlTime.toFixed(2)}ms`)
 
@@ -582,6 +637,30 @@ export class CrackReportsService {
         // Continue without user info if there's an error
       }
 
+      // Fetch building details if buildingDetailId exists
+      let buildingDetail = null;
+      if (report.buildingDetailId) {
+        try {
+          const buildingDetailResponse = await firstValueFrom(
+            this.buildingClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId: report.buildingDetailId }).pipe(
+              catchError(error => {
+                console.error(`Error fetching building detail for ID ${report.buildingDetailId}:`, error);
+                return of(null);
+              })
+            )
+          );
+          
+          if (buildingDetailResponse && buildingDetailResponse.data) {
+            buildingDetail = {
+              buildingId: buildingDetailResponse.data.buildingId,
+              name: buildingDetailResponse.data.name
+            };
+          }
+        } catch (error) {
+          console.error(`Failed to get building detail for ID ${report.buildingDetailId}:`, error);
+        }
+      }
+
       // Thêm presigned URL cho từng crackDetail
       // Add presigned URL for each crackDetail
       const enhancedDetails = await Promise.all(
@@ -612,6 +691,8 @@ export class CrackReportsService {
           userId: report.verifiedBy,
           username: 'Unknown'
         },
+        buildingId: buildingDetail?.buildingId || null,
+        buildingName: buildingDetail?.name || null,
         crackDetails: enhancedDetails // Use processed details
       }
 
