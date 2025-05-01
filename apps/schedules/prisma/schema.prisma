@@ -41,6 +41,7 @@ model Schedule {
   updated_at      DateTime         @default(now()) @updatedAt @db.Timestamp(6)
   schedule_status ScheduleStatus   @default(InProgress)
   cycle_id        String
+  managerid       String?
   cycle           MaintenanceCycle @relation(fields: [cycle_id], references: [cycle_id])
   scheduleJobs    ScheduleJob[]
 }

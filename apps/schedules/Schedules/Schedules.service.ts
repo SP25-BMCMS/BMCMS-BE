@@ -937,6 +937,7 @@ export class ScheduleService {
           end_date: createScheduleDto.end_date ? new Date(createScheduleDto.end_date) : null,
           schedule_status: createScheduleDto.schedule_status || $Enums.ScheduleStatus.InProgress,
           cycle_id: createScheduleDto.cycle_id,
+          managerid: createScheduleDto.managerid,
         },
       })
 
@@ -1615,6 +1616,79 @@ export class ScheduleService {
       case 'Monthly': return 3;
       case 'Yearly': return 5;
       default: return 3;
+    }
+  }
+  async getSchedulesByManagerId(
+    managerId: string,
+    paginationParams?: PaginationParams,
+  ): Promise<PaginationResponseDto<ScheduleResponseDto>> {
+    try {
+      this.logger.log(`Getting schedules for manager ID: ${managerId}`);
+      console.time('Total getSchedulesByManagerId execution');
+
+      // Default values if not provided
+      const page = Math.max(1, paginationParams?.page || 1);
+      const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10));
+
+      // Calculate skip value for pagination
+      const skip = (page - 1) * limit;
+
+      console.time('Database queries');
+      // Get paginated data for schedules with matching manager ID
+      const [schedules, total] = await Promise.all([
+        this.prisma.schedule.findMany({
+          where: {
+            managerid: managerId,
+          },
+          skip,
+          take: limit,
+          orderBy: { created_at: 'desc' },
+          include: { scheduleJobs: true },
+        }),
+        this.prisma.schedule.count({
+          where: {
+            managerid: managerId,
+          },
+        }),
+      ]);
+      console.timeEnd('Database queries');
+
+      console.time('Data transformation');
+      // Transform to response DTOs
+      const scheduleResponse: ScheduleResponseDto[] = schedules.map(
+        (schedule) => ({
+          ...schedule,
+          start_date: schedule.start_date ? schedule.start_date : null,
+          end_date: schedule.end_date ? schedule.end_date : null,
+          created_at: schedule.created_at,
+          updated_at: schedule.updated_at,
+          schedule_job: schedule.scheduleJobs,
+        }),
+      );
+      console.timeEnd('Data transformation');
+
+      console.time('Response creation');
+      // Use PaginationResponseDto for consistent response formatting
+      const response = new PaginationResponseDto(
+        scheduleResponse,
+        total,
+        page,
+        limit,
+        200,
+        schedules.length > 0
+          ? 'Lấy lịch trình thành công'
+          : 'Không tìm thấy lịch trình cho quản lý này',
+      );
+      console.timeEnd('Response creation');
+
+      console.timeEnd('Total getSchedulesByManagerId execution');
+      return response;
+    } catch (error) {
+      this.logger.error(`Error retrieving schedules for manager: ${error.message}`, error.stack);
+      throw new RpcException({
+        statusCode: 500,
+        message: `Lỗi khi lấy danh sách lịch trình: ${error.message}`,
+      });
     }
   }
 }

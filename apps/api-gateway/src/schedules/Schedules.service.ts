@@ -535,4 +535,35 @@ export class SchedulesService {
       return this.handleMicroserviceError(error, 'Error occurred while generating schedules from configuration');
     }
   }
+  async getSchedulesByManagerId(managerId: string, paginationParams: PaginationParams = {}): Promise<any> {
+    try {
+      // Validate the manager ID
+      if (!managerId) {
+        throw new HttpException(
+          'Manager ID is required',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      console.log(`Getting schedules for manager ID: ${managerId}`);
+
+      // Send request to microservice
+      const response = await firstValueFrom(
+        this.scheduleClient.send(
+          SCHEDULES_PATTERN.GET_BY_MANAGER_ID,
+          { managerId, paginationParams }
+        ).pipe(
+          timeout(15000), // 15 second timeout
+          catchError(err => {
+            console.error('Error in getSchedulesByManagerId microservice call:', err);
+            throw err; // Let the catch block handle this error
+          })
+        )
+      );
+
+      return response;
+    } catch (error) {
+      return this.handleMicroserviceError(error, 'Error occurred while fetching schedules for manager');
+    }
+  }
 }

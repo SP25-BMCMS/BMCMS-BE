@@ -13,6 +13,7 @@ import {
   UseGuards,
   Query,
   Patch,
+  HttpException,
 } from '@nestjs/common'
 import { SchedulesService } from './Schedules.service'
 import { catchError, firstValueFrom, NotFoundError } from 'rxjs'
@@ -27,18 +28,24 @@ import {
   ApiParam,
   ApiBody,
   ApiQuery,
+  ApiBearerAuth,
 } from '@nestjs/swagger'
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
 import { AutoMaintenanceScheduleDto } from '@app/contracts/schedules/auto-maintenance-schedule.dto'
 import { GenerateSchedulesConfigDto } from '@app/contracts/schedules/generate-schedules-config.dto'
+import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard'
 
 @Controller('schedules')
 @ApiTags('schedules')
+@ApiBearerAuth('access-token')
+@UseGuards(PassportJwtAuthGuard)
 export class SchedulesController {
   constructor(private readonly schedulesService: SchedulesService) { }
 
   // Create schedule
   @Post()
+  @ApiBearerAuth('access-token')
+  @UseGuards(PassportJwtAuthGuard)
   @ApiOperation({ summary: 'Create a new schedule' })
   @ApiBody({ type: CreateScheduleDto })
   @SwaggerResponse({
@@ -51,9 +58,32 @@ export class SchedulesController {
   @SwaggerResponse({ status: 500, description: 'Internal server error' })
   @HttpCode(HttpStatus.CREATED)
   async createSchedule(
+    @Req() req,
     @Body() createScheduleDto: CreateScheduleDto,
   ): Promise<ApiResponse<ScheduleResponseDto>> {
-    return this.schedulesService.createSchedule(createScheduleDto)
+    try {
+      // Get user ID from token/request
+      const managerId = req.user.userId;
+      console.log("managerId", managerId)
+      
+      if (!managerId) {
+        throw new HttpException('User not authenticated or invalid token', HttpStatus.UNAUTHORIZED);
+      }
+      
+      // Add managerId to the DTO
+      createScheduleDto.managerid = managerId;
+      
+      return this.schedulesService.createSchedule(createScheduleDto);
+    } catch (error) {
+      console.error('Error in createSchedule controller:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        `Failed to create schedule: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   // Update schedule
@@ -193,5 +223,48 @@ export class SchedulesController {
     @Body() configDto: GenerateSchedulesConfigDto,
   ): Promise<any> {
     return this.schedulesService.generateSchedulesFromConfig(configDto);
+  }
+
+  @Get('manager')
+  @ApiBearerAuth('access-token')
+  @UseGuards(PassportJwtAuthGuard)
+
+  @ApiOperation({ summary: 'Get schedules by manager ID from authenticated user token' })
+  @SwaggerResponse({ status: 200, description: 'Returns schedules managed by the currently authenticated manager' })
+  @SwaggerResponse({ status: 401, description: 'Unauthorized - User not authenticated' })
+  @SwaggerResponse({ status: 404, description: 'No schedules found for this manager' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number (starting from 1)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Items per page',
+  })
+  async getSchedulesByManagerId(
+    @Req() req,
+          @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ): Promise<any> {
+    try {
+      // Create pagination params object
+      const paginationParams: PaginationParams = {
+        page: page ? parseInt(page.toString()) : 1,
+        limit: limit ? parseInt(limit.toString()) : 10,
+      }
+      const managerId = req.user?.id;
+      
+      if (!managerId) {
+        throw new HttpException('User not authenticated or invalid token', HttpStatus.UNAUTHORIZED);
+      }
+      return this.schedulesService.getSchedulesByManagerId(managerId, paginationParams)
+    } catch (error) {
+      console.error('Error in getSchedulesByManagerId controller:', error)
+      throw new Error(`Failed to get schedules for manager: ${error.message}`)
+    }
   }
 }

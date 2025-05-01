@@ -17,6 +17,7 @@ import {
 } from '../../../libs/contracts/src/Pagination/pagination.dto'
 import { AutoMaintenanceScheduleDto } from '@app/contracts/schedules/auto-maintenance-schedule.dto'
 import { GenerateSchedulesConfigDto } from '@app/contracts/schedules/generate-schedules-config.dto'
+import { GetSchedulesByManagerDto } from '@app/contracts/schedules/get-schedules-by-manager.dto'
 
 @Controller('schedules')
 export class ScheduleController {
@@ -59,6 +60,13 @@ export class ScheduleController {
       typeof schedule_id,
     )
     return this.scheduleService.getScheduleById(schedule_id)
+  }
+
+  @MessagePattern(SCHEDULES_PATTERN.GET_BY_MANAGER_ID)
+  async getSchedulesByManagerId(
+    @Payload() { managerId, paginationParams }: { managerId: string; paginationParams?: PaginationParams },
+  ): Promise<PaginationResponseDto<ScheduleResponseDto>> {
+    return this.scheduleService.getSchedulesByManagerId(managerId, paginationParams)
   }
 
   @MessagePattern(SCHEDULES_PATTERN.DELELTE)
