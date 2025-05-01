@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Query, UseGuards, Patch, HttpException, HttpStatus } from '@nestjs/common'
+import { Body, Controller, Get, Param, Post, Put, Query, UseGuards, Patch, HttpException, HttpStatus, Req } from '@nestjs/common'
 import { schedulejobsService } from './schedulejobs.service'
 import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { UpdateScheduleJobStatusDto } from '@app/contracts/schedulesjob/update.schedule-job-status'
@@ -67,16 +67,7 @@ export class ScheduleJobsController {
     })
   }
 
-  @Get(':schedule_job_id')
-  @ApiOperation({ summary: 'Get schedule job by ID' })
-  @ApiParam({ name: 'schedule_job_id', description: 'Schedule job ID' })
-  @SwaggerResponse({ status: 200, description: 'Schedule job found' })
-  @SwaggerResponse({ status: 404, description: 'Schedule job not found' })
-  async getScheduleJobById(
-    @Param('schedule_job_id') schedule_job_id: string,
-  ): Promise<ApiResponse<any>> {
-    return this.scheduleJobsService.getScheduleJobById(schedule_job_id)
-  }
+  
 
   @Post()
   @ApiOperation({ summary: 'Create a new schedule job' })
@@ -148,18 +139,29 @@ export class ScheduleJobsController {
   async sendMaintenanceEmail(@Param('id') scheduleJobId: string) {
     return this.scheduleJobsService.sendMaintenanceEmail(scheduleJobId)
   }
-
-  @Get('manager/:managerid')
+  @ApiBearerAuth('access-token')
+  @UseGuards(PassportJwtAuthGuard)
+  @Get('manager')
   @ApiOperation({ summary: 'Get all schedule jobs for buildings managed by the specified manager' })
-  @ApiParam({ name: 'managerid', description: 'ID of the manager whose buildings to check for schedule jobs' })
   @SwaggerResponse({ status: 200, description: 'Returns all schedule jobs for buildings managed by the manager' })
   @SwaggerResponse({ status: 404, description: 'No schedule jobs found for buildings managed by this manager' })
   @SkipAuth()
-  async getScheduleJobsByManagerId(@Param('managerid') managerid: string) {
-    if (!managerid || managerid.trim() === '') {
+  async getScheduleJobsByManagerId(@Req() req) {
+    const managerId = req.user.userId;
+    if (!managerId || managerId.trim() === '') {
       throw new HttpException('Manager ID is required', HttpStatus.BAD_REQUEST);
     }
-    return this.scheduleJobsService.getScheduleJobsByManagerId(managerid);
+    return this.scheduleJobsService.getScheduleJobsByManagerId(managerId);
+  }
+  @Get(':schedule_job_id')
+  @ApiOperation({ summary: 'Get schedule job by ID' })
+  @ApiParam({ name: 'schedule_job_id', description: 'Schedule job ID' })
+  @SwaggerResponse({ status: 200, description: 'Schedule job found' })
+  @SwaggerResponse({ status: 404, description: 'Schedule job not found' })
+  async getScheduleJobById(
+    @Param('schedule_job_id') schedule_job_id: string,
+  ): Promise<ApiResponse<any>> {
+    return this.scheduleJobsService.getScheduleJobById(schedule_job_id)
   }
 
   // @Patch(':id/status')

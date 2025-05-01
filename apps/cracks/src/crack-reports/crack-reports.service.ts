@@ -1208,6 +1208,7 @@ export class CrackReportsService {
     try {
       this.logger.log(`Getting crack reports for manager with ID: ${managerid}`);
       
+      console.log("🚀 Kha nKha ne ~ managerid:Kha ne ~ managerid:e ~ managerid:", managerid)
       // 1. Get all buildings managed by this manager
       const buildingsResponse = await firstValueFrom(
         this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_MANAGER_ID, { managerId: managerid }).pipe(

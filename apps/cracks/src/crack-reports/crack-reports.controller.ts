@@ -114,7 +114,8 @@ export class CrackReportsController {
   }
 
   @MessagePattern({ cmd: 'get-crack-reports-by-manager-id' })
-  async getCrackReportsByManagerId(@Payload() payload: { managerid: string }) {
-    return await this.crackReportsService.getCrackReportsByManagerId(payload.managerid);
+  async getCrackReportsByManagerId(@Payload() payload: { userId: string }) {
+    console.log("🚀 Kha ne ~ payload:", payload)
+    return await this.crackReportsService.getCrackReportsByManagerId(payload.userId);
   }
 }
