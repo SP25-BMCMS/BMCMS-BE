@@ -1200,6 +1200,7 @@ export class TaskService {
   }
 
   async getTasksByType(query: GetTasksByTypeDto) {
+    console.log(`[TaskService] Getting tasks by type with query:`, query.managerId);
     const startTime = performance.now();
     try {
       // Default values if not provided
@@ -1207,6 +1208,36 @@ export class TaskService {
       const limit = Math.min(50, Math.max(1, query?.limit || 10));
       const statusFilter = query?.statusFilter;
       const taskType = query?.taskType || 'all';
+      const managerId = query?.managerId;
+
+      // If manager ID is provided, first get all buildings managed by this manager
+      let buildingDetailIds = [];
+      if (managerId) {
+        try {
+          console.log(`Fetching buildings for manager with ID: ${managerId}`);
+          const buildingsResponse = await firstValueFrom(
+            this.buildingsClient.send(BUILDINGS_PATTERN.GET_BY_MANAGER_ID, { managerId }).pipe(
+              timeout(10000), // 10 seconds timeout
+              catchError(error => {
+                console.error(`Error fetching buildings for manager ${managerId}:`, error);
+                return of({ statusCode: 500, data: [] });
+              })
+            )
+          );
+
+          if (buildingsResponse && buildingsResponse.statusCode === 200 && buildingsResponse.data && buildingsResponse.data.length > 0) {
+            // Extract all building detail IDs from the buildings
+            const buildingDetails = buildingsResponse.data.flatMap(building => building.buildingDetails || []);
+            buildingDetailIds = buildingDetails.map(detail => detail.buildingDetailId);
+            
+            console.log(`Found ${buildingDetailIds.length} building details for manager ${managerId}`);
+          } else {
+            console.warn(`No buildings found for manager ${managerId}`);
+          }
+        } catch (error) {
+          console.error(`Error getting buildings for manager ${managerId}:`, error);
+        }
+      }
 
       // Calculate skip value for pagination
       const skip = (page - 1) * limit;
@@ -1314,16 +1345,35 @@ export class TaskService {
         });
       });
 
+      // Filter tasks by building details if manager ID was provided
+      let filteredTasks = tasks;
+      if (managerId && buildingDetailIds.length > 0) {
+        filteredTasks = tasks.filter(task => {
+          // Check if the task has building information in crackInfo or schedulesjobInfo
+          const taskAny = task as any; // Cast to any to access dynamic properties
+          const hasBuildingInCrackInfo = taskAny.crackInfo?.data?.some?.(report => 
+            report.buildingDetailId && buildingDetailIds.includes(report.buildingDetailId)
+          );
+          
+          const hasBuildingInScheduleJob = taskAny.schedulesjobInfo?.data?.buildingDetailId && 
+            buildingDetailIds.includes(taskAny.schedulesjobInfo.data.buildingDetailId);
+            
+          return hasBuildingInCrackInfo || hasBuildingInScheduleJob;
+        });
+        
+        console.log(`Filtered ${tasks.length} tasks to ${filteredTasks.length} tasks for manager ${managerId}`);
+      }
+
       const totalTime = performance.now() - startTime;
       console.log(`Total execution time: ${totalTime.toFixed(2)}ms`);
 
       return new PaginationResponseDto(
-        tasks,
-        total,
+        filteredTasks,
+        filteredTasks.length, // Update the total count to match the filtered results
         page,
         limit,
         200,
-        tasks.length > 0 ? 'Lấy danh sách nhiệm vụ thành công' : 'Không tìm thấy nhiệm vụ nào',
+        filteredTasks.length > 0 ? 'Lấy danh sách nhiệm vụ thành công' : 'Không tìm thấy nhiệm vụ nào',
       );
     } catch (error) {
       console.error('Error retrieving tasks by type:', error);

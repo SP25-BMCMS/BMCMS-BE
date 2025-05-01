@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsNumber, Min } from 'class-validator';
+import { IsEnum, IsOptional, IsNumber, Min, IsUUID, IsString } from 'class-validator';
 import { Status } from '@prisma/client-Task';
 
 export class GetTasksByTypeDto {
@@ -39,4 +39,13 @@ export class GetTasksByTypeDto {
     @IsEnum(Status)
     @IsOptional()
     statusFilter?: Status;
+    
+    // @ApiProperty({
+    //     description: 'Filter tasks by manager ID (UUID of the manager)',
+    //     required: false,
+    //     example: '0b802cbb-e058-4426-a302-24d5f37f6dcd'
+    // })
+    @IsString()
+    @IsOptional()
+    managerId?: string;
 } 

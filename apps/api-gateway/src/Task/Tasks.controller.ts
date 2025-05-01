@@ -15,6 +15,7 @@ import {
   Req,
   UseGuards,
   HttpException,
+  Version
 } from '@nestjs/common';
 import { TaskService } from './Tasks.service';
 import { catchError, firstValueFrom, NotFoundError } from 'rxjs';
@@ -26,6 +27,7 @@ import {
   ApiResponse,
   ApiBody,
   ApiQuery,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { ChangeTaskStatusDto } from '@app/contracts/tasks/ChangeTaskStatus.Dto ';
 import { CreateTaskDto } from '@app/contracts/tasks/create-Task.dto';
@@ -37,6 +39,7 @@ import { CreateRepairMaterialDto } from '@app/contracts/repairmaterials/create-r
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 import { Status } from '@prisma/client-Task';
 import { GetTasksByTypeDto } from '@app/contracts/tasks/get-tasks-by-type.dto';
+import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard';
 
 @Controller('tasks')
 @ApiTags('tasks')
@@ -306,12 +309,35 @@ export class TaskController {
   // }
 
   @Get('tasks/by-type')
-  @ApiOperation({ summary: 'Get tasks by type (crack, schedule, or all)' })
-  @ApiResponse({ status: 200, description: 'Returns tasks filtered by type' })
+  @ApiBearerAuth('access-token')
+
+  @ApiOperation({ summary: 'Get tasks by type (crack, schedule, or all) with optional filtering by manager ID' })
+  @ApiResponse({ status: 200, description: 'Returns tasks filtered by type and optionally by manager' })
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
-  async getTasksByType(@Query() query: GetTasksByTypeDto) {
+  @UseGuards(PassportJwtAuthGuard)
+  async getTasksByType(@Query() query: GetTasksByTypeDto, @Req() req) {
     try {
+      // Thêm log chi tiết hơn để xác nhận thông tin người dùng
+      console.log('[TaskController] req.user structure:', JSON.stringify(req.user, null, 2));
+      console.log('[TaskController] Request headers:', JSON.stringify(req.headers, null, 2));
+      
+      // Use authenticated user ID as manager ID if not provided in query
+      if (!query.managerId && req.user) {
+        // Truy cập userId theo cấu trúc đúng của đối tượng user
+        // Có thể là req.user.userId, req.user.id, req.user.sub tùy theo cấu hình JWT
+        const userId = req.user.userId || req.user.id || req.user.sub;
+        
+        if (userId) {
+          query.managerId = userId;
+          console.log(`Using authenticated user ID as manager ID: ${query.managerId}`);
+        } else {
+          console.log('User is authenticated but no userId found in token payload');
+        }
+      } else if (!query.managerId) {
+        console.log('No managerId provided and user is not authenticated');
+      }
+      
       return this.taskService.getTasksByType(query);
     } catch (error) {
       console.error('Error in getTasksByType controller:', error);
