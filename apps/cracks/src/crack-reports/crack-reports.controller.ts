@@ -132,4 +132,9 @@ export class CrackReportsController {
       payload.severityFilter
     )
   }
+
+  @MessagePattern({ cmd: 'get-building-area-from-crack' })
+  async getBuildingAreaFromCrack(@Payload() data: { crack_id: string }) {
+    return await this.crackReportsService.getBuildingAreaFromCrack(data.crack_id);
+  }
 }

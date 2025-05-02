@@ -20,6 +20,7 @@ import { PrismaClient } from '@prisma/client-Task'
 import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
 import { NotificationType } from '@app/contracts/notifications/notification.dto'
 import { Logger } from '@nestjs/common'
+import { AREAS_PATTERN } from '@app/contracts/areas/areas.patterns'
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 const USERS_CLIENT = 'USERS_CLIENT'
@@ -1453,6 +1454,199 @@ export class CrackReportsService {
       throw new RpcException(
         new ApiResponse(false, 'Error fetching crack reports for this manager', error)
       )
+    }
+  }
+
+  async getBuildingAreaFromCrack(crack_id: string): Promise<ApiResponse<any>> {
+    try {
+      console.log(`Getting building area for crack ID: ${crack_id}`);
+
+      // Get crack report by ID
+      const crackReport = await this.prismaService.crackReport.findFirst({
+        where: { crackReportId: crack_id },
+        select: {
+          crackReportId: true,
+          buildingDetailId: true
+        }
+      });
+
+      if (!crackReport) {
+        console.log(`No crack report found with ID: ${crack_id}`);
+        return new ApiResponse(
+          false,
+          `Không tìm thấy báo cáo vết nứt với ID: ${crack_id}`,
+          null
+        );
+      }
+
+      console.log(`Found crack report with buildingDetailId: ${crackReport.buildingDetailId}`);
+
+      // Get building detail to find building
+      console.log(`Sending request to get building detail with ID: ${crackReport.buildingDetailId}`);
+      const buildingDetailResponse = await firstValueFrom(
+        this.buildingClient.send(
+          BUILDINGDETAIL_PATTERN.GET_BY_ID,
+          { buildingDetailId: crackReport.buildingDetailId }
+        ).pipe(
+          timeout(10000),
+          catchError(err => {
+            console.error(`Error getting building detail: ${err.message}`);
+            return of({ statusCode: 500, data: null });
+          })
+        )
+      );
+
+      console.log(`Building detail response:`, JSON.stringify(buildingDetailResponse, null, 2));
+
+      // Check for successful response
+      if (!buildingDetailResponse) {
+        console.log(`Building detail response is null or undefined`);
+        return new ApiResponse(
+          false,
+          `Không thể lấy thông tin chi tiết tòa nhà cho vết nứt này`,
+          null
+        );
+      }
+
+      if (buildingDetailResponse.statusCode !== 200) {
+        console.log(`Building detail response has non-200 status code: ${buildingDetailResponse.statusCode}`);
+        return new ApiResponse(
+          false,
+          `Không thể lấy thông tin chi tiết tòa nhà cho vết nứt này`,
+          null
+        );
+      }
+
+      // Check if we can extract area directly from the nested structure in buildingDetailResponse
+      if (
+        buildingDetailResponse.data?.building?.area?.name
+      ) {
+        const areaName = buildingDetailResponse.data.building.area.name;
+        console.log(`Area name found directly in building detail response: ${areaName}`);
+
+        return new ApiResponse(
+          true,
+          `Lấy thông tin khu vực thành công`,
+          { name: areaName }
+        );
+      }
+
+      // If the area is not directly accessible, extract buildingId and continue
+      console.log(`All properties in buildingDetailResponse:`, Object.keys(buildingDetailResponse));
+      const buildingId = buildingDetailResponse.data?.buildingId;
+
+      if (!buildingId) {
+        console.log(`Could not extract buildingId from response:`, JSON.stringify(buildingDetailResponse, null, 2));
+        return new ApiResponse(
+          false,
+          `Không thể xác định ID tòa nhà từ chi tiết tòa nhà`,
+          null
+        );
+      }
+
+      console.log(`Extracted buildingId: ${buildingId}`);
+
+      // Get building information to find area
+      console.log(`Sending request to get building with ID: ${buildingId}`);
+      const buildingResponse = await firstValueFrom(
+        this.buildingClient.send(
+          BUILDINGS_PATTERN.GET_BY_ID,
+          { buildingId }
+        ).pipe(
+          timeout(10000),
+          catchError(err => {
+            console.error(`Error getting building: ${err.message}`);
+            return of({ statusCode: 500, data: null });
+          })
+        )
+      );
+
+      console.log(`Building response:`, JSON.stringify(buildingResponse, null, 2));
+
+      if (!buildingResponse || buildingResponse.statusCode !== 200) {
+        console.log(`Invalid building response:`, JSON.stringify(buildingResponse, null, 2));
+        return new ApiResponse(
+          false,
+          `Không thể lấy thông tin tòa nhà cho vết nứt này`,
+          null
+        );
+      }
+
+      // Check if we can get area name directly from the building data
+      if (buildingResponse.data?.area?.name) {
+        const areaName = buildingResponse.data.area.name;
+        console.log(`Area name found directly in building response: ${areaName}`);
+
+        return new ApiResponse(
+          true,
+          `Lấy thông tin khu vực thành công`,
+          { name: areaName }
+        );
+      }
+
+      // If we can't get the area name directly, we need to get the area ID and do another call
+      const areaId = buildingResponse.data?.areaId;
+      console.log(`Extracted areaId: ${areaId}`);
+
+      if (!areaId) {
+        console.log(`No areaId found in building data`);
+        return new ApiResponse(
+          false,
+          `Tòa nhà không có thông tin khu vực`,
+          null
+        );
+      }
+
+      // Get area information
+      console.log(`Sending request to get area with ID: ${areaId}`);
+      const areaResponse = await firstValueFrom(
+        this.buildingClient.send(
+          AREAS_PATTERN.GET_BY_ID,
+          { areaId }
+        ).pipe(
+          timeout(10000),
+          catchError(err => {
+            console.error(`Error getting area: ${err.message}`);
+            return of({ statusCode: 500, data: null });
+          })
+        )
+      );
+
+      console.log(`Area response:`, JSON.stringify(areaResponse, null, 2));
+
+      if (!areaResponse || areaResponse.statusCode !== 200) {
+        console.log(`Invalid area response:`, JSON.stringify(areaResponse, null, 2));
+        return new ApiResponse(
+          false,
+          `Không thể lấy thông tin khu vực cho tòa nhà này`,
+          null
+        );
+      }
+
+      const areaName = areaResponse.data?.name;
+
+      if (!areaName) {
+        console.log(`Area name not found in response:`, JSON.stringify(areaResponse, null, 2));
+        return new ApiResponse(
+          false,
+          `Không thể xác định tên khu vực`,
+          null
+        );
+      }
+
+      console.log(`Area name found: ${areaName}`);
+      return new ApiResponse(
+        true,
+        `Lấy thông tin khu vực thành công`,
+        { name: areaName }
+      );
+    } catch (error) {
+      console.error(`Error getting building area from crack: ${error.message}`);
+      return new ApiResponse(
+        false,
+        `Lỗi khi lấy thông tin khu vực từ vết nứt: ${error.message}`,
+        null
+      );
     }
   }
 }

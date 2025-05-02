@@ -343,4 +343,34 @@ export class InspectionController {
     return this.inspectionService.updateInspectionReportStatusByManager(dto);
   }
 
+  @Get('inspection-pdf/:task_assignment_id')
+  @ApiOperation({ summary: 'Get inspection PDF by task assignment ID with area validation' })
+  @ApiParam({ name: 'task_assignment_id', description: 'Task assignment ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Inspection PDF found and area matches',
+    schema: {
+      type: 'object',
+      properties: {
+        isSuccess: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Tệp PDF kiểm tra được tìm thấy và khu vực khớp' },
+        data: {
+          type: 'object',
+          properties: {
+            inspection_id: { type: 'string', example: '828d2871-acc6-4db0-8d80-d8e061833ef2' },
+            uploadFile: { type: 'string', description: 'View URL for backward compatibility', example: 'https://bucket.s3.region.amazonaws.com/file.pdf?signed-params' },
+            viewUrl: { type: 'string', description: 'URL for viewing the PDF in browser', example: 'https://bucket.s3.region.amazonaws.com/file.pdf?signed-params-for-viewing' },
+            downloadUrl: { type: 'string', description: 'URL for downloading the PDF file', example: 'https://bucket.s3.region.amazonaws.com/file.pdf?signed-params-for-download' }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Inspection not found or area mismatch' })
+  async getInspectionPdfByTaskAssignment(
+    @Param('task_assignment_id') task_assignment_id: string,
+  ) {
+    return this.inspectionService.getInspectionPdfByTaskAssignment(task_assignment_id);
+  }
+
 }

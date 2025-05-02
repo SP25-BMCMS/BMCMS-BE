@@ -489,36 +489,56 @@ export class UsersService {
     data: {
       positionId: string
       positionName: string
+      positionNameLabel?: string
       description?: string
     } | null
   }> {
     try {
+      console.log(`[users.service] Getting working position with ID: ${data.positionId}`);
+
+      if (!data.positionId) {
+        return {
+          isSuccess: false,
+          message: 'ID vị trí công việc không được cung cấp',
+          data: null
+        };
+      }
+
       const position = await this.prisma.workingPosition.findUnique({
         where: { positionId: data.positionId },
-      })
+      });
+
+      console.log(`[users.service] Working position found:`, position);
 
       if (!position) {
-        throw new RpcException({
-          statusCode: HttpStatus.NOT_FOUND,
+        return {
+          isSuccess: false,
           message: 'Không tìm thấy vị trí công việc',
-        })
+          data: null
+        };
       }
+
+      // Convert the enum value to string and add user-friendly label
+      const positionName = position.positionName.toString();
 
       return {
         isSuccess: true,
         message: 'Lấy thông tin vị trí công việc thành công',
         data: {
           positionId: position.positionId,
-          positionName: position.positionName.toString(),
+          positionName: positionName,
+          positionNameLabel: this.getPositionNameLabel(positionName),
           description: position.description,
         },
-      }
+      };
     } catch (error) {
-      console.error('Error fetching working position:', error)
-      throw new RpcException({
-        statusCode: HttpStatus.BAD_REQUEST,
-        message: 'Không thể lấy thông tin vị trí công việc',
-      })
+      console.error('[users.service] Error fetching working position:', error);
+
+      return {
+        isSuccess: false,
+        message: `Lỗi khi lấy thông tin vị trí công việc: ${error.message}`,
+        data: null
+      };
     }
   }
 
@@ -1463,7 +1483,7 @@ export class UsersService {
     return statusLabels[status] || status;
   }
 
-  async getDepartmentById(departmentId: string): Promise<{
+  async getDepartmentById(data: { departmentId: string }): Promise<{
     isSuccess: boolean
     message: string
     data: {
@@ -1474,28 +1494,51 @@ export class UsersService {
     } | null
   }> {
     try {
+      const departmentId = data.departmentId;
+      console.log(`[users.service] Getting department with ID: ${departmentId}`);
+
+      if (!departmentId) {
+        console.log(`[users.service] Department ID not provided`);
+        return {
+          isSuccess: false,
+          message: 'ID phòng ban không được cung cấp',
+          data: null
+        };
+      }
+
       // Kiểm tra schema đầu tiên
-      const departmentModel = this.prisma.department
-      if (departmentModel) {
-        try {
-          // Thử lấy toàn bộ danh sách departments để kiểm tra kết nối
-          const allDepartments = await this.prisma.department.findMany({ take: 5 })
-        } catch (dbError) {
-          // Handle error silently
-        }
+      const departmentModel = this.prisma.department;
+      if (!departmentModel) {
+        console.error(`[users.service] Department model not found in prisma client`);
+        return {
+          isSuccess: false,
+          message: 'Lỗi cấu hình hệ thống: Không tìm thấy model phòng ban',
+          data: null
+        };
+      }
+
+      try {
+        // Thử lấy toàn bộ danh sách departments để kiểm tra kết nối
+        const allDepartments = await this.prisma.department.findMany({ take: 5 });
+        console.log(`[users.service] Database connection check: Found ${allDepartments.length} departments`);
+      } catch (dbError) {
+        console.error(`[users.service] Database connection error:`, dbError);
+        // Continue with single query despite connection issue
       }
 
       // Tiếp tục với truy vấn chính
       const department = await this.prisma.department.findUnique({
         where: { departmentId }
-      })
+      });
+
+      console.log(`[users.service] Department query result:`, department);
 
       if (!department) {
         return {
           isSuccess: false,
           message: 'Không tìm thấy phòng ban',
           data: null
-        }
+        };
       }
 
       const responseData = {
@@ -1503,19 +1546,22 @@ export class UsersService {
         departmentName: department.departmentName,
         description: department.description || '',
         area: department.area || ''
-      }
+      };
+
+      console.log(`[users.service] Department data to return:`, responseData);
 
       return {
         isSuccess: true,
         message: 'Lấy thông tin phòng ban thành công',
         data: responseData
-      }
+      };
     } catch (error) {
+      console.error(`[users.service] Error getting department:`, error);
       return {
         isSuccess: false,
         message: error.message || 'Lỗi khi lấy thông tin phòng ban',
         data: null
-      }
+      };
     }
   }
 

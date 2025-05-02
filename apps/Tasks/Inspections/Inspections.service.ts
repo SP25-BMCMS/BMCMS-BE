@@ -7,8 +7,8 @@ import { CreateInspectionDto, RepairMaterialDto } from '@app/contracts/inspectio
 import { Inspection } from '@prisma/client-Task'
 import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-inspection-status.dto'
 import { AddImageToInspectionDto } from '@app/contracts/inspections/add-image.dto'
-import { ClientGrpc, ClientProxy } from '@nestjs/microservices'
-import { catchError, firstValueFrom, Observable, of, timeout } from 'rxjs'
+import { ClientGrpc, ClientProxy, Client } from '@nestjs/microservices'
+import { catchError, firstValueFrom, Observable, of, timeout, lastValueFrom } from 'rxjs'
 import { IsUUID } from 'class-validator'
 import { MATERIAL_PATTERN } from '@app/contracts/materials/material.patterns'
 import { TASK_CLIENT } from 'apps/api-gateway/src/constraints'
@@ -19,12 +19,18 @@ import { TaskAssignmentsService } from '../TaskAssignments/TaskAssignments.servi
 import { AssignmentStatus } from '@prisma/client-Task'
 import { TaskService } from '../Task/Task.service'
 import { UpdateInspectionReportStatusDto, ReportStatus } from '@app/contracts/inspections/update-inspection-report-status.dto'
+import { PrismaClient as SchedulePrismaClient } from '@prisma/client-schedule'
+import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
+import { AREAS_PATTERN } from '@app/contracts/Areas/Areas.patterns'
+import { SCHEDULEJOB_PATTERN } from '@app/contracts/schedulejob/schedulejob.patterns'
+import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
 
 const USERS_CLIENT = 'USERS_CLIENT'
 // Define interface for the User service
 interface UserService {
   getUserInfo(data: UserRequest): Observable<any>
   getWorkingPositionById(data: WorkingPositionByIdRequest): Observable<any>
+  getDepartmentById(data: DepartmentByIdRequest): Observable<any>
 }
 
 // Define matching interfaces cho proto
@@ -37,9 +43,13 @@ interface WorkingPositionByIdRequest {
   positionId: string
 }
 
+interface DepartmentByIdRequest {
+  departmentId: string
+}
+
 // Định nghĩa CRACK_PATTERNS cho pattern get-crack-detail-by-id
 const CRACK_PATTERNS = {
-  GET_DETAILS: { cmd: 'get-crack-report-by-id' }
+  GET_DETAILS: { pattern: 'get-crack-report-by-id' }
 }
 
 @Injectable()
@@ -49,15 +59,19 @@ export class InspectionsService implements OnModuleInit {
   private bucketName: string
   private readonly logger = new Logger(InspectionsService.name);
 
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject('CRACK_CLIENT') private readonly crackClient: ClientProxy,
+    @Inject('SCHEDULE_CLIENT') private readonly scheduleClient: ClientProxy,
     @Inject(USERS_CLIENT) private readonly userClient: ClientGrpc,
     @Inject(TASK_CLIENT) private readonly taskClient: ClientProxy,
     private configService: ConfigService,
     private readonly taskAssignmentService: TaskAssignmentsService,
-    private readonly taskService: TaskService
+    private readonly taskService: TaskService,
+    @Inject('BUILDINGS_CLIENT') private readonly buildingsClient: ClientProxy
   ) {
+    // Initialize S3 client
     this.s3 = new S3Client({
       region: this.configService.get<string>('AWS_REGION'),
       credentials: {
@@ -66,22 +80,35 @@ export class InspectionsService implements OnModuleInit {
       },
     })
     this.bucketName = this.configService.get<string>('AWS_S3_BUCKET')
+
+    // Initialize userService here like in TaskService instead of onModuleInit
+    try {
+      this.userService = this.userClient.getService<UserService>('UserService')
+      console.log('InspectionService - userService initialized:', this.userService ? 'Successfully' : 'Failed')
+    } catch (error) {
+      console.error('Error initializing userService in constructor:', error)
+    }
   }
 
   onModuleInit() {
     console.log('InspectionsService - onModuleInit called')
 
-    // Kiểm tra xem userClient có được inject đúng không
-    if (!this.userClient) {
-      console.error('userClient is undefined in onModuleInit')
-      return
-    }
+    // Double-check userService initialization as a fallback
+    if (!this.userService) {
+      console.warn('userService not initialized in constructor, trying in onModuleInit')
 
-    try {
-      this.userService = this.userClient.getService<UserService>('UserService')
-      console.log('userService initialized:', this.userService ? 'Successfully' : 'Failed')
-    } catch (error) {
-      console.error('Error initializing userService:', error)
+      // Kiểm tra xem userClient có được inject đúng không
+      if (!this.userClient) {
+        console.error('userClient is undefined in onModuleInit')
+        return
+      }
+
+      try {
+        this.userService = this.userClient.getService<UserService>('UserService')
+        console.log('userService initialized in onModuleInit:', this.userService ? 'Successfully' : 'Failed')
+      } catch (error) {
+        console.error('Error initializing userService in onModuleInit:', error)
+      }
     }
   }
 
@@ -691,9 +718,198 @@ export class InspectionsService implements OnModuleInit {
     }
   }
 
+  async getBuildingAreaFromSchedule(schedule_job_id: string): Promise<ApiResponse<any>> {
+    try {
+      this.logger.log(`Getting building area for schedule job ID: ${schedule_job_id}`);
+
+      // Kiểm tra schedule_job_id
+      if (!schedule_job_id) {
+        this.logger.error(`Invalid schedule_job_id provided: ${schedule_job_id}`);
+        return new ApiResponse(false, 'ID lịch trình công việc không hợp lệ', null);
+      }
+
+      // Import AREAS_PATTERN để sử dụng pattern chuẩn
+      const { AREAS_PATTERN } = require('@app/contracts/Areas/Areas.patterns');
+      const { BUILDINGDETAIL_PATTERN } = require('@app/contracts/BuildingDetails/buildingdetails.patterns');
+
+      // Khai báo biến
+      let buildingDetailId;
+      let buildingId;
+      let scheduleJob;
+
+      try {
+        // Thay vì gọi qua service, kết nối trực tiếp đến database
+        this.logger.log(`Attempting to query schedule job directly from database`);
+
+        // Tạo PrismaClient mới cho Schedule database
+        const schedulePrisma = new SchedulePrismaClient({
+          datasources: {
+            db: {
+              url: process.env.DB_SCHEDULE_SERVICE
+            }
+          }
+        });
+
+        try {
+          // Truy vấn schedulejob từ database
+          scheduleJob = await schedulePrisma.scheduleJob.findUnique({
+            where: { schedule_job_id },
+            include: { schedule: true }
+          });
+
+          // Đóng kết nối database
+          await schedulePrisma.$disconnect();
+
+          if (!scheduleJob) {
+            this.logger.error(`No schedule job found in database with ID: ${schedule_job_id}`);
+            return new ApiResponse(false, 'Không tìm thấy lịch trình công việc trong cơ sở dữ liệu', null);
+          }
+
+          this.logger.log(`Schedule job found in database: ${JSON.stringify(scheduleJob)}`);
+
+          // Lấy buildingDetailId
+          buildingDetailId = scheduleJob.buildingDetailId;
+
+          if (!buildingDetailId) {
+            this.logger.error(`No buildingDetailId found in schedule job data: ${JSON.stringify(scheduleJob)}`);
+            return new ApiResponse(false, 'Không tìm thấy ID chi tiết tòa nhà trong lịch trình', null);
+          }
+
+          this.logger.log(`Found buildingDetailId: ${buildingDetailId} for schedule job: ${schedule_job_id}`);
+        } catch (dbError) {
+          // Đảm bảo đóng kết nối database nếu có lỗi
+          await schedulePrisma.$disconnect();
+          this.logger.error(`Database error: ${dbError?.message || 'Unknown error'}`, dbError?.stack);
+          throw new Error(`Lỗi truy vấn cơ sở dữ liệu: ${dbError?.message || 'Unknown error'}`);
+        }
+      } catch (error) {
+        this.logger.error(`Error querying schedule job: ${error?.message || 'Unknown error'}`, error?.stack);
+        return new ApiResponse(false, `Lỗi khi truy vấn lịch trình công việc: ${error?.message || 'Unknown error'}`, null);
+      }
+
+      // Step 1: Get buildingDetail info using buildingDetailId
+      this.logger.log(`Getting buildingDetail with ID: ${buildingDetailId}`);
+      const buildingDetailResponse = await firstValueFrom(
+        this.buildingsClient.send(
+          BUILDINGDETAIL_PATTERN.GET_BY_ID,
+          { buildingDetailId }
+        ).pipe(
+          timeout(15000),
+          catchError(err => {
+            this.logger.error(`Error getting building detail: ${err?.message || 'Unknown error'}`, err?.stack);
+            return of(new ApiResponse(false, `Lỗi khi lấy thông tin chi tiết tòa nhà: ${err?.message || 'Unknown error'}`, null));
+          })
+        )
+      );
+
+      this.logger.log(`Building detail response received: ${JSON.stringify(buildingDetailResponse || {})}`);
+
+      // Nếu nhận được phản hồi thành công, có thể trích xuất areaId trực tiếp
+      if (buildingDetailResponse &&
+        buildingDetailResponse.statusCode === 200 &&
+        buildingDetailResponse.data &&
+        buildingDetailResponse.data.building &&
+        buildingDetailResponse.data.building.area) {
+
+        // Trích xuất thông tin từ buildingDetail
+        buildingId = buildingDetailResponse.data.buildingId;
+        const areaId = buildingDetailResponse.data.building.area.areaId;
+        const areaName = buildingDetailResponse.data.building.area.name;
+
+        this.logger.log(`Đã trích xuất thông tin khu vực thành công từ phản hồi buildingDetail: areaId=${areaId}, areaName=${areaName}`);
+
+        // Trả về thông tin khu vực trực tiếp
+        return new ApiResponse(true, 'Lấy thông tin khu vực tòa nhà thành công',
+          buildingDetailResponse.data.building.area
+        );
+      }
+
+      // Nếu không nhận được thông tin trực tiếp, tiếp tục quy trình ban đầu
+      if (!buildingDetailResponse ||
+        (buildingDetailResponse.statusCode && buildingDetailResponse.statusCode !== 200) ||
+        !buildingDetailResponse.data) {
+        this.logger.error(`Failed to get building detail: ${buildingDetailResponse?.message || 'Unknown error'}`);
+
+        // Thử phương án thứ 2: Truy vấn trực tiếp từ dữ liệu scheduleJob
+        if (scheduleJob && scheduleJob.buildingDetailId) {
+          buildingId = scheduleJob.buildingDetailId;
+          this.logger.log(`Using buildingDetailId as fallback: ${buildingId}`);
+        } else {
+          return new ApiResponse(false, buildingDetailResponse?.message || 'Không thể lấy thông tin chi tiết tòa nhà', null);
+        }
+      } else {
+        // Lấy buildingId từ buildingDetail
+        buildingId = buildingDetailResponse.data.buildingId;
+        this.logger.log(`Retrieved buildingId: ${buildingId} from buildingDetail`);
+      }
+
+      // Step 2: Get building info with area using buildingId
+      this.logger.log(`Getting building info with ID: ${buildingId}`);
+      const buildingResponse = await firstValueFrom(
+        this.buildingsClient.send(
+          BUILDINGS_PATTERN.GET_BY_ID,
+          { buildingId }
+        ).pipe(
+          timeout(15000),
+          catchError(err => {
+            this.logger.error(`Error getting building info: ${err?.message || 'Unknown error'}`, err?.stack);
+            return of(new ApiResponse(false, `Lỗi khi lấy thông tin tòa nhà: ${err?.message || 'Unknown error'}`, null));
+          })
+        )
+      );
+
+      this.logger.log(`Building response received: ${JSON.stringify(buildingResponse || {})}`);
+
+      if (!buildingResponse ||
+        (buildingResponse.statusCode && buildingResponse.statusCode !== 200) ||
+        !buildingResponse.data) {
+        this.logger.error(`Failed to get building info: ${buildingResponse?.message || 'Unknown error'}`);
+        return new ApiResponse(false, buildingResponse?.message || 'Không thể lấy thông tin tòa nhà', null);
+      }
+
+      // Lấy area từ thông tin building
+      const areaId = buildingResponse.data.area?.areaId || buildingResponse.data.areaId;
+
+      if (!areaId) {
+        this.logger.error(`No areaId found in building data: ${JSON.stringify(buildingResponse.data)}`);
+        return new ApiResponse(false, 'Không tìm thấy ID khu vực trong thông tin tòa nhà', null);
+      }
+
+      this.logger.log(`Found areaId: ${areaId} for buildingId: ${buildingId}`);
+
+      // Step 3: Get area information
+      this.logger.log(`Getting area info for areaId: ${areaId} using pattern: ${AREAS_PATTERN.GET_BY_ID}`);
+      const areaResponse = await firstValueFrom(
+        this.buildingsClient.send(
+          AREAS_PATTERN.GET_BY_ID,
+          { areaId }
+        ).pipe(
+          timeout(15000),
+          catchError(err => {
+            this.logger.error(`Error getting area info: ${err?.message || 'Unknown error'}`, err?.stack);
+            return of(new ApiResponse(false, `Lỗi khi lấy thông tin khu vực: ${err?.message || 'Unknown error'}`, null));
+          })
+        )
+      );
+
+      this.logger.log(`Area response received: ${JSON.stringify(areaResponse || {})}`);
+
+      if (!areaResponse || !areaResponse.data) {
+        this.logger.error(`No response received for area ID: ${areaId}`);
+        return new ApiResponse(false, 'Không nhận được phản hồi từ dịch vụ khu vực', null);
+      }
+
+      this.logger.log(`Successfully retrieved area for schedule job: ${schedule_job_id}`);
+      return new ApiResponse(true, 'Lấy thông tin khu vực tòa nhà thành công', areaResponse.data);
+    } catch (error) {
+      this.logger.error(`Error in getBuildingAreaFromSchedule: ${error?.message || 'Unknown error'}`, error?.stack);
+      return new ApiResponse(false, `Lỗi khi lấy thông tin khu vực từ lịch trình: ${error?.message || 'Unknown error'}`, null);
+    }
+  }
+
   async getBuildingDetailIdFromTaskAssignment(task_assignment_id: string): Promise<ApiResponse<any>> {
     try {
-      console.log(`Finding task assignment with ID: ${task_assignment_id}`)
+      this.logger.log(`Finding task assignment with ID: ${task_assignment_id}`);
 
       // First find the TaskAssignment
       const taskAssignment = await this.prisma.taskAssignment.findUnique({
@@ -701,22 +917,22 @@ export class InspectionsService implements OnModuleInit {
         include: {
           task: true, // Include Task relation
         },
-      })
+      });
 
-      console.log('Task assignment found:', JSON.stringify(taskAssignment, null, 2))
+      this.logger.log('Task assignment found:', JSON.stringify(taskAssignment, null, 2));
 
       if (!taskAssignment || !taskAssignment.task) {
-        console.log('TaskAssignment or Task not found:', task_assignment_id)
-        return new ApiResponse(false, 'Không tìm thấy nhiệm vụ được phân công hoặc nhiệm vụ', null)
+        this.logger.error('TaskAssignment or Task not found:', task_assignment_id);
+        return new ApiResponse(false, 'Không tìm thấy nhiệm vụ được phân công hoặc nhiệm vụ', null);
       }
 
       // Use the task_id to get the BuildingDetailId from Crack service
-      const taskId = taskAssignment.task.task_id
-      console.log(`Using task_id: ${taskId} to get buildingDetailId`)
-      console.log(`Task details: crack_id=${taskAssignment.task.crack_id}`)
+      const taskId = taskAssignment.task.task_id;
+      this.logger.log(`Using task_id: ${taskId} to get buildingDetailId`);
+      this.logger.log(`Task details: crack_id=${taskAssignment.task.crack_id}`);
 
       // Call the CRACK service to get buildingDetailId using task_id
-      console.log(`Calling crack service with task_id=${taskId}`)
+      this.logger.log(`Calling crack service with task_id=${taskId}`);
       const crackResponse = await firstValueFrom(
         this.crackClient.send(
           { cmd: 'get-buildingDetail-by-task-id' },
@@ -724,34 +940,260 @@ export class InspectionsService implements OnModuleInit {
         ).pipe(
           timeout(10000),
           catchError(err => {
-            console.error('Error getting building detail by task ID:', err)
-            return of({ isSuccess: false, data: null })
+            this.logger.error('Error getting building detail by task ID:', err);
+            return of({ isSuccess: false, data: null });
           })
         )
-      )
+      );
 
-      console.log('Crack service response:', JSON.stringify(crackResponse, null, 2))
+      this.logger.log('Crack service response:', JSON.stringify(crackResponse, null, 2));
 
       if (!crackResponse || !crackResponse.isSuccess || !crackResponse.data) {
-        console.log('Failed to get building detail from crack service')
-        return new ApiResponse(false, 'Không thể lấy thông tin tòa nhà', null)
+        this.logger.error('Failed to get building detail from crack service');
+        return new ApiResponse(false, 'Không thể lấy thông tin tòa nhà', null);
       }
 
       // Extract buildingDetailId from the response
-      const buildingDetailId = crackResponse.data.buildingDetailId
+      const buildingDetailId = crackResponse.data.buildingDetailId;
 
       if (!buildingDetailId) {
-        console.log('BuildingDetailId not found in crack response')
-        return new ApiResponse(false, 'Không tìm thấy ID chi tiết tòa nhà', null)
+        this.logger.error('BuildingDetailId not found in crack response');
+        return new ApiResponse(false, 'Không tìm thấy ID chi tiết tòa nhà', null);
       }
 
-      console.log('Successfully retrieved buildingDetailId:', buildingDetailId)
-      return new ApiResponse(true, 'Lấy ID chi tiết tòa nhà thành công', { buildingDetailId })
+      this.logger.log('Successfully retrieved buildingDetailId:', buildingDetailId);
+      return new ApiResponse(true, 'Lấy ID chi tiết tòa nhà thành công', { buildingDetailId });
     } catch (error) {
-      console.error('Error in getBuildingDetailIdFromTaskAssignment:', error)
-      return new ApiResponse(false, 'Lỗi khi lấy ID chi tiết tòa nhà', null)
+      this.logger.error('Error in getBuildingDetailIdFromTaskAssignment:', error);
+      return new ApiResponse(false, 'Lỗi khi lấy ID chi tiết tòa nhà', null);
     }
   }
+
+  async verifyLeaderAndArea(employee_id: string, task_id: string): Promise<ApiResponse<any>> {
+    try {
+      // Check if userService is initialized
+      if (!this.userService) {
+        this.logger.error(`userService is not initialized. Cannot verify leader role.`);
+        return new ApiResponse(false, 'Dịch vụ người dùng chưa sẵn sàng. Vui lòng thử lại sau.', null);
+      }
+
+      this.logger.log(`Verifying leader role for employee: ${employee_id}, task: ${task_id}`);
+
+      // 1. Get user info to check if they're a leader
+      let userInfo;
+      try {
+        this.logger.log(`Calling getUserInfo for employee: ${employee_id}`);
+        userInfo = await firstValueFrom(
+          this.userService.getUserInfo({ userId: employee_id, username: '' })
+            .pipe(
+              timeout(10000),
+              catchError(err => {
+                this.logger.error(`Error getting user info: ${err.message}`, err.stack);
+                return of(null);
+              })
+            )
+        );
+        this.logger.log(`getUserInfo result received: ${userInfo ? 'Success' : 'Null'}`);
+
+        if (userInfo) {
+          this.logger.log(`User details: positionId=${userInfo.positionId}, departmentId=${userInfo.departmentId}`);
+        }
+      } catch (error) {
+        this.logger.error(`Critical error calling getUserInfo: ${error.message}`, error.stack);
+        return new ApiResponse(false, `Lỗi khi truy vấn thông tin người dùng: ${error.message}`, null);
+      }
+
+      if (!userInfo) {
+        return new ApiResponse(false, 'Không tìm thấy thông tin của nhân viên', null);
+      }
+
+      // 2. Check if user has a position and it's a Leader
+      let isLeader = false;
+      if (userInfo.userDetails && userInfo.userDetails.positionId) {
+        const positionId = userInfo.userDetails.positionId;
+        this.logger.log(`Found positionId: ${positionId} for employee: ${employee_id}`);
+
+        try {
+          this.logger.log(`Calling getWorkingPositionById for positionId: ${positionId}`);
+          const positionResponse = await firstValueFrom(
+            this.userService.getWorkingPositionById({ positionId })
+              .pipe(
+                timeout(10000),
+                catchError(err => {
+                  this.logger.error(`Error getting position info: ${err.message}`, err.stack);
+                  return of(null);
+                })
+              )
+          );
+
+          this.logger.log(`getWorkingPositionById result: ${JSON.stringify(positionResponse || {})}`);
+
+          if (!positionResponse) {
+            return new ApiResponse(false, 'Không tìm thấy thông tin vị trí của nhân viên', null);
+          }
+
+          if (positionResponse.isSuccess && positionResponse.data) {
+            const posName = positionResponse.data.positionName;
+            this.logger.log(`Position name: ${posName}`);
+            isLeader = posName === 'Leader';
+          } else {
+            this.logger.error(`Error response from position service: ${positionResponse.message || 'Unknown error'}`);
+            return new ApiResponse(false, positionResponse.message || 'Lỗi khi truy vấn thông tin vị trí', null);
+          }
+        } catch (error) {
+          this.logger.error(`Error getting position information: ${error.message}`, error.stack);
+          return new ApiResponse(false, `Lỗi khi truy vấn thông tin vị trí: ${error.message}`, null);
+        }
+      } else if (userInfo.userDetails && userInfo.userDetails.position) {
+        // Position already included in userInfo response
+        const position = userInfo.userDetails.position;
+        this.logger.log(`Position information already in userInfo: ${JSON.stringify(position)}`);
+        isLeader = position.positionName === 'Leader';
+      } else {
+        this.logger.error(`No position information found for employee: ${employee_id}`);
+        return new ApiResponse(false, 'Nhân viên chưa được gán vị trí công việc', null);
+      }
+
+      if (!isLeader) {
+        return new ApiResponse(false, 'Nhân viên phải có vị trí là Leader', null);
+      }
+
+      // 3. Get user's department area
+      let departmentArea;
+      if (userInfo.userDetails && userInfo.userDetails.departmentId) {
+        try {
+          // Try using userService first (if getDepartmentById is implemented in gRPC)
+          if (this.userService && typeof this.userService.getDepartmentById === 'function') {
+            const departmentResponse = await firstValueFrom(
+              this.userService.getDepartmentById({ departmentId: userInfo.userDetails.departmentId })
+                .pipe(
+                  timeout(10000),
+                  catchError(err => {
+                    this.logger.error(`Error getting department info via gRPC: ${err.message}`, err.stack);
+                    return of(null);
+                  })
+                )
+            );
+
+            if (departmentResponse) {
+              departmentArea = departmentResponse.area;
+              this.logger.log(`Retrieved department area via gRPC: ${departmentArea}`);
+            }
+          }
+
+          // Fallback: If userService.getDepartmentById isn't available or returned null,
+          // try using task client (which is ClientProxy, not gRPC)
+          if (!departmentArea) {
+            this.logger.log(`Trying alternative department retrieval method via gRPC`);
+            const departmentResponse = await firstValueFrom(
+              this.userService.getDepartmentById({ departmentId: userInfo.userDetails.departmentId })
+                .pipe(
+                  timeout(10000),
+                  catchError(err => {
+                    this.logger.error(`Error getting department info via gRPC: ${err.message}`, err.stack);
+                    return of({ isSuccess: false, data: null });
+                  })
+                )
+            );
+
+            if (departmentResponse?.isSuccess && departmentResponse?.data) {
+              departmentArea = departmentResponse.data.area;
+              this.logger.log(`Retrieved department area via gRPC: ${departmentArea}`);
+            }
+          }
+        } catch (error) {
+          this.logger.error(`Error getting department area: ${error.message}`, error.stack);
+          return new ApiResponse(false, 'Lỗi khi lấy thông tin khu vực phòng ban', null);
+        }
+      } else if (userInfo.userDetails && userInfo.userDetails.department && userInfo.userDetails.department.area) {
+        // If department info is already in userInfo response
+        departmentArea = userInfo.userDetails.department.area;
+        this.logger.log(`Department area found directly in userInfo: ${departmentArea}`);
+      }
+
+      if (!departmentArea) {
+        return new ApiResponse(false, 'Nhân viên không có thông tin khu vực', null);
+      }
+
+      // 4. Get task info to find crack_id or schedule_job_id
+      const task = await this.prisma.task.findUnique({
+        where: { task_id }
+      });
+
+      if (!task) {
+        return new ApiResponse(false, 'Không tìm thấy nhiệm vụ', null);
+      }
+
+      // 5. Get building area based on crack_id or schedule_job_id
+      let buildingAreaResponse;
+      if (task.crack_id) {
+        // Get area from crack
+        try {
+          // Use the correct message pattern format
+          this.logger.log(`Getting building area from crack with ID: ${task.crack_id}`);
+
+          buildingAreaResponse = await firstValueFrom(
+            this.crackClient.send(
+              { cmd: 'get-building-area-from-crack' },
+              { crack_id: task.crack_id }
+            ).pipe(
+              timeout(10000),
+              catchError(err => {
+                this.logger.error(`Error getting building area from crack: ${err.message}`, err.stack);
+                return of({ isSuccess: false, data: null, message: `Lỗi khi lấy thông tin khu vực từ vết nứt: ${err.message}` });
+              })
+            )
+          );
+        } catch (error) {
+          this.logger.error(`Critical error calling crack service: ${error.message}`, error.stack);
+          return new ApiResponse(false, `Lỗi khi gọi dịch vụ vết nứt: ${error.message}`, null);
+        }
+      } else if (task.schedule_job_id) {
+        // Get area from schedule job using our own method
+        try {
+          this.logger.log(`Getting building area from schedule job with ID: ${task.schedule_job_id}`);
+          buildingAreaResponse = await this.getBuildingAreaFromSchedule(task.schedule_job_id);
+          this.logger.log(`Building area response from schedule: ${JSON.stringify(buildingAreaResponse || {})}`);
+        } catch (error) {
+          this.logger.error(`Error getting building area from schedule: ${error.message}`, error.stack);
+          return new ApiResponse(false, `Lỗi khi lấy thông tin khu vực từ lịch trình: ${error.message}`, null);
+        }
+      } else {
+        return new ApiResponse(false, 'Nhiệm vụ không có thông tin vết nứt hoặc lịch trình', null);
+      }
+
+      if (!buildingAreaResponse || !buildingAreaResponse.isSuccess || !buildingAreaResponse.data) {
+        const errorMessage = buildingAreaResponse?.message || 'Không thể lấy thông tin khu vực của tòa nhà';
+        return new ApiResponse(false, errorMessage, null);
+      }
+
+      // 6. Compare areas
+      const buildingArea = buildingAreaResponse.data.name;
+
+      if (!buildingArea) {
+        return new ApiResponse(false, 'Không tìm thấy thông tin khu vực trong dữ liệu tòa nhà', null);
+      }
+
+      if (buildingArea !== departmentArea) {
+        return new ApiResponse(
+          false,
+          `Khu vực không khớp. Khu vực của trưởng nhóm: ${departmentArea}, Khu vực của tòa nhà: ${buildingArea}`,
+          null
+        );
+      }
+
+      // All checks pass
+      return new ApiResponse(
+        true,
+        'Xác thực trưởng nhóm và khu vực thành công',
+        { isLeader: true, departmentArea, buildingArea }
+      );
+    } catch (error) {
+      this.logger.error(`Error in verifyLeaderAndArea: ${error.message}`, error.stack);
+      return new ApiResponse(false, `Lỗi khi xác thực trưởng nhóm và khu vực: ${error.message}`, null);
+    }
+  }
+
   async verifyStaffRole(userId: string): Promise<ApiResponse<boolean>> {
     try {
       console.log(`Tasks microservice - Verifying if user ${userId} is a Staff...`)
@@ -1018,6 +1460,60 @@ export class InspectionsService implements OnModuleInit {
         statusCode: 500,
         message: `Không thể cập nhật trạng thái báo cáo kiểm tra: ${error.message}`,
       });
+    }
+  }
+
+  async getTaskAssignmentDetails(task_assignment_id: string): Promise<ApiResponse<any>> {
+    try {
+      // Find the task assignment and include the task
+      const taskAssignment = await this.prisma.taskAssignment.findUnique({
+        where: {
+          assignment_id: task_assignment_id
+        },
+        include: {
+          task: true
+        }
+      });
+
+      if (!taskAssignment) {
+        return new ApiResponse(false, 'Không tìm thấy nhiệm vụ được gán', null);
+      }
+
+      return new ApiResponse(true, 'Lấy chi tiết nhiệm vụ được gán thành công', taskAssignment);
+    } catch (error) {
+      this.logger.error(`Error in getTaskAssignmentDetails: ${error.message}`, error.stack);
+      return new ApiResponse(false, `Lỗi khi lấy chi tiết nhiệm vụ được gán: ${error.message}`, null);
+    }
+  }
+
+  async getInspectionPdfByTaskAssignment(task_assignment_id: string): Promise<ApiResponse<any>> {
+    try {
+      // Find the most recent inspection for this task assignment
+      const inspection = await this.prisma.inspection.findFirst({
+        where: {
+          task_assignment_id: task_assignment_id
+        },
+        orderBy: {
+          created_at: 'desc'
+        },
+        select: {
+          inspection_id: true,
+          uploadFile: true
+        }
+      });
+
+      if (!inspection) {
+        return new ApiResponse(false, 'Không tìm thấy kiểm tra cho nhiệm vụ được gán này', null);
+      }
+
+      if (!inspection.uploadFile) {
+        return new ApiResponse(false, 'Không tìm thấy tệp PDF cho kiểm tra này', null);
+      }
+
+      return new ApiResponse(true, 'Lấy tệp PDF kiểm tra thành công', inspection);
+    } catch (error) {
+      this.logger.error(`Error in getInspectionPdfByTaskAssignment: ${error.message}`, error.stack);
+      return new ApiResponse(false, `Lỗi khi lấy tệp PDF kiểm tra: ${error.message}`, null);
     }
   }
 }

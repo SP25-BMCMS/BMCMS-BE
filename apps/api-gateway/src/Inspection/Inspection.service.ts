@@ -69,6 +69,22 @@ export class InspectionService implements OnModuleInit {
   }
 
   /**
+   * Get pre-signed URL with content disposition for an S3 object
+   * @param fileKey The S3 object key
+   * @param contentDisposition Content-Disposition header value
+   * @returns A pre-signed URL for accessing the object with specified content disposition
+   */
+  async getPreSignedUrlWithDisposition(fileKey: string, contentDisposition: string): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucketName,
+      Key: fileKey,
+      ResponseContentDisposition: contentDisposition
+    })
+
+    return getSignedUrl(this.s3, command, { expiresIn: 3600 }) // URL expires after 1 hour
+  }
+
+  /**
    * Extract S3 file key from full URL
    * @param url Full S3 URL
    * @returns The file key part
@@ -663,6 +679,115 @@ export class InspectionService implements OnModuleInit {
     } catch (error) {
       console.error('Error in getBuildingDetailIdFromTaskAssignment:', error);
       return new ApiResponse(false, 'Lỗi khi lấy ID chi tiết tòa nhà từ nhiệm vụ được gán', null);
+    }
+  }
+
+  async getInspectionPdfByTaskAssignment(task_assignment_id: string): Promise<ApiResponse<any>> {
+    try {
+      // 1. Check if task assignment exists and has status = Confirmed
+      const taskAssignmentResponse = await firstValueFrom(
+        this.inspectionClient.send(
+          INSPECTIONS_PATTERN.GET_TASK_ASSIGNMENT_DETAILS,
+          { task_assignment_id }
+        ).pipe(
+          timeout(10000),
+          catchError(err => {
+            console.error('Error getting task assignment details:', err);
+            return of(new ApiResponse(false, 'Lỗi khi lấy chi tiết nhiệm vụ được gán', null));
+          })
+        )
+      );
+
+      if (!taskAssignmentResponse.isSuccess || !taskAssignmentResponse.data) {
+        return new ApiResponse(false, 'Không tìm thấy nhiệm vụ được gán', null);
+      }
+
+      const taskAssignment = taskAssignmentResponse.data;
+
+      // Check if task assignment status is Confirmed
+      if (taskAssignment.status !== 'Confirmed') {
+        return new ApiResponse(
+          false,
+          `Nhiệm vụ được gán phải ở trạng thái Confirmed. Trạng thái hiện tại: ${taskAssignment.status}`,
+          null
+        );
+      }
+
+      // 2. Get verification of leader role and area match in one call
+      const leaderVerificationResponse = await firstValueFrom(
+        this.inspectionClient.send(
+          { cmd: 'verify-leader-and-area' },
+          {
+            employee_id: taskAssignment.employee_id,
+            task_id: taskAssignment.task_id
+          }
+        ).pipe(
+          timeout(10000),
+          catchError(err => {
+            console.error('Error verifying leader and area match:', err);
+            return of(new ApiResponse(false, 'Lỗi khi xác thực trưởng nhóm và khu vực', null));
+          })
+        )
+      );
+
+      if (!leaderVerificationResponse.isSuccess) {
+        return new ApiResponse(
+          false,
+          leaderVerificationResponse.message || 'Lỗi khi xác thực trưởng nhóm và khu vực',
+          null
+        );
+      }
+
+      // 3. Get inspection with uploadFile if all checks pass
+      const inspectionResponse = await firstValueFrom(
+        this.inspectionClient.send(
+          INSPECTIONS_PATTERN.GET_INSPECTION_PDF,
+          { task_assignment_id }
+        ).pipe(
+          timeout(10000),
+          catchError(err => {
+            console.error('Error getting inspection PDF:', err);
+            return of(new ApiResponse(false, 'Lỗi khi lấy tệp PDF của kiểm tra', null));
+          })
+        )
+      );
+
+      if (!inspectionResponse.isSuccess || !inspectionResponse.data) {
+        return new ApiResponse(false, 'Không tìm thấy tệp PDF cho kiểm tra này', null);
+      }
+
+      // If a PDF URL exists, generate a pre-signed URL
+      if (inspectionResponse.data.uploadFile) {
+        try {
+          const fileKey = this.extractFileKey(inspectionResponse.data.uploadFile);
+          const fileName = fileKey.split('/').pop(); // Extract the filename
+
+          // Generate both view and download URLs
+          const viewUrl = await this.getPreSignedUrlWithDisposition(fileKey, 'inline');
+          const downloadUrl = await this.getPreSignedUrlWithDisposition(fileKey, `attachment; filename="${fileName}"`);
+
+          // Update the response with both URLs
+          inspectionResponse.data.viewUrl = viewUrl;
+          inspectionResponse.data.downloadUrl = downloadUrl;
+          inspectionResponse.data.uploadFile = viewUrl; // Keep original field for backward compatibility
+        } catch (error) {
+          console.error(`Error getting pre-signed URLs for PDF file:`, error);
+          // Keep original URL as fallback
+        }
+      }
+
+      return new ApiResponse(
+        true,
+        'Tệp PDF kiểm tra được tìm thấy và khu vực khớp',
+        inspectionResponse.data
+      );
+    } catch (error) {
+      console.error('Error in getInspectionPdfByTaskAssignment:', error);
+      return new ApiResponse(
+        false,
+        `Lỗi khi lấy tệp PDF kiểm tra: ${error.message}`,
+        null
+      );
     }
   }
 }

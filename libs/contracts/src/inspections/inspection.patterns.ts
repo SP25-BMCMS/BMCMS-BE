@@ -12,5 +12,8 @@ export const INSPECTIONS_PATTERN = {
   VERIFY_LEADER: 'inspection.verify.leader',
   UPDATE_PRIVATE_ASSET: 'inspection.update.private.asset',
   UPDATE_REPORT_STATUS: 'inspection.update.report.status',
-  UPDATE_REPORT_STATUS_BY_MANAGER: 'update_inspection_report_status_by_manager'
+  UPDATE_REPORT_STATUS_BY_MANAGER: 'update_inspection_report_status_by_manager',
+  GET_TASK_ASSIGNMENT_DETAILS: 'get_task_assignment_details',
+  GET_INSPECTION_PDF: 'get_inspection_pdf_by_task_assignment',
+  GET_BUILDING_AREA_FROM_SCHEDULE: 'get_building_area_from_schedule',
 };

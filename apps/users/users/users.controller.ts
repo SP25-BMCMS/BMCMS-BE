@@ -134,7 +134,7 @@ export class UsersController {
   @GrpcMethod('UserService', 'GetDepartmentById')
   async getDepartmentById(data: { departmentId: string }) {
     try {
-      const result = await this.usersService.getDepartmentById(data.departmentId);
+      const result = await this.usersService.getDepartmentById(data);
       return result;
     } catch (error) {
       throw error;
@@ -181,6 +181,22 @@ export class UsersController {
       throw new RpcException({
         statusCode: 500,
         message: `Lỗi khi kiểm tra sự tồn tại của người dùng: ${error.message}`,
+      });
+    }
+  }
+
+  @GrpcMethod('UserService', 'GetWorkingPositionById')
+  async getWorkingPositionById(data: { positionId: string }) {
+    try {
+      console.log(`GetWorkingPositionById called with positionId: ${data.positionId}`);
+      const result = await this.usersService.getWorkingPositionById(data);
+      console.log(`Position result: ${JSON.stringify(result)}`);
+      return result;
+    } catch (error) {
+      console.error(`Error in GetWorkingPositionById: ${error.message}`, error.stack);
+      throw new RpcException({
+        statusCode: error.statusCode || 500,
+        message: error.message || 'Lỗi khi lấy thông tin vị trí công việc',
       });
     }
   }
