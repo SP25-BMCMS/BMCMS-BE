@@ -659,33 +659,15 @@ export class BuildingsService {
       const limitNum = Math.min(50, Math.max(1, params?.limit || 10));
       const skip = (pageNum - 1) * limitNum;
 
-      const where = {
-        manager_id: managerId,
-        ...(params?.search ? {
-          name: {
-            contains: params?.search,
-            mode: 'insensitive' as const
-          }
-        } : {})
-      };
-
-      const [buildings, total] = await Promise.all([
-        this.prisma.building.findMany({
-          where,
-          include: {
-            area: true,
-            buildingDetails: {
-              include: {
-                locationDetails: true
-              }
-            }
-          },
-          skip,
-          take: limitNum,
-          orderBy: { createdAt: 'desc' }
-        }),
-        this.prisma.building.count({ where })
-      ]);
+      // First get all buildings managed by this manager
+      const buildings = await this.prisma.building.findMany({
+        where: {
+          manager_id: managerId
+        },
+        include: {
+          area: true
+        }
+      });
 
       if (!buildings || buildings.length === 0) {
         return {
@@ -701,10 +683,73 @@ export class BuildingsService {
         }
       }
 
+      const buildingIds = buildings.map(b => b.buildingId);
+
+      // Create where condition for buildingDetail search
+      const where = {
+        buildingId: {
+          in: buildingIds
+        },
+        ...(params?.search ? {
+          name: {
+            contains: params.search,
+            mode: 'insensitive' as const
+          }
+        } : {})
+      };
+
+      // Get building details with pagination
+      const [buildingDetails, total] = await Promise.all([
+        this.prisma.buildingDetail.findMany({
+          where,
+          include: {
+            locationDetails: true
+          },
+          skip,
+          take: limitNum,
+          orderBy: { createdAt: 'desc' }
+        }),
+        this.prisma.buildingDetail.count({ where })
+      ]);
+
+      if (!buildingDetails || buildingDetails.length === 0) {
+        return {
+          statusCode: 404,
+          message: 'Không tìm thấy chi tiết tòa nhà nào phù hợp',
+          data: [],
+          meta: {
+            total: 0,
+            page: pageNum,
+            limit: limitNum,
+            totalPages: 0
+          }
+        }
+      }
+
+      // Group buildingDetails by building
+      const buildingsMap = new Map();
+      buildings.forEach(building => {
+        buildingsMap.set(building.buildingId, {
+          ...building,
+          buildingDetails: []
+        });
+      });
+
+      buildingDetails.forEach(detail => {
+        const building = buildingsMap.get(detail.buildingId);
+        if (building) {
+          building.buildingDetails.push(detail);
+        }
+      });
+
+      // Convert map to array and filter out buildings with no matching details
+      const resultBuildings = Array.from(buildingsMap.values())
+        .filter(building => building.buildingDetails.length > 0);
+
       return {
         statusCode: 200,
         message: 'Lấy danh sách tòa nhà thành công',
-        data: buildings,
+        data: resultBuildings,
         meta: {
           total,
           page: pageNum,
