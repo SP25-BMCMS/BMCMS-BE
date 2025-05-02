@@ -199,15 +199,15 @@ export class CrackReportsService {
       const presignedUrlStartTime = performance.now()
 
       // --------------------------------------------------------------------------------------------------------------------------------------
-      
+
       // Collect all unique buildingDetailIds from the crack reports
-      const buildingDetailIds = [...new Set(crackReports.map(report => report.buildingDetailId))];
-      const buildingDetailsMap = new Map();
-      
+      const buildingDetailIds = [...new Set(crackReports.map(report => report.buildingDetailId))]
+      const buildingDetailsMap = new Map()
+
       // Fetch all building details in parallel
       if (buildingDetailIds.length > 0) {
-        console.log(`Fetching building details for ${buildingDetailIds.length} unique buildingDetailIds`);
-        
+        console.log(`Fetching building details for ${buildingDetailIds.length} unique buildingDetailIds`)
+
         await Promise.all(
           buildingDetailIds.map(async (buildingDetailId) => {
             if (buildingDetailId) {
@@ -215,43 +215,43 @@ export class CrackReportsService {
                 const buildingDetailResponse = await firstValueFrom(
                   this.buildingClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId }).pipe(
                     catchError(error => {
-                      console.error(`Error fetching building detail for ID ${buildingDetailId}:`, error);
-                      return of(null);
+                      console.error(`Error fetching building detail for ID ${buildingDetailId}:`, error)
+                      return of(null)
                     })
                   )
-                );
-                
+                )
+
                 if (buildingDetailResponse && buildingDetailResponse.data) {
                   buildingDetailsMap.set(buildingDetailId, {
                     buildingId: buildingDetailResponse.data.buildingId,
                     name: buildingDetailResponse.data.name
-                  });
+                  })
                 }
               } catch (error) {
-                console.error(`Failed to get building detail for ID ${buildingDetailId}:`, error);
+                console.error(`Failed to get building detail for ID ${buildingDetailId}:`, error)
               }
             }
           })
-        );
-        console.log(`Successfully fetched building details for ${buildingDetailsMap.size} out of ${buildingDetailIds.length} building details`);
+        )
+        console.log(`Successfully fetched building details for ${buildingDetailsMap.size} out of ${buildingDetailIds.length} building details`)
       }
-            // --------------------------------------------------------------------------------------------------------------------------------------
+      // --------------------------------------------------------------------------------------------------------------------------------------
 
       const enhancedDetails = await Promise.all(crackReports.map(async report => {
         const userData = userMap.get(report.reportedBy)
         const verifierData = userMap.get(report.verifiedBy)
-              // ------------------------------------------------------------------------------------------------
+        // ------------------------------------------------------------------------------------------------
 
         // Get building details from map
         // console.log(`Building details map:`, buildingDetailsMap);
 
         // console.log(`Building details map:`, buildingDetailsMap.get(report.buildingDetailId));
 
-        const buildingDetail = buildingDetailsMap.get(report.buildingDetailId);
+        const buildingDetail = buildingDetailsMap.get(report.buildingDetailId)
         // console.log(`Building detail for report ${report.crackReportId}:`, buildingDetail.name);
         // console.log(`Building detail for report ${report.crackReportId}:`, buildingDetail.buildingId);
 
-      // ------------------------------------------------------------------------------------------------
+        // ------------------------------------------------------------------------------------------------
 
         return {
           ...report,
@@ -264,7 +264,7 @@ export class CrackReportsService {
             username: verifierData?.username || 'Unknown'
           },
           buildingId: buildingDetail?.buildingId || null,
-          buildingName: buildingDetail?.name || null  ,
+          buildingName: buildingDetail?.name || null,
           crackDetails: await Promise.all(report.crackDetails.map(async detail => ({
             ...detail,
             photoUrl: detail.photoUrl ? await this.getPreSignedUrl(this.extractFileKey(detail.photoUrl)) : null,
@@ -638,26 +638,26 @@ export class CrackReportsService {
       }
 
       // Fetch building details if buildingDetailId exists
-      let buildingDetail = null;
+      let buildingDetail = null
       if (report.buildingDetailId) {
         try {
           const buildingDetailResponse = await firstValueFrom(
             this.buildingClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId: report.buildingDetailId }).pipe(
               catchError(error => {
-                console.error(`Error fetching building detail for ID ${report.buildingDetailId}:`, error);
-                return of(null);
+                console.error(`Error fetching building detail for ID ${report.buildingDetailId}:`, error)
+                return of(null)
               })
             )
-          );
-          
+          )
+
           if (buildingDetailResponse && buildingDetailResponse.data) {
             buildingDetail = {
               buildingId: buildingDetailResponse.data.buildingId,
               name: buildingDetailResponse.data.name
-            };
+            }
           }
         } catch (error) {
-          console.error(`Failed to get building detail for ID ${report.buildingDetailId}:`, error);
+          console.error(`Failed to get building detail for ID ${report.buildingDetailId}:`, error)
         }
       }
 
@@ -1204,69 +1204,136 @@ export class CrackReportsService {
     }
   }
 
-  async getCrackReportsByManagerId(managerid: string) {
+  async getCrackReportsByManagerId(
+    managerid: string,
+    page: number = 1,
+    limit: number = 10,
+    search: string = '',
+    severityFilter?: $Enums.Severity
+  ) {
     try {
-      this.logger.log(`Getting crack reports for manager with ID: ${managerid}`);
-      
-      console.log("🚀 Kha nKha ne ~ managerid:Kha ne ~ managerid:e ~ managerid:", managerid)
+      this.logger.log(`Getting crack reports for manager with ID: ${managerid}`)
+
+      // Validate pagination parameters
+      if (page < 1 || limit < 1) {
+        throw new RpcException(
+          new ApiResponse(false, 'Invalid page or limit parameters')
+        )
+      }
+
+      if (severityFilter && !Object.values($Enums.Severity).includes(severityFilter)) {
+        throw new RpcException(
+          new ApiResponse(false, 'Invalid severity filter')
+        )
+      }
+
+      const skip = (page - 1) * limit
+
       // 1. Get all buildings managed by this manager
       const buildingsResponse = await firstValueFrom(
         this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_MANAGER_ID, { managerId: managerid }).pipe(
-          timeout(10000), // 10 seconds timeout
+          timeout(10000),
           retry(3),
           catchError(error => {
-            this.logger.error(`Error fetching buildings for manager ${managerid}:`, error);
-            throw new RpcException(new ApiResponse(false, 'Failed to fetch buildings for manager', error));
+            this.logger.error(`Error fetching buildings for manager ${managerid}:`, error)
+            throw new RpcException(new ApiResponse(false, 'Failed to fetch buildings for manager', error))
           })
         )
-      );
+      )
 
-      this.logger.log(`Buildings response: ${JSON.stringify(buildingsResponse)}`);
+      this.logger.log(`Buildings response: ${JSON.stringify(buildingsResponse)}`)
 
       if (!buildingsResponse || buildingsResponse.statusCode !== 200 || !buildingsResponse.data || buildingsResponse.data.length === 0) {
-        this.logger.warn(`No buildings found for manager ${managerid}`);
-        return new ApiResponse(false, 'No buildings found for this manager', []);
+        this.logger.warn(`No buildings found for manager ${managerid}`)
+        return new ApiResponse(true, 'No buildings found for this manager', {
+          data: [],
+          pagination: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 0
+          }
+        })
       }
 
       // 2. Extract all building detail IDs from the buildings
-      const buildingDetails = buildingsResponse.data.flatMap(building => building.buildingDetails || []);
-      const buildingDetailIds = buildingDetails.map(detail => detail.buildingDetailId);
-      
-      this.logger.log(`Found ${buildingDetailIds.length} building details for manager ${managerid}`);
-      this.logger.log(`Building detail IDs: ${buildingDetailIds.join(', ')}`);
-      
+      const buildingDetails = buildingsResponse.data.flatMap(building => building.buildingDetails || [])
+      const buildingDetailIds = buildingDetails.map(detail => detail.buildingDetailId)
+
+      this.logger.log(`Found ${buildingDetailIds.length} building details for manager ${managerid}`)
+
       if (buildingDetailIds.length === 0) {
-        this.logger.warn(`No building details found for manager ${managerid}`);
-        return new ApiResponse(false, 'No building details found for buildings managed by this manager', []);
+        this.logger.warn(`No building details found for manager ${managerid}`)
+        return new ApiResponse(true, 'No building details found for buildings managed by this manager', {
+          data: [],
+          pagination: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 0
+          }
+        })
       }
 
-      // 3. Find all crack reports related to these building detail IDs
-      const crackReports = await this.prismaService.crackReport.findMany({
-        where: {
-          buildingDetailId: {
-            in: buildingDetailIds
+      // 3. Build the where clause for the query
+      const where: Prisma.CrackReportWhereInput = {
+        buildingDetailId: {
+          in: buildingDetailIds
+        }
+      }
+
+      // Add search condition if search term is provided
+      if (search) {
+        where.OR = [
+          { description: { contains: search, mode: 'insensitive' } },
+          { position: { contains: search, mode: 'insensitive' } }
+        ]
+      }
+
+      // Add severity filter if provided
+      if (severityFilter) {
+        where.crackDetails = {
+          some: {
+            severity: severityFilter
           }
-        },
+        }
+      }
+
+      // 4. Get total count for pagination
+      const totalCount = await this.prismaService.crackReport.count({ where })
+
+      // 5. Find crack reports with pagination
+      const crackReports = await this.prismaService.crackReport.findMany({
+        where,
         include: {
           crackDetails: true
         },
         orderBy: {
           createdAt: 'desc'
-        }
-      });
+        },
+        skip,
+        take: limit
+      })
 
-      this.logger.log(`Found ${crackReports.length} crack reports for manager ${managerid}`);
+      this.logger.log(`Found ${crackReports.length} crack reports for manager ${managerid}`)
 
       if (!crackReports || crackReports.length === 0) {
-        this.logger.warn(`No crack reports found for building details managed by manager ${managerid}`);
-        return new ApiResponse(false, 'No crack reports found for buildings managed by this manager', []);
+        this.logger.warn(`No crack reports found for building details managed by manager ${managerid}`)
+        return new ApiResponse(true, 'No crack reports found for buildings managed by this manager', {
+          data: [],
+          pagination: {
+            total: totalCount,
+            page,
+            limit,
+            totalPages: Math.ceil(totalCount / limit)
+          }
+        })
       }
 
-      // 4. Enhance the data with pre-signed URLs and user information
-      // Get unique user IDs for reporters and verifiers
-      const reporterIds = [...new Set(crackReports.map(report => report.reportedBy))];
-      const verifierIds = [...new Set(crackReports.map(report => report.verifiedBy))];
-      const userMap = new Map();
+      // 6. Enhance the data with pre-signed URLs and user information
+      const reporterIds = [...new Set(crackReports.map(report => report.reportedBy))]
+      const verifierIds = [...new Set(crackReports.map(report => report.verifiedBy))]
+      const userMap = new Map()
 
       // Fetch user information
       await Promise.all([
@@ -1276,21 +1343,21 @@ export class CrackReportsService {
               const userResponse = await firstValueFrom(
                 this.userService.GetUserInfo({ userId }).pipe(
                   catchError(error => {
-                    this.logger.error(`Error fetching user data for ID ${userId}:`, error);
-                    return of(null);
+                    this.logger.error(`Error fetching user data for ID ${userId}:`, error)
+                    return of(null)
                   })
                 )
-              );
+              )
 
               if (userResponse) {
                 userMap.set(userId, {
                   userId: userResponse.userId,
                   username: userResponse.username
-                });
+                })
               }
             }
           } catch (error) {
-            this.logger.error(`Failed to get user data for ID ${userId}:`, error);
+            this.logger.error(`Failed to get user data for ID ${userId}:`, error)
           }
         }),
         ...reporterIds.map(async (userId) => {
@@ -1299,51 +1366,45 @@ export class CrackReportsService {
               const userResponse = await firstValueFrom(
                 this.userService.GetUserInfo({ userId }).pipe(
                   catchError(error => {
-                    this.logger.error(`Error fetching user data for ID ${userId}:`, error);
-                    return of(null);
+                    this.logger.error(`Error fetching user data for ID ${userId}:`, error)
+                    return of(null)
                   })
                 )
-              );
+              )
 
               if (userResponse) {
                 userMap.set(userId, {
                   userId: userResponse.userId,
                   username: userResponse.username
-                });
+                })
               }
             }
           } catch (error) {
-            this.logger.error(`Failed to get user data for ID ${userId}:`, error);
+            this.logger.error(`Failed to get user data for ID ${userId}:`, error)
           }
         })
-      ]);
+      ])
 
-      // Create a map of buildingDetailId to buildingDetail and building info for faster lookup
-      const buildingDetailMap = new Map();
-      const buildingMap = new Map();
-      
+      // Create a map of buildingDetailId to buildingDetail and building info
+      const buildingDetailMap = new Map()
+      const buildingMap = new Map()
+
       buildingDetails.forEach(detail => {
-        buildingDetailMap.set(detail.buildingDetailId, detail);
-        
-        // Find the building for this detail
-        const building = buildingsResponse.data.find(b => b.buildingId === detail.buildingId);
+        buildingDetailMap.set(detail.buildingDetailId, detail)
+        const building = buildingsResponse.data.find(b => b.buildingId === detail.buildingId)
         if (building) {
-          buildingMap.set(detail.buildingId, building);
+          buildingMap.set(detail.buildingId, building)
         }
-      });
+      })
 
       // Enhance the crack reports with additional information
       const enhancedReports = await Promise.all(crackReports.map(async report => {
-        const userData = userMap.get(report.reportedBy);
-        const verifierData = userMap.get(report.verifiedBy);
-        
-        // Find the building detail info from our map
-        const buildingDetail = buildingDetailMap.get(report.buildingDetailId);
-        
-        // Find the building info from our map
-        let building = null;
+        const userData = userMap.get(report.reportedBy)
+        const verifierData = userMap.get(report.verifiedBy)
+        const buildingDetail = buildingDetailMap.get(report.buildingDetailId)
+        let building = null
         if (buildingDetail) {
-          building = buildingMap.get(buildingDetail.buildingId);
+          building = buildingMap.get(buildingDetail.buildingId)
         }
 
         return {
@@ -1373,17 +1434,25 @@ export class CrackReportsService {
             photoUrl: detail.photoUrl ? await this.getPreSignedUrl(this.extractFileKey(detail.photoUrl)) : null,
             aiDetectionUrl: detail.aiDetectionUrl ? await this.getPreSignedUrl(this.extractFileKey(detail.aiDetectionUrl)) : null,
           })))
-        };
-      }));
+        }
+      }))
 
-      this.logger.log(`Successfully enhanced ${enhancedReports.length} crack reports`);
-      return new ApiResponse(true, 'Crack reports retrieved successfully', enhancedReports);
+      this.logger.log(`Successfully enhanced ${enhancedReports.length} crack reports`)
+      return new ApiResponse(true, 'Crack reports retrieved successfully', {
+        data: enhancedReports,
+        pagination: {
+          total: totalCount,
+          page,
+          limit,
+          totalPages: Math.ceil(totalCount / limit)
+        }
+      })
 
     } catch (error) {
-      this.logger.error(`Error getting crack reports for manager ${managerid}:`, error);
+      this.logger.error(`Error getting crack reports for manager ${managerid}:`, error)
       throw new RpcException(
         new ApiResponse(false, 'Error fetching crack reports for this manager', error)
-      );
+      )
     }
   }
 }
