@@ -103,7 +103,7 @@ export class CracksController {
   }
 
 
- 
+
 
   @Post('crack-reports')
   @ApiOperation({ summary: 'Create a new crack report' })
@@ -623,18 +623,38 @@ export class CracksController {
   }
 
   @Get('crack-reports/manager')
-  @ApiOperation({ summary: 'Get all crack reports for buildings managed by the specified manager' })
-  @ApiResponse({ status: 200, description: 'Returns all crack reports for buildings managed by the manager' })
+  @ApiOperation({
+    summary: 'Get all crack reports for buildings managed by the specified manager with pagination, search and filter',
+  })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @ApiQuery({ name: 'search', required: false, example: 'nứt ngang' })
+  @ApiQuery({ name: 'severityFilter', required: false, example: 'Unknown' })
+  @ApiResponse({ status: 200, description: 'Returns paginated crack reports for buildings managed by the manager' })
   @ApiResponse({ status: 404, description: 'No crack reports found for buildings managed by this manager' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   async getCrackReportsByManager(
-    @Req() req
+    @Req() req,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('search') search?: string,
+    @Query('severityFilter') severityFilter?: $Enums.Severity,
   ) {
     const userId = req.user.userId
     console.log("🚀 Kha ne ~ userId:", userId)
 
     try {
       const result = await firstValueFrom(
-        this.crackService.send({ cmd: 'get-crack-reports-by-manager-id' }, { userId }).pipe(
+        this.crackService.send({ cmd: 'get-crack-reports-by-manager-id' }, {
+          userId,
+          page: Number(page) || 1,
+          limit: Number(limit) || 10,
+          search: search || '',
+          severityFilter,
+        }).pipe(
+          tap((data) => console.log('Data received from microservice:', data)),
           catchError((err) => {
             console.error(`Error fetching crack reports: ${JSON.stringify(err)}`)
             if (err.status === 404) {
