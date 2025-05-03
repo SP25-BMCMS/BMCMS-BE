@@ -83,12 +83,6 @@ async function main() {
     },
   })
 
-  const positionMaintenanceTechnician = await prisma.workingPosition.create({
-    data: {
-      positionName: 'Maintenance_Technician',
-      description: 'Kỹ thuật viên bảo trì',
-    },
-  })
 
   // Hash passwords for security
   const hashedPassword = await hashPassword('123456');
@@ -302,7 +296,7 @@ async function main() {
       userDetails: {
         create: {
           image: 'staff_rainbow_supervisor.jpg',
-          positionId: positionMaintenanceTechnician.positionId,
+          positionId: positionTechnician.positionId,
           departmentId: departmentRainbowPrimary.departmentId,
           staffStatus: 'Active'
         }
@@ -323,7 +317,7 @@ async function main() {
       userDetails: {
         create: {
           image: 'staff_origami_supervisor.jpg',
-          positionId: positionMaintenanceTechnician.positionId,
+          positionId: positionTechnician.positionId,
           departmentId: departmentOrigamiPrimary.departmentId,
           staffStatus: 'Active'
         }
