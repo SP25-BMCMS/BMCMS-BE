@@ -115,7 +115,7 @@ export class InspectionService implements OnModuleInit {
       )
     } catch (error) {
       throw new HttpException(
-        'Không tìm thấy kiểm tra với ID nhiệm vụ được gán = ' +
+        'Không tìm thấy báo cáo với ID nhiệm vụ được gán = ' +
         task_assignment_id,
         HttpStatus.NOT_FOUND,
       )
@@ -144,7 +144,7 @@ export class InspectionService implements OnModuleInit {
       })
     } catch (error) {
       throw new HttpException(
-        'Không tìm thấy kiểm tra với ID vết nứt = ' + crack_id,
+        'Không tìm thấy báo cáo với ID vết nứt = ' + crack_id,
         HttpStatus.NOT_FOUND,
       )
     }
@@ -158,7 +158,7 @@ export class InspectionService implements OnModuleInit {
             timeout(10000),
             catchError(err => {
               throw new HttpException(
-                'Lỗi khi lấy danh sách kiểm tra',
+                'Lỗi khi lấy danh sách báo cáo',
                 HttpStatus.INTERNAL_SERVER_ERROR,
               )
             })
@@ -168,7 +168,7 @@ export class InspectionService implements OnModuleInit {
       return response;
     } catch (error) {
       throw new HttpException(
-        'Lỗi khi lấy danh sách kiểm tra',
+        'Lỗi khi lấy danh sách báo cáo',
         HttpStatus.INTERNAL_SERVER_ERROR,
       )
     }
@@ -307,10 +307,10 @@ export class InspectionService implements OnModuleInit {
           .pipe(
             timeout(10000),
             catchError(err => {
-              let errorMsg = 'Lỗi khi tạo kiểm tra'
+              let errorMsg = 'Lỗi khi tạo báo cáo'
               if (err.message) {
                 if (err.message.includes('Leader')) {
-                  errorMsg = 'Chỉ nhân viên mới có thể tạo kiểm tra'
+                  errorMsg = 'Chỉ nhân viên mới có thể tạo báo cáo'
                 } else if (err.message.includes('task assignment')) {
                   errorMsg = 'Không tìm thấy nhiệm vụ được gán'
                 }
@@ -450,7 +450,7 @@ export class InspectionService implements OnModuleInit {
               roomNumber: "Chưa xác định",
               floorNumber: 1,
               areaType: "Khác",
-              description: "Được tạo từ Kiểm tra"
+              description: "Được tạo từ báo cáo"
             })
           }
 
@@ -480,7 +480,7 @@ export class InspectionService implements OnModuleInit {
 
       return response
     } catch (error) {
-      return new ApiResponse(false, `Lỗi khi tạo kiểm tra: ${error.message}`, null)
+      return new ApiResponse(false, `Lỗi khi tạo báo cáo: ${error.message}`, null)
     }
   }
 
@@ -490,7 +490,7 @@ export class InspectionService implements OnModuleInit {
         this.inspectionClient.send(INSPECTIONS_PATTERN.CHANGE_STATUS, dto)
       )
     } catch (error) {
-      return new ApiResponse(false, 'Lỗi khi thay đổi trạng thái kiểm tra', error.message)
+      return new ApiResponse(false, 'Lỗi khi thay đổi trạng thái báo cáo', error.message)
     }
   }
 
@@ -521,7 +521,7 @@ export class InspectionService implements OnModuleInit {
 
       return response;
     } catch (error) {
-      return new ApiResponse(false, 'Lỗi khi lấy chi tiết kiểm tra', error.message)
+      return new ApiResponse(false, 'Lỗi khi lấy chi tiết báo cáo', error.message)
     }
   }
 
@@ -544,7 +544,7 @@ export class InspectionService implements OnModuleInit {
     } catch (error) {
       return {
         isSuccess: false,
-        message: 'Lỗi khi lấy thông tin kiểm tra',
+        message: 'Lỗi khi lấy thông tin báo cáo',
         data: error.message
       }
     }
@@ -573,7 +573,7 @@ export class InspectionService implements OnModuleInit {
       if (role !== 'Staff') {
         return new ApiResponse(
           false,
-          `Chỉ nhân viên mới có thể tạo kiểm tra. Vai trò hiện tại: ${role}`,
+          `Chỉ nhân viên mới có thể tạo báo cáo. Vai trò hiện tại: ${role}`,
           null
         )
       }
@@ -615,7 +615,7 @@ export class InspectionService implements OnModuleInit {
         throw error;
       }
       throw new HttpException(
-        'Lỗi khi cập nhật trạng thái tài sản riêng của kiểm tra',
+        'Lỗi khi cập nhật trạng thái tài sản riêng của báo cáo',
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
@@ -634,13 +634,13 @@ export class InspectionService implements OnModuleInit {
           timeout(10000),
           catchError(err => {
             console.error('Error updating inspection report status:', err);
-            return of(new ApiResponse(false, 'Lỗi khi cập nhật trạng thái báo cáo kiểm tra', null));
+            return of(new ApiResponse(false, 'Lỗi khi cập nhật trạng thái báo cáo', null));
           })
         )
       );
     } catch (error) {
       console.error('Error in updateInspectionReportStatus:', error);
-      return new ApiResponse(false, 'Lỗi khi cập nhật trạng thái báo cáo kiểm tra', null);
+      return new ApiResponse(false, 'Lỗi khi cập nhật trạng thái báo cáo', null);
     }
   }
 
@@ -654,13 +654,13 @@ export class InspectionService implements OnModuleInit {
             timeout(10000),
             catchError(err => {
               console.error('Error updating inspection report status by manager:', err);
-              return of(new ApiResponse(false, 'Lỗi khi cập nhật trạng thái báo cáo kiểm tra bởi quản lý', null));
+              return of(new ApiResponse(false, 'Lỗi khi cập nhật trạng thái báo cáo bởi quản lý', null));
             })
           )
       );
     } catch (error) {
       console.error('Error in updateInspectionReportStatusByManager:', error);
-      return new ApiResponse(false, 'Lỗi khi cập nhật trạng thái báo cáo kiểm tra bởi quản lý', null);
+      return new ApiResponse(false, 'Lỗi khi cập nhật trạng thái báo cáo bởi quản lý', null);
     }
   }
 
@@ -747,13 +747,13 @@ export class InspectionService implements OnModuleInit {
           timeout(10000),
           catchError(err => {
             console.error('Error getting inspection PDF:', err);
-            return of(new ApiResponse(false, 'Lỗi khi lấy tệp PDF của kiểm tra', null));
+            return of(new ApiResponse(false, 'Lỗi khi lấy tệp PDF của báo cáo', null));
           })
         )
       );
 
       if (!inspectionResponse.isSuccess || !inspectionResponse.data) {
-        return new ApiResponse(false, 'Không tìm thấy tệp PDF cho kiểm tra này', null);
+        return new ApiResponse(false, 'Không tìm thấy tệp PDF cho báo cáo này', null);
       }
 
       // If a PDF URL exists, generate a pre-signed URL
@@ -778,14 +778,14 @@ export class InspectionService implements OnModuleInit {
 
       return new ApiResponse(
         true,
-        'Tệp PDF kiểm tra được tìm thấy và khu vực khớp',
+        'Tệp PDF báo cáo được tìm thấy và khu vực khớp',
         inspectionResponse.data
       );
     } catch (error) {
       console.error('Error in getInspectionPdfByTaskAssignment:', error);
       return new ApiResponse(
         false,
-        `Lỗi khi lấy tệp PDF kiểm tra: ${error.message}`,
+        `Lỗi khi lấy tệp PDF báo cáo: ${error.message}`,
         null
       );
     }

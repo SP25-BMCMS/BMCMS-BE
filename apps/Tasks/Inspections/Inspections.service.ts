@@ -157,7 +157,7 @@ export class InspectionsService implements OnModuleInit {
         return {
           statusCode: 404,
           message:
-            'Không tìm thấy kiểm tra nào cho nhiệm vụ này với ID = ' +
+            'Không tìm thấy báo cáo nào cho nhiệm vụ này với ID = ' +
             task_assignment_id,
         }
       }
@@ -193,13 +193,13 @@ export class InspectionsService implements OnModuleInit {
 
       return {
         statusCode: 200,
-        message: 'Lấy danh sách kiểm tra thành công',
+        message: 'Lấy danh sách báo cáo thành công',
         data: inspections,
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
-        message: 'Lỗi khi lấy danh sách kiểm tra cho nhiệm vụ',
+        message: 'Lỗi khi lấy danh sách báo cáo cho nhiệm vụ',
       })
     }
   }
@@ -211,7 +211,7 @@ export class InspectionsService implements OnModuleInit {
 
     if (!existingInspection) {
       throw new RpcException(
-        new ApiResponse(false, 'Không tồn tại kiểm tra'),
+        new ApiResponse(false, 'Báo cáo không tồn tại'),
       )
     }
 
@@ -220,7 +220,7 @@ export class InspectionsService implements OnModuleInit {
         where: { inspection_id },
         data: { ...dto },
       })
-      return new ApiResponse(true, 'Cập nhật kiểm tra thành công', [
+      return new ApiResponse(true, 'Cập nhật báo cáo thành công', [
         updatedInspection,
       ])
     } catch (error) {
@@ -269,7 +269,7 @@ export class InspectionsService implements OnModuleInit {
       if (inspections.length === 0) {
         return {
           statusCode: 404,
-          message: 'Không tìm thấy kiểm tra nào',
+          message: 'Không tìm thấy báo cáo nào',
           data: [],
         }
       }
@@ -305,7 +305,7 @@ export class InspectionsService implements OnModuleInit {
 
       return {
         statusCode: 200,
-        message: 'Lấy danh sách kiểm tra thành công',
+        message: 'Lấy danh sách báo cáo thành công',
         data: inspections,
         total: inspections.length,
       }
@@ -313,7 +313,7 @@ export class InspectionsService implements OnModuleInit {
       console.error('Error in GetAllInspections:', error)
       throw new RpcException({
         statusCode: 500,
-        message: 'Lỗi khi lấy danh sách kiểm tra',
+        message: 'Lỗi khi lấy danh sách báo cáo',
         error: error.message,
       })
     }
@@ -482,7 +482,7 @@ export class InspectionsService implements OnModuleInit {
 
         return new ApiResponse(
           true,
-          'Tạo kiểm tra và vật liệu sửa chữa thành công',
+          'Tạo báo cáo thành công',
           result
         )
       } else {
@@ -500,13 +500,13 @@ export class InspectionsService implements OnModuleInit {
 
         return new ApiResponse(
           true,
-          'Tạo kiểm tra thành công không có vật liệu sửa chữa',
+          'Tạo báo cáo thành công',
           inspection
         )
       }
     } catch (error) {
       console.error('Error in createInspection:', error)
-      return new ApiResponse(false, error.message || 'Lỗi khi tạo kiểm tra và vật liệu sửa chữa', null)
+      return new ApiResponse(false, error.message || 'Lỗi khi tạo báo cáo và vật liệu sửa chữa', null)
     }
   }
 
@@ -538,7 +538,7 @@ export class InspectionsService implements OnModuleInit {
       })
 
       if (!inspection) {
-        return new ApiResponse(false, 'Không tìm thấy kiểm tra', null)
+        return new ApiResponse(false, 'Không tìm thấy báo cáo', null)
       }
 
       // Get current image_urls array or initialize as empty array
@@ -573,7 +573,7 @@ export class InspectionsService implements OnModuleInit {
       })
 
       if (!inspection) {
-        return new ApiResponse(false, 'Không tìm thấy kiểm tra', null)
+        return new ApiResponse(false, 'Không tìm thấy báo cáo', null)
       }
 
       const result: any = { ...inspection }
@@ -661,9 +661,9 @@ export class InspectionsService implements OnModuleInit {
         // Add schedule info retrieval here
       }
 
-      return new ApiResponse(true, 'Lấy chi tiết kiểm tra thành công', result)
+      return new ApiResponse(true, 'Lấy chi tiết báo cáo thành công', result)
     } catch (error) {
-      return new ApiResponse(false, 'Lỗi khi lấy chi tiết kiểm tra', error.message)
+      return new ApiResponse(false, 'Lỗi khi lấy chi tiết báo cáo', error.message)
     }
   }
 
@@ -682,7 +682,7 @@ export class InspectionsService implements OnModuleInit {
       })
 
       if (!inspection) {
-        return new ApiResponse(false, 'Không tìm thấy kiểm tra', null)
+        return new ApiResponse(false, 'Không tìm thấy báo cáo', null)
       }
 
       // Process image URLs
@@ -711,10 +711,10 @@ export class InspectionsService implements OnModuleInit {
         }
       }
 
-      return new ApiResponse(true, 'Lấy thông tin kiểm tra thành công', inspection)
+      return new ApiResponse(true, 'Lấy thông tin báo cáo thành công', inspection)
     } catch (error) {
       console.error('Error retrieving inspection:', error)
-      return new ApiResponse(false, 'Lỗi khi lấy thông tin kiểm tra', error.message)
+      return new ApiResponse(false, 'Lỗi khi lấy thông tin báo cáo', error.message)
     }
   }
 
@@ -1258,7 +1258,7 @@ export class InspectionsService implements OnModuleInit {
         console.log(`Tasks microservice - User role ${role} is not Staff`)
         return new ApiResponse(
           false,
-          `Chỉ nhân viên mới có thể tạo kiểm tra. Vai trò hiện tại: ${role}`,
+          `Chỉ nhân viên mới có thể tạo báo cáo. Vai trò hiện tại: ${role}`,
           false
         )
       }
@@ -1286,7 +1286,7 @@ export class InspectionsService implements OnModuleInit {
       if (!inspection) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Không tìm thấy kiểm tra',
+          message: 'Không tìm thấy báo cáo',
         });
       }
 
@@ -1303,14 +1303,14 @@ export class InspectionsService implements OnModuleInit {
 
       return new ApiResponse(
         true,
-        'Cập nhật trạng thái tài sản riêng của kiểm tra thành công',
+        'Cập nhật trạng thái tài sản riêng của báo cáo thành công',
         updatedInspection
       );
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({
         statusCode: 500,
-        message: `Không thể cập nhật trạng thái tài sản riêng của kiểm tra: ${error.message}`,
+        message: `Không thể cập nhật trạng thái tài sản riêng của báo cáo: ${error.message}`,
       });
     }
   }
@@ -1330,7 +1330,7 @@ export class InspectionsService implements OnModuleInit {
       if (!inspection) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Không tìm thấy kiểm tra',
+          message: 'Không tìm thấy báo cáo',
         });
       }
 
@@ -1364,14 +1364,14 @@ export class InspectionsService implements OnModuleInit {
 
       return new ApiResponse(
         true,
-        'Cập nhật trạng thái báo cáo kiểm tra thành công',
+        'Cập nhật trạng thái báo cáo thành công',
         updatedInspection
       );
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({
         statusCode: 500,
-        message: `Không thể cập nhật trạng thái báo cáo kiểm tra: ${error.message}`,
+        message: `Không thể cập nhật trạng thái báo cáo: ${error.message}`,
       });
     }
   }
@@ -1394,7 +1394,7 @@ export class InspectionsService implements OnModuleInit {
       if (!inspection) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Không tìm thấy kiểm tra',
+          message: 'Không tìm thấy báo cáo',
         });
       }
       console.log(inspection)
@@ -1451,14 +1451,14 @@ export class InspectionsService implements OnModuleInit {
 
       return new ApiResponse(
         true,
-        'Cập nhật trạng thái báo cáo kiểm tra thành công',
+        'Cập nhật trạng thái báo cáo thành công',
         updatedInspection
       );
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({
         statusCode: 500,
-        message: `Không thể cập nhật trạng thái báo cáo kiểm tra: ${error.message}`,
+        message: `Không thể cập nhật trạng thái báo cáo: ${error.message}`,
       });
     }
   }
@@ -1503,17 +1503,17 @@ export class InspectionsService implements OnModuleInit {
       });
 
       if (!inspection) {
-        return new ApiResponse(false, 'Không tìm thấy kiểm tra cho nhiệm vụ được gán này', null);
+        return new ApiResponse(false, 'Không tìm thấy báo cáo cho nhiệm vụ được gán này', null);
       }
 
       if (!inspection.uploadFile) {
-        return new ApiResponse(false, 'Không tìm thấy tệp PDF cho kiểm tra này', null);
+        return new ApiResponse(false, 'Không tìm thấy tệp PDF cho báo cáo này', null);
       }
 
-      return new ApiResponse(true, 'Lấy tệp PDF kiểm tra thành công', inspection);
+      return new ApiResponse(true, 'Lấy tệp PDF báo cáo thành công', inspection);
     } catch (error) {
       this.logger.error(`Error in getInspectionPdfByTaskAssignment: ${error.message}`, error.stack);
-      return new ApiResponse(false, `Lỗi khi lấy tệp PDF kiểm tra: ${error.message}`, null);
+      return new ApiResponse(false, `Lỗi khi lấy tệp PDF báo cáo: ${error.message}`, null);
     }
   }
 }
