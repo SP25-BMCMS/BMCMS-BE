@@ -422,8 +422,8 @@ export class UsersService {
         case 'Technician':
           positionNameEnum = PositionName.Technician
           break
-        case 'Maintenance_Technician':
-          positionNameEnum = PositionName.Maintenance_Technician
+        case 'Manager':
+          positionNameEnum = PositionName.Manager
           break
         default:
           // For unsupported position names, use Leader as default
@@ -1470,7 +1470,7 @@ export class UsersService {
     const positionLabels = {
       'Leader': 'Trưởng nhóm',
       'Technician': 'Kỹ thuật viên',
-      'Maintenance_Technician': 'Kỹ thuật viên bảo trì'
+      'Manager': 'Quản lý'
     };
     return positionLabels[position] || position;
   }
@@ -1753,11 +1753,11 @@ export class UsersService {
         }
       }
 
-      // Check if staff is a Maintenance Technician
-      if (staff.userDetails.position.positionName !== 'Maintenance_Technician') {
+      // Check if staff is a Leader
+      if (staff.userDetails.position.positionName !== PositionName.Leader) {
         return {
           isSuccess: false,
-          message: `Chỉ kỹ thuật viên bảo trì (Maintenance Technician) mới có thể thực hiện nhiệm vụ này. Vị trí hiện tại: ${staff.userDetails.position.positionName}`,
+          message: `Chỉ trưởng nhóm (Leader) mới có thể thực hiện nhiệm vụ này. Vị trí hiện tại: ${staff.userDetails.position.positionName}`,
           isMatch: false
         }
       }
