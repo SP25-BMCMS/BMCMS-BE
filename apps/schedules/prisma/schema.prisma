@@ -9,26 +9,26 @@ datasource db {
 }
 
 model MaintenanceCycle {
-  cycle_id    String           @id @default(uuid())
+  cycle_id    String                    @id @default(uuid())
   frequency   Frequency
-  basis       MaintenanceBasis @default(OperationalExperience)
-  device_type DeviceType       @default(Other)
+  basis       MaintenanceBasis          @default(OperationalExperience)
+  device_type DeviceType                @default(Other)
   schedules   Schedule[]
   history     MaintenanceCycleHistory[]
-  created_at  DateTime         @default(now()) @db.Timestamp(6)
-  updated_at  DateTime         @default(now()) @updatedAt @db.Timestamp(6)
+  created_at  DateTime                  @default(now()) @db.Timestamp(6)
+  updated_at  DateTime                  @default(now()) @updatedAt @db.Timestamp(6)
 }
 
 model MaintenanceCycleHistory {
-  history_id   String           @id @default(uuid())
-  cycle_id     String
-  frequency    Frequency
-  basis        MaintenanceBasis
-  device_type  DeviceType
-  changed_at   DateTime         @default(now()) @db.Timestamp(6)
-  updated_by   String?
-  reason       String?
-  cycle        MaintenanceCycle @relation(fields: [cycle_id], references: [cycle_id])
+  history_id  String           @id @default(uuid())
+  cycle_id    String
+  frequency   Frequency
+  basis       MaintenanceBasis
+  device_type DeviceType
+  changed_at  DateTime         @default(now()) @db.Timestamp(6)
+  updated_by  String?
+  reason      String?
+  cycle       MaintenanceCycle @relation(fields: [cycle_id], references: [cycle_id])
 }
 
 model Schedule {
@@ -64,13 +64,14 @@ enum Frequency {
   Daily
   Weekly
   Monthly
+  Quarterly
   Yearly
   Specific
 }
 
 enum ScheduleJobStatus {
   Reviewing
-  Rejected 
+  Rejected
   Pending
   InProgress
   Completed
@@ -101,5 +102,6 @@ enum DeviceType {
   Lighting
   AutomaticDoor
   FireExtinguisher
+  BuildingStructure
   Other
 }

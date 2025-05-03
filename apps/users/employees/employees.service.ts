@@ -171,10 +171,8 @@ export class EmployeesService {
           department: {
             area: staffLeader.department.area
           },
-          position: {
-            positionName: {
-              in: ['Technician']
-            }
+          userId: {
+            not: staffId
           }
         },
         include: {
