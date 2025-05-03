@@ -33,7 +33,7 @@ export class EnumLabelInterceptor implements NestInterceptor {
 
         // Tasks Schema
         WorkLogStatus: {
-            INIT_INSPECTION: 'Khởi tạo kiểm tra',
+            INIT_INSPECTION: 'Khởi tạo báo cáo',
             WAIT_FOR_DEPOSIT: 'Chờ đặt cọc',
             EXECUTE_CRACKS: 'Thực hiện sửa nứt',
             CONFIRM_NO_PENDING_ISSUES: 'Xác nhận không còn vấn đề tồn đọng',

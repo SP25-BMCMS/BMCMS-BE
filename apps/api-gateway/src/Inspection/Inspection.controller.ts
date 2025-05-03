@@ -353,7 +353,7 @@ export class InspectionController {
       type: 'object',
       properties: {
         isSuccess: { type: 'boolean', example: true },
-        message: { type: 'string', example: 'Tệp PDF kiểm tra được tìm thấy và khu vực khớp' },
+        message: { type: 'string', example: 'Tệp PDF báo cáo được tìm thấy và khu vực khớp' },
         data: {
           type: 'object',
           properties: {

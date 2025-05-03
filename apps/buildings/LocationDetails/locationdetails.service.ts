@@ -148,7 +148,7 @@ export class LocationDetailService {
           // Vẫn trả về location detail dù không lấy được inspection
           return {
             statusCode: 200,
-            message: 'Lấy chi tiết vị trí thành công (không có dữ liệu kiểm tra)',
+            message: 'Lấy chi tiết vị trí thành công (không có dữ liệu báo cáo)',
             data: locationDetail,
           };
         }

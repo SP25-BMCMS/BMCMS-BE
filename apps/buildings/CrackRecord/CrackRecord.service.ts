@@ -203,7 +203,7 @@ export class CrackRecordService {
       if (!locationDetails || locationDetails.length === 0) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Không tìm thấy chi tiết vị trí cho lần kiểm tra này',
+          message: 'Không tìm thấy chi tiết vị trí cho lần báo cáo này',
         });
       }
 

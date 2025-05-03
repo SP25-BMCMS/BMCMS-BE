@@ -123,10 +123,10 @@ export class RepairMaterialsService {
           }
         })
 
-        return new ApiResponse<Inspection>(true, 'Đã thêm vật liệu vào kiểm tra thành công', updatedInspection)
+        return new ApiResponse<Inspection>(true, 'Đã thêm vật liệu vào báo cáo thành công', updatedInspection)
       })
     } catch (error) {
-      return new ApiResponse<Inspection>(false, 'Lỗi khi thêm vật liệu vào kiểm tra', error.message)
+      return new ApiResponse<Inspection>(false, 'Lỗi khi thêm vật liệu vào báo cáo', error.message)
     }
   }
 }

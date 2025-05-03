@@ -87,6 +87,7 @@ enum PositionName {
   Leader
   Technician
   Maintenance_Technician
+  Manager
 }
 
 enum AccountStatus {
