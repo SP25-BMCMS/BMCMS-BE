@@ -42,14 +42,14 @@ export const SkipAuth = () => SetMetadata('skip-auth', true)
 
 @Controller('cracks')
 @ApiTags('cracks')
-@UseGuards(PassportJwtAuthGuard)
-@ApiBearerAuth('access-token')
 export class CracksController {
   constructor(
     @Inject(CRACK_CLIENT) private readonly crackService: ClientProxy,
   ) { }
 
   @Get('test-users-connection')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Test connection with Users Service' })
   @ApiResponse({ status: 200, description: 'Connection test successful' })
   @ApiResponse({ status: 500, description: 'Connection test failed' })
@@ -64,6 +64,8 @@ export class CracksController {
   }
 
   @Get('crack-reports')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({
     summary: 'Get all crack reports with pagination, search, and filter',
   })
@@ -106,6 +108,8 @@ export class CracksController {
 
 
   @Post('crack-reports')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Create a new crack report' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -283,6 +287,8 @@ export class CracksController {
     )
   }
 
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @Patch('crack-reports/:id/status')
   @ApiOperation({ summary: 'Update crack report status' })
   @ApiParam({ name: 'id', description: 'Crack report ID' })
@@ -427,6 +433,8 @@ export class CracksController {
   }
 
   @Post('crack-details/upload-images')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Upload crack images' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
