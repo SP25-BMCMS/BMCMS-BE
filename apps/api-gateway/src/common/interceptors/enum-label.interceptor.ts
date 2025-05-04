@@ -24,7 +24,7 @@ export class EnumLabelInterceptor implements NestInterceptor {
         PositionName: {
             Leader: 'Trưởng nhóm',
             Technician: 'Kỹ thuật viên',
-            Maintenance_Technician: 'Kỹ thuật viên bảo trì'
+            Manager: 'Quản lý'
         },
         AccountStatus: {
             Active: 'Đang hoạt động',

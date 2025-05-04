@@ -173,6 +173,9 @@ export class EmployeesService {
           },
           userId: {
             not: staffId
+          },
+          user: {
+            role: 'Staff'
           }
         },
         include: {
