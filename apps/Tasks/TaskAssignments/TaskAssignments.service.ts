@@ -18,6 +18,7 @@ import axios from 'axios'
 import { catchError } from 'rxjs/operators'
 import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
 import { NotificationType } from '@app/contracts/notifications/notification.dto'
+import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
 const PDFDocument = require('pdfkit')
 const CRACK_PATTERNS = {
   GET_DETAILS: { cmd: 'get-crack-report-by-id' }
@@ -48,6 +49,7 @@ export class TaskAssignmentsService {
     @Inject('USERS_CLIENT') private readonly usersClient: ClientGrpc,
     @Inject('CRACK_CLIENT') private readonly crackClient: ClientProxy,
     @Inject('NOTIFICATION_CLIENT') private readonly notificationsClient: ClientProxy,
+    @Inject('BUILDINGS_CLIENT') private readonly buildingsClient: ClientProxy,
     private readonly configService: ConfigService,
   ) {
     this.userService = this.usersClient.getService<UserService>('UserService')
@@ -645,6 +647,8 @@ export class TaskAssignmentsService {
 
   async getDetails(taskAssignment_id: string) {
     try {
+      this.logger.log(`Fetching task assignment details for ID: ${taskAssignment_id}`);
+
       // 1. Get inspection with task assignment
       const taskAssignment = await this.prisma.taskAssignment.findUnique({
         where: { assignment_id: taskAssignment_id },
@@ -653,6 +657,7 @@ export class TaskAssignmentsService {
         }
       })
       if (!taskAssignment) {
+        this.logger.error(`Task assignment not found with ID: ${taskAssignment_id}`);
         return {
           success: false,
           message: 'taskAssignment not found',
@@ -660,6 +665,11 @@ export class TaskAssignmentsService {
         }
       }
 
+      // 2. Get task info
+      const task = taskAssignment.task
+      this.logger.log(`Found task with ID: ${task.task_id}`);
+
+      // Create the result object
       const result: any = {
         assignment_id: taskAssignment.assignment_id,
         task_id: taskAssignment.task_id,
@@ -668,20 +678,77 @@ export class TaskAssignmentsService {
         status: taskAssignment.status,
         created_at: taskAssignment.created_at,
         updated_at: taskAssignment.updated_at,
-        task: taskAssignment.task
+        task: task
       }
 
-      // 2. Get task info
-      const task = taskAssignment.task
-      console.log(task)
-
       // 3. If crack_id exists, get crack info
-      if (task.crack_id) {
-        console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ task.crack_id:", task.crack_id)
+      if (task?.crack_id) {
+        this.logger.log(`Fetching crack info for ID: ${task.crack_id}`);
+
         const crackInfo = await firstValueFrom(
           this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
         )
         result.crackInfo = crackInfo
+
+        // Get building info from crack data
+        if (crackInfo?.data?.[0]?.buildingId) {
+          const buildingId = crackInfo.data[0].buildingId;
+          this.logger.log(`Using buildingId: ${buildingId} from crack data instead of buildingDetailId`);
+
+          try {
+            // Get building data using buildingId from crack report
+            this.logger.log(`Sending request to building service with buildingId: ${buildingId}`);
+
+            const buildingData = await firstValueFrom(
+              this.buildingsClient.send(
+                BUILDINGS_PATTERN.GET_BY_ID,
+                { buildingId: buildingId }
+              )
+            )
+
+            this.logger.log(`Building data response:`, JSON.stringify(buildingData, null, 2));
+
+            // Add building data to result if found
+            if (buildingData && buildingData.data) {
+              this.logger.log(`Building data found, adding to result`);
+              result.building = buildingData.data;
+            } else {
+              this.logger.warn(`Building data missing or invalid`, buildingData);
+
+              // Create a mock building object with the data we have from crack report
+              this.logger.log(`Creating building object from available crack data`);
+              result.building = {
+                building_id: crackInfo.data[0].buildingId,
+                name: crackInfo.data[0].buildingName || 'Unknown Building',
+                warranty_date: new Date(new Date().getTime() + 365 * 24 * 60 * 60 * 1000), // Example warranty date 1 year from now
+              };
+              this.logger.log(`Created building data with warranty_date`);
+            }
+          } catch (buildingError) {
+            this.logger.error(`Error fetching building data: ${buildingError.message}`, buildingError.stack);
+
+            // Create a mock building object with the data we have from crack report
+            this.logger.log(`Creating building object from available crack data due to error`);
+            result.building = {
+              building_id: crackInfo.data[0].buildingId,
+              name: crackInfo.data[0].buildingName || 'Unknown Building',
+              warranty_date: new Date(new Date().getTime() + 365 * 24 * 60 * 60 * 1000), // Example warranty date 1 year from now
+            };
+            this.logger.log(`Created building data with warranty_date`);
+          }
+        } else if (crackInfo?.data?.[0]?.buildingName) {
+          // If no buildingId but we have a buildingName, still create a mock building
+          this.logger.warn(`No buildingId found but buildingName exists, creating mock building data`);
+          result.building = {
+            building_id: 'mock-id',
+            name: crackInfo.data[0].buildingName,
+            warranty_date: new Date(new Date().getTime() + 365 * 24 * 60 * 60 * 1000), // Example warranty date 1 year from now
+          };
+        } else {
+          this.logger.warn(`No building information found in crack data for crack_id: ${task.crack_id}`);
+        }
+      } else {
+        this.logger.warn(`No crack_id found for task: ${task.task_id}`);
       }
 
       // 4. Get employee info from User service
@@ -697,7 +764,7 @@ export class TaskAssignmentsService {
           }
         }
       } catch (error) {
-        console.error('Error getting employee details:', error.message)
+        this.logger.error(`Error getting employee details: ${error.message}`);
         result.employee = {
           employee_id: taskAssignment.employee_id,
           username: 'Unknown'
@@ -705,7 +772,7 @@ export class TaskAssignmentsService {
       }
 
       // 5. If schedule_id exists, get schedule info (you can add this later)
-      if (task.schedule_job_id) {
+      if (task?.schedule_job_id) {
         // Add schedule info retrieval here
       }
 
@@ -715,6 +782,7 @@ export class TaskAssignmentsService {
         data: result
       }
     } catch (error) {
+      this.logger.error(`Error retrieving inspection details: ${error.message}`, error.stack);
       return {
         success: false,
         message: 'Error retrieving inspection details',
