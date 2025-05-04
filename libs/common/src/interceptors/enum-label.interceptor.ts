@@ -128,6 +128,7 @@ export class EnumLabelInterceptor implements NestInterceptor {
             InFixing: 'Đang sửa chữa',
             Reviewing: 'Đang xem xét',
             Rejected: 'Bị từ chối',
+            WaitingConfirm: 'Chờ xác nhận',
             Completed: 'Hoàn thành'
         },
         Severity: {
