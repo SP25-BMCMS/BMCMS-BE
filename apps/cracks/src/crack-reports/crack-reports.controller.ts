@@ -113,6 +113,22 @@ export class CrackReportsController {
     )
   }
 
+  @MessagePattern({ cmd: 'update-crack-report-status-silent' })
+  async updateCrackReportStatusSilent(
+    @Payload() payload: { crackReportId: string; status: string },
+  ) {
+    // Create a DTO with the status and set suppressNotification flag to true
+    const dto: UpdateCrackReportDto = {
+      status: payload.status as any, // Cast to appropriate enum type
+      suppressNotification: true // This flag will prevent sending notifications
+    };
+
+    return await this.crackReportsService.updateCrackReportForAllStatus(
+      payload.crackReportId,
+      dto,
+    )
+  }
+
   @MessagePattern({ cmd: 'get-crack-reports-by-manager-id' })
   async getCrackReportsByManagerId(
     @Payload() payload: {

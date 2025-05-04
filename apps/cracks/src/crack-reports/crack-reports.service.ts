@@ -867,7 +867,7 @@ export class CrackReportsService {
             .send(TASKASSIGNMENT_PATTERN.ASSIGN_TO_EMPLOYEE, {
               taskId: createTaskResponse.data.task_id,
               employeeId: staffId,
-              description: `Assignment to handle crack report at ${existingReport.position}`,
+              description: `Phân công xử lý báo cáo vết nứt tại ${existingReport.position}`,
               status: AssignmentStatus.Pending,
             })
             .pipe(

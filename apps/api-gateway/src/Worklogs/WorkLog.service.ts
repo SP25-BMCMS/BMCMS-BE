@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { WORKLOG_PATTERN } from '@app/contracts/Worklog/Worklog.patterns';
 import { WorkLogResponseDto } from '@app/contracts/Worklog/Worklog.dto';
@@ -69,6 +69,38 @@ export class WorklogService {
       return response;
     } catch (error) {
       console.error('Error getting worklogs by resident ID:', error);
+      throw error;
+    }
+  }
+
+  async executeTask(taskAssignmentId: string): Promise<any> {
+    try {
+      const response = await firstValueFrom(
+        this.taskClient.send(WORKLOG_PATTERN.EXECUTE_TASK, { taskAssignmentId }),
+      );
+      return response;
+    } catch (error) {
+      console.error('Error executing task assignment:', error);
+      if (error.statusCode === 404 || (error.response && error.response.statusCode === 404)) {
+        const message = error.message || error.response?.message || 'Task assignment not found';
+        throw new NotFoundException(message);
+      }
+      throw error;
+    }
+  }
+
+  async cancelTask(taskAssignmentId: string): Promise<any> {
+    try {
+      const response = await firstValueFrom(
+        this.taskClient.send(WORKLOG_PATTERN.CANCEL_TASK, { taskAssignmentId }),
+      );
+      return response;
+    } catch (error) {
+      console.error('Error canceling task assignment:', error);
+      if (error.statusCode === 404 || (error.response && error.response.statusCode === 404)) {
+        const message = error.message || error.response?.message || 'Task assignment not found';
+        throw new NotFoundException(message);
+      }
       throw error;
     }
   }

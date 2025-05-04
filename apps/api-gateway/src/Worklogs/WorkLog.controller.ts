@@ -115,4 +115,24 @@ export class WorkLogController {
   async getWorklogsByResidentId(@Param('resident_id') resident_id: string) {
     return this.workLogService.getWorklogsByResidentId(resident_id);
   }
+
+  @Put('resident-confirm/:taskAssignmentId')
+  @ApiOperation({ summary: 'Execute a task assignment - update task to Assigned, crackReport to InFixing and create EXECUTE_CRACKS worklog' })
+  @ApiParam({ name: 'taskAssignmentId', description: 'Task Assignment ID' })
+  @ApiResponse({ status: 200, description: 'Task execution started successfully' })
+  @ApiResponse({ status: 404, description: 'Task assignment not found' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  async executeTask(@Param('taskAssignmentId') taskAssignmentId: string) {
+    return this.workLogService.executeTask(taskAssignmentId);
+  }
+
+  @Put('resident-reject/:taskAssignmentId')
+  @ApiOperation({ summary: 'Cancel a task assignment - update task to Completed, crackReport to Rejected and create CANCELLED worklog' })
+  @ApiParam({ name: 'taskAssignmentId', description: 'Task Assignment ID' })
+  @ApiResponse({ status: 200, description: 'Task cancelled successfully' })
+  @ApiResponse({ status: 404, description: 'Task assignment not found' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  async cancelTask(@Param('taskAssignmentId') taskAssignmentId: string) {
+    return this.workLogService.cancelTask(taskAssignmentId);
+  }
 }
