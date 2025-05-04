@@ -11,6 +11,7 @@ import { UpdateBuildingDto } from 'libs/contracts/src/buildings/update-buildings
 import { Observable } from 'rxjs'
 import { firstValueFrom, lastValueFrom } from 'rxjs'
 import { timeout, catchError, of } from 'rxjs'
+import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 const USERS_CLIENT = 'USERS_CLIENT'
@@ -763,6 +764,42 @@ export class BuildingsService {
         message: 'Lỗi máy chủ khi lấy danh sách tòa nhà cho quản lý',
         error: error.message
       }
+    }
+  }
+
+  // Get building information using buildingDetailId
+  async getBuildingFromBuildingDetail(buildingDetailId: string) {
+    try {
+      if (!buildingDetailId) {
+        return new ApiResponse(false, 'ID chi tiết tòa nhà không hợp lệ', null);
+      }
+
+      // First, get the buildingDetail to find the buildingId
+      const buildingDetail = await this.prisma.buildingDetail.findUnique({
+        where: { buildingDetailId },
+        select: { buildingId: true }
+      });
+
+      if (!buildingDetail) {
+        return new ApiResponse(false, 'Không tìm thấy chi tiết tòa nhà', null);
+      }
+
+      // Now get the building with this buildingId, including warranty info
+      const building = await this.prisma.building.findUnique({
+        where: { buildingId: buildingDetail.buildingId },
+        include: {
+          area: true
+        }
+      });
+
+      if (!building) {
+        return new ApiResponse(false, 'Không tìm thấy tòa nhà', null);
+      }
+
+      return new ApiResponse(true, 'Lấy thông tin tòa nhà thành công', building);
+    } catch (error) {
+      console.error(`Error getting building from buildingDetailId ${buildingDetailId}:`, error);
+      return new ApiResponse(false, `Lỗi khi lấy thông tin tòa nhà: ${error.message}`, null);
     }
   }
 }

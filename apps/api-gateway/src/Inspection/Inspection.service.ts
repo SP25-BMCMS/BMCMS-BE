@@ -305,7 +305,7 @@ export class InspectionService implements OnModuleInit {
       const response = await firstValueFrom(
         this.inspectionClient.send(INSPECTIONS_PATTERN.CREATE, updatedDto)
           .pipe(
-            timeout(10000),
+            timeout(100000),
             catchError(err => {
               let errorMsg = 'Lỗi khi tạo báo cáo'
               if (err.message) {

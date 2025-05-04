@@ -1159,6 +1159,20 @@ export class CrackReportsService {
                 title = 'Báo cáo vết nứt đã được xử lý hoàn tất'
                 content = `Báo cáo vết nứt của bạn tại vị trí "${existingReport.position}" đã được xử lý thành công.`
                 break
+              case 'WaitingConfirm':
+                title = 'Yêu cầu đặt cọc để xử lý vết nứt'
+                content = `Tòa nhà của bạn đã hết thời hạn bảo hành. Báo cáo vết nứt tại vị trí "${existingReport.position}" cần khoản đặt cọc trước khi tiếp tục xử lý.`
+                break
+            }
+
+            // Kiểm tra xem title và content có dữ liệu không
+            if (!title.trim() || !content.trim()) {
+              this.logger.warn(`Skipping empty notification for crack report ${crackReportId} with status ${dto.status}`);
+              return new ApiResponse(
+                true,
+                'Cập nhật báo cáo vết nứt thành công (bỏ qua thông báo trống)',
+                [updatedReport]
+              );
             }
 
             const notificationData = {
@@ -1647,6 +1661,37 @@ export class CrackReportsService {
         `Lỗi khi lấy thông tin khu vực từ vết nứt: ${error.message}`,
         null
       )
+    }
+  }
+
+  // Add this method after the getBuildingDetailByTaskId method
+  async getBuildingDetailByCrackId(crackId: string): Promise<ApiResponse<any>> {
+    try {
+      // Get the crack report to get the buildingDetailId
+      const crackReport = await this.prismaService.crackReport.findUnique({
+        where: { crackReportId: crackId },
+        select: { buildingDetailId: true }
+      });
+
+      if (!crackReport) {
+        throw new RpcException(
+          new ApiResponse(false, `Không tìm thấy báo cáo vết nứt với ID = ${crackId}`)
+        );
+      }
+
+      return new ApiResponse(
+        true,
+        'Lấy thông tin ID chi tiết tòa nhà thành công',
+        { buildingDetailId: crackReport.buildingDetailId }
+      );
+    } catch (error) {
+      console.error(`Error getting buildingDetailId for crack ${crackId}:`, error);
+      if (error instanceof RpcException) {
+        throw error;
+      }
+      throw new RpcException(
+        new ApiResponse(false, `Lỗi khi lấy thông tin ID chi tiết tòa nhà: ${error.message}`)
+      );
     }
   }
 }

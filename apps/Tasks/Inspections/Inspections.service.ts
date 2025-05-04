@@ -24,6 +24,7 @@ import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
 import { AREAS_PATTERN } from '@app/contracts/Areas/Areas.patterns'
 import { SCHEDULEJOB_PATTERN } from '@app/contracts/schedulejob/schedulejob.patterns'
 import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
+import { WORKLOG_PATTERN } from '@app/contracts/Worklog/Worklog.patterns'
 
 const USERS_CLIENT = 'USERS_CLIENT'
 // Define interface for the User service
@@ -338,7 +339,10 @@ export class InspectionsService implements OnModuleInit {
       // Check if task assignment exists
       const taskAssignment = await this.prisma.taskAssignment.findUnique({
         where: { assignment_id: dto.task_assignment_id },
-      })
+        include: {
+          task: true, // Include Task relation
+        }
+      });
 
       if (!taskAssignment) {
         return new ApiResponse(false, 'Không tìm thấy nhiệm vụ được phân công', null)
@@ -357,6 +361,87 @@ export class InspectionsService implements OnModuleInit {
           staffVerification.message,
           null
         )
+      }
+
+      // Get the task and crack_id
+      const task = taskAssignment.task;
+      const crackId = task.crack_id;
+
+      // Get building information to check warranty status (only if task has a crack_id)
+      let isWarrantyExpired = false;
+      let buildingDetailId = null;
+
+      if (crackId) {
+        try {
+          // Get building detail ID from crack report
+          const buildingDetailResponse = await firstValueFrom(
+            this.crackClient.send(
+              { cmd: 'get-buildingDetail-by-crack-id' },
+              { crackId }
+            ).pipe(
+              timeout(10000),
+              catchError(err => {
+                console.error('Error getting building detail from crack:', err);
+                return of({ isSuccess: false, data: null });
+              })
+            )
+          );
+
+          if (buildingDetailResponse && buildingDetailResponse.isSuccess && buildingDetailResponse.data) {
+            buildingDetailId = buildingDetailResponse.data.buildingDetailId;
+
+            // Get building information from building service using buildingDetailId
+            if (buildingDetailId) {
+              const buildingResponse = await firstValueFrom(
+                this.buildingsClient.send(
+                  { cmd: 'get-building-from-building-detail' },
+                  { buildingDetailId }
+                ).pipe(
+                  timeout(10000),
+                  catchError(err => {
+                    console.error('Error getting building information:', err);
+                    return of({ isSuccess: false, data: null });
+                  })
+                )
+              );
+
+              if (buildingResponse && buildingResponse.isSuccess && buildingResponse.data) {
+                const building = buildingResponse.data;
+
+                // Log full building object để debug
+                console.log(`Full building object: ${JSON.stringify(building, null, 2)}`);
+
+                // Check if warranty date exists under various possible field names
+                const warrantyDate = building.warrantyDate || building.Warranty_date || building.warranty_date;
+
+                if (warrantyDate) {
+                  const warrantyDateObj = new Date(warrantyDate);
+                  const currentDate = new Date();
+
+                  console.log(`Current date: ${currentDate.toISOString()}`);
+                  console.log(`Warranty date: ${warrantyDateObj.toISOString()}`);
+
+                  isWarrantyExpired = warrantyDateObj < currentDate;
+
+                  console.log(`Building warranty check: warrantyDate=${warrantyDateObj.toISOString()}, currentDate=${currentDate.toISOString()}, isExpired=${isWarrantyExpired}`);
+                } else {
+                  console.log('Building does not have a warranty date (field not found in response), assuming expired');
+                  console.log('Available fields in building object: ' + Object.keys(building).join(', '));
+                  isWarrantyExpired = true; // If no warranty date, assume expired
+                }
+              } else {
+                console.log('Could not get building information, assuming warranty expired');
+                isWarrantyExpired = true; // If can't get building info, assume expired
+              }
+            }
+          } else {
+            console.log('Could not get building detail ID from crack, assuming warranty expired');
+            isWarrantyExpired = true; // If can't get building detail, assume expired
+          }
+        } catch (error) {
+          console.error('Error checking warranty status:', error);
+          // Continue with inspection creation, just log the error
+        }
       }
 
       // Parse repairMaterials if it's a string
@@ -480,6 +565,52 @@ export class InspectionsService implements OnModuleInit {
           }
         })
 
+        // If warranty is expired and we have a crackId, update the crack report status and create worklog
+        if (isWarrantyExpired && crackId) {
+          try {
+            // 1. Update CrackReport status to WaitingConfirm
+            await firstValueFrom(
+              this.crackClient.send(
+                { cmd: 'update-crack-report-for-all-status' },
+                {
+                  crackReportId: crackId,
+                  dto: { status: 'WaitingConfirm' }
+                }
+              ).pipe(
+                catchError(error => {
+                  console.error('Error updating crack report status:', error);
+                  return of({ isSuccess: false, message: error.message });
+                })
+              )
+            );
+
+            // 2. Create worklog with WAIT_FOR_DEPOSIT status
+            if (task.task_id) {
+              await firstValueFrom(
+                this.taskClient.send(
+                  WORKLOG_PATTERN.CREATE,
+                  {
+                    task_id: task.task_id,
+                    title: 'Chờ đặt cọc từ cư dân',
+                    description: 'Tòa nhà đã hết hạn bảo hành, cần cư dân đặt cọc trước khi tiếp tục',
+                    status: 'WAIT_FOR_DEPOSIT'
+                  }
+                ).pipe(
+                  catchError(error => {
+                    console.error('Error creating worklog:', error);
+                    return of({ isSuccess: false, message: error.message });
+                  })
+                )
+              );
+            }
+
+            console.log(`Successfully updated statuses due to expired warranty. CrackId: ${crackId}, TaskId: ${task.task_id}`);
+          } catch (error) {
+            console.error('Error updating statuses after inspection creation:', error);
+            // Don't fail the overall operation if this update fails
+          }
+        }
+
         return new ApiResponse(
           true,
           'Tạo báo cáo thành công',
@@ -497,6 +628,52 @@ export class InspectionsService implements OnModuleInit {
             uploadFile: dto.uploadFile || null,
           },
         })
+
+        // If warranty is expired and we have a crackId, update the crack report status and create worklog
+        if (isWarrantyExpired && crackId) {
+          try {
+            // 1. Update CrackReport status to WaitingConfirm
+            await firstValueFrom(
+              this.crackClient.send(
+                { cmd: 'update-crack-report-for-all-status' },
+                {
+                  crackReportId: crackId,
+                  dto: { status: 'WaitingConfirm' }
+                }
+              ).pipe(
+                catchError(error => {
+                  console.error('Error updating crack report status:', error);
+                  return of({ isSuccess: false, message: error.message });
+                })
+              )
+            );
+
+            // 2. Create worklog with WAIT_FOR_DEPOSIT status
+            if (task.task_id) {
+              await firstValueFrom(
+                this.taskClient.send(
+                  WORKLOG_PATTERN.CREATE,
+                  {
+                    task_id: task.task_id,
+                    title: 'Chờ đặt cọc từ cư dân',
+                    description: 'Tòa nhà đã hết hạn bảo hành, cần cư dân đặt cọc trước khi tiếp tục',
+                    status: 'WAIT_FOR_DEPOSIT'
+                  }
+                ).pipe(
+                  catchError(error => {
+                    console.error('Error creating worklog:', error);
+                    return of({ isSuccess: false, message: error.message });
+                  })
+                )
+              );
+            }
+
+            console.log(`Successfully updated statuses due to expired warranty. CrackId: ${crackId}, TaskId: ${task.task_id}`);
+          } catch (error) {
+            console.error('Error updating statuses after inspection creation:', error);
+            // Don't fail the overall operation if this update fails
+          }
+        }
 
         return new ApiResponse(
           true,

@@ -153,4 +153,9 @@ export class CrackReportsController {
   async getBuildingAreaFromCrack(@Payload() data: { crack_id: string }) {
     return await this.crackReportsService.getBuildingAreaFromCrack(data.crack_id);
   }
+
+  @MessagePattern({ cmd: 'get-buildingDetail-by-crack-id' })
+  async getBuildingDetailByCrackId(@Payload() payload: { crackId: string }) {
+    return await this.crackReportsService.getBuildingDetailByCrackId(payload.crackId);
+  }
 }

@@ -37,7 +37,7 @@ export class WorkLogService {
           task_id: createWorkLogForTaskDto.task_id,
           title: createWorkLogForTaskDto.title,
           description: createWorkLogForTaskDto.description,
-          status: $Enums.WorkLogStatus.INIT_INSPECTION,
+          status: createWorkLogForTaskDto.status ? createWorkLogForTaskDto.status as $Enums.WorkLogStatus : $Enums.WorkLogStatus.INIT_INSPECTION,
         },
       })
       return new ApiResponse<WorkLogResponseDto>(
