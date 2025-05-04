@@ -284,8 +284,47 @@ export class TaskAssignmentController {
   }
 
   @Get(':id/details')
-  @ApiOperation({ summary: 'Get inspection details with crack information' })
+  @ApiOperation({ summary: 'Get inspection details with crack information and building data' })
   @ApiParam({ name: 'id', description: 'Task Assignment ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns task assignment details including crack information and building data with warranty_date',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Inspection details retrieved successfully' },
+        data: {
+          type: 'object',
+          properties: {
+            assignment_id: { type: 'string' },
+            task_id: { type: 'string' },
+            description: { type: 'string' },
+            status: { type: 'string' },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' },
+            employee: {
+              type: 'object',
+              properties: {
+                employee_id: { type: 'string' },
+                username: { type: 'string' }
+              }
+            },
+            task: { type: 'object' },
+            building: {
+              type: 'object',
+              properties: {
+                building_id: { type: 'string' },
+                warranty_date: { type: 'string', format: 'date-time', description: 'Building warranty date' }
+              }
+            },
+            crackInfo: { type: 'object' }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Task assignment not found' })
   async getCrackDetailsbyTaskAssignmentId(@Param('id') id: string): Promise<any> {
     return this.taskAssignmentService.getTaskAssignmentDetails(id);
   }
