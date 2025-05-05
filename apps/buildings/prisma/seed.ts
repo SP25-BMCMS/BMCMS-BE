@@ -1659,7 +1659,7 @@ async function main() {
     // FireProtection devices
     const fireSystemS101 = await prisma.device.create({
         data: {
-            name: 'Hệ thống bảo vệ cháy - S101',
+            name: 'Hệ thống phòng cháy chữa cháy - S101',
             type: 'FireProtection',
             manufacturer: 'Johnson Controls',
             model: 'FireClass Series',
@@ -1670,7 +1670,7 @@ async function main() {
 
     const fireSystemS201 = await prisma.device.create({
         data: {
-            name: 'Hệ thống bảo vệ cháy - S201',
+            name: 'Hệ thống phòng cháy chữa cháy - S201',
             type: 'FireProtection',
             manufacturer: 'Siemens',
             model: 'Cerberus PRO',
