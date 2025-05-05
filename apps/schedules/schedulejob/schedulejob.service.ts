@@ -465,7 +465,7 @@ export class ScheduleJobsService {
         console.log(`Sending email to resident: ${residentName} (${resident.email}) for maintenance from ${startTime} to ${endTime}`);
 
         return firstValueFrom(
-          this.notificationsClient.emit(NOTIFICATIONS_PATTERN.SEND_EMAIL, {
+          this.notificationsClient.emit(NOTIFICATIONS_PATTERN.SEND_MAINTENANCE_SCHEDULE_EMAIL, {
             to: resident.email,
             residentName: residentName,
             buildingName: buildingDetail.name,
@@ -503,7 +503,7 @@ export class ScheduleJobsService {
   async getScheduleJobsByManagerId(managerid: string): Promise<ApiResponse<any>> {
     try {
       console.log(`Getting schedule jobs for manager with ID: ${managerid}`);
-      
+
       // 1. Get all buildings managed by this manager
       const buildingsResponse = await firstValueFrom(
         this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_MANAGER_ID, { managerId: managerid }).pipe(
@@ -527,9 +527,9 @@ export class ScheduleJobsService {
       // 2. Extract all building detail IDs from the buildings
       const buildingDetails = buildingsResponse.data.flatMap(building => building.buildingDetails || []);
       const buildingDetailIds = buildingDetails.map(detail => detail.buildingDetailId);
-      
+
       console.log(`Found ${buildingDetailIds.length} building details for manager ${managerid}`);
-      
+
       if (buildingDetailIds.length === 0) {
         console.warn(`No building details found for manager ${managerid}`);
         return new ApiResponse(false, 'No building details found for buildings managed by this manager', []);
@@ -564,10 +564,10 @@ export class ScheduleJobsService {
       // 4. Create a map of buildingDetailId to buildingDetail and building info for faster lookup
       const buildingDetailMap = new Map();
       const buildingMap = new Map();
-      
+
       buildingDetails.forEach(detail => {
         buildingDetailMap.set(detail.buildingDetailId, detail);
-        
+
         // Find the building for this detail
         const building = buildingsResponse.data.find(b => b.buildingId === detail.buildingId);
         if (building) {
@@ -579,7 +579,7 @@ export class ScheduleJobsService {
       const enhancedJobs = scheduleJobs.map(job => {
         // Find the building detail info from our map
         const buildingDetail = buildingDetailMap.get(job.buildingDetailId);
-        
+
         // Find the building info from our map
         let building = null;
         if (buildingDetail) {

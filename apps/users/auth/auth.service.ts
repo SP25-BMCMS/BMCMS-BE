@@ -231,11 +231,14 @@ export class AuthService {
       }
 
       // Verify OTP and mark as used
-      const isValid = await this.client.send('verify_otp', { email: data.email, otp: data.otp }).toPromise()
-      if (!isValid) {
+      const otpResponse = await this.client.send('verify_otp', { email: data.email, otp: data.otp }).toPromise()
+
+      // Fixed checking logic: check if response is invalid or has success=false
+      if (!otpResponse || otpResponse.success === false) {
+        console.error('OTP verification failed:', otpResponse?.message || 'Unknown error')
         throw new RpcException({
           statusCode: 400,
-          message: 'Xác thực OTP thất bại',
+          message: otpResponse?.message || 'Xác thực OTP thất bại',
         })
       }
 
