@@ -22,7 +22,7 @@ export class WorkLogController {
       console.error('Error in getAllWorkLogs:', error)
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving worklogs!',
+        message: 'Lỗi khi lấy danh sách nhật ký công việc!',
       })
     }
   }
@@ -62,6 +62,87 @@ export class WorkLogController {
     @Payload() payload: { residentId: string },
   ): Promise<ApiResponse<any[]>> {
     return this.workLogService.getWorklogsByResidentId(payload.residentId);
+  }
+
+  @MessagePattern(WORKLOG_PATTERN.EXECUTE_TASK)
+  async executeTask(
+    @Payload() payload: { taskAssignmentId: string },
+  ): Promise<ApiResponse<any>> {
+    try {
+      return await this.workLogService.executeTask(payload.taskAssignmentId);
+    } catch (error) {
+      console.error('Error in executeTask:', error);
+
+      // Preserve the original status code if it exists
+      if (error instanceof RpcException) {
+        // Just rethrow the RpcException as is
+        throw error;
+      }
+
+      // Determine the appropriate status code
+      const statusCode = error.statusCode ||
+        (error.response && error.response.statusCode) ||
+        500;
+
+      throw new RpcException({
+        statusCode: statusCode,
+        message: error.message || 'Error executing task'
+      });
+    }
+  }
+
+  @MessagePattern(WORKLOG_PATTERN.CANCEL_TASK)
+  async cancelTask(
+    @Payload() payload: { taskAssignmentId: string },
+  ): Promise<ApiResponse<any>> {
+    try {
+      return await this.workLogService.cancelTask(payload.taskAssignmentId);
+    } catch (error) {
+      console.error('Error in cancelTask:', error);
+
+      // Preserve the original status code if it exists
+      if (error instanceof RpcException) {
+        // Just rethrow the RpcException as is
+        throw error;
+      }
+
+      // Determine the appropriate status code
+      const statusCode = error.statusCode ||
+        (error.response && error.response.statusCode) ||
+        500;
+
+      throw new RpcException({
+        statusCode: statusCode,
+        message: error.message || 'Error canceling task'
+      });
+    }
+  }
+
+  @MessagePattern(WORKLOG_PATTERN.UPDATE_CRACK_STATUS_SILENT)
+  async updateCrackStatusSilent(
+    @Payload() payload: { crackReportId: string, status: string },
+  ): Promise<any> {
+    try {
+      return await this.workLogService.updateCrackStatusSilent(payload.crackReportId, payload.status);
+    } catch (error) {
+      console.error('Error in updateCrackStatusSilent:', error);
+
+      // Preserve the original status code if it exists
+      if (error instanceof RpcException) {
+        // Just rethrow the RpcException as is
+        throw error;
+      }
+
+      // Determine the appropriate status code
+      const statusCode = error.statusCode ||
+        (error.response && error.response.statusCode) ||
+        500;
+
+      throw new RpcException({
+        statusCode: statusCode,
+        message: error.message || 'Error updating crack status silently'
+      });
+    }
   }
 
   //   @MessagePattern(WORKLOG_PATTERN.GET_BY_USER_ID)

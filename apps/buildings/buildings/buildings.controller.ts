@@ -121,4 +121,9 @@ export class BuildingsController {
       })
     }
   }
+
+  @MessagePattern({ cmd: 'get-building-from-building-detail' })
+  async getBuildingFromBuildingDetail(@Payload() payload: { buildingDetailId: string }) {
+    return this.buildingsService.getBuildingFromBuildingDetail(payload.buildingDetailId);
+  }
 }

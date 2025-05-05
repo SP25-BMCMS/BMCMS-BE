@@ -54,6 +54,20 @@ export class ContractsController {
         }
     }
 
+    @MessagePattern(CONTRACTS_PATTERN.UPDATE_WITH_FILE)
+    async updateContractWithFile(@Payload() payload: { contractId: string; data: UpdateContractDto, file: any }) {
+        try {
+            return await this.contractsService.updateContractWithFile(
+                payload.contractId,
+                payload.data,
+                payload.file,
+            );
+        } catch (error) {
+            console.error('Error in updateContractWithFile:', error);
+            throw error;
+        }
+    }
+
     @MessagePattern(CONTRACTS_PATTERN.DELETE)
     async deleteContract(@Payload() payload: { contractId: string }) {
         try {

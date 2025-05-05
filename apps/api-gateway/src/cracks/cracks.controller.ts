@@ -16,6 +16,7 @@ import {
   UploadedFiles,
   UseGuards,
   UseInterceptors,
+  SetMetadata,
 } from '@nestjs/common'
 import { ClientProxy } from '@nestjs/microservices'
 import { FilesInterceptor } from '@nestjs/platform-express'
@@ -35,18 +36,20 @@ import {
 } from '@nestjs/swagger'
 import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard'
 import { CRACK_CLIENT } from '../constraints'
+import { UpdateCrackDetailDto } from '@app/contracts/cracks/update-crack-detail.dto'
+
+export const SkipAuth = () => SetMetadata('skip-auth', true)
 
 @Controller('cracks')
 @ApiTags('cracks')
-// @UseGuards(PassportJwtAuthGuard)
-@UseGuards(PassportJwtAuthGuard)
-@ApiBearerAuth('access-token')
 export class CracksController {
   constructor(
     @Inject(CRACK_CLIENT) private readonly crackService: ClientProxy,
   ) { }
 
   @Get('test-users-connection')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Test connection with Users Service' })
   @ApiResponse({ status: 200, description: 'Connection test successful' })
   @ApiResponse({ status: 500, description: 'Connection test failed' })
@@ -61,6 +64,8 @@ export class CracksController {
   }
 
   @Get('crack-reports')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({
     summary: 'Get all crack reports with pagination, search, and filter',
   })
@@ -70,6 +75,8 @@ export class CracksController {
   @ApiQuery({ name: 'severityFilter', required: false, example: 'Unknown' })
   @ApiResponse({ status: 200, description: 'Returns paginated crack reports' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   async getAllCrackReports(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
@@ -97,63 +104,12 @@ export class CracksController {
     )
   }
 
-  @Get('crack-reports/:id')
-  @ApiOperation({ summary: 'Get crack report by ID with all associated crack details' })
-  @ApiParam({ name: 'id', description: 'Crack report ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Returns the crack report with all crack details',
-    schema: {
-      example: {
-        isSuccess: true,
-        message: 'Crack Report đã tìm thấy',
-        data: [{
-          crackReportId: "1234abcd-5678-efgh-9012-ijkl3456mnop",
-          buildingDetailId: "c5fa23cc-86d4-4514-b4e5-3f9bce511c29",
-          description: "Kiểm tra nứt tường",
-          isPrivatesAsset: false,
-          position: "rainbow/s106/15/left",
-          status: "Pending",
-          reportedBy: "user-id",
-          verifiedBy: "123123123",
-          createdAt: "2024-03-21T10:00:00Z",
-          updatedAt: "2024-03-21T10:00:00Z",
-          crackDetails: [
-            {
-              crackDetailsId: "uuid-1",
-              crackReportId: "1234abcd-5678-efgh-9012-ijkl3456mnop",
-              photoUrl: "https://bucket-name.s3.amazonaws.com/uploads/photo1.jpg",
-              severity: "Medium",
-              aiDetectionUrl: "https://bucket-name.s3.amazonaws.com/annotated/photo1.jpg",
-              createdAt: "2024-03-21T10:00:00Z",
-              updatedAt: "2024-03-21T10:00:00Z"
-            },
-            {
-              crackDetailsId: "uuid-2",
-              crackReportId: "1234abcd-5678-efgh-9012-ijkl3456mnop",
-              photoUrl: "https://bucket-name.s3.amazonaws.com/uploads/photo2.jpg",
-              severity: "Low",
-              aiDetectionUrl: "https://bucket-name.s3.amazonaws.com/annotated/photo2.jpg",
-              createdAt: "2024-03-21T10:00:00Z",
-              updatedAt: "2024-03-21T10:00:00Z"
-            }
-          ]
-        }]
-      }
-    }
-  })
-  @ApiResponse({ status: 404, description: 'Crack report not found' })
-  async getCrackReportById(@Param('id') id: string) {
-    return firstValueFrom(
-      this.crackService.send({ cmd: 'get-crack-report-by-id' }, id).pipe(
-        catchError((err) => {
-          throw new NotFoundException(err.message)
-        }),
-      ),
-    )
-  }
+
+
 
   @Post('crack-reports')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Create a new crack report' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -253,6 +209,8 @@ export class CracksController {
     }
   })
   @UseInterceptors(FilesInterceptor('files', 10))
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   async createCrackReport(
     @Body() dto: AddCrackReportDto,
     @UploadedFiles() files: Express.Multer.File[],
@@ -283,6 +241,8 @@ export class CracksController {
     )
   }
 
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @Patch('crack-reports/:id')
   @ApiOperation({ summary: 'Update a crack report' })
   @ApiParam({ name: 'id', description: 'Crack report ID' })
@@ -307,6 +267,8 @@ export class CracksController {
     )
   }
 
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @Delete('crack-reports/:id')
   @ApiOperation({ summary: 'Delete a crack report' })
   @ApiParam({ name: 'id', description: 'Crack report ID' })
@@ -325,6 +287,8 @@ export class CracksController {
     )
   }
 
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @Patch('crack-reports/:id/status')
   @ApiOperation({ summary: 'Update crack report status' })
   @ApiParam({ name: 'id', description: 'Crack report ID' })
@@ -347,6 +311,11 @@ export class CracksController {
     @Body('staffId') staffId: string,
     @Req() req
   ) {
+    // Check if req.user exists before accessing its properties
+    if (!req.user || !req.user.userId) {
+      throw new BadRequestException('Người dùng chưa xác thực hoặc thiếu thông tin người dùng')
+    }
+
     const managerId = req.user.userId // Get manager ID from token
 
     return firstValueFrom(
@@ -424,7 +393,7 @@ export class CracksController {
   @Patch('crack-details/:id')
   @ApiOperation({ summary: 'Update a crack detail' })
   @ApiParam({ name: 'id', description: 'Crack detail ID' })
-  @ApiBody({ type: UpdateCrackReportDto })
+  @ApiBody({ type: UpdateCrackDetailDto })
   @ApiResponse({
     status: 200,
     description: 'Crack detail updated successfully',
@@ -432,7 +401,7 @@ export class CracksController {
   @ApiResponse({ status: 404, description: 'Crack detail not found' })
   async updateCrackDetails(
     @Param('id') id: string,
-    @Body() dto: UpdateCrackReportDto,
+    @Body() dto: UpdateCrackDetailDto,
   ) {
     return firstValueFrom(
       this.crackService
@@ -464,6 +433,8 @@ export class CracksController {
   }
 
   @Post('crack-details/upload-images')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Upload crack images' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -486,6 +457,8 @@ export class CracksController {
   @ApiResponse({ status: 201, description: 'Images uploaded successfully' })
   @ApiResponse({ status: 400, description: 'Bad request - No files uploaded' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @UseInterceptors(FilesInterceptor('image', 10))
   async uploadImage(@UploadedFiles() files: Express.Multer.File[]) {
     if (!files || files.length === 0) {
@@ -537,6 +510,8 @@ export class CracksController {
   @ApiResponse({ status: 400, description: 'Bad request - No files uploaded' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   @UseInterceptors(FilesInterceptor('image', 10))
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
   async uploadInspectionImage(@UploadedFiles() files: Express.Multer.File[]) {
     if (!files || files.length === 0) {
       throw new BadRequestException('No files uploaded')
@@ -655,4 +630,115 @@ export class CracksController {
     )
   }
 
+  @Get('crack-reports/manager')
+  @ApiOperation({
+    summary: 'Get all crack reports for buildings managed by the specified manager with pagination, search and filter',
+  })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  @ApiQuery({ name: 'search', required: false, example: 'nứt ngang' })
+  @ApiQuery({ name: 'severityFilter', required: false, example: 'Unknown' })
+  @ApiResponse({ status: 200, description: 'Returns paginated crack reports for buildings managed by the manager' })
+  @ApiResponse({ status: 404, description: 'No crack reports found for buildings managed by this manager' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  async getCrackReportsByManager(
+    @Req() req,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('search') search?: string,
+    @Query('severityFilter') severityFilter?: $Enums.Severity,
+  ) {
+    const userId = req.user.userId
+    console.log("🚀 Kha ne ~ userId:", userId)
+
+    try {
+      const result = await firstValueFrom(
+        this.crackService.send({ cmd: 'get-crack-reports-by-manager-id' }, {
+          userId,
+          page: Number(page) || 1,
+          limit: Number(limit) || 10,
+          search: search || '',
+          severityFilter,
+        }).pipe(
+          tap((data) => console.log('Data received from microservice:', data)),
+          catchError((err) => {
+            console.error(`Error fetching crack reports: ${JSON.stringify(err)}`)
+            if (err.status === 404) {
+              throw new NotFoundException(err.message || 'No crack reports found for buildings managed by this manager')
+            }
+            throw new InternalServerErrorException(err.message || 'Error fetching crack reports')
+          }),
+        ),
+      )
+
+      return result
+    } catch (error) {
+      console.error(`Error in getCrackReportsByManager: ${error}`)
+      if (error instanceof NotFoundException) {
+        throw error
+      }
+      if (error instanceof BadRequestException) {
+        throw error
+      }
+      throw new InternalServerErrorException('Failed to retrieve crack reports for manager')
+    }
+  }
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiBearerAuth('access-token') @Get('crack-reports/:id')
+  @ApiOperation({ summary: 'Get crack report by ID with all associated crack details' })
+  @ApiParam({ name: 'id', description: 'Crack report ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns the crack report with all crack details',
+    schema: {
+      example: {
+        isSuccess: true,
+        message: 'Crack Report đã tìm thấy',
+        data: [{
+          crackReportId: "1234abcd-5678-efgh-9012-ijkl3456mnop",
+          buildingDetailId: "c5fa23cc-86d4-4514-b4e5-3f9bce511c29",
+          description: "Kiểm tra nứt tường",
+          isPrivatesAsset: false,
+          position: "rainbow/s106/15/left",
+          status: "Pending",
+          reportedBy: "user-id",
+          verifiedBy: "123123123",
+          createdAt: "2024-03-21T10:00:00Z",
+          updatedAt: "2024-03-21T10:00:00Z",
+          crackDetails: [
+            {
+              crackDetailsId: "uuid-1",
+              crackReportId: "1234abcd-5678-efgh-9012-ijkl3456mnop",
+              photoUrl: "https://bucket-name.s3.amazonaws.com/uploads/photo1.jpg",
+              severity: "Medium",
+              aiDetectionUrl: "https://bucket-name.s3.amazonaws.com/annotated/photo1.jpg",
+              createdAt: "2024-03-21T10:00:00Z",
+              updatedAt: "2024-03-21T10:00:00Z"
+            },
+            {
+              crackDetailsId: "uuid-2",
+              crackReportId: "1234abcd-5678-efgh-9012-ijkl3456mnop",
+              photoUrl: "https://bucket-name.s3.amazonaws.com/uploads/photo2.jpg",
+              severity: "Low",
+              aiDetectionUrl: "https://bucket-name.s3.amazonaws.com/annotated/photo2.jpg",
+              createdAt: "2024-03-21T10:00:00Z",
+              updatedAt: "2024-03-21T10:00:00Z"
+            }
+          ]
+        }]
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Crack report not found' })
+  async getCrackReportById(@Param('id') id: string) {
+    return firstValueFrom(
+      this.crackService.send({ cmd: 'get-crack-report-by-id' }, id).pipe(
+        catchError((err) => {
+          throw new NotFoundException(err.message)
+        }),
+      ),
+    )
+  }
 }

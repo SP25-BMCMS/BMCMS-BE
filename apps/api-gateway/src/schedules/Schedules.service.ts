@@ -400,14 +400,14 @@ export class SchedulesService {
   }
 
   // Kích hoạt tạo lịch bảo trì tự động
-  async triggerAutoMaintenanceSchedule(): Promise<any> {
+  async triggerAutoMaintenanceSchedule(managerId: string): Promise<any> {
     try {
-      console.log('Triggering automatic maintenance schedule creation');
+      console.log('Triggering automatic maintenance schedule creation for manager:', managerId);
 
       // Gửi yêu cầu đến microservice với timeout để tránh treo
       const response = await firstValueFrom(
         this.scheduleClient
-          .send(SCHEDULES_PATTERN.TRIGGER_AUTO_MAINTENANCE, {})
+          .send(SCHEDULES_PATTERN.TRIGGER_AUTO_MAINTENANCE, { managerId })
           .pipe(
             timeout(60000), // 60 second timeout
             catchError(err => {
@@ -478,6 +478,94 @@ export class SchedulesService {
         `Error occurred while triggering automated maintenance schedules: ${error.message || 'Unknown error'}. Kiểm tra kết nối RabbitMQ và logs của microservice.`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  // Generate schedules from configuration
+  async generateSchedulesFromConfig(configDto: any): Promise<any> {
+    try {
+      console.log('Generating schedules from configuration:', configDto);
+
+      // Basic validation
+      if (!configDto.cycle_configs || !Array.isArray(configDto.cycle_configs) || configDto.cycle_configs.length === 0) {
+        throw new HttpException(
+          'At least one cycle configuration is required',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      if (!configDto.buildingDetails || !Array.isArray(configDto.buildingDetails) || configDto.buildingDetails.length === 0) {
+        throw new HttpException(
+          'At least one building detail ID is required',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      // Validate each cycle configuration
+      configDto.cycle_configs.forEach((config, index) => {
+        if (!config.cycle_id) {
+          throw new HttpException(
+            `Cycle ID is required for cycle configuration at index ${index}`,
+            HttpStatus.BAD_REQUEST
+          );
+        }
+      });
+
+      // Send request to microservice
+      const response = await firstValueFrom(
+        this.scheduleClient
+          .send(SCHEDULES_PATTERN.GENERATE_SCHEDULES, configDto)
+          .pipe(
+            timeout(60000), // 60 second timeout
+            catchError(err => {
+              console.error('Error in generateSchedulesFromConfig microservice call:', err);
+              if (err.name === 'TimeoutError') {
+                throw new HttpException(
+                  'Request timed out. The operation may still be processing on the server.',
+                  HttpStatus.REQUEST_TIMEOUT,
+                );
+              }
+              throw err;
+            })
+          )
+      );
+
+      return response;
+    } catch (error) {
+      return this.handleMicroserviceError(error, 'Error occurred while generating schedules from configuration');
+    }
+  }
+  async getSchedulesByManagerId(managerId: string, paginationParams: PaginationParams = {}): Promise<any> {
+    console.log("🚀 ~ SchedulesService ~ getSchedulesByManagerId ~ managerId:", managerId)
+    try {
+      // Validate the manager ID
+      if (!managerId) {
+        throw new HttpException(
+          'Manager ID is required',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+      
+
+      console.log(`Getting schedules for manager ID: ${managerId}`);
+
+      // Send request to microservice
+      const response = await firstValueFrom(
+        this.scheduleClient.send(
+          SCHEDULES_PATTERN.GET_BY_MANAGER_ID,
+          { managerId, paginationParams }
+        ).pipe(
+          timeout(15000), // 15 second timeout
+          catchError(err => {
+            console.error('Error in getSchedulesByManagerId microservice call:', err);
+            throw err; // Let the catch block handle this error
+          })
+        )
+      );
+
+      return response;
+    } catch (error) {
+      return this.handleMicroserviceError(error, 'Error occurred while fetching schedules for manager');
     }
   }
 }

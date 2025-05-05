@@ -12,7 +12,7 @@ import { GrpcMethod, MessagePattern } from '@nestjs/microservices';
 import { APARTMENTS_PATTERN } from '@app/contracts/Apartments/Apartments.patterns';
 @Controller('apartments')
 export class ApartmentsController {
-  constructor(private readonly apartments: ApartmentsService) {}
+  constructor(private readonly apartments: ApartmentsService) { }
 
   @GrpcMethod('UserService', 'GetApartmentById')
   async getApartmentById(data: { apartmentId: string }) {

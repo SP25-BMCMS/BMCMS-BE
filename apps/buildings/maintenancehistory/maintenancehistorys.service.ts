@@ -20,7 +20,7 @@ export class MaintenancehistorysService {
 
             if (!device) {
                 throw new RpcException({
-                    message: `Device with ID ${createMaintenanceHistoryDto.device_id} not found`,
+                    message: `Không tìm thấy thiết bị với ID ${createMaintenanceHistoryDto.device_id}`,
                     status: HttpStatus.NOT_FOUND
                 });
             }
@@ -113,7 +113,7 @@ export class MaintenancehistorysService {
 
             if (!maintenanceHistory) {
                 throw new RpcException({
-                    message: `Maintenance history with ID ${id} not found`,
+                    message: `Không tìm thấy lịch sử bảo trì với ID ${id}`,
                     status: HttpStatus.NOT_FOUND
                 });
             }
@@ -133,7 +133,7 @@ export class MaintenancehistorysService {
 
             if (!device) {
                 throw new RpcException({
-                    message: `Device with ID ${deviceId} not found`,
+                    message: `Không tìm thấy thiết bị với ID ${deviceId}`,
                     status: HttpStatus.NOT_FOUND
                 });
             }
@@ -198,7 +198,7 @@ export class MaintenancehistorysService {
 
             if (!building) {
                 throw new RpcException({
-                    message: `Building with ID ${buildingId} not found`,
+                    message: `Không tìm thấy tòa nhà với ID ${buildingId}`,
                     status: HttpStatus.NOT_FOUND
                 });
             }
@@ -297,7 +297,7 @@ export class MaintenancehistorysService {
 
             if (!existingHistory) {
                 throw new RpcException({
-                    message: `Maintenance history with ID ${id} not found`,
+                    message: `Không tìm thấy lịch sử bảo trì với ID ${id}`,
                     status: HttpStatus.NOT_FOUND
                 });
             }
@@ -310,7 +310,7 @@ export class MaintenancehistorysService {
 
                 if (!device) {
                     throw new RpcException({
-                        message: `Device with ID ${updateMaintenanceHistoryDto.device_id} not found`,
+                        message: `Không tìm thấy thiết bị với ID ${updateMaintenanceHistoryDto.device_id}`,
                         status: HttpStatus.NOT_FOUND
                     });
                 }
@@ -352,7 +352,7 @@ export class MaintenancehistorysService {
 
             if (!existingHistory) {
                 throw new RpcException({
-                    message: `Maintenance history with ID ${id} not found`,
+                    message: `Không tìm thấy lịch sử bảo trì với ID ${id}`,
                     status: HttpStatus.NOT_FOUND
                 });
             }
@@ -374,7 +374,7 @@ export class MaintenancehistorysService {
             if (error.code === 'P2003') {
                 throw new RpcException({
                     statusCode: HttpStatus.BAD_REQUEST,
-                    message: 'Foreign key constraint violation. The referenced record does not exist.',
+                    message: 'Vi phạm ràng buộc khóa ngoại. Bản ghi tham chiếu không tồn tại.',
                     error: error.message
                 });
             }
@@ -383,7 +383,7 @@ export class MaintenancehistorysService {
             if (error.code === 'P2002') {
                 throw new RpcException({
                     statusCode: HttpStatus.CONFLICT,
-                    message: 'A record with this value already exists.',
+                    message: 'Đã tồn tại bản ghi với giá trị này.',
                     error: error.message
                 });
             }
@@ -392,7 +392,7 @@ export class MaintenancehistorysService {
             if (error.code === 'P2001' || error.code === 'P2025') {
                 throw new RpcException({
                     statusCode: HttpStatus.NOT_FOUND,
-                    message: 'The record was not found.',
+                    message: 'Không tìm thấy bản ghi.',
                     error: error.message
                 });
             }
@@ -402,7 +402,7 @@ export class MaintenancehistorysService {
         if (error instanceof Prisma.PrismaClientValidationError) {
             throw new RpcException({
                 statusCode: HttpStatus.BAD_REQUEST,
-                message: 'Validation error in database query.',
+                message: 'Lỗi xác thực trong truy vấn cơ sở dữ liệu.',
                 error: error.message
             });
         }
@@ -425,7 +425,7 @@ export class MaintenancehistorysService {
                         throw new RpcException({
                             statusCode: HttpStatus.NOT_FOUND,
                             message: errorObj.message,
-                            error: errorObj.error || 'Not Found'
+                            error: errorObj.error || 'Không tìm thấy'
                         });
                     } else if (errorObj.message &&
                         (errorObj.message.includes('invalid') ||
@@ -434,13 +434,13 @@ export class MaintenancehistorysService {
                         throw new RpcException({
                             statusCode: HttpStatus.BAD_REQUEST,
                             message: errorObj.message,
-                            error: errorObj.error || 'Bad Request'
+                            error: errorObj.error || 'Yêu cầu không hợp lệ'
                         });
                     } else {
                         throw new RpcException({
                             statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-                            message: errorObj.message || 'An error occurred',
-                            error: errorObj.error || 'Internal Server Error'
+                            message: errorObj.message || 'Đã xảy ra lỗi',
+                            error: errorObj.error || 'Lỗi máy chủ nội bộ'
                         });
                     }
                 }
@@ -452,7 +452,7 @@ export class MaintenancehistorysService {
         // Lỗi không xác định
         throw new RpcException({
             statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-            message: 'An unexpected error occurred.',
+            message: 'Đã xảy ra lỗi không mong muốn.',
             error: error.message
         });
     }

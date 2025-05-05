@@ -105,8 +105,8 @@ export class ScheduleService {
         limit,
         200,
         schedules.length > 0
-          ? 'Schedules retrieved successfully'
-          : 'No schedules found',
+          ? 'Lấy lịch trình thành công'
+          : 'Không tìm thấy lịch trình',
       )
       console.timeEnd('Response creation')
 
@@ -116,7 +116,7 @@ export class ScheduleService {
       console.error('Error retrieving schedules:', error)
       throw new RpcException({
         statusCode: 500,
-        message: `Error retrieving schedules: ${error.message}`,
+        message: `Lỗi khi lấy danh sách lịch trình: ${error.message}`,
       })
     }
   }
@@ -134,7 +134,7 @@ export class ScheduleService {
       if (!schedule) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Schedule not found',
+          message: 'Không tìm thấy lịch trình',
         })
       }
       console.log(
@@ -152,13 +152,13 @@ export class ScheduleService {
 
       return new ApiResponse<ScheduleResponseDto>(
         true,
-        'Schedule fetched successfully',
+        'Lấy thông tin lịch trình thành công',
         scheduleResponse,
       )
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving schedule',
+        message: 'Lỗi khi lấy thông tin lịch trình',
       })
     }
   }
@@ -175,7 +175,7 @@ export class ScheduleService {
       if (!existingSchedule) {
         return new ApiResponse<ScheduleResponseDto>(
           false,
-          `Schedule with ID ${schedule_id} not found`,
+          `Không tìm thấy lịch trình với ID ${schedule_id}`,
           null
         )
       }
@@ -210,14 +210,14 @@ export class ScheduleService {
 
       return new ApiResponse<ScheduleResponseDto>(
         true,
-        'Schedule and all related jobs have been soft deleted (status set to Cancel)',
+        'Đã hủy lịch trình và tất cả các công việc liên quan',
         scheduleResponse
       )
     } catch (error) {
       console.error('Error in deleteSchedule:', error)
       return new ApiResponse<ScheduleResponseDto>(
         false,
-        `Failed to soft delete schedule: ${error.message}`,
+        `Không thể hủy lịch trình: ${error.message}`,
         null
       )
     }
@@ -332,7 +332,7 @@ export class ScheduleService {
       if (!maintenanceCycle) {
         throw new RpcException({
           statusCode: 404,
-          message: `Maintenance cycle with ID ${dto.cycle_id} not found`,
+          message: `Không tìm thấy chu kỳ bảo trì với ID ${dto.cycle_id}`,
         })
       }
 
@@ -345,7 +345,7 @@ export class ScheduleService {
       if (startDate < now) {
         throw new RpcException({
           statusCode: 400,
-          message: 'Start date cannot be in the past',
+          message: 'Ngày bắt đầu không thể trong quá khứ',
         })
       }
 
@@ -353,7 +353,7 @@ export class ScheduleService {
       if (endDate <= startDate) {
         throw new RpcException({
           statusCode: 400,
-          message: 'End date must be after start date',
+          message: 'Ngày kết thúc phải sau ngày bắt đầu',
         })
       }
 
@@ -375,7 +375,7 @@ export class ScheduleService {
                       console.error(`Error checking building detail ${buildingDetailId}:`, err.message || err)
                       return of({
                         statusCode: 404,
-                        message: `Building detail check timed out`,
+                        message: `Kiểm tra chi tiết tòa nhà hết thời gian chờ`,
                         isTimeout: true
                       })
                     })
@@ -398,14 +398,14 @@ export class ScheduleService {
           if (invalidBuildingDetailIds.length > 0) {
             throw new RpcException({
               statusCode: 404,
-              message: `The following building detail IDs do not exist: ${invalidBuildingDetailIds.join(', ')}`,
+              message: `Các ID chi tiết tòa nhà sau không tồn tại: ${invalidBuildingDetailIds.join(', ')}`,
             })
           }
         } catch (error) {
           if (error instanceof RpcException) throw error
           throw new RpcException({
             statusCode: 500,
-            message: `Error validating building detail IDs: ${error.message}`,
+            message: `Lỗi khi xác thực ID chi tiết tòa nhà: ${error.message}`,
           })
         }
       }
@@ -430,11 +430,12 @@ export class ScheduleService {
         const schedule = await prisma.schedule.create({
           data: {
             schedule_name: dto.schedule_name,
-            description: dto.description || `Auto-generated maintenance schedule for ${maintenanceCycle.device_type}`,
+            description: dto.description || `Lịch bảo trì tự động tạo cho ${maintenanceCycle.device_type}`,
             cycle_id: dto.cycle_id,
             start_date: startDate,
             end_date: endDate,
             schedule_status: $Enums.ScheduleStatus.InProgress,
+            managerid: dto.managerId, // Add manager ID from the DTO
           },
         })
 
@@ -522,7 +523,7 @@ export class ScheduleService {
 
           const buildingNames = buildingResults
             .filter(result => result && result.data)
-            .map(result => result.data.name || 'Unnamed Building')
+            .map(result => result.data.name || 'Tòa nhà không tên')
             .join(', ')
 
           const formattedStartDate = startDate.toLocaleDateString('vi-VN', {
@@ -539,8 +540,8 @@ export class ScheduleService {
 
           // Create system notification
           const notificationData = {
-            title: `New maintenance schedule ${maintenanceCycle.device_type} created`,
-            content: `Maintenance schedule ${dto.schedule_name} for ${maintenanceCycle.device_type} at ${buildingNames} has been scheduled from ${formattedStartDate} to ${formattedEndDate}.`,
+            title: `Lịch bảo trì mới ${maintenanceCycle.device_type} đã được tạo`,
+            content: `Lịch bảo trì ${dto.schedule_name} cho ${maintenanceCycle.device_type} tại ${buildingNames} đã được lên lịch từ ${formattedStartDate} đến ${formattedEndDate}.`,
             type: NotificationType.SYSTEM,
             broadcastToAll: true,
             link: `/schedules/${newSchedule.schedule.schedule_id}`,
@@ -561,7 +562,7 @@ export class ScheduleService {
 
       return new ApiResponse<ScheduleResponseDto>(
         true,
-        'Automated maintenance schedule created successfully',
+        'Tạo lịch trình bảo trì tự động thành công',
         {
           ...newSchedule.schedule,
           start_date: newSchedule.schedule.start_date,
@@ -575,21 +576,23 @@ export class ScheduleService {
       if (error instanceof RpcException) throw error
       throw new RpcException({
         statusCode: 500,
-        message: `Failed to create automated maintenance schedule: ${error.message}`,
+        message: `Không thể tạo lịch trình bảo trì tự động: ${error.message}`,
       })
     }
   }
 
   // Cập nhật method triggerAutoMaintenanceSchedule để tạo tasks tự động
-  async triggerAutoMaintenanceSchedule(): Promise<ApiResponse<string>> {
+  async triggerAutoMaintenanceSchedule(managerId: string): Promise<ApiResponse<string>> {
     try {
+      this.logger.log(`Triggering auto maintenance schedule for manager: ${managerId}`);
+      
       // Lấy tất cả các MaintenanceCycle
       const maintenanceCycles = await this.prisma.maintenanceCycle.findMany()
 
       if (!maintenanceCycles || maintenanceCycles.length === 0) {
         throw new RpcException({
           statusCode: 404,
-          message: 'No maintenance cycles found to create schedules',
+          message: 'Không tìm thấy chu kỳ bảo trì để tạo lịch trình',
         })
       }
 
@@ -601,7 +604,7 @@ export class ScheduleService {
       if (!buildings || buildings.length === 0) {
         throw new RpcException({
           statusCode: 404,
-          message: 'No buildings found to create maintenance schedules',
+          message: 'Không tìm thấy tòa nhà để tạo lịch trình bảo trì',
         })
       }
 
@@ -641,12 +644,13 @@ export class ScheduleService {
           // Tạo một lịch bảo trì mới
           const schedule = await this.prisma.schedule.create({
             data: {
-              schedule_name: `Auto ${cycle.device_type} Maintenance - ${now.toISOString().slice(0, 10)}`,
-              description: `Automatically generated maintenance schedule for ${cycle.device_type}`,
+              schedule_name: `Tự động Bảo trì ${cycle.device_type} - ${now.toISOString().slice(0, 10)}`,
+              description: `Lịch bảo trì tự động tạo cho ${cycle.device_type}`,
               cycle_id: cycle.cycle_id,
               start_date: now,
               end_date: endDate,
               schedule_status: $Enums.ScheduleStatus.InProgress,
+              managerid: managerId, // Add manager ID to schedule (using correct field name)
             },
           })
 
@@ -774,7 +778,7 @@ export class ScheduleService {
           const buildingResults = await Promise.all(buildingPromises)
           const buildingNames = buildingResults
             .filter(result => result && result.data)
-            .map(result => result.data.name || 'Unnamed Building')
+            .map(result => result.data.name || 'Tòa nhà không tên')
             .join(', ')
 
           // Tạo thông báo hệ thống về các lịch bảo trì tự động mới
@@ -796,8 +800,8 @@ export class ScheduleService {
 
           // Tạo và gửi thông báo cho tất cả người dùng
           const notificationData = {
-            title: `New automatic maintenance schedules created`,
-            content: `The system has automatically created ${createdSchedules.length} new maintenance schedules: ${formattedSchedules} for buildings: ${buildingNames}.`,
+            title: `Lịch bảo trì tự động mới đã được tạo`,
+            content: `Hệ thống đã tự động tạo ${createdSchedules.length} lịch bảo trì mới: ${formattedSchedules} cho các tòa nhà: ${buildingNames}.`,
             type: NotificationType.SYSTEM,
             broadcastToAll: true,
             link: `/schedules`
@@ -821,8 +825,8 @@ export class ScheduleService {
 
       return new ApiResponse<string>(
         true,
-        `Successfully triggered auto maintenance schedule creation. Created ${createdSchedulesCount} schedules.`,
-        `Created ${createdSchedulesCount} schedules from ${maintenanceCycles.length} maintenance cycles with ${allCreatedJobs.length} task assignments`
+        `Đã kích hoạt tạo lịch trình bảo trì tự động thành công. Đã tạo ${createdSchedulesCount} lịch trình.`,
+        `Đã tạo ${createdSchedulesCount} lịch trình từ ${maintenanceCycles.length} chu kỳ bảo trì với ${allCreatedJobs.length} nhiệm vụ được phân công`
       )
     } catch (error) {
       console.error('Error triggering auto maintenance schedules:', error)
@@ -831,7 +835,7 @@ export class ScheduleService {
       }
       throw new RpcException({
         statusCode: 500,
-        message: 'Error triggering auto maintenance schedules',
+        message: 'Lỗi khi kích hoạt tạo lịch trình bảo trì tự động',
       })
     }
   }
@@ -849,7 +853,7 @@ export class ScheduleService {
       if (!maintenanceCycle) {
         throw new RpcException({
           statusCode: 404,
-          message: `Maintenance cycle with ID ${createScheduleDto.cycle_id} not found`,
+          message: `Không tìm thấy chu kỳ bảo trì với ID ${createScheduleDto.cycle_id}`,
         })
       }
 
@@ -873,7 +877,7 @@ export class ScheduleService {
                       // For timeout errors, return a structured response rather than throwing
                       return of({
                         statusCode: 404,
-                        message: `Building detail check timed out`,
+                        message: `Kiểm tra chi tiết tòa nhà hết thời gian chờ`,
                         isTimeout: true
                       })
                     })
@@ -908,7 +912,7 @@ export class ScheduleService {
             console.error(`Found ${invalidBuildingDetailIds.length} invalid building detail IDs:`, invalidBuildingDetailIds)
             throw new RpcException({
               statusCode: 404,
-              message: `The following building detail IDs do not exist: ${invalidBuildingDetailIds.join(', ')}`,
+              message: `Các ID chi tiết tòa nhà sau không tồn tại: ${invalidBuildingDetailIds.join(', ')}`,
             })
           }
 
@@ -923,7 +927,7 @@ export class ScheduleService {
           console.error('Error validating building detail IDs:', error)
           throw new RpcException({
             statusCode: 500,
-            message: `Error validating building detail IDs: ${error.message}`,
+            message: `Lỗi khi xác thực ID chi tiết tòa nhà: ${error.message}`,
           })
         }
       }
@@ -937,6 +941,7 @@ export class ScheduleService {
           end_date: createScheduleDto.end_date ? new Date(createScheduleDto.end_date) : null,
           schedule_status: createScheduleDto.schedule_status || $Enums.ScheduleStatus.InProgress,
           cycle_id: createScheduleDto.cycle_id,
+          managerid: createScheduleDto.managerid,
         },
       })
 
@@ -966,7 +971,7 @@ export class ScheduleService {
           const buildingResults = await Promise.all(buildingPromises)
           const buildingNames = buildingResults
             .filter(result => result && result.data)
-            .map(result => result.data.name || 'Unnamed Building')
+            .map(result => result.data.name || 'Tòa nhà không tên')
             .join(', ')
 
           // Format dates for notification
@@ -989,8 +994,8 @@ export class ScheduleService {
 
           // Create and send notification for all users
           const notificationData = {
-            title: `New maintenance schedule created`,
-            content: `New maintenance schedule "${newSchedule.schedule_name}" has been created for ${cycle?.device_type || 'device'} from ${formattedStartDate} to ${formattedEndDate} for buildings: ${buildingNames}.`,
+            title: `Lịch bảo trì mới đã được tạo`,
+            content: `Lịch bảo trì mới "${newSchedule.schedule_name}" đã được tạo cho ${cycle?.device_type || 'thiết bị'} từ ${formattedStartDate} đến ${formattedEndDate} cho các tòa nhà: ${buildingNames}.`,
             type: NotificationType.SYSTEM,
             broadcastToAll: true,
             link: `/schedules/${newSchedule.schedule_id}`
@@ -1092,7 +1097,7 @@ export class ScheduleService {
 
       return new ApiResponse<ScheduleResponseDto>(
         true,
-        'Schedule created successfully',
+        'Tạo lịch trình thành công',
         scheduleResponse,
       )
     } catch (error) {
@@ -1104,7 +1109,7 @@ export class ScheduleService {
 
       throw new RpcException({
         statusCode: 500,
-        message: `Failed to create schedule: ${error.message}`,
+        message: `Không thể tạo lịch trình: ${error.message}`,
       })
     }
   }
@@ -1126,7 +1131,7 @@ export class ScheduleService {
       if (!existingSchedule) {
         throw new RpcException({
           statusCode: 404,
-          message: `Schedule with ID ${schedule_id} not found`,
+          message: `Không tìm thấy lịch trình với ID ${schedule_id}`,
         })
       }
 
@@ -1153,7 +1158,7 @@ export class ScheduleService {
         if (!maintenanceCycle) {
           throw new RpcException({
             statusCode: 404,
-            message: 'Maintenance cycle not found',
+            message: `Chu kỳ bảo trì với ID ${updateScheduleDto.cycle_id || existingSchedule.cycle_id} không tìm thấy`,
           })
         }
 
@@ -1313,7 +1318,7 @@ export class ScheduleService {
 
       return new ApiResponse<ScheduleResponseDto>(
         true,
-        'Schedule updated successfully',
+        'Cập nhật lịch trình thành công',
         scheduleResponse,
       );
     } catch (error) {
@@ -1325,7 +1330,369 @@ export class ScheduleService {
 
       throw new RpcException({
         statusCode: 500,
-        message: `Failed to update schedule: ${error.message}`,
+        message: `Không thể cập nhật lịch trình: ${error.message}`,
+      });
+    }
+  }
+
+  async generateSchedulesFromConfig(configDto: any): Promise<ApiResponse<any>> {
+    try {
+      const { cycle_configs, buildingDetails } = configDto;
+      const logger = new Logger('GenerateSchedulesFromConfig');
+
+      // Validate building details IDs
+      if (!buildingDetails || buildingDetails.length === 0) {
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Cần ít nhất một ID chi tiết tòa nhà',
+        });
+      }
+
+      // Validate building details existence
+      try {
+        const invalidBuildingDetailIds = [];
+        for (const buildingDetailId of buildingDetails) {
+          try {
+            logger.log(`Validating building detail ID: ${buildingDetailId}`);
+            const buildingResponse = await firstValueFrom(
+              this.buildingClient
+                .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId })
+                .pipe(
+                  timeout(15000),
+                  catchError(err => {
+                    logger.error(`Error checking building detail ${buildingDetailId}:`, err.message || err);
+                    return of({
+                      statusCode: 404,
+                      message: `Kiểm tra chi tiết tòa nhà hết thời gian chờ`,
+                      isTimeout: true
+                    });
+                  })
+                )
+            );
+
+            if (!buildingResponse ||
+              buildingResponse.statusCode !== 200 ||
+              !buildingResponse.data ||
+              buildingResponse.isTimeout) {
+              logger.error(`Building detail ID ${buildingDetailId} is invalid`);
+              invalidBuildingDetailIds.push(buildingDetailId);
+            }
+          } catch (error) {
+            logger.error(`Unexpected error validating building detail ${buildingDetailId}:`, error);
+            invalidBuildingDetailIds.push(buildingDetailId);
+          }
+        }
+
+        if (invalidBuildingDetailIds.length > 0) {
+          throw new RpcException({
+            statusCode: 404,
+            message: `Các ID chi tiết tòa nhà sau không tồn tại: ${invalidBuildingDetailIds.join(', ')}`,
+          });
+        }
+      } catch (error) {
+        if (error instanceof RpcException) throw error;
+        throw new RpcException({
+          statusCode: 500,
+          message: `Lỗi khi xác thực ID chi tiết tòa nhà: ${error.message}`,
+        });
+      }
+
+      // Process each cycle config
+      const createdSchedules = [];
+      const allCreatedJobs = [];
+
+      for (const cycleConfig of cycle_configs) {
+        try {
+          // Validate maintenance cycle
+          const maintenanceCycle = await this.prisma.maintenanceCycle.findUnique({
+            where: { cycle_id: cycleConfig.cycle_id }
+          });
+
+          if (!maintenanceCycle) {
+            logger.error(`Maintenance cycle with ID ${cycleConfig.cycle_id} not found`);
+            throw new RpcException({
+              statusCode: 404,
+              message: `Chu kỳ bảo trì với ID ${cycleConfig.cycle_id} không tìm thấy`,
+            });
+          }
+
+          // Set default values if not provided
+          const startDate = new Date(cycleConfig.start_date || new Date());
+          const durationDays = cycleConfig.duration_days || this.getDefaultDurationByFrequency(maintenanceCycle.frequency);
+          const autoCreateTasks = cycleConfig.auto_create_tasks !== undefined ? cycleConfig.auto_create_tasks : true;
+
+          // Calculate end date based on duration
+          const endDate = new Date(startDate);
+          endDate.setDate(endDate.getDate() + durationDays);
+
+          logger.log(`Creating schedule for cycle ${maintenanceCycle.device_type} with duration ${durationDays} days`);
+
+          // Create the schedule
+          const schedule = await this.prisma.schedule.create({
+            data: {
+              schedule_name: `Bảo trì ${maintenanceCycle.device_type}  - ${startDate.toISOString().slice(0, 10)}`,
+              description: `Lịch bảo trì được tạo cho ${maintenanceCycle.device_type}`,
+              cycle_id: maintenanceCycle.cycle_id,
+              start_date: startDate,
+              end_date: endDate,
+              schedule_status: $Enums.ScheduleStatus.InProgress,
+              managerid: configDto.managerId, // Add manager ID from the DTO
+            },
+          });
+
+          logger.log(`Created schedule with ID: ${schedule.schedule_id}`);
+
+          // Create schedule jobs - UPDATED LOGIC
+          const scheduleJobs = [];
+          const totalBuildings = buildingDetails.length;
+
+          // Create jobs for each building with simple +1 day increment for runDate
+          buildingDetails.forEach((buildingDetailId, buildingIndex) => {
+            // Calculate runDate by adding 1 day per building index
+            const runDate = new Date(startDate);
+            runDate.setDate(runDate.getDate() + buildingIndex);
+
+            // Get the latest valid runDate (one day before endDate)
+            const latestValidRunDate = new Date(endDate);
+            latestValidRunDate.setDate(latestValidRunDate.getDate() - 1);
+
+            // Check if runDate exceeds or equals the latestValidRunDate
+            const finalRunDate = runDate >= latestValidRunDate ? new Date(latestValidRunDate) : runDate;
+
+            // All scheduleJobs share the same startDate and endDate as the schedule
+            scheduleJobs.push({
+              schedule_id: schedule.schedule_id,
+              run_date: finalRunDate,
+              status: $Enums.ScheduleJobStatus.Pending,
+              buildingDetailId: buildingDetailId,
+              start_date: startDate, // Same as schedule startDate
+              end_date: endDate      // Same as schedule endDate
+            });
+
+            logger.log(`Created job for building ${buildingDetailId} with runDate: ${finalRunDate.toISOString()} (original calculated: ${runDate.toISOString()})`);
+          });
+
+          if (scheduleJobs.length > 0) {
+            // Create schedule jobs in the database
+            await this.prisma.scheduleJob.createMany({
+              data: scheduleJobs,
+            });
+
+            // Retrieve the created jobs with full details
+            const createdScheduleJobs = await this.prisma.scheduleJob.findMany({
+              where: {
+                schedule_id: schedule.schedule_id
+              },
+              include: {
+                schedule: true,
+              },
+            });
+
+            // If auto create tasks is enabled, add to list for task creation
+            if (autoCreateTasks) {
+              allCreatedJobs.push(...createdScheduleJobs);
+              logger.log(`Added ${createdScheduleJobs.length} jobs for task creation`);
+            }
+
+            createdSchedules.push({
+              schedule,
+              maintenanceCycle,
+              jobsCount: createdScheduleJobs.length,
+              autoCreateTasks
+            });
+          }
+        } catch (error) {
+          if (error instanceof RpcException) {
+            logger.error(`Error processing cycle ${cycleConfig.cycle_id}: ${error.message}`);
+            // Continue with next cycle instead of failing completely
+            continue;
+          }
+          logger.error(`Unexpected error processing cycle ${cycleConfig.cycle_id}:`, error);
+        }
+      }
+
+      // Create tasks for jobs if specified and if any jobs were created
+      if (allCreatedJobs.length > 0) {
+        try {
+          logger.log(`Creating tasks for ${allCreatedJobs.length} schedule jobs`);
+          await this.createTasksForScheduleJobs(allCreatedJobs);
+          logger.log('Successfully created tasks for schedule jobs');
+        } catch (taskError) {
+          logger.error(`Error creating tasks for schedule jobs: ${taskError.message}`);
+        }
+      }
+
+      // Send notifications about created schedules
+      if (createdSchedules.length > 0) {
+        try {
+          // Get building names for notification
+          const buildingPromises = buildingDetails.map(buildingDetailId =>
+            firstValueFrom(
+              this.buildingClient
+                .send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId })
+                .pipe(
+                  timeout(10000),
+                  catchError(error => of(null))
+                )
+            )
+          );
+
+          const buildingResults = await Promise.all(buildingPromises);
+          const buildingNames = buildingResults
+            .filter(result => result && result.data)
+            .map(result => result.data.name || 'Tòa nhà không tên')
+            .join(', ');
+
+          // Create notification for each schedule
+          for (const scheduleInfo of createdSchedules) {
+            const formattedStartDate = scheduleInfo.schedule.start_date.toLocaleDateString('vi-VN', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+
+            const formattedEndDate = scheduleInfo.schedule.end_date.toLocaleDateString('vi-VN', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+
+            const notificationData = {
+              title: `Lịch bảo trì mới đã tạo cho ${scheduleInfo.maintenanceCycle.device_type}`,
+              content: `Lịch bảo trì "${scheduleInfo.schedule.schedule_name}" đã được tạo từ ${formattedStartDate} đến ${formattedEndDate} cho các tòa nhà: ${buildingNames}.`,
+              type: NotificationType.SYSTEM,
+              broadcastToAll: true,
+              link: `/schedules/${scheduleInfo.schedule.schedule_id}`,
+              relatedId: scheduleInfo.schedule.schedule_id
+            };
+
+            await firstValueFrom(
+              this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, notificationData)
+                .pipe(
+                  timeout(10000),
+                  catchError(error => of({ success: false }))
+                )
+            );
+          }
+        } catch (notifyError) {
+          logger.error(`Error sending notifications: ${notifyError.message}`);
+          // Continue even if notification fails
+        }
+      }
+
+      if (createdSchedules.length === 0) {
+        return new ApiResponse(
+          false,
+          'Không thể tạo lịch trình nào. Vui lòng kiểm tra lại tất cả ID chu kỳ và ID chi tiết tòa nhà.',
+          null
+        );
+      }
+
+      return new ApiResponse(
+        true,
+        `Đã tạo thành công ${createdSchedules.length} lịch trình với ${allCreatedJobs.length} công việc`,
+        {
+          createdSchedules: createdSchedules.map(s => ({
+            schedule_id: s.schedule.schedule_id,
+            schedule_name: s.schedule.schedule_name,
+            device_type: s.maintenanceCycle.device_type,
+            start_date: s.schedule.start_date,
+            end_date: s.schedule.end_date,
+            jobs_count: s.jobsCount,
+            auto_create_tasks: s.autoCreateTasks
+          }))
+        }
+      );
+    } catch (error) {
+      console.error('Error generating schedules from config:', error);
+      if (error instanceof RpcException) throw error;
+      throw new RpcException({
+        statusCode: 500,
+        message: `Không thể tạo lịch trình: ${error.message}`,
+      });
+    }
+  }
+
+  // Helper method to get default duration based on maintenance frequency
+  private getDefaultDurationByFrequency(frequency: string): number {
+    switch (frequency) {
+      case 'Daily': return 1;
+      case 'Weekly': return 2;
+      case 'Monthly': return 3;
+      case 'Yearly': return 5;
+      default: return 3;
+    }
+  }
+  async getSchedulesByManagerId(
+    managerId: string,
+    paginationParams?: PaginationParams,
+  ): Promise<PaginationResponseDto<ScheduleResponseDto>> {
+    try {
+      this.logger.log(`Getting schedules for manager ID: ${managerId}`);
+      console.time('Total getSchedulesByManagerId execution');
+
+      // Default values if not provided
+      const page = Math.max(1, paginationParams?.page || 1);
+      const limit = Math.min(50, Math.max(1, paginationParams?.limit || 10));
+
+      // Calculate skip value for pagination
+      const skip = (page - 1) * limit;
+
+      console.time('Database queries');
+      // Get paginated data for schedules with matching manager ID
+      const [schedules, total] = await Promise.all([
+        this.prisma.schedule.findMany({
+          where: {
+            managerid: managerId,
+          },
+          skip,
+          take: limit,
+          orderBy: { created_at: 'desc' },
+          include: { scheduleJobs: true },
+        }),
+        this.prisma.schedule.count({
+          where: {
+            managerid: managerId,
+          },
+        }),
+      ]);
+      console.timeEnd('Database queries');
+
+      console.time('Data transformation');
+      // Transform to response DTOs
+      const scheduleResponse: ScheduleResponseDto[] = schedules.map(
+        (schedule) => ({
+          ...schedule,
+          start_date: schedule.start_date ? schedule.start_date : null,
+          end_date: schedule.end_date ? schedule.end_date : null,
+          created_at: schedule.created_at,
+          updated_at: schedule.updated_at,
+          schedule_job: schedule.scheduleJobs,
+        }),
+      );
+      console.timeEnd('Data transformation');
+
+      console.time('Response creation');
+      // Use PaginationResponseDto for consistent response formatting
+      const response = new PaginationResponseDto(
+        scheduleResponse,
+        total,
+        page,
+        limit,
+        200,
+        schedules.length > 0
+          ? 'Lấy lịch trình thành công'
+          : 'Không tìm thấy lịch trình cho quản lý này',
+      );
+      console.timeEnd('Response creation');
+
+      console.timeEnd('Total getSchedulesByManagerId execution');
+      return response;
+    } catch (error) {
+      this.logger.error(`Error retrieving schedules for manager: ${error.message}`, error.stack);
+      throw new RpcException({
+        statusCode: 500,
+        message: `Lỗi khi lấy danh sách lịch trình: ${error.message}`,
       });
     }
   }

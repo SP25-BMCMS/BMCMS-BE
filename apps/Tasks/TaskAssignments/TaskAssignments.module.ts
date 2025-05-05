@@ -12,6 +12,7 @@ const USERS_CLIENT = 'USERS_CLIENT'
 const TASK_CLIENT = 'TASK_CLIENT'
 const CRACK_CLIENT = 'CRACK_CLIENT'
 const NOTIFICATION_CLIENT = 'NOTIFICATION_CLIENT'
+const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 
 @Module({
   imports: [
@@ -110,6 +111,24 @@ const NOTIFICATION_CLIENT = 'NOTIFICATION_CLIENT'
         },
         inject: [ConfigService],
       },
+      {
+        name: BUILDINGS_CLIENT,
+        useFactory: (configService: ConfigService) => {
+          const rabbitUrl = configService.get('RABBITMQ_URL')
+          return {
+            transport: Transport.RMQ,
+            options: {
+              urls: [rabbitUrl],
+              queue: 'buildings_queue',
+              queueOptions: {
+                durable: true,
+                prefetchCount: 1,
+              },
+            },
+          }
+        },
+        inject: [ConfigService],
+      },
     ]),
   ],
   providers: [
@@ -121,7 +140,7 @@ const NOTIFICATION_CLIENT = 'NOTIFICATION_CLIENT'
         return ClientProxyFactory.create(clientOptions)
       },
       inject: [ClientConfigService],
-    },
+    }
   ],
   controllers: [TaskAssignmentsController],
   exports: [TaskAssignmentsService]

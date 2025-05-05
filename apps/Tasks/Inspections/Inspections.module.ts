@@ -12,6 +12,9 @@ import { TaskAssignmentsModule } from '../TaskAssignments/TaskAssignments.module
 import { TasksModule } from '../Task/Task.module'
 
 const USERS_CLIENT = 'USERS_CLIENT'
+const CRACK_CLIENT = 'CRACK_CLIENT'
+const SCHEDULE_CLIENT = 'SCHEDULE_CLIENT'
+const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 
 @Module({
   imports: [
@@ -48,6 +51,78 @@ const USERS_CLIENT = 'USERS_CLIENT'
               },
               maxSendMessageLength: 10 * 1024 * 1024, // 10MB
               maxReceiveMessageLength: 10 * 1024 * 1024, // 10MB
+            },
+          }
+        },
+        inject: [ConfigService],
+      },
+      {
+        name: CRACK_CLIENT,
+        useFactory: (configService: ConfigService) => {
+          const rabbitUrl = configService.get('RABBITMQ_URL')
+          return {
+            transport: Transport.RMQ,
+            options: {
+              urls: [rabbitUrl],
+              queue: 'cracks_queue',
+              queueOptions: {
+                durable: true,
+                prefetchCount: 1,
+              },
+            },
+          }
+        },
+        inject: [ConfigService],
+      },
+      {
+        name: SCHEDULE_CLIENT,
+        useFactory: (configService: ConfigService) => {
+          const rabbitUrl = configService.get('RABBITMQ_URL')
+          return {
+            transport: Transport.RMQ,
+            options: {
+              urls: [rabbitUrl],
+              queue: 'schedules_queue',
+              queueOptions: {
+                durable: true,
+                prefetchCount: 1,
+              },
+            },
+          }
+        },
+        inject: [ConfigService],
+      },
+      {
+        name: BUILDINGS_CLIENT,
+        useFactory: (configService: ConfigService) => {
+          const rabbitUrl = configService.get('RABBITMQ_URL')
+          return {
+            transport: Transport.RMQ,
+            options: {
+              urls: [rabbitUrl],
+              queue: 'buildings_queue',
+              queueOptions: {
+                durable: true,
+                prefetchCount: 1,
+              },
+            },
+          }
+        },
+        inject: [ConfigService],
+      },
+      {
+        name: TASK_CLIENT,
+        useFactory: (configService: ConfigService) => {
+          const rabbitUrl = configService.get('RABBITMQ_URL')
+          return {
+            transport: Transport.RMQ,
+            options: {
+              urls: [rabbitUrl],
+              queue: 'tasks_queue',
+              queueOptions: {
+                durable: true,
+                prefetchCount: 1,
+              },
             },
           }
         },

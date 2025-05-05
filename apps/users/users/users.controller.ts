@@ -107,7 +107,7 @@ export class UsersController {
 
         throw new RpcException({
           statusCode: isNotFound ? 404 : 500,
-          message: result.message || 'Unknown error occurred'
+          message: result.message || 'Lỗi không xác định đã xảy ra'
         });
       }
 
@@ -134,7 +134,7 @@ export class UsersController {
   @GrpcMethod('UserService', 'GetDepartmentById')
   async getDepartmentById(data: { departmentId: string }) {
     try {
-      const result = await this.usersService.getDepartmentById(data.departmentId);
+      const result = await this.usersService.getDepartmentById(data);
       return result;
     } catch (error) {
       throw error;
@@ -152,7 +152,7 @@ export class UsersController {
       console.error('Error in CheckStaffAreaMatchWithScheduleJob:', error);
       throw new RpcException({
         statusCode: 500,
-        message: `Error checking staff area match with schedule job: ${error.message}`,
+        message: `Lỗi khi kiểm tra khu vực của nhân viên với lịch công việc: ${error.message}`,
       });
     }
   }
@@ -173,14 +173,30 @@ export class UsersController {
       const user = await this.usersService.checkUserExists(data.userId, data.role);
       return {
         exists: !!user,
-        message: user ? `User with ID ${data.userId} found` : `User with ID ${data.userId} not found${data.role ? ` with role ${data.role}` : ''}`,
+        message: user ? `Tìm thấy người dùng với ID ${data.userId}` : `Không tìm thấy người dùng với ID ${data.userId}${data.role ? ` có vai trò ${data.role}` : ''}`,
         data: user ? { userId: user.userId, role: user.role } : null
       };
     } catch (error) {
       console.error('Error checking user existence:', error);
       throw new RpcException({
         statusCode: 500,
-        message: `Error checking user existence: ${error.message}`,
+        message: `Lỗi khi kiểm tra sự tồn tại của người dùng: ${error.message}`,
+      });
+    }
+  }
+
+  @GrpcMethod('UserService', 'GetWorkingPositionById')
+  async getWorkingPositionById(data: { positionId: string }) {
+    try {
+      console.log(`GetWorkingPositionById called with positionId: ${data.positionId}`);
+      const result = await this.usersService.getWorkingPositionById(data);
+      console.log(`Position result: ${JSON.stringify(result)}`);
+      return result;
+    } catch (error) {
+      console.error(`Error in GetWorkingPositionById: ${error.message}`, error.stack);
+      throw new RpcException({
+        statusCode: error.statusCode || 500,
+        message: error.message || 'Lỗi khi lấy thông tin vị trí công việc',
       });
     }
   }

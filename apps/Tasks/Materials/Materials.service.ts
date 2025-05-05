@@ -34,7 +34,7 @@ export class MaterialsService {
             this.prisma.material.count({ where: { ...whereSearch, ...whereFilter } })
         ])
 
-        return new ApiResponse(true, 'Materials retrieved successfully', {
+        return new ApiResponse(true, 'Lấy danh sách vật liệu thành công', {
             data: materials,
             pagination: {
                 total,
@@ -51,10 +51,10 @@ export class MaterialsService {
         })
 
         if (!material) {
-            return new ApiResponse(false, 'Material not found')
+            return new ApiResponse(false, 'Không tìm thấy vật liệu')
         }
 
-        return new ApiResponse(true, 'Material retrieved successfully', material)
+        return new ApiResponse(true, 'Lấy thông tin vật liệu thành công', material)
     }
 
     async createMaterial(dto: CreateMaterialDto) {
@@ -62,9 +62,9 @@ export class MaterialsService {
             const material = await this.prisma.material.create({
                 data: dto
             })
-            return new ApiResponse(true, 'Material created successfully', material)
+            return new ApiResponse(true, 'Tạo vật liệu thành công', material)
         } catch (error) {
-            return new ApiResponse(false, 'Error creating material', error.message)
+            return new ApiResponse(false, 'Lỗi khi tạo vật liệu', error.message)
         }
     }
 
@@ -74,9 +74,9 @@ export class MaterialsService {
                 where: { material_id },
                 data: dto
             })
-            return new ApiResponse(true, 'Material updated successfully', material)
+            return new ApiResponse(true, 'Cập nhật vật liệu thành công', material)
         } catch (error) {
-            return new ApiResponse(false, 'Error updating material', error.message)
+            return new ApiResponse(false, 'Lỗi khi cập nhật vật liệu', error.message)
         }
     }
 
@@ -86,9 +86,9 @@ export class MaterialsService {
                 where: { material_id },
                 data: { unit_price }
             })
-            return new ApiResponse(true, 'Unit price updated successfully', material)
+            return new ApiResponse(true, 'Cập nhật đơn giá thành công', material)
         } catch (error) {
-            return new ApiResponse(false, 'Error updating unit price', error.message)
+            return new ApiResponse(false, 'Lỗi khi cập nhật đơn giá', error.message)
         }
     }
 
@@ -100,7 +100,7 @@ export class MaterialsService {
             })
 
             if (!currentMaterial) {
-                return new ApiResponse(false, 'Material not found')
+                return new ApiResponse(false, 'Không tìm thấy vật liệu')
             }
 
             // Tính toán số lượng mới
@@ -108,7 +108,7 @@ export class MaterialsService {
 
             // Kiểm tra nếu số lượng mới âm
             if (newQuantity < 0) {
-                return new ApiResponse(false, 'Stock quantity cannot be negative')
+                return new ApiResponse(false, 'Số lượng tồn kho không thể âm')
             }
 
             // Cập nhật số lượng mới
@@ -117,9 +117,9 @@ export class MaterialsService {
                 data: { stock_quantity: newQuantity }
             })
 
-            return new ApiResponse(true, 'Stock quantity updated successfully', material)
+            return new ApiResponse(true, 'Cập nhật số lượng tồn kho thành công', material)
         } catch (error) {
-            return new ApiResponse(false, 'Error updating stock quantity', error.message)
+            return new ApiResponse(false, 'Lỗi khi cập nhật số lượng tồn kho', error.message)
         }
     }
 
@@ -129,9 +129,9 @@ export class MaterialsService {
                 where: { material_id },
                 data: { status: dto.status }
             })
-            return new ApiResponse(true, 'Material status updated successfully', material)
+            return new ApiResponse(true, 'Cập nhật trạng thái vật liệu thành công', material)
         } catch (error) {
-            return new ApiResponse(false, 'Error updating material status', error.message)
+            return new ApiResponse(false, 'Lỗi khi cập nhật trạng thái vật liệu', error.message)
         }
     }
 }

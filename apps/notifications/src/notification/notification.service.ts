@@ -318,14 +318,14 @@ export class NotificationService {
 
             // Send system notification
             await this.sendSystemNotification(userId, {
-                title: 'Notifications Updated',
-                content: `${result.count} notifications have been marked as read`,
+                title: 'Cập nhật thông báo',
+                content: `Đã đánh dấu ${result.count} thông báo là đã đọc`,
                 type: NotificationType.SYSTEM
             })
 
             return {
                 success: true,
-                message: `Marked ${result.count} notifications as read`
+                message: `Đã đánh dấu ${result.count} thông báo là đã đọc`
             }
         } catch (error) {
             this.logger.error(`Failed to mark all notifications as read: ${error.message}`, {
@@ -370,14 +370,14 @@ export class NotificationService {
 
             // Send system notification
             await this.sendSystemNotification(userId, {
-                title: 'Notifications Cleared',
-                content: `${result.count} notifications have been cleared`,
+                title: 'Xóa thông báo',
+                content: `Đã xóa ${result.count} thông báo`,
                 type: NotificationType.SYSTEM
             })
 
             return {
                 success: true,
-                message: `Cleared ${result.count} notifications`
+                message: `Đã xóa ${result.count} thông báo`
             }
         } catch (error) {
             this.logger.error(`Failed to clear all notifications: ${error.message}`, {

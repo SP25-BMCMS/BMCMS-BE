@@ -133,6 +133,23 @@ export class schedulejobsService {
     }
   }
 
+  async getScheduleJobsByManagerId(managerid: string): Promise<ApiResponse<any>> {
+    try {
+      console.log('Getting schedule jobs by manager ID:', managerid);
+      const response = await firstValueFrom(
+        this.scheduleJobClient.send(SCHEDULEJOB_PATTERN.GET_BY_MANAGER_ID, { managerid })
+      );
+      console.log('Response from microservice:', response);
+      return response;
+    } catch (error) {
+      console.error('Error getting schedule jobs by manager ID:', error);
+      throw new HttpException(
+        'Error occurred while fetching schedule jobs for manager',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   // async changeStatus(schedule_job_id: string, status: string) {
   //   try {
   //     const response = await firstValueFrom(

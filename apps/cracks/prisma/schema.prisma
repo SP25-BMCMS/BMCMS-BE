@@ -30,23 +30,23 @@ model CrackReport {
 }
 
 model CrackDetail {
-  crackDetailsId String         @id @default(uuid())
+  crackDetailsId String      @id @default(uuid())
   crackReportId  String
   photoUrl       String
-  severity       Severity       @default(Unknown)
+  severity       Severity    @default(Unknown)
   aiDetectionUrl String
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  crackReport    CrackReport    @relation(fields: [crackReportId], references: [crackReportId])
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  crackReport    CrackReport @relation(fields: [crackReportId], references: [crackReportId])
 }
-
 
 enum ReportStatus {
   Pending
   InProgress
   InFixing
   Reviewing
-  Rejected  
+  WaitingConfirm
+  Rejected
   Completed
 }
 

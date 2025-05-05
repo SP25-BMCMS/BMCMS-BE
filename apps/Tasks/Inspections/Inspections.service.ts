@@ -7,8 +7,8 @@ import { CreateInspectionDto, RepairMaterialDto } from '@app/contracts/inspectio
 import { Inspection } from '@prisma/client-Task'
 import { ChangeInspectionStatusDto } from '@app/contracts/inspections/change-inspection-status.dto'
 import { AddImageToInspectionDto } from '@app/contracts/inspections/add-image.dto'
-import { ClientGrpc, ClientProxy } from '@nestjs/microservices'
-import { catchError, firstValueFrom, Observable, of, timeout } from 'rxjs'
+import { ClientGrpc, ClientProxy, Client } from '@nestjs/microservices'
+import { catchError, firstValueFrom, Observable, of, timeout, lastValueFrom } from 'rxjs'
 import { IsUUID } from 'class-validator'
 import { MATERIAL_PATTERN } from '@app/contracts/materials/material.patterns'
 import { TASK_CLIENT } from 'apps/api-gateway/src/constraints'
@@ -19,12 +19,19 @@ import { TaskAssignmentsService } from '../TaskAssignments/TaskAssignments.servi
 import { AssignmentStatus } from '@prisma/client-Task'
 import { TaskService } from '../Task/Task.service'
 import { UpdateInspectionReportStatusDto, ReportStatus } from '@app/contracts/inspections/update-inspection-report-status.dto'
+import { PrismaClient as SchedulePrismaClient } from '@prisma/client-schedule'
+import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
+import { AREAS_PATTERN } from '@app/contracts/Areas/Areas.patterns'
+import { SCHEDULEJOB_PATTERN } from '@app/contracts/schedulejob/schedulejob.patterns'
+import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
+import { WORKLOG_PATTERN } from '@app/contracts/Worklog/Worklog.patterns'
 
 const USERS_CLIENT = 'USERS_CLIENT'
 // Define interface for the User service
 interface UserService {
   getUserInfo(data: UserRequest): Observable<any>
   getWorkingPositionById(data: WorkingPositionByIdRequest): Observable<any>
+  getDepartmentById(data: DepartmentByIdRequest): Observable<any>
 }
 
 // Define matching interfaces cho proto
@@ -37,9 +44,13 @@ interface WorkingPositionByIdRequest {
   positionId: string
 }
 
+interface DepartmentByIdRequest {
+  departmentId: string
+}
+
 // Định nghĩa CRACK_PATTERNS cho pattern get-crack-detail-by-id
 const CRACK_PATTERNS = {
-  GET_DETAILS: { cmd: 'get-crack-report-by-id' }
+  GET_DETAILS: { pattern: 'get-crack-report-by-id' }
 }
 
 @Injectable()
@@ -49,15 +60,19 @@ export class InspectionsService implements OnModuleInit {
   private bucketName: string
   private readonly logger = new Logger(InspectionsService.name);
 
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject('CRACK_CLIENT') private readonly crackClient: ClientProxy,
+    @Inject('SCHEDULE_CLIENT') private readonly scheduleClient: ClientProxy,
     @Inject(USERS_CLIENT) private readonly userClient: ClientGrpc,
     @Inject(TASK_CLIENT) private readonly taskClient: ClientProxy,
     private configService: ConfigService,
     private readonly taskAssignmentService: TaskAssignmentsService,
-    private readonly taskService: TaskService
+    private readonly taskService: TaskService,
+    @Inject('BUILDINGS_CLIENT') private readonly buildingsClient: ClientProxy
   ) {
+    // Initialize S3 client
     this.s3 = new S3Client({
       region: this.configService.get<string>('AWS_REGION'),
       credentials: {
@@ -66,22 +81,35 @@ export class InspectionsService implements OnModuleInit {
       },
     })
     this.bucketName = this.configService.get<string>('AWS_S3_BUCKET')
+
+    // Initialize userService here like in TaskService instead of onModuleInit
+    try {
+      this.userService = this.userClient.getService<UserService>('UserService')
+      console.log('InspectionService - userService initialized:', this.userService ? 'Successfully' : 'Failed')
+    } catch (error) {
+      console.error('Error initializing userService in constructor:', error)
+    }
   }
 
   onModuleInit() {
     console.log('InspectionsService - onModuleInit called')
 
-    // Kiểm tra xem userClient có được inject đúng không
-    if (!this.userClient) {
-      console.error('userClient is undefined in onModuleInit')
-      return
-    }
+    // Double-check userService initialization as a fallback
+    if (!this.userService) {
+      console.warn('userService not initialized in constructor, trying in onModuleInit')
 
-    try {
-      this.userService = this.userClient.getService<UserService>('UserService')
-      console.log('userService initialized:', this.userService ? 'Successfully' : 'Failed')
-    } catch (error) {
-      console.error('Error initializing userService:', error)
+      // Kiểm tra xem userClient có được inject đúng không
+      if (!this.userClient) {
+        console.error('userClient is undefined in onModuleInit')
+        return
+      }
+
+      try {
+        this.userService = this.userClient.getService<UserService>('UserService')
+        console.log('userService initialized in onModuleInit:', this.userService ? 'Successfully' : 'Failed')
+      } catch (error) {
+        console.error('Error initializing userService in onModuleInit:', error)
+      }
     }
   }
 
@@ -130,7 +158,7 @@ export class InspectionsService implements OnModuleInit {
         return {
           statusCode: 404,
           message:
-            'No inspections found for this task assignment id = ' +
+            'Không tìm thấy báo cáo nào cho nhiệm vụ này với ID = ' +
             task_assignment_id,
         }
       }
@@ -166,13 +194,13 @@ export class InspectionsService implements OnModuleInit {
 
       return {
         statusCode: 200,
-        message: 'Inspections retrieved successfully',
+        message: 'Lấy danh sách báo cáo thành công',
         data: inspections,
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving inspections for task assignment',
+        message: 'Lỗi khi lấy danh sách báo cáo cho nhiệm vụ',
       })
     }
   }
@@ -184,7 +212,7 @@ export class InspectionsService implements OnModuleInit {
 
     if (!existingInspection) {
       throw new RpcException(
-        new ApiResponse(false, 'Inspection does not exist'),
+        new ApiResponse(false, 'Báo cáo không tồn tại'),
       )
     }
 
@@ -193,11 +221,11 @@ export class InspectionsService implements OnModuleInit {
         where: { inspection_id },
         data: { ...dto },
       })
-      return new ApiResponse(true, 'Inspection has been updated successfully', [
+      return new ApiResponse(true, 'Cập nhật báo cáo thành công', [
         updatedInspection,
       ])
     } catch (error) {
-      throw new RpcException(new ApiResponse(false, 'Invalid data'))
+      throw new RpcException(new ApiResponse(false, 'Dữ liệu không hợp lệ'))
     }
   }
 
@@ -242,7 +270,7 @@ export class InspectionsService implements OnModuleInit {
       if (inspections.length === 0) {
         return {
           statusCode: 404,
-          message: 'No inspections found',
+          message: 'Không tìm thấy báo cáo nào',
           data: [],
         }
       }
@@ -278,7 +306,7 @@ export class InspectionsService implements OnModuleInit {
 
       return {
         statusCode: 200,
-        message: 'Inspections retrieved successfully',
+        message: 'Lấy danh sách báo cáo thành công',
         data: inspections,
         total: inspections.length,
       }
@@ -286,7 +314,7 @@ export class InspectionsService implements OnModuleInit {
       console.error('Error in GetAllInspections:', error)
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving inspections',
+        message: 'Lỗi khi lấy danh sách báo cáo',
         error: error.message,
       })
     }
@@ -294,18 +322,35 @@ export class InspectionsService implements OnModuleInit {
 
   async createInspection(dto: CreateInspectionDto): Promise<ApiResponse<Inspection>> {
     try {
+      console.log('Received inspection data:', JSON.stringify({
+        ...dto,
+        image_urls: dto.image_urls ? `${dto.image_urls.length} images` : 'none',
+        repairMaterials: dto.repairMaterials ? `received (type: ${typeof dto.repairMaterials})` : 'none'
+      }));
+
+      if (dto.repairMaterials) {
+        if (typeof dto.repairMaterials === 'string') {
+          console.log('repairMaterials string content:', dto.repairMaterials);
+        } else if (Array.isArray(dto.repairMaterials)) {
+          console.log('repairMaterials array length:', dto.repairMaterials.length);
+        }
+      }
+
       // Check if task assignment exists
       const taskAssignment = await this.prisma.taskAssignment.findUnique({
         where: { assignment_id: dto.task_assignment_id },
-      })
+        include: {
+          task: true, // Include Task relation
+        }
+      });
 
       if (!taskAssignment) {
-        return new ApiResponse(false, 'Task assignment not found', null)
+        return new ApiResponse(false, 'Không tìm thấy nhiệm vụ được phân công', null)
       }
 
       // Ensure inspected_by is provided (this should always be set by the API Gateway from the token)
       if (!dto.inspected_by) {
-        return new ApiResponse(false, 'User ID not provided in token', null)
+        return new ApiResponse(false, 'Không tìm thấy ID người dùng trong token', null)
       }
 
       // Verify that the user is a Staff
@@ -316,6 +361,87 @@ export class InspectionsService implements OnModuleInit {
           staffVerification.message,
           null
         )
+      }
+
+      // Get the task and crack_id
+      const task = taskAssignment.task;
+      const crackId = task.crack_id;
+
+      // Get building information to check warranty status (only if task has a crack_id)
+      let isWarrantyExpired = false;
+      let buildingDetailId = null;
+
+      if (crackId) {
+        try {
+          // Get building detail ID from crack report
+          const buildingDetailResponse = await firstValueFrom(
+            this.crackClient.send(
+              { cmd: 'get-buildingDetail-by-crack-id' },
+              { crackId }
+            ).pipe(
+              timeout(10000),
+              catchError(err => {
+                console.error('Error getting building detail from crack:', err);
+                return of({ isSuccess: false, data: null });
+              })
+            )
+          );
+
+          if (buildingDetailResponse && buildingDetailResponse.isSuccess && buildingDetailResponse.data) {
+            buildingDetailId = buildingDetailResponse.data.buildingDetailId;
+
+            // Get building information from building service using buildingDetailId
+            if (buildingDetailId) {
+              const buildingResponse = await firstValueFrom(
+                this.buildingsClient.send(
+                  { cmd: 'get-building-from-building-detail' },
+                  { buildingDetailId }
+                ).pipe(
+                  timeout(10000),
+                  catchError(err => {
+                    console.error('Error getting building information:', err);
+                    return of({ isSuccess: false, data: null });
+                  })
+                )
+              );
+
+              if (buildingResponse && buildingResponse.isSuccess && buildingResponse.data) {
+                const building = buildingResponse.data;
+
+                // Log full building object để debug
+                console.log(`Full building object: ${JSON.stringify(building, null, 2)}`);
+
+                // Check if warranty date exists under various possible field names
+                const warrantyDate = building.warrantyDate || building.Warranty_date || building.warranty_date;
+
+                if (warrantyDate) {
+                  const warrantyDateObj = new Date(warrantyDate);
+                  const currentDate = new Date();
+
+                  console.log(`Current date: ${currentDate.toISOString()}`);
+                  console.log(`Warranty date: ${warrantyDateObj.toISOString()}`);
+
+                  isWarrantyExpired = warrantyDateObj < currentDate;
+
+                  console.log(`Building warranty check: warrantyDate=${warrantyDateObj.toISOString()}, currentDate=${currentDate.toISOString()}, isExpired=${isWarrantyExpired}`);
+                } else {
+                  console.log('Building does not have a warranty date (field not found in response), assuming expired');
+                  console.log('Available fields in building object: ' + Object.keys(building).join(', '));
+                  isWarrantyExpired = true; // If no warranty date, assume expired
+                }
+              } else {
+                console.log('Could not get building information, assuming warranty expired');
+                isWarrantyExpired = true; // If can't get building info, assume expired
+              }
+            }
+          } else {
+            console.log('Could not get building detail ID from crack, assuming warranty expired');
+            isWarrantyExpired = true; // If can't get building detail, assume expired
+          }
+        } catch (error) {
+          console.error('Error checking warranty status:', error);
+          // Continue with inspection creation, just log the error
+        }
       }
 
       // Parse repairMaterials if it's a string
@@ -340,11 +466,11 @@ export class InspectionsService implements OnModuleInit {
         } else if (Array.isArray(repairMaterials)) {
           repairMaterialsArray = repairMaterials
         } else {
-          throw new Error('Invalid repairMaterials format')
+          throw new Error('Định dạng vật liệu sửa chữa không hợp lệ')
         }
       } catch (error) {
         console.error('Error parsing repairMaterials:', error)
-        return new ApiResponse(false, 'Invalid repairMaterials format', null)
+        return new ApiResponse(false, 'Định dạng vật liệu sửa chữa không hợp lệ', null)
       }
 
       // Validate all materials and calculate total cost
@@ -362,20 +488,20 @@ export class InspectionsService implements OnModuleInit {
                 timeout(10000),
                 catchError(err => {
                   console.error('Error getting material info:', err)
-                  return of(new ApiResponse(false, 'Error getting material info', null))
+                  return of(new ApiResponse(false, 'Lỗi khi lấy thông tin vật liệu', null))
                 })
               )
             )
 
             if (!materialResponse || !materialResponse.isSuccess || !materialResponse.data) {
-              throw new Error(`Material not found or error retrieving material information for ID: ${repairMaterial.materialId}`)
+              throw new Error(`Không tìm thấy vật liệu hoặc lỗi khi lấy thông tin vật liệu với ID: ${repairMaterial.materialId}`)
             }
 
             const material = materialResponse.data
 
             // Check if there's enough stock
             if (material.stock_quantity < repairMaterial.quantity) {
-              throw new Error(`Not enough stock for material ${material.name}. Current stock: ${material.stock_quantity}, Required: ${repairMaterial.quantity}`)
+              throw new Error(`Không đủ số lượng tồn kho cho vật liệu ${material.name}. Số lượng hiện có: ${material.stock_quantity}, Yêu cầu: ${repairMaterial.quantity}`)
             }
 
             // Calculate cost for this material
@@ -439,9 +565,55 @@ export class InspectionsService implements OnModuleInit {
           }
         })
 
+        // If warranty is expired and we have a crackId, update the crack report status and create worklog
+        if (isWarrantyExpired && crackId) {
+          try {
+            // 1. Update CrackReport status to WaitingConfirm
+            await firstValueFrom(
+              this.crackClient.send(
+                { cmd: 'update-crack-report-for-all-status' },
+                {
+                  crackReportId: crackId,
+                  dto: { status: 'WaitingConfirm' }
+                }
+              ).pipe(
+                catchError(error => {
+                  console.error('Error updating crack report status:', error);
+                  return of({ isSuccess: false, message: error.message });
+                })
+              )
+            );
+
+            // 2. Create worklog with WAIT_FOR_DEPOSIT status
+            if (task.task_id) {
+              await firstValueFrom(
+                this.taskClient.send(
+                  WORKLOG_PATTERN.CREATE,
+                  {
+                    task_id: task.task_id,
+                    title: 'Chờ đặt cọc từ cư dân',
+                    description: 'Tòa nhà đã hết hạn bảo hành, cần cư dân đặt cọc trước khi tiếp tục',
+                    status: 'WAIT_FOR_DEPOSIT'
+                  }
+                ).pipe(
+                  catchError(error => {
+                    console.error('Error creating worklog:', error);
+                    return of({ isSuccess: false, message: error.message });
+                  })
+                )
+              );
+            }
+
+            console.log(`Successfully updated statuses due to expired warranty. CrackId: ${crackId}, TaskId: ${task.task_id}`);
+          } catch (error) {
+            console.error('Error updating statuses after inspection creation:', error);
+            // Don't fail the overall operation if this update fails
+          }
+        }
+
         return new ApiResponse(
           true,
-          'Inspection and repair materials created successfully',
+          'Tạo báo cáo thành công',
           result
         )
       } else {
@@ -457,15 +629,61 @@ export class InspectionsService implements OnModuleInit {
           },
         })
 
+        // If warranty is expired and we have a crackId, update the crack report status and create worklog
+        if (isWarrantyExpired && crackId) {
+          try {
+            // 1. Update CrackReport status to WaitingConfirm
+            await firstValueFrom(
+              this.crackClient.send(
+                { cmd: 'update-crack-report-for-all-status' },
+                {
+                  crackReportId: crackId,
+                  dto: { status: 'WaitingConfirm' }
+                }
+              ).pipe(
+                catchError(error => {
+                  console.error('Error updating crack report status:', error);
+                  return of({ isSuccess: false, message: error.message });
+                })
+              )
+            );
+
+            // 2. Create worklog with WAIT_FOR_DEPOSIT status
+            if (task.task_id) {
+              await firstValueFrom(
+                this.taskClient.send(
+                  WORKLOG_PATTERN.CREATE,
+                  {
+                    task_id: task.task_id,
+                    title: 'Chờ đặt cọc từ cư dân',
+                    description: 'Tòa nhà đã hết hạn bảo hành, cần cư dân đặt cọc trước khi tiếp tục',
+                    status: 'WAIT_FOR_DEPOSIT'
+                  }
+                ).pipe(
+                  catchError(error => {
+                    console.error('Error creating worklog:', error);
+                    return of({ isSuccess: false, message: error.message });
+                  })
+                )
+              );
+            }
+
+            console.log(`Successfully updated statuses due to expired warranty. CrackId: ${crackId}, TaskId: ${task.task_id}`);
+          } catch (error) {
+            console.error('Error updating statuses after inspection creation:', error);
+            // Don't fail the overall operation if this update fails
+          }
+        }
+
         return new ApiResponse(
           true,
-          'Inspection created successfully with no repair materials',
+          'Tạo báo cáo thành công',
           inspection
         )
       }
     } catch (error) {
       console.error('Error in createInspection:', error)
-      return new ApiResponse(false, error.message || 'Error creating inspection and repair materials', null)
+      return new ApiResponse(false, error.message || 'Lỗi khi tạo báo cáo và vật liệu sửa chữa', null)
     }
   }
 
@@ -497,7 +715,7 @@ export class InspectionsService implements OnModuleInit {
       })
 
       if (!inspection) {
-        return new ApiResponse(false, 'Inspection not found', null)
+        return new ApiResponse(false, 'Không tìm thấy báo cáo', null)
       }
 
       // Get current image_urls array or initialize as empty array
@@ -511,9 +729,9 @@ export class InspectionsService implements OnModuleInit {
         data: { image_urls: updatedImageUrls },
       })
 
-      return new ApiResponse(true, 'Images added successfully', updatedInspection)
+      return new ApiResponse(true, 'Thêm hình ảnh thành công', updatedInspection)
     } catch (error) {
-      return new ApiResponse(false, 'Error adding images', error.message)
+      return new ApiResponse(false, 'Lỗi khi thêm hình ảnh', error.message)
     }
   }
 
@@ -532,7 +750,7 @@ export class InspectionsService implements OnModuleInit {
       })
 
       if (!inspection) {
-        return new ApiResponse(false, 'Inspection not found', null)
+        return new ApiResponse(false, 'Không tìm thấy báo cáo', null)
       }
 
       const result: any = { ...inspection }
@@ -620,9 +838,9 @@ export class InspectionsService implements OnModuleInit {
         // Add schedule info retrieval here
       }
 
-      return new ApiResponse(true, 'Inspection details retrieved successfully', result)
+      return new ApiResponse(true, 'Lấy chi tiết báo cáo thành công', result)
     } catch (error) {
-      return new ApiResponse(false, 'Error retrieving inspection details', error.message)
+      return new ApiResponse(false, 'Lỗi khi lấy chi tiết báo cáo', error.message)
     }
   }
 
@@ -641,7 +859,7 @@ export class InspectionsService implements OnModuleInit {
       })
 
       if (!inspection) {
-        return new ApiResponse(false, 'Inspection not found', null)
+        return new ApiResponse(false, 'Không tìm thấy báo cáo', null)
       }
 
       // Process image URLs
@@ -670,16 +888,205 @@ export class InspectionsService implements OnModuleInit {
         }
       }
 
-      return new ApiResponse(true, 'Inspection retrieved successfully', inspection)
+      return new ApiResponse(true, 'Lấy thông tin báo cáo thành công', inspection)
     } catch (error) {
       console.error('Error retrieving inspection:', error)
-      return new ApiResponse(false, 'Error retrieving inspection', error.message)
+      return new ApiResponse(false, 'Lỗi khi lấy thông tin báo cáo', error.message)
+    }
+  }
+
+  async getBuildingAreaFromSchedule(schedule_job_id: string): Promise<ApiResponse<any>> {
+    try {
+      this.logger.log(`Getting building area for schedule job ID: ${schedule_job_id}`);
+
+      // Kiểm tra schedule_job_id
+      if (!schedule_job_id) {
+        this.logger.error(`Invalid schedule_job_id provided: ${schedule_job_id}`);
+        return new ApiResponse(false, 'ID lịch trình công việc không hợp lệ', null);
+      }
+
+      // Import AREAS_PATTERN để sử dụng pattern chuẩn
+      const { AREAS_PATTERN } = require('@app/contracts/Areas/Areas.patterns');
+      const { BUILDINGDETAIL_PATTERN } = require('@app/contracts/BuildingDetails/buildingdetails.patterns');
+
+      // Khai báo biến
+      let buildingDetailId;
+      let buildingId;
+      let scheduleJob;
+
+      try {
+        // Thay vì gọi qua service, kết nối trực tiếp đến database
+        this.logger.log(`Attempting to query schedule job directly from database`);
+
+        // Tạo PrismaClient mới cho Schedule database
+        const schedulePrisma = new SchedulePrismaClient({
+          datasources: {
+            db: {
+              url: process.env.DB_SCHEDULE_SERVICE
+            }
+          }
+        });
+
+        try {
+          // Truy vấn schedulejob từ database
+          scheduleJob = await schedulePrisma.scheduleJob.findUnique({
+            where: { schedule_job_id },
+            include: { schedule: true }
+          });
+
+          // Đóng kết nối database
+          await schedulePrisma.$disconnect();
+
+          if (!scheduleJob) {
+            this.logger.error(`No schedule job found in database with ID: ${schedule_job_id}`);
+            return new ApiResponse(false, 'Không tìm thấy lịch trình công việc trong cơ sở dữ liệu', null);
+          }
+
+          this.logger.log(`Schedule job found in database: ${JSON.stringify(scheduleJob)}`);
+
+          // Lấy buildingDetailId
+          buildingDetailId = scheduleJob.buildingDetailId;
+
+          if (!buildingDetailId) {
+            this.logger.error(`No buildingDetailId found in schedule job data: ${JSON.stringify(scheduleJob)}`);
+            return new ApiResponse(false, 'Không tìm thấy ID chi tiết tòa nhà trong lịch trình', null);
+          }
+
+          this.logger.log(`Found buildingDetailId: ${buildingDetailId} for schedule job: ${schedule_job_id}`);
+        } catch (dbError) {
+          // Đảm bảo đóng kết nối database nếu có lỗi
+          await schedulePrisma.$disconnect();
+          this.logger.error(`Database error: ${dbError?.message || 'Unknown error'}`, dbError?.stack);
+          throw new Error(`Lỗi truy vấn cơ sở dữ liệu: ${dbError?.message || 'Unknown error'}`);
+        }
+      } catch (error) {
+        this.logger.error(`Error querying schedule job: ${error?.message || 'Unknown error'}`, error?.stack);
+        return new ApiResponse(false, `Lỗi khi truy vấn lịch trình công việc: ${error?.message || 'Unknown error'}`, null);
+      }
+
+      // Step 1: Get buildingDetail info using buildingDetailId
+      this.logger.log(`Getting buildingDetail with ID: ${buildingDetailId}`);
+      const buildingDetailResponse = await firstValueFrom(
+        this.buildingsClient.send(
+          BUILDINGDETAIL_PATTERN.GET_BY_ID,
+          { buildingDetailId }
+        ).pipe(
+          timeout(15000),
+          catchError(err => {
+            this.logger.error(`Error getting building detail: ${err?.message || 'Unknown error'}`, err?.stack);
+            return of(new ApiResponse(false, `Lỗi khi lấy thông tin chi tiết tòa nhà: ${err?.message || 'Unknown error'}`, null));
+          })
+        )
+      );
+
+      this.logger.log(`Building detail response received: ${JSON.stringify(buildingDetailResponse || {})}`);
+
+      // Nếu nhận được phản hồi thành công, có thể trích xuất areaId trực tiếp
+      if (buildingDetailResponse &&
+        buildingDetailResponse.statusCode === 200 &&
+        buildingDetailResponse.data &&
+        buildingDetailResponse.data.building &&
+        buildingDetailResponse.data.building.area) {
+
+        // Trích xuất thông tin từ buildingDetail
+        buildingId = buildingDetailResponse.data.buildingId;
+        const areaId = buildingDetailResponse.data.building.area.areaId;
+        const areaName = buildingDetailResponse.data.building.area.name;
+
+        this.logger.log(`Đã trích xuất thông tin khu vực thành công từ phản hồi buildingDetail: areaId=${areaId}, areaName=${areaName}`);
+
+        // Trả về thông tin khu vực trực tiếp
+        return new ApiResponse(true, 'Lấy thông tin khu vực tòa nhà thành công',
+          buildingDetailResponse.data.building.area
+        );
+      }
+
+      // Nếu không nhận được thông tin trực tiếp, tiếp tục quy trình ban đầu
+      if (!buildingDetailResponse ||
+        (buildingDetailResponse.statusCode && buildingDetailResponse.statusCode !== 200) ||
+        !buildingDetailResponse.data) {
+        this.logger.error(`Failed to get building detail: ${buildingDetailResponse?.message || 'Unknown error'}`);
+
+        // Thử phương án thứ 2: Truy vấn trực tiếp từ dữ liệu scheduleJob
+        if (scheduleJob && scheduleJob.buildingDetailId) {
+          buildingId = scheduleJob.buildingDetailId;
+          this.logger.log(`Using buildingDetailId as fallback: ${buildingId}`);
+        } else {
+          return new ApiResponse(false, buildingDetailResponse?.message || 'Không thể lấy thông tin chi tiết tòa nhà', null);
+        }
+      } else {
+        // Lấy buildingId từ buildingDetail
+        buildingId = buildingDetailResponse.data.buildingId;
+        this.logger.log(`Retrieved buildingId: ${buildingId} from buildingDetail`);
+      }
+
+      // Step 2: Get building info with area using buildingId
+      this.logger.log(`Getting building info with ID: ${buildingId}`);
+      const buildingResponse = await firstValueFrom(
+        this.buildingsClient.send(
+          BUILDINGS_PATTERN.GET_BY_ID,
+          { buildingId }
+        ).pipe(
+          timeout(15000),
+          catchError(err => {
+            this.logger.error(`Error getting building info: ${err?.message || 'Unknown error'}`, err?.stack);
+            return of(new ApiResponse(false, `Lỗi khi lấy thông tin tòa nhà: ${err?.message || 'Unknown error'}`, null));
+          })
+        )
+      );
+
+      this.logger.log(`Building response received: ${JSON.stringify(buildingResponse || {})}`);
+
+      if (!buildingResponse ||
+        (buildingResponse.statusCode && buildingResponse.statusCode !== 200) ||
+        !buildingResponse.data) {
+        this.logger.error(`Failed to get building info: ${buildingResponse?.message || 'Unknown error'}`);
+        return new ApiResponse(false, buildingResponse?.message || 'Không thể lấy thông tin tòa nhà', null);
+      }
+
+      // Lấy area từ thông tin building
+      const areaId = buildingResponse.data.area?.areaId || buildingResponse.data.areaId;
+
+      if (!areaId) {
+        this.logger.error(`No areaId found in building data: ${JSON.stringify(buildingResponse.data)}`);
+        return new ApiResponse(false, 'Không tìm thấy ID khu vực trong thông tin tòa nhà', null);
+      }
+
+      this.logger.log(`Found areaId: ${areaId} for buildingId: ${buildingId}`);
+
+      // Step 3: Get area information
+      this.logger.log(`Getting area info for areaId: ${areaId} using pattern: ${AREAS_PATTERN.GET_BY_ID}`);
+      const areaResponse = await firstValueFrom(
+        this.buildingsClient.send(
+          AREAS_PATTERN.GET_BY_ID,
+          { areaId }
+        ).pipe(
+          timeout(15000),
+          catchError(err => {
+            this.logger.error(`Error getting area info: ${err?.message || 'Unknown error'}`, err?.stack);
+            return of(new ApiResponse(false, `Lỗi khi lấy thông tin khu vực: ${err?.message || 'Unknown error'}`, null));
+          })
+        )
+      );
+
+      this.logger.log(`Area response received: ${JSON.stringify(areaResponse || {})}`);
+
+      if (!areaResponse || !areaResponse.data) {
+        this.logger.error(`No response received for area ID: ${areaId}`);
+        return new ApiResponse(false, 'Không nhận được phản hồi từ dịch vụ khu vực', null);
+      }
+
+      this.logger.log(`Successfully retrieved area for schedule job: ${schedule_job_id}`);
+      return new ApiResponse(true, 'Lấy thông tin khu vực tòa nhà thành công', areaResponse.data);
+    } catch (error) {
+      this.logger.error(`Error in getBuildingAreaFromSchedule: ${error?.message || 'Unknown error'}`, error?.stack);
+      return new ApiResponse(false, `Lỗi khi lấy thông tin khu vực từ lịch trình: ${error?.message || 'Unknown error'}`, null);
     }
   }
 
   async getBuildingDetailIdFromTaskAssignment(task_assignment_id: string): Promise<ApiResponse<any>> {
     try {
-      console.log(`Finding task assignment with ID: ${task_assignment_id}`)
+      this.logger.log(`Finding task assignment with ID: ${task_assignment_id}`);
 
       // First find the TaskAssignment
       const taskAssignment = await this.prisma.taskAssignment.findUnique({
@@ -687,22 +1094,22 @@ export class InspectionsService implements OnModuleInit {
         include: {
           task: true, // Include Task relation
         },
-      })
+      });
 
-      console.log('Task assignment found:', JSON.stringify(taskAssignment, null, 2))
+      this.logger.log('Task assignment found:', JSON.stringify(taskAssignment, null, 2));
 
       if (!taskAssignment || !taskAssignment.task) {
-        console.log('TaskAssignment or Task not found:', task_assignment_id)
-        return new ApiResponse(false, 'TaskAssignment or Task not found', null)
+        this.logger.error('TaskAssignment or Task not found:', task_assignment_id);
+        return new ApiResponse(false, 'Không tìm thấy nhiệm vụ được phân công hoặc nhiệm vụ', null);
       }
 
       // Use the task_id to get the BuildingDetailId from Crack service
-      const taskId = taskAssignment.task.task_id
-      console.log(`Using task_id: ${taskId} to get buildingDetailId`)
-      console.log(`Task details: crack_id=${taskAssignment.task.crack_id}`)
+      const taskId = taskAssignment.task.task_id;
+      this.logger.log(`Using task_id: ${taskId} to get buildingDetailId`);
+      this.logger.log(`Task details: crack_id=${taskAssignment.task.crack_id}`);
 
       // Call the CRACK service to get buildingDetailId using task_id
-      console.log(`Calling crack service with task_id=${taskId}`)
+      this.logger.log(`Calling crack service with task_id=${taskId}`);
       const crackResponse = await firstValueFrom(
         this.crackClient.send(
           { cmd: 'get-buildingDetail-by-task-id' },
@@ -710,34 +1117,260 @@ export class InspectionsService implements OnModuleInit {
         ).pipe(
           timeout(10000),
           catchError(err => {
-            console.error('Error getting building detail by task ID:', err)
-            return of({ isSuccess: false, data: null })
+            this.logger.error('Error getting building detail by task ID:', err);
+            return of({ isSuccess: false, data: null });
           })
         )
-      )
+      );
 
-      console.log('Crack service response:', JSON.stringify(crackResponse, null, 2))
+      this.logger.log('Crack service response:', JSON.stringify(crackResponse, null, 2));
 
       if (!crackResponse || !crackResponse.isSuccess || !crackResponse.data) {
-        console.log('Failed to get building detail from crack service')
-        return new ApiResponse(false, 'Failed to get building detail', null)
+        this.logger.error('Failed to get building detail from crack service');
+        return new ApiResponse(false, 'Không thể lấy thông tin tòa nhà', null);
       }
 
       // Extract buildingDetailId from the response
-      const buildingDetailId = crackResponse.data.buildingDetailId
+      const buildingDetailId = crackResponse.data.buildingDetailId;
 
       if (!buildingDetailId) {
-        console.log('BuildingDetailId not found in crack response')
-        return new ApiResponse(false, 'BuildingDetailId not found', null)
+        this.logger.error('BuildingDetailId not found in crack response');
+        return new ApiResponse(false, 'Không tìm thấy ID chi tiết tòa nhà', null);
       }
 
-      console.log('Successfully retrieved buildingDetailId:', buildingDetailId)
-      return new ApiResponse(true, 'BuildingDetailId retrieved successfully', { buildingDetailId })
+      this.logger.log('Successfully retrieved buildingDetailId:', buildingDetailId);
+      return new ApiResponse(true, 'Lấy ID chi tiết tòa nhà thành công', { buildingDetailId });
     } catch (error) {
-      console.error('Error in getBuildingDetailIdFromTaskAssignment:', error)
-      return new ApiResponse(false, 'Error retrieving BuildingDetailId', null)
+      this.logger.error('Error in getBuildingDetailIdFromTaskAssignment:', error);
+      return new ApiResponse(false, 'Lỗi khi lấy ID chi tiết tòa nhà', null);
     }
   }
+
+  async verifyLeaderAndArea(employee_id: string, task_id: string): Promise<ApiResponse<any>> {
+    try {
+      // Check if userService is initialized
+      if (!this.userService) {
+        this.logger.error(`userService is not initialized. Cannot verify leader role.`);
+        return new ApiResponse(false, 'Dịch vụ người dùng chưa sẵn sàng. Vui lòng thử lại sau.', null);
+      }
+
+      this.logger.log(`Verifying leader role for employee: ${employee_id}, task: ${task_id}`);
+
+      // 1. Get user info to check if they're a leader
+      let userInfo;
+      try {
+        this.logger.log(`Calling getUserInfo for employee: ${employee_id}`);
+        userInfo = await firstValueFrom(
+          this.userService.getUserInfo({ userId: employee_id, username: '' })
+            .pipe(
+              timeout(10000),
+              catchError(err => {
+                this.logger.error(`Error getting user info: ${err.message}`, err.stack);
+                return of(null);
+              })
+            )
+        );
+        this.logger.log(`getUserInfo result received: ${userInfo ? 'Success' : 'Null'}`);
+
+        if (userInfo) {
+          this.logger.log(`User details: positionId=${userInfo.positionId}, departmentId=${userInfo.departmentId}`);
+        }
+      } catch (error) {
+        this.logger.error(`Critical error calling getUserInfo: ${error.message}`, error.stack);
+        return new ApiResponse(false, `Lỗi khi truy vấn thông tin người dùng: ${error.message}`, null);
+      }
+
+      if (!userInfo) {
+        return new ApiResponse(false, 'Không tìm thấy thông tin của nhân viên', null);
+      }
+
+      // 2. Check if user has a position and it's a Leader
+      let isLeader = false;
+      if (userInfo.userDetails && userInfo.userDetails.positionId) {
+        const positionId = userInfo.userDetails.positionId;
+        this.logger.log(`Found positionId: ${positionId} for employee: ${employee_id}`);
+
+        try {
+          this.logger.log(`Calling getWorkingPositionById for positionId: ${positionId}`);
+          const positionResponse = await firstValueFrom(
+            this.userService.getWorkingPositionById({ positionId })
+              .pipe(
+                timeout(10000),
+                catchError(err => {
+                  this.logger.error(`Error getting position info: ${err.message}`, err.stack);
+                  return of(null);
+                })
+              )
+          );
+
+          this.logger.log(`getWorkingPositionById result: ${JSON.stringify(positionResponse || {})}`);
+
+          if (!positionResponse) {
+            return new ApiResponse(false, 'Không tìm thấy thông tin vị trí của nhân viên', null);
+          }
+
+          if (positionResponse.isSuccess && positionResponse.data) {
+            const posName = positionResponse.data.positionName;
+            this.logger.log(`Position name: ${posName}`);
+            isLeader = posName === 'Leader';
+          } else {
+            this.logger.error(`Error response from position service: ${positionResponse.message || 'Unknown error'}`);
+            return new ApiResponse(false, positionResponse.message || 'Lỗi khi truy vấn thông tin vị trí', null);
+          }
+        } catch (error) {
+          this.logger.error(`Error getting position information: ${error.message}`, error.stack);
+          return new ApiResponse(false, `Lỗi khi truy vấn thông tin vị trí: ${error.message}`, null);
+        }
+      } else if (userInfo.userDetails && userInfo.userDetails.position) {
+        // Position already included in userInfo response
+        const position = userInfo.userDetails.position;
+        this.logger.log(`Position information already in userInfo: ${JSON.stringify(position)}`);
+        isLeader = position.positionName === 'Leader';
+      } else {
+        this.logger.error(`No position information found for employee: ${employee_id}`);
+        return new ApiResponse(false, 'Nhân viên chưa được gán vị trí công việc', null);
+      }
+
+      if (!isLeader) {
+        return new ApiResponse(false, 'Nhân viên phải có vị trí là Leader', null);
+      }
+
+      // 3. Get user's department area
+      let departmentArea;
+      if (userInfo.userDetails && userInfo.userDetails.departmentId) {
+        try {
+          // Try using userService first (if getDepartmentById is implemented in gRPC)
+          if (this.userService && typeof this.userService.getDepartmentById === 'function') {
+            const departmentResponse = await firstValueFrom(
+              this.userService.getDepartmentById({ departmentId: userInfo.userDetails.departmentId })
+                .pipe(
+                  timeout(10000),
+                  catchError(err => {
+                    this.logger.error(`Error getting department info via gRPC: ${err.message}`, err.stack);
+                    return of(null);
+                  })
+                )
+            );
+
+            if (departmentResponse) {
+              departmentArea = departmentResponse.area;
+              this.logger.log(`Retrieved department area via gRPC: ${departmentArea}`);
+            }
+          }
+
+          // Fallback: If userService.getDepartmentById isn't available or returned null,
+          // try using task client (which is ClientProxy, not gRPC)
+          if (!departmentArea) {
+            this.logger.log(`Trying alternative department retrieval method via gRPC`);
+            const departmentResponse = await firstValueFrom(
+              this.userService.getDepartmentById({ departmentId: userInfo.userDetails.departmentId })
+                .pipe(
+                  timeout(10000),
+                  catchError(err => {
+                    this.logger.error(`Error getting department info via gRPC: ${err.message}`, err.stack);
+                    return of({ isSuccess: false, data: null });
+                  })
+                )
+            );
+
+            if (departmentResponse?.isSuccess && departmentResponse?.data) {
+              departmentArea = departmentResponse.data.area;
+              this.logger.log(`Retrieved department area via gRPC: ${departmentArea}`);
+            }
+          }
+        } catch (error) {
+          this.logger.error(`Error getting department area: ${error.message}`, error.stack);
+          return new ApiResponse(false, 'Lỗi khi lấy thông tin khu vực phòng ban', null);
+        }
+      } else if (userInfo.userDetails && userInfo.userDetails.department && userInfo.userDetails.department.area) {
+        // If department info is already in userInfo response
+        departmentArea = userInfo.userDetails.department.area;
+        this.logger.log(`Department area found directly in userInfo: ${departmentArea}`);
+      }
+
+      if (!departmentArea) {
+        return new ApiResponse(false, 'Nhân viên không có thông tin khu vực', null);
+      }
+
+      // 4. Get task info to find crack_id or schedule_job_id
+      const task = await this.prisma.task.findUnique({
+        where: { task_id }
+      });
+
+      if (!task) {
+        return new ApiResponse(false, 'Không tìm thấy nhiệm vụ', null);
+      }
+
+      // 5. Get building area based on crack_id or schedule_job_id
+      let buildingAreaResponse;
+      if (task.crack_id) {
+        // Get area from crack
+        try {
+          // Use the correct message pattern format
+          this.logger.log(`Getting building area from crack with ID: ${task.crack_id}`);
+
+          buildingAreaResponse = await firstValueFrom(
+            this.crackClient.send(
+              { cmd: 'get-building-area-from-crack' },
+              { crack_id: task.crack_id }
+            ).pipe(
+              timeout(10000),
+              catchError(err => {
+                this.logger.error(`Error getting building area from crack: ${err.message}`, err.stack);
+                return of({ isSuccess: false, data: null, message: `Lỗi khi lấy thông tin khu vực từ vết nứt: ${err.message}` });
+              })
+            )
+          );
+        } catch (error) {
+          this.logger.error(`Critical error calling crack service: ${error.message}`, error.stack);
+          return new ApiResponse(false, `Lỗi khi gọi dịch vụ vết nứt: ${error.message}`, null);
+        }
+      } else if (task.schedule_job_id) {
+        // Get area from schedule job using our own method
+        try {
+          this.logger.log(`Getting building area from schedule job with ID: ${task.schedule_job_id}`);
+          buildingAreaResponse = await this.getBuildingAreaFromSchedule(task.schedule_job_id);
+          this.logger.log(`Building area response from schedule: ${JSON.stringify(buildingAreaResponse || {})}`);
+        } catch (error) {
+          this.logger.error(`Error getting building area from schedule: ${error.message}`, error.stack);
+          return new ApiResponse(false, `Lỗi khi lấy thông tin khu vực từ lịch trình: ${error.message}`, null);
+        }
+      } else {
+        return new ApiResponse(false, 'Nhiệm vụ không có thông tin vết nứt hoặc lịch trình', null);
+      }
+
+      if (!buildingAreaResponse || !buildingAreaResponse.isSuccess || !buildingAreaResponse.data) {
+        const errorMessage = buildingAreaResponse?.message || 'Không thể lấy thông tin khu vực của tòa nhà';
+        return new ApiResponse(false, errorMessage, null);
+      }
+
+      // 6. Compare areas
+      const buildingArea = buildingAreaResponse.data.name;
+
+      if (!buildingArea) {
+        return new ApiResponse(false, 'Không tìm thấy thông tin khu vực trong dữ liệu tòa nhà', null);
+      }
+
+      if (buildingArea !== departmentArea) {
+        return new ApiResponse(
+          false,
+          `Khu vực không khớp. Khu vực của trưởng nhóm: ${departmentArea}, Khu vực của tòa nhà: ${buildingArea}`,
+          null
+        );
+      }
+
+      // All checks pass
+      return new ApiResponse(
+        true,
+        'Xác thực trưởng nhóm và khu vực thành công',
+        { isLeader: true, departmentArea, buildingArea }
+      );
+    } catch (error) {
+      this.logger.error(`Error in verifyLeaderAndArea: ${error.message}`, error.stack);
+      return new ApiResponse(false, `Lỗi khi xác thực trưởng nhóm và khu vực: ${error.message}`, null);
+    }
+  }
+
   async verifyStaffRole(userId: string): Promise<ApiResponse<boolean>> {
     try {
       console.log(`Tasks microservice - Verifying if user ${userId} is a Staff...`)
@@ -751,11 +1384,11 @@ export class InspectionsService implements OnModuleInit {
 
           if (!this.userService) {
             console.error('userService still undefined after reinitialization attempt')
-            return new ApiResponse(false, 'Failed to initialize user service - gRPC client may not be connected', false)
+            return new ApiResponse(false, 'Không thể khởi tạo dịch vụ người dùng - gRPC client có thể không được kết nối', false)
           }
         } catch (error) {
           console.error('Error reinitializing userService:', error)
-          return new ApiResponse(false, `Error initializing service: ${error.message}`, false)
+          return new ApiResponse(false, `Lỗi khởi tạo dịch vụ: ${error.message}`, false)
         }
       }
 
@@ -765,7 +1398,7 @@ export class InspectionsService implements OnModuleInit {
         // Try to get available methods
         const methods = Object.keys(this.userService)
         console.log('Available methods in userService:', methods)
-        return new ApiResponse(false, 'User service incorrectly initialized - getUserInfo not available', false)
+        return new ApiResponse(false, 'Dịch vụ người dùng được khởi tạo không đúng - getUserInfo không khả dụng', false)
       }
 
       // Get user details from User service using gRPC
@@ -784,14 +1417,14 @@ export class InspectionsService implements OnModuleInit {
         )
       } catch (error) {
         console.error('Critical error calling getUserInfo:', error)
-        return new ApiResponse(false, `Error calling getUserInfo: ${error.message}`, false)
+        return new ApiResponse(false, `Lỗi khi gọi getUserInfo: ${error.message}`, false)
       }
 
       console.log('Tasks microservice - User info received:', JSON.stringify(userInfo, null, 2))
 
       if (!userInfo) {
         console.error('Tasks microservice - User info is null or undefined')
-        return new ApiResponse(false, 'User not found', false)
+        return new ApiResponse(false, 'Không tìm thấy người dùng', false)
       }
 
       // Check if user has role Staff
@@ -802,16 +1435,16 @@ export class InspectionsService implements OnModuleInit {
         console.log(`Tasks microservice - User role ${role} is not Staff`)
         return new ApiResponse(
           false,
-          `Only Staff can create inspections. Current role: ${role}`,
+          `Chỉ nhân viên mới có thể tạo báo cáo. Vai trò hiện tại: ${role}`,
           false
         )
       }
 
       console.log('Tasks microservice - User is a Staff, validation successful')
-      return new ApiResponse(true, 'User is a Staff', true)
+      return new ApiResponse(true, 'Người dùng là nhân viên', true)
     } catch (error) {
       console.error('Tasks microservice - Error in verifyStaffRole:', error)
-      return new ApiResponse(false, `Error validating user role: ${error.message}`, false)
+      return new ApiResponse(false, `Lỗi khi xác thực vai trò người dùng: ${error.message}`, false)
     }
   }
 
@@ -830,7 +1463,7 @@ export class InspectionsService implements OnModuleInit {
       if (!inspection) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Inspection not found',
+          message: 'Không tìm thấy báo cáo',
         });
       }
 
@@ -847,14 +1480,14 @@ export class InspectionsService implements OnModuleInit {
 
       return new ApiResponse(
         true,
-        'Inspection private asset status updated successfully',
+        'Cập nhật trạng thái tài sản riêng của báo cáo thành công',
         updatedInspection
       );
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({
         statusCode: 500,
-        message: `Failed to update inspection private asset status: ${error.message}`,
+        message: `Không thể cập nhật trạng thái tài sản riêng của báo cáo: ${error.message}`,
       });
     }
   }
@@ -874,7 +1507,7 @@ export class InspectionsService implements OnModuleInit {
       if (!inspection) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Inspection not found',
+          message: 'Không tìm thấy báo cáo',
         });
       }
 
@@ -892,61 +1525,30 @@ export class InspectionsService implements OnModuleInit {
 
       // Handle special cases for report status changes
       if (dto.report_status === 'Rejected' && inspection.isprivateasset === true) {
-        // If report is rejected and it's a private asset, mark task as not completed
-        // await this.taskAssignmentService.changeTaskAssignmentStatus(
-        //   inspection.task_assignment_id,
-        //   AssignmentStatus.Confirmed
-        // );
-
-        // if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
-        //   await this.taskService.changeTaskStatus(
-        //     inspection.taskAssignment.task_id,
-        //     'Completed'
-        //   );
-        // }
-
-        // updatedInspection.taskAssignment.status = AssignmentStatus.Confirmed;
-
         return new ApiResponse(
           true,
-          'It is already in our maintenance schedule system',
+          'Đã có trong hệ thống lịch trình bảo trì của chúng tôi',
           updatedInspection
         );
       }
       else if (dto.report_status === 'Approved') {
-        // If report is approved, mark task as completed
-        // await this.taskAssignmentService.changeTaskAssignmentStatus(
-        //   inspection.task_assignment_id,
-        //   AssignmentStatus.Confirmed // Using Confirmed status since Completed is not in the enum
-        // );
-
-        // // Also update the task status to Completed
-        // if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
-        //   await this.taskService.changeTaskStatus(
-        //     inspection.taskAssignment.task_id,
-        //     'Completed'
-        //   );
-        // }
-
-        // updatedInspection.taskAssignment.status = AssignmentStatus.Confirmed;
-
         return new ApiResponse(
           true,
-          'We acknowledge and will review',
+          'Chúng tôi đã nhận và sẽ xem xét',
           updatedInspection
         );
       }
 
       return new ApiResponse(
         true,
-        'Inspection report status updated successfully',
+        'Cập nhật trạng thái báo cáo thành công',
         updatedInspection
       );
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({
         statusCode: 500,
-        message: `Failed to update inspection report status: ${error.message}`,
+        message: `Không thể cập nhật trạng thái báo cáo: ${error.message}`,
       });
     }
   }
@@ -969,7 +1571,7 @@ export class InspectionsService implements OnModuleInit {
       if (!inspection) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Inspection not found',
+          message: 'Không tìm thấy báo cáo',
         });
       }
       console.log(inspection)
@@ -1010,74 +1612,85 @@ export class InspectionsService implements OnModuleInit {
       console.log(updatedInspection)
       // Xử lý các trường hợp đặc biệt cho thay đổi trạng thái báo cáo
       if (report_status === 'Rejected' && inspection.isprivateasset === true) {
-        // Nếu báo cáo bị từ chối và là tài sản riêng, đánh dấu task là chưa hoàn thành
-        // await this.taskAssignmentService.changeTaskAssignmentStatus(
-        //   inspection.task_assignment_id,
-        //   AssignmentStatus.Confirmed
-        // );
-
-        // if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
-        //   await this.taskService.changeTaskStatus(
-        //     inspection.taskAssignment.task_id,
-        //     'Completed'
-        //   );
-        // }
-
-        // const taskAssignment = await this.prisma.taskAssignment.findUnique({
-        //   where: { assignment_id: inspection.task_assignment_id }
-        // });
-
-        // if (taskAssignment) {
-        //   taskAssignment.status = AssignmentStatus.Confirmed;
-        // }
-
         return new ApiResponse(
           true,
-          'It is already in our maintenance schedule system',
+          'Đã có trong hệ thống lịch trình bảo trì của chúng tôi',
           updatedInspection
         );
       }
       else if (report_status === 'Approved') {
-        // Nếu báo cáo được phê duyệt, đánh dấu task là đã hoàn thành
-        // await this.taskAssignmentService.changeTaskAssignmentStatus(
-        //   inspection.task_assignment_id,
-        //   AssignmentStatus.Confirmed
-        // );
-
-        // // Cập nhật trạng thái task thành Completed
-        // if (inspection.taskAssignment && inspection.taskAssignment.task_id) {
-        //   await this.taskService.changeTaskStatus(
-        //     inspection.taskAssignment.task_id,
-        //     'Completed'
-        //   );
-        // }
-
-        // const taskAssignment = await this.prisma.taskAssignment.findUnique({
-        //   where: { assignment_id: inspection.task_assignment_id }
-        // });
-
-        // if (taskAssignment) {
-        //   taskAssignment.status = AssignmentStatus.Confirmed;
-        // }
-
         return new ApiResponse(
           true,
-          'We acknowledge and will review',
+          'Chúng tôi đã nhận và sẽ xem xét',
           updatedInspection
         );
       }
 
       return new ApiResponse(
         true,
-        'Inspection report status updated successfully',
+        'Cập nhật trạng thái báo cáo thành công',
         updatedInspection
       );
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({
         statusCode: 500,
-        message: `Failed to update inspection report status: ${error.message}`,
+        message: `Không thể cập nhật trạng thái báo cáo: ${error.message}`,
       });
+    }
+  }
+
+  async getTaskAssignmentDetails(task_assignment_id: string): Promise<ApiResponse<any>> {
+    try {
+      // Find the task assignment and include the task
+      const taskAssignment = await this.prisma.taskAssignment.findUnique({
+        where: {
+          assignment_id: task_assignment_id
+        },
+        include: {
+          task: true
+        }
+      });
+
+      if (!taskAssignment) {
+        return new ApiResponse(false, 'Không tìm thấy nhiệm vụ được gán', null);
+      }
+
+      return new ApiResponse(true, 'Lấy chi tiết nhiệm vụ được gán thành công', taskAssignment);
+    } catch (error) {
+      this.logger.error(`Error in getTaskAssignmentDetails: ${error.message}`, error.stack);
+      return new ApiResponse(false, `Lỗi khi lấy chi tiết nhiệm vụ được gán: ${error.message}`, null);
+    }
+  }
+
+  async getInspectionPdfByTaskAssignment(task_assignment_id: string): Promise<ApiResponse<any>> {
+    try {
+      // Find the most recent inspection for this task assignment
+      const inspection = await this.prisma.inspection.findFirst({
+        where: {
+          task_assignment_id: task_assignment_id
+        },
+        orderBy: {
+          created_at: 'desc'
+        },
+        select: {
+          inspection_id: true,
+          uploadFile: true
+        }
+      });
+
+      if (!inspection) {
+        return new ApiResponse(false, 'Không tìm thấy báo cáo cho nhiệm vụ được gán này', null);
+      }
+
+      if (!inspection.uploadFile) {
+        return new ApiResponse(false, 'Không tìm thấy tệp PDF cho báo cáo này', null);
+      }
+
+      return new ApiResponse(true, 'Lấy tệp PDF báo cáo thành công', inspection);
+    } catch (error) {
+      this.logger.error(`Error in getInspectionPdfByTaskAssignment: ${error.message}`, error.stack);
+      return new ApiResponse(false, `Lỗi khi lấy tệp PDF báo cáo: ${error.message}`, null);
     }
   }
 }

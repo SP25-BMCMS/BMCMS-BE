@@ -35,6 +35,8 @@ service UserService {
   rpc CheckStaffAreaMatchWithScheduleJob (CheckStaffAreaMatchWithScheduleJobRequest) returns (CheckStaffAreaMatchWithScheduleJobResponse);
   rpc GetUserByIdForTaskAssignmentDetail (UserRequest) returns (UserForTaskAssignmentResponse);
   rpc CheckUserExists (CheckUserExistsRequest) returns (CheckUserExistsResponse);
+  rpc GetStaffLeaderByCrackReport (GetStaffLeaderByCrackReportRequest) returns (StaffListResponse);
+  rpc GetStaffLeaderByScheduleJob (GetStaffLeaderByScheduleJobRequest) returns (StaffListResponse);
 }
 message GetApartmentByIdRequest {
   string apartmentId = 1;
@@ -92,26 +94,31 @@ message UserResponse {
   string email = 3;
   string phone = 4;
   string role = 5;
-  string dateOfBirth = 6;
-  string gender = 7;
-  UserDetailsResponse userDetails = 8;
-  repeated GetApartmentRepsonse apartments = 9;
-  string accountStatus = 10;
+  string roleLabel = 6;
+  string dateOfBirth = 7;
+  string gender = 8;
+  string genderLabel = 9;
+  UserDetailsResponse userDetails = 10;
+  repeated GetApartmentRepsonse apartments = 11;
+  string accountStatus = 12;
+  string accountStatusLabel = 13;
 }
 
 message UserDetailsResponse {
   string positionId = 1;
   string departmentId = 2;
   string staffStatus = 3;
-  string image = 4;
-  PositionDetails position = 5;
-  DepartmentDetails department = 6;
+  string staffStatusLabel = 4;
+  string image = 5;
+  PositionDetails position = 6;
+  DepartmentDetails department = 7;
 }
 
 message PositionDetails {
   string positionId = 1;
   string positionName = 2;
-  string description = 3;
+  string positionNameLabel = 3;
+  string description = 4;
 }
 
 message DepartmentDetails {
@@ -497,6 +504,14 @@ message CheckUserExistsResponse {
 message UserData {
   string userId = 1;
   string role = 2;
+}
+
+message GetStaffLeaderByCrackReportRequest {
+  string crackReportId = 1;
+}
+
+message GetStaffLeaderByScheduleJobRequest {
+  string scheduleJobId = 1;
 }
 
 

@@ -6,6 +6,8 @@ export const TASKS_PATTERN = {
     GET_BY_ID: 'get_task_by_id',
     CHANGE_STATUS: 'change_task_status',
     GET_BY_STATUS: 'get_tasks_by_status',
-    CREATE_TASK_ASSIGNMENT: 'create_task_assignment'
+    CREATE_TASK_ASSIGNMENT: 'create_task_assignment',
+    NOTIFICATION_THANKS_TO_RESIDENT: { cmd: 'notification-thanks-to-resident' },
+    GET_BY_TYPE: { cmd: 'get-tasks-by-type' }
 }
 

@@ -47,8 +47,8 @@ export class ChatbotController {
 
       this.logger.log(`Received test message from user ${userId}: ${body.message}`);
       const response = await this.chatbotService.testChat(body.message, userId);
-      this.logger.log(`Chatbot response: ${response}`);
-      return { message: response };
+      this.logger.log(`Chatbot response:`, response);
+      return response;
     } catch (error) {
       this.logger.error('Error in testChat:', error);
       if (error instanceof HttpException) {

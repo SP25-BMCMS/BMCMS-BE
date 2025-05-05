@@ -29,7 +29,7 @@ export class FeedbackService {
       if (!taskExists) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Task not found',
+          message: 'Không tìm thấy nhiệm vụ',
         })
       }
 
@@ -44,7 +44,7 @@ export class FeedbackService {
 
       return new ApiResponse<FeedbackResponseDto>(
         true,
-        'Feedback created successfully',
+        'Tạo phản hồi thành công',
         newFeedback,
       )
     } catch (error) {
@@ -53,12 +53,10 @@ export class FeedbackService {
       }
       throw new RpcException({
         statusCode: 400,
-        message: error.message || 'Failed to create feedback',
+        message: error.message || 'Không thể tạo phản hồi',
       })
     }
   }
-
-
 
   // Get All Feedbacks with Pagination
   async getAllFeedbacks(paginationParams?: PaginationParams) {
@@ -97,7 +95,7 @@ export class FeedbackService {
 
       return {
         statusCode: 200,
-        message: 'Feedbacks retrieved successfully',
+        message: 'Lấy danh sách phản hồi thành công',
         data: feedbacks,
         pagination: {
           total,
@@ -110,7 +108,7 @@ export class FeedbackService {
       console.error('Error retrieving feedbacks:', error)
       throw new RpcException({
         statusCode: 500,
-        message: error.message || 'Failed to retrieve feedbacks',
+        message: error.message || 'Không thể lấy danh sách phản hồi',
       })
     }
   }
@@ -125,16 +123,17 @@ export class FeedbackService {
 
       return new ApiResponse<FeedbackResponseDto[]>(
         true,
-        'Feedbacks retrieved successfully',
+        'Lấy danh sách phản hồi thành công',
         feedbacks,
       )
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
-        message: error.message || 'Failed to retrieve feedbacks by task ID',
+        message: error.message || 'Không thể lấy danh sách phản hồi theo ID nhiệm vụ',
       })
     }
   }
+
   async getFeedbacksByUserId(
     feedback_by: string,
   ): Promise<ApiResponse<FeedbackResponseDto[]>> {
@@ -145,16 +144,17 @@ export class FeedbackService {
 
       return new ApiResponse<FeedbackResponseDto[]>(
         true,
-        'Feedbacks retrieved successfully',
+        'Lấy danh sách phản hồi thành công',
         feedbacks,
       )
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
-        message: error.message || 'Failed to retrieve feedbacks by user ID',
+        message: error.message || 'Không thể lấy danh sách phản hồi theo ID người dùng',
       })
     }
   }
+
   // Delete Feedback
   async deleteFeedback(feedback_id: string): Promise<ApiResponse<null>> {
     try {
@@ -166,7 +166,7 @@ export class FeedbackService {
       if (!feedbackExists) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Feedback not found',
+          message: 'Không tìm thấy phản hồi',
         })
       }
 
@@ -176,7 +176,7 @@ export class FeedbackService {
 
       return new ApiResponse<null>(
         true,
-        'Feedback deleted successfully',
+        'Xóa phản hồi thành công',
         null,
       )
     } catch (error) {
@@ -185,7 +185,7 @@ export class FeedbackService {
       }
       throw new RpcException({
         statusCode: 400,
-        message: error.message || 'Failed to delete feedback',
+        message: error.message || 'Không thể xóa phản hồi',
       })
     }
   }
@@ -202,13 +202,13 @@ export class FeedbackService {
       if (!feedback) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Feedback not found',
+          message: 'Không tìm thấy phản hồi',
         })
       }
 
       return new ApiResponse<FeedbackResponseDto>(
         true,
-        'Feedback retrieved successfully',
+        'Lấy thông tin phản hồi thành công',
         feedback,
       )
     } catch (error) {
@@ -217,7 +217,7 @@ export class FeedbackService {
       }
       throw new RpcException({
         statusCode: 500,
-        message: error.message || 'Failed to retrieve feedback',
+        message: error.message || 'Không thể lấy thông tin phản hồi',
       })
     }
   }
@@ -237,7 +237,7 @@ export class FeedbackService {
       if (!feedbackExists) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Feedback not found',
+          message: 'Không tìm thấy phản hồi',
         })
       }
 
@@ -251,7 +251,7 @@ export class FeedbackService {
 
       return new ApiResponse<FeedbackResponseDto>(
         true,
-        `Feedback status updated to ${status} successfully`,
+        `Cập nhật trạng thái phản hồi thành ${status} thành công`,
         updatedFeedback,
       )
     } catch (error) {
@@ -260,7 +260,7 @@ export class FeedbackService {
       }
       throw new RpcException({
         statusCode: 500,
-        message: error.message || 'Failed to update feedback status',
+        message: error.message || 'Không thể cập nhật trạng thái phản hồi',
       })
     }
   }
@@ -279,7 +279,7 @@ export class FeedbackService {
       if (!feedbackExists) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Feedback not found',
+          message: 'Không tìm thấy phản hồi',
         })
       }
 
@@ -287,7 +287,7 @@ export class FeedbackService {
       if (rating < 1 || rating > 5) {
         throw new RpcException({
           statusCode: 400,
-          message: 'Rating must be between 1 and 5',
+          message: 'Đánh giá phải từ 1 đến 5',
         })
       }
 
@@ -299,7 +299,7 @@ export class FeedbackService {
 
       return new ApiResponse<FeedbackResponseDto>(
         true,
-        'Feedback rating updated successfully',
+        'Cập nhật đánh giá phản hồi thành công',
         updatedFeedback,
       )
     } catch (error) {
@@ -308,10 +308,11 @@ export class FeedbackService {
       }
       throw new RpcException({
         statusCode: 400,
-        message: error.message || 'Failed to update feedback rating',
+        message: error.message || 'Không thể cập nhật đánh giá phản hồi',
       })
     }
   }
+
   async updateFeedback(
     updateFeedbackDto: UpdateFeedbackDto,
   ): Promise<ApiResponse<FeedbackResponseDto>> {
@@ -326,7 +327,7 @@ export class FeedbackService {
       if (!feedbackExists) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Feedback not found',
+          message: 'Không tìm thấy phản hồi',
         })
       }
 
@@ -337,7 +338,7 @@ export class FeedbackService {
 
       return new ApiResponse<FeedbackResponseDto>(
         true,
-        'Feedback updated successfully',
+        'Cập nhật phản hồi thành công',
         updatedFeedback,
       )
     } catch (error) {
@@ -346,10 +347,8 @@ export class FeedbackService {
       }
       throw new RpcException({
         statusCode: 400,
-        message: error.message || 'Failed to update feedback',
+        message: error.message || 'Không thể cập nhật phản hồi',
       })
     }
   }
-
-
 } 

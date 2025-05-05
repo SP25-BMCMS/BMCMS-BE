@@ -1,4 +1,26 @@
 services:
+  rabbitmq:
+    image: rabbitmq:4.0.6-management
+    container_name: rabbitmq
+    hostname: rabbitmq
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      - '5672:5672' # AMQP protocol port
+      - '15672:15672' # Management UI port
+      - '15692:15692' # Prometheus metrics
+    env_file:
+      - rabbitmq.env
+    restart: always
+    environment:
+      NODE_ENV: production
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: '-rabbit log_levels [{connection,info}]'
+    command: >
+      /bin/bash -c " rabbitmq-plugins enable --offline rabbitmq_management && rabbitmq-server"
+    networks:
+      - my_network
   api_gateway:
     build:
       context: .
@@ -10,7 +32,8 @@ services:
       - my_network
     environment:
       NODE_ENV: production
-      RABBITMQ_URL: 'amqps://oibfiavv:G76Py5t5hullpvg2scvo-rkXmZGBdWhc@leopard.lmq.cloudamqp.com/oibfiavv'
+    depends_on:
+      - rabbitmq
     restart: always
 
   users_service:
@@ -22,7 +45,6 @@ services:
       - '3001:3001'
     environment:
       NODE_ENV: production
-      RABBITMQ_URL: 'amqps://oibfiavv:G76Py5t5hullpvg2scvo-rkXmZGBdWhc@leopard.lmq.cloudamqp.com/oibfiavv'
     networks:
       - my_network
     env_file:
@@ -42,7 +64,8 @@ services:
       - .env
     environment:
       NODE_ENV: production
-      RABBITMQ_URL: 'amqps://oibfiavv:G76Py5t5hullpvg2scvo-rkXmZGBdWhc@leopard.lmq.cloudamqp.com/oibfiavv'
+    depends_on:
+      - rabbitmq
     restart: always
 
   cracks_service:
@@ -56,7 +79,8 @@ services:
       - .env
     environment:
       NODE_ENV: production
-      RABBITMQ_URL: 'amqps://oibfiavv:G76Py5t5hullpvg2scvo-rkXmZGBdWhc@leopard.lmq.cloudamqp.com/oibfiavv'
+    depends_on:
+      - rabbitmq
     restart: always
     networks:
       - my_network
@@ -72,7 +96,8 @@ services:
       - .env
     environment:
       NODE_ENV: production
-      RABBITMQ_URL: 'amqps://oibfiavv:G76Py5t5hullpvg2scvo-rkXmZGBdWhc@leopard.lmq.cloudamqp.com/oibfiavv'
+    depends_on:
+      - rabbitmq
     restart: always
     networks:
       - my_network
@@ -88,7 +113,8 @@ services:
       - .env
     environment:
       NODE_ENV: production
-      RABBITMQ_URL: 'amqps://oibfiavv:G76Py5t5hullpvg2scvo-rkXmZGBdWhc@leopard.lmq.cloudamqp.com/oibfiavv'
+    depends_on:
+      - rabbitmq
     restart: always
     networks:
       - my_network
@@ -104,8 +130,8 @@ services:
       - .env
     environment:
       NODE_ENV: production
-      RABBITMQ_URL: 'amqps://oibfiavv:G76Py5t5hullpvg2scvo-rkXmZGBdWhc@leopard.lmq.cloudamqp.com/oibfiavv'
-      REDIS_URL: 'rediss://default:AUZEAAIjcDFjMzgxYjUyZDJjMmI0MzA3OTg4ZDZhMmVhOGRhOGRhZnAxMA@massive-gator-17988.upstash.io:6379'
+    depends_on:
+      - rabbitmq
     restart: always
     networks:
       - my_network
@@ -121,15 +147,19 @@ services:
       - .env
     environment:
       NODE_ENV: production
-      RABBITMQ_URL: 'amqps://oibfiavv:G76Py5t5hullpvg2scvo-rkXmZGBdWhc@leopard.lmq.cloudamqp.com/oibfiavv'
       REDIS_URL: 'rediss://default:AUZEAAIjcDFjMzgxYjUyZDJjMmI0MzA3OTg4ZDZhMmVhOGRhOGRhZnAxMA@massive-gator-17988.upstash.io:6379'
     restart: always
+    depends_on:
+      - rabbitmq
     networks:
       - my_network
 
 networks:
   my_network:
     driver: bridge
+
+volumes:
+  rabbitmq_data:
 # local
 # services:
 #   rabbitmq:

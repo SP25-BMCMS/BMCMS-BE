@@ -18,6 +18,8 @@ import { catchError, retry, timeout } from 'rxjs/operators'
 import { AREAS_PATTERN } from '@app/contracts/Areas/Areas.patterns'
 import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
 import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
+import { GetTasksByTypeDto } from '@app/contracts/tasks/get-tasks-by-type.dto'
+import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
 
 const CRACK_PATTERNS = {
   GET_DETAILS: { cmd: 'get-crack-report-by-id' }
@@ -54,6 +56,23 @@ interface UserService {
     message: string;
     data?: { userId: string; role: string } | null;
   }>;
+
+  // Thêm phương thức để lấy thông tin người dùng
+  getUserById(data: { userId: string }): Observable<{
+    userId: string;
+    username: string;
+    email: string;
+    phone: string;
+    role: string;
+    roleLabel: string;
+    dateOfBirth: string;
+    gender: string;
+    genderLabel: string;
+    userDetails: any;
+    apartments: any[];
+    accountStatus: string;
+    accountStatusLabel: string;
+  }>;
 }
 
 interface AreaManagerResponse {
@@ -83,7 +102,8 @@ export class TaskService {
     @Inject('SCHEDULE_CLIENT') private readonly scheduleClient: ClientProxy,
     @Inject('CRACK_CLIENT') private readonly crackClient: ClientProxy,
     @Inject('BUILDINGS_CLIENT') private readonly buildingsClient: ClientProxy,
-    private taskAssignmentService: TaskAssignmentsService
+    private taskAssignmentService: TaskAssignmentsService,
+    @Inject('NOTIFICATION_CLIENT') private readonly notificationsClient: ClientProxy
   ) {
     this.userService = this.usersClient.getService<UserService>('UserService')
     console.log('TaskService initialized with all clients')
@@ -91,24 +111,36 @@ export class TaskService {
     // Add debug info for clients
     this.scheduleClient.connect().catch(err => console.error('Error connecting to schedule service:', err));
     this.buildingsClient.connect().catch(err => console.error('Error connecting to buildings service:', err));
+    this.notificationsClient.connect().catch(err => console.error('Error connecting to notifications service:', err));
   }
 
-  // Helper để gọi crackClient với retry và timeout
+  // Improve helper method to handle timeouts better
   private async callCrackService(pattern: any, data: any) {
     try {
+      console.log(`[TaskService] Calling crack service with pattern ${JSON.stringify(pattern)} and data:`, typeof data === 'string' ? data : JSON.stringify(data));
       return await firstValueFrom(
         this.crackClient.send(pattern, data).pipe(
-          timeout(5000), // Tăng timeout lên 5 giây
-          retry(2),      // Thử lại 2 lần nếu thất bại
+          timeout(10000), // Increase timeout to 10 seconds
+          retry(3),      // Retry 3 times
           catchError(err => {
-            console.error(`Error calling crack service with pattern ${JSON.stringify(pattern)}: `, err)
-            return throwError(() => err)
+            console.error(`Error calling crack service with pattern ${JSON.stringify(pattern)}: `, err);
+            // Return a minimal response instead of throwing an error
+            return of({
+              isSuccess: false,
+              message: `Error retrieving data from crack service: ${err.message}`,
+              data: null
+            });
           })
         )
-      )
+      );
     } catch (error) {
-      console.error(`Failed to get response from crack service after retries: `, error)
-      throw error
+      console.error(`Failed to get response from crack service after retries: `, error);
+      // Return a minimal response instead of throwing an error
+      return {
+        isSuccess: false,
+        message: `Failed to communicate with crack service: ${error.message}`,
+        data: null
+      };
     }
   }
 
@@ -125,13 +157,13 @@ export class TaskService {
       })
       return {
         statusCode: 201,
-        message: 'Task created successfully',
+        message: 'Nhiệm vụ đã được tạo thành công',
         data: newTask,
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Task creation failed',
+        message: 'Không thể tạo nhiệm vụ',
       })
     }
   }
@@ -150,13 +182,13 @@ export class TaskService {
       })
       return {
         statusCode: 200,
-        message: 'Task updated successfully',
+        message: 'Nhiệm vụ đã được cập nhật thành công',
         data: updatedTask,
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Task update failed',
+        message: 'Không thể cập nhật nhiệm vụ',
       })
     }
   }
@@ -169,7 +201,7 @@ export class TaskService {
       if (!task) {
         return {
           statusCode: 404,
-          message: 'Task not found',
+          message: 'Không tìm thấy nhiệm vụ',
         }
       }
 
@@ -187,7 +219,7 @@ export class TaskService {
                 console.error(`Error fetching crack info for task ${task.task_id}:`, err)
                 return of({
                   statusCode: 400,
-                  message: 'No crackReport found',
+                  message: 'Không tìm thấy báo cáo vết nứt',
                   data: null,
                 })
               })
@@ -205,7 +237,7 @@ export class TaskService {
                 console.error(`Error fetching schedule job info for task ${task.task_id}:`, err)
                 return of({
                   statusCode: 400,
-                  message: 'No schedule job found',
+                  message: 'Không tìm thấy lịch trình',
                   data: null,
                 })
               })
@@ -229,13 +261,13 @@ export class TaskService {
 
       return {
         statusCode: 200,
-        message: 'Task retrieved successfully',
+        message: 'Lấy thông tin nhiệm vụ thành công',
         data: result,
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving task',
+        message: 'Lỗi khi lấy thông tin nhiệm vụ',
       })
     }
   }
@@ -248,13 +280,13 @@ export class TaskService {
       })
       return {
         statusCode: 200,
-        message: 'Task deleted successfully',
+        message: 'Nhiệm vụ đã được xóa thành công',
         data: deletedTask,
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Task deletion failed',
+        message: 'Không thể xóa nhiệm vụ',
       })
     }
   }
@@ -298,7 +330,7 @@ export class TaskService {
       if (!task) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Task not found',
+          message: 'Không tìm thấy nhiệm vụ',
         })
       }
       const status: Status = changeTaskStatusDto as Status // This assumes changeTaskStatusDto is a valid status string
@@ -313,7 +345,7 @@ export class TaskService {
 
       return {
         statusCode: 200,
-        message: 'Task status updated successfully',
+        message: 'Cập nhật trạng thái nhiệm vụ thành công',
         data: updatedTask,
       }
     } catch (error) {
@@ -322,7 +354,7 @@ export class TaskService {
       // Return a meaningful response for the error
       throw new RpcException({
         statusCode: 400,
-        message: 'Error updating task status',
+        message: 'Lỗi khi cập nhật trạng thái nhiệm vụ',
         error: error.message, // Include the error message for debugging
       })
     }
@@ -376,7 +408,7 @@ export class TaskService {
                   console.error(`Error fetching crack info for task ${task.task_id}:`, err)
                   return of({
                     statusCode: 400,
-                    message: 'No crackReport found',
+                    message: 'Không tìm thấy báo cáo vết nứt',
                     data: null,
                   })
                 })
@@ -394,7 +426,7 @@ export class TaskService {
                   console.error(`Error fetching schedule job info for task ${task.task_id}:`, err)
                   return of({
                     statusCode: 400,
-                    message: 'No schedule job found',
+                    message: 'Không tìm thấy lịch trình',
                     data: null,
                   })
                 })
@@ -433,13 +465,13 @@ export class TaskService {
         page,
         limit,
         200,
-        tasks.length > 0 ? 'Tasks retrieved successfully' : 'No tasks found',
+        tasks.length > 0 ? 'Lấy danh sách nhiệm vụ thành công' : 'Không tìm thấy nhiệm vụ nào',
       )
     } catch (error) {
       console.error('Error retrieving tasks:', error)
       throw new RpcException({
         statusCode: 500,
-        message: `Error retrieving tasks: ${error.message}`,
+        message: `Lỗi khi lấy danh sách nhiệm vụ: ${error.message}`,
       })
     }
   }
@@ -468,13 +500,13 @@ export class TaskService {
 
       return {
         statusCode: 200,
-        message: 'Tasks by status fetched successfully',
+        message: 'Lấy danh sách nhiệm vụ theo trạng thái thành công',
         data: tasks,
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving tasks by status',
+        message: 'Lỗi khi lấy danh sách nhiệm vụ theo trạng thái',
       })
     }
   }
@@ -493,17 +525,17 @@ export class TaskService {
 
       if (!task) {
         console.log(`No task found with ID ${taskId}`)
-        return new ApiResponse(false, 'Task not found', null)
+        return new ApiResponse(false, 'Không tìm thấy nhiệm vụ', null)
       }
 
       console.log('Found task:', JSON.stringify(task, null, 2))
 
-      return new ApiResponse(true, 'Crack ID retrieved successfully', {
+      return new ApiResponse(true, 'Lấy ID vết nứt thành công', {
         crackReportId: task.crack_id
       })
     } catch (error) {
       console.error(`Error retrieving crack ID for task ${taskId}:`, error)
-      return new ApiResponse(false, 'Error retrieving crack ID', null)
+      return new ApiResponse(false, 'Lỗi khi lấy ID vết nứt', null)
     }
   }
 
@@ -512,7 +544,7 @@ export class TaskService {
       // Validate input
       if (!scheduleJobId) {
         throw new RpcException(
-          new ApiResponse(false, 'scheduleJobId là bắt buộc')
+          new ApiResponse(false, 'Yêu cầu scheduleJobId')
         );
       }
 
@@ -525,7 +557,7 @@ export class TaskService {
 
       // Nếu task đã tồn tại, trả về luôn
       if (existingTask) {
-        console.log(`Task đã tồn tại cho schedule job ${scheduleJobId}, lấy assignment hiện có`);
+        console.log(`Task already exists for this schedule job ${scheduleJobId}, lấy assignment hiện có`);
 
         const existingAssignment = await this.prisma.taskAssignment.findFirst({
           where: { task_id: existingTask.task_id }
@@ -533,12 +565,12 @@ export class TaskService {
 
         return new ApiResponse(
           true,
-          'Task đã tồn tại cho schedule job này',
+          'Nhiệm vụ đã tồn tại cho lịch trình này',
           {
             task: existingTask,
             taskAssignment: existingAssignment ? {
               statusCode: 200,
-              message: 'Assignment đã tồn tại',
+              message: 'Phân công đã tồn tại',
               data: existingAssignment
             } : null,
             staffLeader: existingAssignment ? {
@@ -551,7 +583,7 @@ export class TaskService {
       // Biến để lưu trữ dữ liệu
       let matchedStaffId = staffId; // Sử dụng staffId được cung cấp (nếu có)
       let buildingDetailId: string = null;
-      let buildingName: string = "Unknown Building";
+      let buildingName: string = "Tòa nhà không xác định";
       let buildingAreaName: string = null;
 
       // Sử dụng transaction để đảm bảo toàn vẹn dữ liệu
@@ -585,7 +617,7 @@ export class TaskService {
                         console.error('All patterns failed:', err3);
                         return throwError(() => new RpcException({
                           statusCode: 404,
-                          message: `Không tìm thấy lịch công việc: ${err.message}`
+                          message: `Không tìm thấy lịch trình: ${err.message}`
                         }));
                       })
                     );
@@ -599,7 +631,7 @@ export class TaskService {
           console.error('Invalid schedule job response:', JSON.stringify(scheduleJobResponse));
           throw new RpcException({
             statusCode: 404,
-            message: 'Không tìm thấy lịch công việc hoặc định dạng dữ liệu không hợp lệ'
+            message: 'Không tìm thấy lịch trình hoặc định dạng dữ liệu không hợp lệ'
           });
         }
 
@@ -618,7 +650,7 @@ export class TaskService {
         if (!buildingDetailId) {
           throw new RpcException({
             statusCode: 400,
-            message: 'Lịch công việc không có thông tin tòa nhà'
+            message: 'Lịch trình không có thông tin tòa nhà'
           });
         }
 
@@ -671,7 +703,7 @@ export class TaskService {
         buildingName = buildingData.name ||
           buildingData.buildingName ||
           buildingDetailResponse.name ||
-          "Unknown Building";
+          "Tòa nhà không xác định";
 
         // Trích xuất thông tin khu vực từ nhiều cấu trúc lồng nhau có thể có
         let areaId = null;
@@ -686,10 +718,10 @@ export class TaskService {
           areaName = buildingData.area.name || buildingData.area.areaName;
         } else if (buildingData.areaId) {
           areaId = buildingData.areaId;
-          areaName = buildingData.areaName || "Unknown Area";
+          areaName = buildingData.areaName || "Khu vực không xác định";
         } else if (buildingDetailResponse.areaId) {
           areaId = buildingDetailResponse.areaId;
-          areaName = buildingDetailResponse.areaName || "Unknown Area";
+          areaName = buildingDetailResponse.areaName || "Khu vực không xác định";
         }
 
         // Sử dụng buildingAreaName từ context hiện tại nếu có
@@ -742,7 +774,7 @@ export class TaskService {
             } else {
               throw new RpcException({
                 statusCode: 404,
-                message: `Không tìm thấy Staff Leader cho khu vực ${buildingAreaName}`
+                message: `Không tìm thấy Trưởng nhóm cho khu vực ${buildingAreaName}`
               });
             }
           } catch (error) {
@@ -751,7 +783,7 @@ export class TaskService {
             }
             throw new RpcException({
               statusCode: 500,
-              message: `Lỗi khi tìm Staff Leader: ${error.message}`
+              message: `Lỗi khi tìm Trưởng nhóm: ${error.message}`
             });
           }
         }
@@ -759,14 +791,14 @@ export class TaskService {
         if (!matchedStaffId) {
           throw new RpcException({
             statusCode: 404,
-            message: 'Không tìm thấy Staff Leader để phân công'
+            message: 'Không tìm thấy Trưởng nhóm để phân công'
           });
         }
 
         // BƯỚC 5: Tạo task cho schedule job
         console.log(`Creating task for schedule job ${scheduleJobId} in building ${buildingName}`);
 
-        const taskTitle = `Bảo trì định kỳ tòa nhà ${buildingName}`;
+        const taskTitle = `Bảo trì định kỳ cho tòa nhà ${buildingName}`;
         const taskDescription = `Phân công bảo trì định kỳ cho tòa nhà ${buildingName}`;
 
         const createTaskResponse = await this.createTask({
@@ -782,7 +814,7 @@ export class TaskService {
 
         if (!createTaskResponse?.data?.task_id) {
           throw new RpcException(
-            new ApiResponse(false, `Lỗi khi tạo task: ${JSON.stringify(createTaskResponse)}`)
+            new ApiResponse(false, `Lỗi khi tạo nhiệm vụ: ${JSON.stringify(createTaskResponse)}`)
           );
         }
 
@@ -805,7 +837,7 @@ export class TaskService {
           if (taskAssignmentResponse?.statusCode >= 400) {
             console.error(`Error assigning task: ${JSON.stringify(taskAssignmentResponse)}`);
             throw new RpcException(
-              new ApiResponse(false, taskAssignmentResponse.message || 'Lỗi phân công task')
+              new ApiResponse(false, taskAssignmentResponse.message || 'Lỗi khi phân công nhiệm vụ')
             );
           }
 
@@ -814,7 +846,7 @@ export class TaskService {
           // Trả về kết quả thành công
           return new ApiResponse(
             true,
-            'Task đã được tạo và phân công cho Staff Leader thành công',
+            'Nhiệm vụ đã được tạo và phân công cho Trưởng nhóm thành công',
             {
               task: createTaskResponse.data,
               taskAssignment: taskAssignmentResponse,
@@ -831,7 +863,7 @@ export class TaskService {
           });
 
           throw new RpcException(
-            new ApiResponse(false, `Lỗi phân công task: ${assignmentError.message}`)
+            new ApiResponse(false, `Lỗi khi phân công nhiệm vụ: ${assignmentError.message}`)
           );
         }
       }, {
@@ -845,6 +877,510 @@ export class TaskService {
       throw new RpcException(
         new ApiResponse(false, `Lỗi: ${error.message}`)
       );
+    }
+  }
+
+  async notificationThankstoResident(taskId: string, scheduleJobId?: string) {
+    try {
+      console.log(`[TaskService] Processing thanks notification for task: ${taskId}`);
+
+      // Step 1: Verify the task exists
+      const task = await this.prisma.task.findUnique({
+        where: { task_id: taskId }
+      });
+
+      if (!task) {
+        throw new RpcException(
+          new ApiResponse(false, `Không tìm thấy nhiệm vụ với ID ${taskId}`)
+        );
+      }
+
+      // Step 2: Check if task has crack_id
+      if (!task.crack_id) {
+        throw new RpcException(
+          new ApiResponse(false, 'Nhiệm vụ không có báo cáo vết nứt liên kết')
+        );
+      }
+
+      // Initialize default values in case we can't get crack report details
+      let residentId = null;
+      let crackPosition = "vị trí không xác định";
+
+      // Step 3: Get crack report details via crack microservice
+      console.log(`[TaskService] Getting crack report details for ID: ${task.crack_id}`);
+
+      try {
+        const crackResponse = await this.callCrackService(
+          CRACK_PATTERNS.GET_DETAILS,
+          task.crack_id
+        );
+
+        if (crackResponse?.isSuccess && crackResponse?.data && crackResponse.data.length > 0) {
+          const crackReport = crackResponse.data[0];
+
+          // Extract just the userId as a string, not the full object
+          residentId = crackReport.reportedBy;
+
+          // Handle if reportedBy is an object instead of string
+          if (typeof residentId === 'object' && residentId !== null) {
+            residentId = residentId.userId || residentId.id || null;
+          }
+
+          // Get crack position if available
+          crackPosition = crackReport.position || "vị trí không xác định";
+
+          console.log(`[TaskService] Successfully retrieved crack report details. Resident ID: ${residentId}, Position: ${crackPosition}`);
+        } else {
+          console.warn(`[TaskService] Couldn't retrieve crack details but will continue processing: ${crackResponse?.message}`);
+        }
+      } catch (crackError) {
+        console.error('[TaskService] Error getting crack report details but continuing:', crackError);
+        // Continue processing even if we can't get crack details
+      }
+
+      // If we still don't have a residentId, try to find it from the task's assignments
+      if (!residentId) {
+        try {
+          const taskAssignment = await this.prisma.taskAssignment.findFirst({
+            where: { task_id: taskId }
+          });
+
+          if (taskAssignment) {
+            console.log(`[TaskService] Found task assignment, using employee_id as fallback for resident: ${taskAssignment.employee_id}`);
+            residentId = taskAssignment.employee_id;
+          }
+        } catch (assignmentError) {
+          console.error('[TaskService] Error finding task assignment:', assignmentError);
+        }
+      }
+
+      // If we still don't have a residentId, we can't proceed
+      if (!residentId) {
+        throw new RpcException(
+          new ApiResponse(false, 'Không thể xác định ID cư dân cho thông báo')
+        );
+      }
+
+      // Step 4: Update task status to Completed
+      await this.prisma.task.update({
+        where: { task_id: taskId },
+        data: { status: Status.Completed }
+      });
+
+      console.log(`[TaskService] Updated task ${taskId} status to Completed`);
+
+      // Step 5: Update crack report status to Completed
+      // Add suppressNotification flag to prevent automatic notifications from the crack service
+      try {
+        const crackUpdateResponse = await this.callCrackService(
+          { cmd: 'update-crack-report-for-all-status' },
+          {
+            crackReportId: task.crack_id,
+            dto: {
+              status: 'Completed',
+              suppressNotification: true // Add this flag to prevent automatic notification
+            }
+          }
+        );
+
+        if (crackUpdateResponse.isSuccess) {
+          console.log(`[TaskService] Updated crack report status to Completed: ${JSON.stringify(crackUpdateResponse)}`);
+        } else {
+          console.warn(`[TaskService] Failed to update crack report status but continuing: ${crackUpdateResponse.message}`);
+        }
+      } catch (crackUpdateError) {
+        console.error('[TaskService] Error updating crack report status:', crackUpdateError);
+        // Continue with the process even if crack update fails
+      }
+
+      // Step 6: Send maintenance email notification if scheduleJobId is provided
+      let emailSent = false;
+      if (scheduleJobId) {
+        try {
+          console.log(`[TaskService] Sending maintenance email for scheduleJobId: ${scheduleJobId} to resident: ${residentId}`);
+
+          // Get schedule job details using proper pattern constant
+          const scheduleJobResponse = await firstValueFrom(
+            this.scheduleClient.send(
+              SCHEDULEJOB_PATTERN.GET_BY_ID,
+              { schedule_job_id: scheduleJobId }
+            ).pipe(
+              catchError(error => {
+                console.error('[TaskService] Error fetching schedule job details:', error);
+                throw new RpcException(
+                  new ApiResponse(false, `Không thể lấy thông tin lịch công việc: ${error.message}`)
+                );
+              })
+            )
+          );
+
+          if (!scheduleJobResponse || !scheduleJobResponse.isSuccess) {
+            console.warn(`[TaskService] Schedule job not found or invalid response`);
+            throw new RpcException(
+              new ApiResponse(false, 'Không tìm thấy thông tin lịch công việc')
+            );
+          }
+
+          const scheduleJob = scheduleJobResponse.data;
+
+          // Get building details
+          const buildingDetailResponse = await firstValueFrom(
+            this.buildingsClient.send(
+              BUILDINGDETAIL_PATTERN.GET_BY_ID,
+              { buildingDetailId: scheduleJob.buildingDetailId }
+            ).pipe(
+              catchError(error => {
+                console.error('[TaskService] Error fetching building details:', error);
+                throw new RpcException(
+                  new ApiResponse(false, `Không thể lấy thông tin tòa nhà: ${error.message}`)
+                );
+              })
+            )
+          );
+
+          console.log(`[TaskService] Building detail response:`, buildingDetailResponse);
+
+          if (!buildingDetailResponse) {
+            console.warn(`[TaskService] Building detail response is null or undefined`);
+            throw new RpcException(
+              new ApiResponse(false, 'Không nhận được phản hồi từ building service')
+            );
+          }
+
+          // Kiểm tra cấu trúc phản hồi
+          if (!buildingDetailResponse.isSuccess && !buildingDetailResponse.data) {
+            console.warn(`[TaskService] Building detail not found or invalid response structure: ${JSON.stringify(buildingDetailResponse)}`);
+            throw new RpcException(
+              new ApiResponse(false, 'Không tìm thấy thông tin chi tiết tòa nhà hoặc dữ liệu không hợp lệ')
+            );
+          }
+
+          // Nếu không có isSuccess nhưng có data, coi như thành công
+          const buildingDetail = buildingDetailResponse.data || buildingDetailResponse;
+
+          if (!buildingDetail) {
+            console.warn(`[TaskService] Building detail data is missing`);
+            throw new RpcException(
+              new ApiResponse(false, 'Dữ liệu chi tiết tòa nhà bị thiếu')
+            );
+          }
+
+          // Lấy thông tin cư dân thực sự từ UserService thay vì tạo dữ liệu mẫu
+          console.log(`[TaskService] Getting resident information for ID: ${residentId}`);
+          const residentResponse = await firstValueFrom(
+            this.userService.getUserById({ userId: residentId }).pipe(
+              catchError(error => {
+                console.error('[TaskService] Error fetching resident details:', error);
+                throw new RpcException(
+                  new ApiResponse(false, `Không thể lấy thông tin cư dân: ${error.message}`)
+                );
+              })
+            )
+          );
+
+          if (!residentResponse) {
+            console.warn(`[TaskService] User service returned null or undefined response`);
+            throw new RpcException(
+              new ApiResponse(false, 'Không nhận được phản hồi từ user service')
+            );
+          }
+
+          // Debug thông tin người dùng trả về
+          console.log(`[TaskService] Got resident info with email: ${residentResponse.email}`);
+
+          // Kiểm tra email có tồn tại không
+          if (!residentResponse.email) {
+            console.warn(`[TaskService] User ${residentId} has no email address`);
+            throw new RpcException(
+              new ApiResponse(false, 'Cư dân không có địa chỉ email')
+            );
+          }
+
+          // Sử dụng thông tin cư dân thực từ UserService
+          const resident = {
+            userId: residentId,
+            email: residentResponse.email,
+            username: residentResponse.username,
+            name: residentResponse.username,
+            apartmentNumber: residentResponse.apartments && residentResponse.apartments.length > 0
+              ? residentResponse.apartments[0].apartmentName
+              : '101'
+          };
+
+          // Get resident's name
+          const residentName = resident.username || resident.name || 'Cư dân';
+
+          // Get location details for the resident
+          const locationDetails = buildingDetail.locationDetails?.find(
+            loc => loc.roomNumber === resident.apartmentNumber
+          );
+
+          // Format times for display
+          const startTime = scheduleJob.start_date
+            ? new Date(scheduleJob.start_date).toLocaleDateString('vi-VN', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })
+            : 'Chưa xác định';
+
+          const endTime = scheduleJob.end_date
+            ? new Date(scheduleJob.end_date).toLocaleDateString('vi-VN', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })
+            : 'Chưa xác định';
+
+          const maintenanceDate = scheduleJob.run_date
+            ? new Date(scheduleJob.run_date).toLocaleDateString('vi-VN', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })
+            : 'Chưa xác định';
+
+          console.log(`[TaskService] Sending email to resident: ${residentName} (${resident.email}) for maintenance from ${startTime} to ${endTime}`);
+
+          // Prepare email data
+          const emailData = {
+            to: resident.email,
+            residentName: residentName,
+            buildingName: buildingDetail.name || buildingDetail.building?.name || 'Chưa xác định',
+            maintenanceDate: scheduleJob.run_date,
+            startTime: startTime,
+            endTime: endTime,
+            maintenanceType: scheduleJob.schedule?.schedule_name || 'Bảo trì công trình',
+            description: scheduleJob.schedule?.description || 'Không có mô tả chi tiết',
+            floor: locationDetails?.floorNumber?.toString() || buildingDetail.numberFloor?.toString() || buildingDetail.building?.numberFloor?.toString() || 'Chưa xác định',
+            area: buildingDetail.area?.name || buildingDetail.building?.area?.name || 'Chưa xác định',
+            unit: locationDetails?.roomNumber || resident.apartmentNumber || 'Chưa xác định',
+          };
+
+          console.log(`[TaskService] Preparing to send email with data:`, JSON.stringify(emailData));
+
+          // Send email notification using the appropriate client and pattern
+          await firstValueFrom(
+            this.notificationsClient.emit(
+              NOTIFICATIONS_PATTERN.SEND_MAINTENANCE_SCHEDULE_EMAIL,
+              emailData
+            )
+          );
+
+          emailSent = true;
+          console.log(`[TaskService] Maintenance email sent successfully to resident ${residentName} (${resident.email})`);
+        } catch (error) {
+          console.error('[TaskService] Error sending maintenance email:', error);
+          // Continue with the process even if email fails
+        }
+      }
+
+      // Return the data needed for notification - make sure to return just the userId string
+      return new ApiResponse(true, 'Xử lý nhiệm vụ và báo cáo vết nứt thành công', {
+        taskId,
+        scheduleJobId: scheduleJobId || task.schedule_job_id,
+        crackReportId: task.crack_id,
+        residentId: residentId, // This is now a string, not an object
+        crackPosition: crackPosition,
+        taskStatus: 'Completed',
+        crackReportStatus: 'Completed',
+        emailSent: emailSent
+      });
+    } catch (error) {
+      console.error('[TaskService] Error in notificationThankstoResident:', error);
+
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      throw new RpcException(
+        new ApiResponse(false, `Lỗi khi xử lý thông báo: ${error.message}`)
+      );
+    }
+  }
+
+  async getTasksByType(query: GetTasksByTypeDto) {
+    console.log(`[TaskService] Getting tasks by type with query:`, query.managerId);
+    const startTime = performance.now();
+    try {
+      // Default values if not provided
+      const page = Math.max(1, query?.page || 1);
+      const limit = Math.min(50, Math.max(1, query?.limit || 10));
+      const statusFilter = query?.statusFilter;
+      const taskType = query?.taskType || 'all';
+      const managerId = query?.managerId;
+
+      // If manager ID is provided, first get all buildings managed by this manager
+      let buildingDetailIds = [];
+      if (managerId) {
+        try {
+          console.log(`Fetching buildings for manager with ID: ${managerId}`);
+          const buildingsResponse = await firstValueFrom(
+            this.buildingsClient.send(BUILDINGS_PATTERN.GET_BY_MANAGER_ID, { managerId }).pipe(
+              timeout(10000), // 10 seconds timeout
+              catchError(error => {
+                console.error(`Error fetching buildings for manager ${managerId}:`, error);
+                return of({ statusCode: 500, data: [] });
+              })
+            )
+          );
+
+          if (buildingsResponse && buildingsResponse.statusCode === 200 && buildingsResponse.data && buildingsResponse.data.length > 0) {
+            // Extract all building detail IDs from the buildings
+            const buildingDetails = buildingsResponse.data.flatMap(building => building.buildingDetails || []);
+            buildingDetailIds = buildingDetails.map(detail => detail.buildingDetailId);
+            
+            console.log(`Found ${buildingDetailIds.length} building details for manager ${managerId}`);
+          } else {
+            console.warn(`No buildings found for manager ${managerId}`);
+          }
+        } catch (error) {
+          console.error(`Error getting buildings for manager ${managerId}:`, error);
+        }
+      }
+
+      // Calculate skip value for pagination
+      const skip = (page - 1) * limit;
+
+      // Build where clause for filtering
+      let whereClause: any = {};
+
+      // Add status filter if provided
+      if (statusFilter) {
+        whereClause.status = statusFilter as Status;
+      }
+
+      // Add task type filter
+      if (taskType !== 'all') {
+        if (taskType === 'crack') {
+          whereClause.crack_id = {
+            not: ''
+          };
+        } else if (taskType === 'schedule') {
+          whereClause.schedule_job_id = {
+            not: ''
+          };
+        }
+      }
+
+      // Get paginated data with caching
+      const [tasks, total] = await Promise.all([
+        this.prisma.task.findMany({
+          where: whereClause,
+          skip,
+          take: limit,
+          orderBy: { created_at: 'desc' },
+          include: {
+            taskAssignments: true,
+            workLogs: true,
+            feedbacks: true
+          }
+        }),
+        this.prisma.task.count({
+          where: whereClause
+        }),
+      ]);
+
+      const dbQueryTime = performance.now() - startTime;
+      console.log(`Database query time: ${dbQueryTime.toFixed(2)}ms`);
+
+      // Fetch both crack info and schedule job info for each task
+      const additionalInfoPromises = tasks.map(task => {
+        const promises = [];
+
+        if (task.crack_id) {
+          promises.push(
+            firstValueFrom(
+              this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id).pipe(
+                timeout(15000),
+                catchError(err => {
+                  console.error(`Error fetching crack info for task ${task.task_id}:`, err);
+                  return of({
+                    statusCode: 400,
+                    message: 'Không tìm thấy báo cáo vết nứt',
+                    data: null,
+                  });
+                })
+              )
+            ).then(response => ({ type: 'crack', data: response }))
+          );
+        }
+
+        if (task.schedule_job_id) {
+          promises.push(
+            firstValueFrom(
+              this.scheduleClient.send(SCHEDULEJOB_PATTERN.GET_BY_ID, { schedule_job_id: task.schedule_job_id }).pipe(
+                timeout(15000),
+                catchError(err => {
+                  console.error(`Error fetching schedule job info for task ${task.task_id}:`, err);
+                  return of({
+                    statusCode: 400,
+                    message: 'Không tìm thấy lịch trình',
+                    data: null,
+                  });
+                })
+              )
+            ).then(response => ({ type: 'scheduleJob', data: response }))
+          );
+        }
+
+        return Promise.all(promises);
+      });
+
+      const additionalInfoStartTime = performance.now();
+      const additionalInfos = await Promise.all(additionalInfoPromises);
+      const additionalInfoTime = performance.now() - additionalInfoStartTime;
+      console.log(`Additional info fetch time: ${additionalInfoTime.toFixed(2)}ms`);
+
+      // Attach all available info to tasks
+      tasks.forEach((task, index) => {
+        const infos = additionalInfos[index];
+        infos.forEach(info => {
+          if (info?.type === 'crack') {
+            task['crackInfo'] = info.data;
+          }
+          if (info?.type === 'scheduleJob') {
+            task['schedulesjobInfo'] = info.data;
+          }
+        });
+      });
+
+      // Filter tasks by building details if manager ID was provided
+      let filteredTasks = tasks;
+      if (managerId && buildingDetailIds.length > 0) {
+        filteredTasks = tasks.filter(task => {
+          // Check if the task has building information in crackInfo or schedulesjobInfo
+          const taskAny = task as any; // Cast to any to access dynamic properties
+          const hasBuildingInCrackInfo = taskAny.crackInfo?.data?.some?.(report => 
+            report.buildingDetailId && buildingDetailIds.includes(report.buildingDetailId)
+          );
+          
+          const hasBuildingInScheduleJob = taskAny.schedulesjobInfo?.data?.buildingDetailId && 
+            buildingDetailIds.includes(taskAny.schedulesjobInfo.data.buildingDetailId);
+            
+          return hasBuildingInCrackInfo || hasBuildingInScheduleJob;
+        });
+        
+        console.log(`Filtered ${tasks.length} tasks to ${filteredTasks.length} tasks for manager ${managerId}`);
+      }
+
+      const totalTime = performance.now() - startTime;
+      console.log(`Total execution time: ${totalTime.toFixed(2)}ms`);
+
+      return new PaginationResponseDto(
+        filteredTasks,
+        filteredTasks.length, // Update the total count to match the filtered results
+        page,
+        limit,
+        200,
+        filteredTasks.length > 0 ? 'Lấy danh sách nhiệm vụ thành công' : 'Không tìm thấy nhiệm vụ nào',
+      );
+    } catch (error) {
+      console.error('Error retrieving tasks by type:', error);
+      throw new RpcException({
+        statusCode: 500,
+        message: `Lỗi khi lấy danh sách nhiệm vụ: ${error.message}`,
+      });
     }
   }
 }

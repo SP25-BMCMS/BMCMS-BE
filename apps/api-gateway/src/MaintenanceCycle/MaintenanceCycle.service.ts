@@ -4,6 +4,7 @@ import { MAINTENANCE_CYCLE_PATTERN } from '@app/contracts/MaintenanceCycle/Maint
 import { CreateMaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/create-MaintenanceCycle.dto'
 import { UpdateMaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/update-MaintenanceCycle.dto'
 import { MaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/MaintenanceCycle.dto'
+import { MaintenanceCycleHistoryDto } from '@app/contracts/MaintenanceCycle/MaintenanceCycleHistory.dto'
 import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { PaginationParams, PaginationResponseDto } from '@app/contracts/Pagination/pagination.dto'
 import { DeviceType, Frequency, MaintenanceBasis } from '@prisma/client-schedule'
@@ -51,7 +52,12 @@ export class MaintenanceCycleService {
   }
 
   async delete(id: string): Promise<ApiResponse<MaintenanceCycleDto>> {
-    this.logger.log(`Sending delete re  quest to microservice: ${id}`)
+    this.logger.log(`Sending delete request to microservice: ${id}`)
     return this.client.send(MAINTENANCE_CYCLE_PATTERN.DELETE, id).toPromise()
+  }
+
+  async getHistory(id: string): Promise<ApiResponse<MaintenanceCycleHistoryDto[]>> {
+    this.logger.log(`Sending get history request to microservice: ${id}`)
+    return this.client.send(MAINTENANCE_CYCLE_PATTERN.GET_HISTORY, id).toPromise()
   }
 } 

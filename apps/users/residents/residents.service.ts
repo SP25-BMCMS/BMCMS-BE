@@ -201,7 +201,7 @@ export class ResidentsService {
 
       return {
         isSuccess: true,
-        message: 'Resident list',
+        message: 'Danh sách cư dân',
         data: residentsWithBuildingDetails,
         pagination: paginationData
       }
@@ -209,7 +209,7 @@ export class ResidentsService {
       console.error('Error in getAllResidents:', error)
       return {
         isSuccess: false,
-        message: error.message || 'Error when retrieving the resident list',
+        message: error.message || 'Lỗi khi lấy danh sách cư dân',
         data: [],
         pagination: {
           total: 0,
@@ -243,7 +243,7 @@ export class ResidentsService {
         return {
           isSuccess: false,
           success: false,
-          message: "Resident not found",
+          message: "Không tìm thấy cư dân",
           data: []
         }
       }
@@ -261,7 +261,7 @@ export class ResidentsService {
         return {
           isSuccess: true,
           success: true,
-          message: "No apartments found",
+          message: "Không tìm thấy căn hộ nào",
           data: []
         }
       }
@@ -323,14 +323,14 @@ export class ResidentsService {
       return {
         isSuccess: true,
         success: true,
-        message: "Success",
+        message: "Thành công",
         data: processedApartments
       }
     } catch (error) {
       return {
         isSuccess: false,
         success: false,
-        message: error.message || 'Unknown error',
+        message: error.message || 'Lỗi không xác định',
         data: []
       }
     }
@@ -357,7 +357,7 @@ export class ResidentsService {
         return {
           isSuccess: false,
           success: false,
-          message: "Resident not found",
+          message: "Không tìm thấy cư dân",
           data: null
         }
       }
@@ -375,7 +375,7 @@ export class ResidentsService {
         return {
           isSuccess: false,
           success: false,
-          message: "Apartment not found",
+          message: "Không tìm thấy căn hộ",
           data: null
         }
       }
@@ -418,7 +418,7 @@ export class ResidentsService {
       return {
         isSuccess: true,
         success: true,
-        message: "Success",
+        message: "Thành công",
         data: apartmentResponse
       }
     } catch (error) {
@@ -426,7 +426,7 @@ export class ResidentsService {
       return {
         isSuccess: false,
         success: false,
-        message: error.message || 'Unknown error',
+        message: error.message || 'Lỗi không xác định',
         data: null
       }
     }

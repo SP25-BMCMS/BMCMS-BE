@@ -120,6 +120,9 @@ export class ClientConfigService {
         },
         noAck: true,
         persistent: false
+
+
+
       },
     }
   }

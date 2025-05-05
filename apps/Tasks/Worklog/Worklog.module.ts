@@ -6,6 +6,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices'
 import { ConfigService } from '@nestjs/config'
 
 const CRACKS_CLIENT = 'CRACKS_CLIENT'
+const NOTIFICATION_CLIENT = 'NOTIFICATION_CLIENT'
 
 @Module({
   imports: [PrismaModule,
@@ -19,6 +20,24 @@ const CRACKS_CLIENT = 'CRACKS_CLIENT'
             options: {
               urls: [url],
               queue: 'cracks_queue',
+              queueOptions: {
+                durable: true,
+                prefetchCount: 1,
+              },
+            },
+          }
+        },
+        inject: [ConfigService],
+      },
+      {
+        name: NOTIFICATION_CLIENT,
+        useFactory: (configService: ConfigService) => {
+          const rabbitUrl = configService.get('RABBITMQ_URL')
+          return {
+            transport: Transport.RMQ,
+            options: {
+              urls: [rabbitUrl],
+              queue: 'notifications_queue',
               queueOptions: {
                 durable: true,
                 prefetchCount: 1,

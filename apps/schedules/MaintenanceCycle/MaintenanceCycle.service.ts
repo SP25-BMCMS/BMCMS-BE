@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { CreateMaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/create-MaintenanceCycle.dto'
 import { UpdateMaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/update-MaintenanceCycle.dto'
 import { MaintenanceCycleDto } from '@app/contracts/MaintenanceCycle/MaintenanceCycle.dto'
+import { MaintenanceCycleHistoryDto } from '@app/contracts/MaintenanceCycle/MaintenanceCycleHistory.dto'
 import { ApiResponse } from '@app/contracts/ApiResponse/api-response'
 import { PaginationParams, PaginationResponseDto } from '@app/contracts/Pagination/pagination.dto'
 import { DeviceType, Frequency, MaintenanceBasis } from '@prisma/client-schedule'
@@ -22,14 +23,14 @@ export class MaintenanceCycleService {
 
       return new ApiResponse<MaintenanceCycleDto>(
         true,
-        'Maintenance cycle created successfully',
+        'Tạo chu kỳ bảo trì thành công',
         cycle
       )
     } catch (error) {
       this.logger.error('Error creating maintenance cycle:', error)
       throw new RpcException({
         statusCode: 400,
-        message: 'Failed to create maintenance cycle',
+        message: 'Không thể tạo chu kỳ bảo trì',
       })
     }
   }
@@ -67,13 +68,13 @@ export class MaintenanceCycleService {
         page,
         limit,
         200,
-        cycles.length > 0 ? 'Maintenance cycles retrieved successfully' : 'No maintenance cycles found',
+        cycles.length > 0 ? 'Lấy danh sách chu kỳ bảo trì thành công' : 'Không tìm thấy chu kỳ bảo trì nào',
       )
     } catch (error) {
       this.logger.error('Error retrieving maintenance cycles:', error)
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving maintenance cycles',
+        message: 'Lỗi khi lấy danh sách chu kỳ bảo trì',
       })
     }
   }
@@ -87,61 +88,129 @@ export class MaintenanceCycleService {
       if (!cycle) {
         throw new RpcException({
           statusCode: 404,
-          message: 'Maintenance cycle not found',
+          message: 'Không tìm thấy chu kỳ bảo trì',
         })
       }
 
       return new ApiResponse<MaintenanceCycleDto>(
         true,
-        'Maintenance cycle retrieved successfully',
+        'Lấy thông tin chu kỳ bảo trì thành công',
         cycle
       )
     } catch (error) {
       this.logger.error(`Error retrieving maintenance cycle with ID ${cycle_id}:`, error)
       throw new RpcException({
         statusCode: error.statusCode || 500,
-        message: error.message || 'Error retrieving maintenance cycle',
+        message: error.message || 'Lỗi khi lấy thông tin chu kỳ bảo trì',
       })
     }
   }
 
   async update(cycle_id: string, updateDto: UpdateMaintenanceCycleDto): Promise<ApiResponse<MaintenanceCycleDto>> {
     try {
-      const cycle = await this.prisma.maintenanceCycle.update({
+      // Get the current cycle data before updating
+      const currentCycle = await this.prisma.maintenanceCycle.findUnique({
         where: { cycle_id },
-        data: updateDto,
-      })
+      });
+
+      if (!currentCycle) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Không tìm thấy chu kỳ bảo trì',
+        });
+      }
+
+      // Extract updated_by and reason if they exist in the updateDto
+      const { updated_by, reason, ...updateData } = updateDto as any;
+
+      // Save the current state to history
+      await this.prisma.maintenanceCycleHistory.create({
+        data: {
+          cycle_id: currentCycle.cycle_id,
+          frequency: currentCycle.frequency,
+          basis: currentCycle.basis,
+          device_type: currentCycle.device_type,
+          updated_by: updated_by || null,
+          reason: reason || null
+        },
+      });
+
+      // Update the cycle
+      const updatedCycle = await this.prisma.maintenanceCycle.update({
+        where: { cycle_id },
+        data: updateData,
+      });
 
       return new ApiResponse<MaintenanceCycleDto>(
         true,
-        'Maintenance cycle updated successfully',
-        cycle
-      )
+        'Cập nhật chu kỳ bảo trì thành công',
+        updatedCycle
+      );
     } catch (error) {
       this.logger.error(`Error updating maintenance cycle with ID ${cycle_id}:`, error)
       throw new RpcException({
         statusCode: error.code === 'P2025' ? 404 : 500,
-        message: error.code === 'P2025' ? 'Maintenance cycle not found' : 'Error updating maintenance cycle',
+        message: error.code === 'P2025' ? 'Không tìm thấy chu kỳ bảo trì' : 'Lỗi khi cập nhật chu kỳ bảo trì',
       })
     }
   }
 
   async delete(cycle_id: string): Promise<ApiResponse<MaintenanceCycleDto>> {
     try {
+      // Delete all history records for the cycle 
+      const history = await this.prisma.maintenanceCycleHistory.findFirst({
+        where: { cycle_id }
+      })
+      if (history) {
+        await this.prisma.maintenanceCycleHistory.deleteMany({
+          where: { cycle_id },
+        })
+      }
+
       const cycle = await this.prisma.maintenanceCycle.delete({
         where: { cycle_id },
       })
 
       return new ApiResponse<MaintenanceCycleDto>(
         true,
-        'Maintenance cycle deleted successfully',
+        'Xóa chu kỳ bảo trì thành công',
         cycle
       )
     } catch (error) {
       this.logger.error(`Error deleting maintenance cycle with ID ${cycle_id}:`, error)
       throw new RpcException({
         statusCode: error.code === 'P2025' ? 404 : 500,
-        message: error.code === 'P2025' ? 'Maintenance cycle not found' : 'Error deleting maintenance cycle',
+        message: error.code === 'P2025' ? 'Không tìm thấy chu kỳ bảo trì' : 'Lỗi khi xóa chu kỳ bảo trì',
+      })
+    }
+  }
+
+  async getHistory(cycle_id: string): Promise<ApiResponse<MaintenanceCycleHistoryDto[]>> {
+    try {
+      const cycle = await this.prisma.maintenanceCycle.findUnique({
+        where: { cycle_id },
+        include: {
+          history: true
+        }
+      })
+
+      if (!cycle) {
+        throw new RpcException({
+          statusCode: 404,
+          message: 'Không tìm thấy chu kỳ bảo trì',
+        })
+      }
+
+      return new ApiResponse<MaintenanceCycleHistoryDto[]>(
+        true,
+        'Lấy lịch sử chu kỳ bảo trì thành công',
+        cycle.history
+      )
+    } catch (error) {
+      this.logger.error(`Error retrieving history for maintenance cycle with ID ${cycle_id}:`, error)
+      throw new RpcException({
+        statusCode: error.statusCode || 500,
+        message: error.message || 'Lỗi khi lấy lịch sử chu kỳ bảo trì',
       })
     }
   }

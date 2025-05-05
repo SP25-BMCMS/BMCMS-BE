@@ -281,6 +281,118 @@ export class EmployeeService implements OnModuleInit {
     }
   }
 
+  async getStaffLeaderByCrackReport(request: { crackReportId: string }) {
+    try {
+      console.log('Calling gRPC method GetStaffLeaderByCrackReport with crackReportId:', request.crackReportId);
+
+      // Basic validation
+      if (!request.crackReportId) {
+        return {
+          isSuccess: false,
+          message: 'Crack report ID is required',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
+      const response = await lastValueFrom(
+        this.userService.getStaffLeaderByCrackReport(request)
+      );
+
+      if (!response || !response.isSuccess) {
+        console.log('Received error response from gRPC:', response);
+        return {
+          isSuccess: false,
+          message: response?.message || 'Failed to retrieve staff leaders',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
+      console.log('Received successful response from gRPC for staff leaders');
+      return response;
+    } catch (error) {
+      console.error('Error in getStaffLeaderByCrackReport:', error);
+      return {
+        isSuccess: false,
+        message: 'Service unavailable',
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
+      };
+    }
+  }
+
+  async getStaffLeaderByScheduleJob(request: { scheduleJobId: string }) {
+    try {
+      console.log('Calling gRPC method GetStaffLeaderByScheduleJob with scheduleJobId:', request.scheduleJobId);
+
+      // Basic validation
+      if (!request.scheduleJobId) {
+        return {
+          isSuccess: false,
+          message: 'Schedule job ID is required',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
+      const response = await lastValueFrom(
+        this.userService.getStaffLeaderByScheduleJob(request)
+      );
+
+      if (!response || !response.isSuccess) {
+        console.log('Received error response from gRPC:', response);
+        return {
+          isSuccess: false,
+          message: response?.message || 'Failed to retrieve staff leaders',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
+      console.log('Received successful response from gRPC for staff leaders');
+      return response;
+    } catch (error) {
+      console.error('Error in getStaffLeaderByScheduleJob:', error);
+      return {
+        isSuccess: false,
+        message: 'Service unavailable',
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
+      };
+    }
+  }
+
   // Public method to test getDepartment directly
 
 }

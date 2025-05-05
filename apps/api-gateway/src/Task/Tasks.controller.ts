@@ -15,6 +15,7 @@ import {
   Req,
   UseGuards,
   HttpException,
+  Version
 } from '@nestjs/common';
 import { TaskService } from './Tasks.service';
 import { catchError, firstValueFrom, NotFoundError } from 'rxjs';
@@ -26,6 +27,7 @@ import {
   ApiResponse,
   ApiBody,
   ApiQuery,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { ChangeTaskStatusDto } from '@app/contracts/tasks/ChangeTaskStatus.Dto ';
 import { CreateTaskDto } from '@app/contracts/tasks/create-Task.dto';
@@ -36,6 +38,8 @@ import { UpdateInspectionDto } from '../../../../libs/contracts/src/inspections/
 import { CreateRepairMaterialDto } from '@app/contracts/repairmaterials/create-repair-material.dto';
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 import { Status } from '@prisma/client-Task';
+import { GetTasksByTypeDto } from '@app/contracts/tasks/get-tasks-by-type.dto';
+import { PassportJwtAuthGuard } from '../guards/passport-jwt-guard';
 
 @Controller('tasks')
 @ApiTags('tasks')
@@ -229,6 +233,72 @@ export class TaskController {
     }
   }
 
+  @Post('notification-thanks-to-resident')
+  @ApiOperation({ summary: 'Send notification to resident and update task and crack report status' })
+  @ApiResponse({ status: 200, description: 'Notification sent and statuses updated successfully' })
+  @ApiResponse({ status: 400, description: 'Bad request - Missing required parameters' })
+  @ApiResponse({ status: 404, description: 'Not found - Task or crack report not found' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['taskId'],
+      properties: {
+        taskId: { type: 'string', description: 'Task ID' },
+        scheduleJobId: { type: 'string', description: 'Schedule Job ID' }
+      }
+    }
+  })
+  async notificationThankstoResident(
+    @Body() body: { taskId: string; scheduleJobId?: string }
+  ) {
+    try {
+      if (!body.taskId) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.BAD_REQUEST,
+            message: 'taskId is required',
+            error: 'Validation Error'
+          },
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      const result = await this.taskService.notificationThankstoResident(body.taskId, body.scheduleJobId);
+      return result;
+    } catch (error) {
+      console.error('Controller error:', error);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      const errorMessage = error.message || 'Unknown error';
+
+      // Handle various error types
+      if (errorMessage.includes('not found') || errorMessage.includes('không tìm thấy')) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.NOT_FOUND,
+            message: errorMessage,
+            error: 'Resource Not Found'
+          },
+          HttpStatus.NOT_FOUND
+        );
+      }
+
+      // Default to internal server error
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: errorMessage,
+          error: 'Internal Server Error'
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   // @Post('repair-materials')
   // @ApiOperation({ summary: 'Create repair material' })
   // @ApiBody({ type: CreateRepairMaterialDto })
@@ -237,4 +307,41 @@ export class TaskController {
   // async createRepairMaterial(@Body() createRepairMaterialDto: CreateRepairMaterialDto) {
   //   return this.taskService.createRepairMaterial(createRepairMaterialDto);
   // }
+
+  @Get('tasks/by-type')
+  @ApiBearerAuth('access-token')
+
+  @ApiOperation({ summary: 'Get tasks by type (crack, schedule, or all) with optional filtering by manager ID' })
+  @ApiResponse({ status: 200, description: 'Returns tasks filtered by type and optionally by manager' })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  @UseGuards(PassportJwtAuthGuard)
+  async getTasksByType(@Query() query: GetTasksByTypeDto, @Req() req) {
+    try {
+      // Thêm log chi tiết hơn để xác nhận thông tin người dùng
+      console.log('[TaskController] req.user structure:', JSON.stringify(req.user, null, 2));
+      console.log('[TaskController] Request headers:', JSON.stringify(req.headers, null, 2));
+      
+      // Use authenticated user ID as manager ID if not provided in query
+      if (!query.managerId && req.user) {
+        // Truy cập userId theo cấu trúc đúng của đối tượng user
+        // Có thể là req.user.userId, req.user.id, req.user.sub tùy theo cấu hình JWT
+        const userId = req.user.userId || req.user.id || req.user.sub;
+        
+        if (userId) {
+          query.managerId = userId;
+          console.log(`Using authenticated user ID as manager ID: ${query.managerId}`);
+        } else {
+          console.log('User is authenticated but no userId found in token payload');
+        }
+      } else if (!query.managerId) {
+        console.log('No managerId provided and user is not authenticated');
+      }
+      
+      return this.taskService.getTasksByType(query);
+    } catch (error) {
+      console.error('Error in getTasksByType controller:', error);
+      throw new Error(`Failed to get tasks: ${error.message}`);
+    }
+  }
 }

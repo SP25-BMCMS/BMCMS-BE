@@ -118,11 +118,12 @@ export class InspectionController {
   @ApiBearerAuth('access-token')
   @ApiOperation({
     summary: 'Create a new inspection',
-    description: `Creates a new inspection with images and PDF uploads.
+    description: `Creates a new inspection with images, PDF uploads, and repair materials.
 - The inspected_by field is automatically set to the authenticated user's ID
 - Only users with Staff role can create inspections
 - Upload images using the 'files' form field (supports multiple files, any image format)
 - Upload a PDF report using the 'pdfFile' form field (single file only, STRICTLY PDF FORMAT ONLY)
+- Add repair materials using the 'repairMaterials' field as an array of objects with materialId and quantity
 - The uploaded PDF will be stored in the 'uploadFile' field in the database
 - IMPORTANT: Make sure to name your form fields exactly 'files' and 'pdfFile'
 - IMPORTANT: The 'pdfFile' field ONLY accepts actual PDF files (.pdf extension and/or application/pdf MIME type)
@@ -156,6 +157,17 @@ export class InspectionController {
           type: 'string',
           format: 'binary',
           description: 'PDF file to upload - IMPORTANT: Use exactly this field name "pdfFile" and ONLY upload PDF files'
+        },
+        repairMaterials: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              materialId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+              quantity: { type: 'number', example: 2 }
+            }
+          },
+          description: 'List of materials needed for repair with quantities'
         },
         additionalLocationDetails: {
           type: 'array',
@@ -212,6 +224,29 @@ export class InspectionController {
       if (files.pdfFile && files.pdfFile.length > 0) {
         console.log(`- PDF file: ${files.pdfFile[0].originalname}, type: ${files.pdfFile[0].mimetype}, size: ${files.pdfFile[0].size} bytes`)
       }
+    }
+
+    // Handle repair materials
+    if (dto.repairMaterials) {
+      console.log('Received repairMaterials:',
+        typeof dto.repairMaterials === 'string'
+          ? 'String format (needs parsing)'
+          : `Array of ${Array.isArray(dto.repairMaterials) ? dto.repairMaterials.length : 0} items`);
+
+      // If repairMaterials is a string (common with form-data), try to parse it
+      if (typeof dto.repairMaterials === 'string') {
+        try {
+          dto.repairMaterials = JSON.parse(dto.repairMaterials);
+          console.log('Successfully parsed repairMaterials into',
+            Array.isArray(dto.repairMaterials)
+              ? `array with ${dto.repairMaterials.length} items`
+              : typeof dto.repairMaterials);
+        } catch (error) {
+          console.error('Error parsing repairMaterials:', error);
+        }
+      }
+    } else {
+      console.log('No repairMaterials provided in request');
     }
 
     const userId = req.user?.userId
@@ -306,6 +341,36 @@ export class InspectionController {
     @Body() dto: UpdateInspectionReportStatusDto
   ) {
     return this.inspectionService.updateInspectionReportStatusByManager(dto);
+  }
+
+  @Get('inspection-pdf/:task_assignment_id')
+  @ApiOperation({ summary: 'Get inspection PDF by task assignment ID with area validation' })
+  @ApiParam({ name: 'task_assignment_id', description: 'Task assignment ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Inspection PDF found and area matches',
+    schema: {
+      type: 'object',
+      properties: {
+        isSuccess: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Tệp PDF báo cáo được tìm thấy và khu vực khớp' },
+        data: {
+          type: 'object',
+          properties: {
+            inspection_id: { type: 'string', example: '828d2871-acc6-4db0-8d80-d8e061833ef2' },
+            uploadFile: { type: 'string', description: 'View URL for backward compatibility', example: 'https://bucket.s3.region.amazonaws.com/file.pdf?signed-params' },
+            viewUrl: { type: 'string', description: 'URL for viewing the PDF in browser', example: 'https://bucket.s3.region.amazonaws.com/file.pdf?signed-params-for-viewing' },
+            downloadUrl: { type: 'string', description: 'URL for downloading the PDF file', example: 'https://bucket.s3.region.amazonaws.com/file.pdf?signed-params-for-download' }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Inspection not found or area mismatch' })
+  async getInspectionPdfByTaskAssignment(
+    @Param('task_assignment_id') task_assignment_id: string,
+  ) {
+    return this.inspectionService.getInspectionPdfByTaskAssignment(task_assignment_id);
   }
 
 }

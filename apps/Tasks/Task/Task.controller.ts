@@ -7,6 +7,7 @@ import { CreateTaskDto } from 'libs/contracts/src/tasks/create-Task.dto';
 import { ChangeTaskStatusDto } from 'libs/contracts/src/tasks/ChangeTaskStatus.Dto ';
 import { Status } from '@prisma/client-Task'; // Make sure Status is imported correctly
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
+import { GetTasksByTypeDto } from '@app/contracts/tasks/get-tasks-by-type.dto';
 
 @Controller('task')
 export class TasksController {
@@ -76,7 +77,7 @@ export class TasksController {
         (typeof payload === 'string' ? payload : null);
 
       if (!scheduleJobId) {
-        throw new Error('Missing scheduleJobId in request payload');
+        throw new Error('Thiếu scheduleJobId trong yêu cầu');
       }
 
       console.log('Starting task creation for schedule job:', scheduleJobId);
@@ -89,6 +90,41 @@ export class TasksController {
       return result;
     } catch (error) {
       console.error('Error in createTaskForScheduleJob controller:', error);
+      throw error;
+    }
+  }
+
+  @MessagePattern(TASKS_PATTERN.NOTIFICATION_THANKS_TO_RESIDENT)
+  async notificationThankstoResident(@Payload() payload: { taskId: string; scheduleJobId?: string }) {
+    console.log('Received notification-thanks-to-resident request with payload:', payload);
+    try {
+      // Validate required fields
+      const { taskId, scheduleJobId } = payload;
+      if (!taskId) {
+        throw new Error('Thiếu taskId trong yêu cầu');
+      }
+
+      console.log(`Processing notification thanks to resident for task: ${taskId}`);
+
+      // Call the service method
+      const result = await this.taskService.notificationThankstoResident(taskId, scheduleJobId);
+      console.log('notificationThankstoResident completed with result:', JSON.stringify(result));
+      return result;
+    } catch (error) {
+      console.error('Error in notificationThankstoResident controller:', error);
+      throw error;
+    }
+  }
+
+  @MessagePattern(TASKS_PATTERN.GET_BY_TYPE)
+  async getTasksByType(@Payload() query: GetTasksByTypeDto) {
+    console.log('Received get-tasks-by-type request with query:', query);
+    try {
+      const result = await this.taskService.getTasksByType(query);
+      console.log('getTasksByType completed with result:', JSON.stringify(result));
+      return result;
+    } catch (error) {
+      console.error('Error in getTasksByType controller:', error);
       throw error;
     }
   }

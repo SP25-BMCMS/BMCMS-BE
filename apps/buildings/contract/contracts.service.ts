@@ -116,7 +116,7 @@ export class ContractsService {
                         } catch (error) {
                             throw new RpcException({
                                 statusCode: 400,
-                                message: 'Invalid devices JSON format',
+                                message: 'Định dạng JSON thiết bị không hợp lệ',
                             })
                         }
                     }
@@ -129,7 +129,7 @@ export class ContractsService {
                             // Tạo hợp đồng không có thiết bị nếu không có thiết bị nào hợp lệ
                             return {
                                 statusCode: 201,
-                                message: 'Contract created successfully without devices (all devices had missing buildingDetailId)',
+                                message: 'Tạo hợp đồng thành công không có thiết bị (tất cả thiết bị đều thiếu buildingDetailId)',
                                 data: newContract,
                             }
                         }
@@ -160,7 +160,7 @@ export class ContractsService {
                             if (missingIds.length > 0) {
                                 throw new RpcException({
                                     statusCode: 404,
-                                    message: `Building Detail IDs not found: ${missingIds.join(', ')}`,
+                                    message: `Không tìm thấy ID chi tiết tòa nhà: ${missingIds.join(', ')}`,
                                 })
                             }
                         }
@@ -183,7 +183,7 @@ export class ContractsService {
 
                         return {
                             statusCode: 201,
-                            message: 'Contract created successfully with devices',
+                            message: 'Tạo hợp đồng thành công với thiết bị',
                             data: {
                                 ...newContract,
                                 devices: createdDevices
@@ -194,7 +194,7 @@ export class ContractsService {
 
                 return {
                     statusCode: 201,
-                    message: 'Contract created successfully',
+                    message: 'Tạo hợp đồng thành công',
                     data: newContract,
                 }
             }, {
@@ -216,7 +216,7 @@ export class ContractsService {
             if (error.name === 'PrismaClientValidationError') {
                 throw new RpcException({
                     statusCode: 400,
-                    message: 'Invalid data format for contract creation',
+                    message: 'Định dạng dữ liệu không hợp lệ cho việc tạo hợp đồng',
                     error: error.message
                 })
             }
@@ -225,14 +225,14 @@ export class ContractsService {
             if (error.code === 'P2025' || error.message?.includes('not found')) {
                 throw new RpcException({
                     statusCode: 404,
-                    message: error.message || 'Resource not found',
+                    message: error.message || 'Không tìm thấy tài nguyên',
                 })
             }
 
             // Default error
             throw new RpcException({
                 statusCode: 400,
-                message: 'Contract creation failed',
+                message: 'Tạo hợp đồng thất bại',
                 error: error.message,
             })
         }
@@ -307,7 +307,7 @@ export class ContractsService {
             console.error('Error getting contracts:', error)
             throw new RpcException({
                 statusCode: 500,
-                message: 'Error getting contracts',
+                message: 'Lỗi khi lấy danh sách hợp đồng',
             })
         }
     }
@@ -325,7 +325,7 @@ export class ContractsService {
             if (!contract) {
                 throw new RpcException({
                     statusCode: 404,
-                    message: 'Contract not found',
+                    message: 'Không tìm thấy hợp đồng',
                 });
             }
 
@@ -359,14 +359,16 @@ export class ContractsService {
             console.error('Error getting contract:', error);
             throw new RpcException({
                 statusCode: 500,
-                message: 'Error getting contract',
+                message: 'Lỗi khi lấy thông tin hợp đồng',
             });
         }
     }
 
-    // Update a contract
-    async updateContract(contractId: string, updateContractDto: UpdateContractDto) {
+    // Update a contract with a new file
+    async updateContractWithFile(contractId: string, updateContractDto: UpdateContractDto, file: any) {
         try {
+            console.log('Received update DTO:', updateContractDto);
+
             // Check if contract exists
             const existingContract = await this.prisma.contract.findUnique({
                 where: { contract_id: contractId },
@@ -375,18 +377,53 @@ export class ContractsService {
             if (!existingContract) {
                 return {
                     statusCode: 404,
-                    message: 'Contract not found',
+                    message: 'Không tìm thấy hợp đồng',
                 }
             }
+
+            // Upload the new file to S3 if provided
+            let s3Url = existingContract.file_name; // Keep the existing URL if no new file
+
+            if (file) {
+                // Upload the file to S3 and get the new URL
+                s3Url = await this.s3UploaderService.uploadFile(file);
+            }
+
+            // Prepare update data, only including fields that were explicitly provided
+            const updateData: any = {};
+
+            if (updateContractDto.start_date !== undefined) {
+                // Validate the date before setting it
+                const startDate = new Date(updateContractDto.start_date);
+                if (!isNaN(startDate.getTime())) {
+                    updateData.start_date = startDate;
+                }
+            }
+
+            if (updateContractDto.end_date !== undefined) {
+                // Validate the date before setting it
+                const endDate = new Date(updateContractDto.end_date);
+                if (!isNaN(endDate.getTime())) {
+                    updateData.end_date = endDate;
+                }
+            }
+
+            // Only update vendor if it was explicitly provided and is not an empty string
+            if (updateContractDto.vendor !== undefined && updateContractDto.vendor !== '') {
+                updateData.vendor = updateContractDto.vendor;
+            }
+
+            // Always update file_name if we have a new one
+            if (s3Url) {
+                updateData.file_name = s3Url;
+            }
+
+            console.log('Updating contract with data:', updateData);
 
             // Update the contract
             const updatedContract = await this.prisma.contract.update({
                 where: { contract_id: contractId },
-                data: {
-                    start_date: updateContractDto.start_date ? new Date(updateContractDto.start_date) : undefined,
-                    end_date: updateContractDto.end_date ? new Date(updateContractDto.end_date) : undefined,
-                    vendor: updateContractDto.vendor,
-                },
+                data: updateData,
                 include: {
                     devices: true,
                 },
@@ -394,14 +431,80 @@ export class ContractsService {
 
             return {
                 statusCode: 200,
-                message: 'Contract updated successfully',
+                message: 'Cập nhật hợp đồng thành công',
+                data: updatedContract,
+            }
+        } catch (error) {
+            console.error('Error updating contract with file:', error)
+            throw new RpcException({
+                statusCode: 500,
+                message: 'Lỗi khi cập nhật hợp đồng với file',
+            })
+        }
+    }
+
+    // Update a contract
+    async updateContract(contractId: string, updateContractDto: UpdateContractDto) {
+        try {
+            console.log('Received update DTO:', updateContractDto);
+
+            // Check if contract exists
+            const existingContract = await this.prisma.contract.findUnique({
+                where: { contract_id: contractId },
+            })
+
+            if (!existingContract) {
+                return {
+                    statusCode: 404,
+                    message: 'Không tìm thấy hợp đồng',
+                }
+            }
+
+            // Prepare update data, only including fields that were explicitly provided
+            const updateData: any = {};
+
+            if (updateContractDto.start_date !== undefined) {
+                // Validate the date before setting it
+                const startDate = new Date(updateContractDto.start_date);
+                if (!isNaN(startDate.getTime())) {
+                    updateData.start_date = startDate;
+                }
+            }
+
+            if (updateContractDto.end_date !== undefined) {
+                // Validate the date before setting it
+                const endDate = new Date(updateContractDto.end_date);
+                if (!isNaN(endDate.getTime())) {
+                    updateData.end_date = endDate;
+                }
+            }
+
+            // Only update vendor if it was explicitly provided and is not an empty string
+            if (updateContractDto.vendor !== undefined && updateContractDto.vendor !== '') {
+                updateData.vendor = updateContractDto.vendor;
+            }
+
+            console.log('Updating contract with data:', updateData);
+
+            // Update the contract
+            const updatedContract = await this.prisma.contract.update({
+                where: { contract_id: contractId },
+                data: updateData,
+                include: {
+                    devices: true,
+                },
+            })
+
+            return {
+                statusCode: 200,
+                message: 'Cập nhật hợp đồng thành công',
                 data: updatedContract,
             }
         } catch (error) {
             console.error('Error updating contract:', error)
             throw new RpcException({
                 statusCode: 500,
-                message: 'Error updating contract',
+                message: 'Lỗi khi cập nhật hợp đồng',
             })
         }
     }
@@ -417,7 +520,7 @@ export class ContractsService {
             if (!existingContract) {
                 return {
                     statusCode: 404,
-                    message: 'Contract not found',
+                    message: 'Không tìm thấy hợp đồng',
                 }
             }
 
@@ -428,13 +531,13 @@ export class ContractsService {
 
             return {
                 statusCode: 200,
-                message: 'Contract deleted successfully',
+                message: 'Xóa hợp đồng thành công',
             }
         } catch (error) {
             console.error('Error deleting contract:', error)
             throw new RpcException({
                 statusCode: 500,
-                message: 'Error deleting contract',
+                message: 'Lỗi khi xóa hợp đồng',
             })
         }
     }

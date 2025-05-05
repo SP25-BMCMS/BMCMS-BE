@@ -30,7 +30,7 @@ export class ChatbotService implements OnModuleInit {
     }
   }
 
-  async testChat(message: string, userId: string): Promise<string> {
+  async testChat(message: string, userId: string): Promise<any> {
     if (!this.chatbotClient) {
       this.logger.error('Chatbot client is not initialized');
       throw new HttpException(
@@ -43,9 +43,9 @@ export class ChatbotService implements OnModuleInit {
     
     try {
       const response = await this.chatbotClient
-        .send<string>(CHATBOT_PATTERN.TEST_CHAT, { message, userId })
+        .send<any>(CHATBOT_PATTERN.TEST_CHAT, { message, userId })
         .pipe(
-          timeout(30000),
+          timeout(300000),
           catchError((error) => {
             this.logger.error('Error in testChat:', error);
             throw new HttpException(

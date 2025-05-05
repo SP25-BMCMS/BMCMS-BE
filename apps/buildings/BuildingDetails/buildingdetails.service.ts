@@ -31,13 +31,13 @@ export class BuildingDetailsService {
       })
       return {
         statusCode: 201,
-        message: 'Building Detail created successfully',
+        message: 'Tạo chi tiết tòa nhà thành công',
         data: newBuildingDetail,
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Building Detail creation failed',
+        message: 'Tạo chi tiết tòa nhà thất bại',
       })
     }
   }
@@ -60,7 +60,7 @@ export class BuildingDetailsService {
         include: {
           building: true,
           locationDetails: true,
-          device : true,
+          device: true,
         },
         orderBy: {
           createdAt: 'desc',
@@ -108,12 +108,12 @@ export class BuildingDetailsService {
           building: {
             include: {
               area: true,
-              
+
             }
 
           },
           //locationDetails: true
-          device : true,
+          device: true,
         }
       })
 
@@ -121,7 +121,7 @@ export class BuildingDetailsService {
         console.log(`Building detail not found for ID: ${buildingDetailId}`)
         return {
           statusCode: 404,
-          message: 'Building Detail not found',
+          message: 'Không tìm thấy chi tiết tòa nhà',
         }
       }
 
@@ -136,14 +136,14 @@ export class BuildingDetailsService {
 
       return {
         statusCode: 200,
-        message: 'Building Detail retrieved successfully',
+        message: 'Lấy thông tin chi tiết tòa nhà thành công',
         data: buildingDetail,
       }
     } catch (error) {
       console.error(`Error retrieving building detail ${buildingDetailId}:`, error)
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving building detail',
+        message: 'Lỗi khi lấy thông tin chi tiết tòa nhà',
       })
     }
   }
@@ -166,13 +166,13 @@ export class BuildingDetailsService {
       })
       return {
         statusCode: 200,
-        message: 'Building Detail updated successfully',
+        message: 'Cập nhật chi tiết tòa nhà thành công',
         data: updatedBuildingDetail,
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Building Detail update failed',
+        message: 'Cập nhật chi tiết tòa nhà thất bại',
       })
     }
   }
@@ -184,12 +184,12 @@ export class BuildingDetailsService {
       })
       return {
         statusCode: 200,
-        message: 'Building Detail deleted successfully',
+        message: 'Xóa chi tiết tòa nhà thành công',
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 400,
-        message: 'Building Detail deletion failed',
+        message: 'Xóa chi tiết tòa nhà thất bại',
       })
     }
   }
@@ -211,21 +211,21 @@ export class BuildingDetailsService {
       if (!buildingDetail) {
         return {
           statusCode: 404,
-          message: 'Building Detail not found',
+          message: 'Không tìm thấy chi tiết tòa nhà',
           exists: false
         }
       }
 
       return {
         statusCode: 200,
-        message: 'Building Detail exists',
+        message: 'Chi tiết tòa nhà tồn tại',
         exists: true,
         data: buildingDetail,
       }
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
-        message: 'Error checking building detail',
+        message: 'Lỗi khi kiểm tra chi tiết tòa nhà',
       })
     }
   }

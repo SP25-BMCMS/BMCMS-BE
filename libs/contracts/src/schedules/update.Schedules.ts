@@ -59,6 +59,15 @@ export class UpdateScheduleDto {
   cycle_id?: string
 
   @IsOptional()
+  @IsUUID()
+  @ApiProperty({
+    description: 'ID of the manager responsible for this schedule',
+    required: false,
+    example: 'd290f1ee-6c54-4b01-90e6-d701748f0851'
+  })
+  managerid?: string
+
+  @IsOptional()
   @IsUUID('4', { each: true })
   @ApiProperty({
     description: 'Array of building detail IDs associated with this schedule',

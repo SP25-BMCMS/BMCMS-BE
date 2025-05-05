@@ -112,4 +112,50 @@ export class CrackReportsController {
       payload.dto,
     )
   }
+
+  @MessagePattern({ cmd: 'update-crack-report-status-silent' })
+  async updateCrackReportStatusSilent(
+    @Payload() payload: { crackReportId: string; status: string },
+  ) {
+    // Create a DTO with the status and set suppressNotification flag to true
+    const dto: UpdateCrackReportDto = {
+      status: payload.status as any, // Cast to appropriate enum type
+      suppressNotification: true // This flag will prevent sending notifications
+    };
+
+    return await this.crackReportsService.updateCrackReportForAllStatus(
+      payload.crackReportId,
+      dto,
+    )
+  }
+
+  @MessagePattern({ cmd: 'get-crack-reports-by-manager-id' })
+  async getCrackReportsByManagerId(
+    @Payload() payload: {
+      userId: string,
+      page?: number,
+      limit?: number,
+      search?: string,
+      severityFilter?: $Enums.Severity
+    }
+  ) {
+    console.log("🚀 Kha ne ~ payload:", payload)
+    return await this.crackReportsService.getCrackReportsByManagerId(
+      payload.userId,
+      payload.page,
+      payload.limit,
+      payload.search,
+      payload.severityFilter
+    )
+  }
+
+  @MessagePattern({ cmd: 'get-building-area-from-crack' })
+  async getBuildingAreaFromCrack(@Payload() data: { crack_id: string }) {
+    return await this.crackReportsService.getBuildingAreaFromCrack(data.crack_id);
+  }
+
+  @MessagePattern({ cmd: 'get-buildingDetail-by-crack-id' })
+  async getBuildingDetailByCrackId(@Payload() payload: { crackId: string }) {
+    return await this.crackReportsService.getBuildingDetailByCrackId(payload.crackId);
+  }
 }

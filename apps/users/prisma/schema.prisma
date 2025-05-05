@@ -86,8 +86,7 @@ enum StaffStatus {
 enum PositionName {
   Leader
   Technician
-  Janitor
-  Maintenance_Technician
+  Manager
 }
 
 enum AccountStatus {

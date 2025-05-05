@@ -120,4 +120,24 @@ export class InspectionsController {
       data.reason
     );
   }
+
+  @MessagePattern(INSPECTIONS_PATTERN.GET_TASK_ASSIGNMENT_DETAILS)
+  async getTaskAssignmentDetails(@Payload() payload: { task_assignment_id: string }) {
+    return this.inspectionService.getTaskAssignmentDetails(payload.task_assignment_id);
+  }
+
+  @MessagePattern(INSPECTIONS_PATTERN.GET_INSPECTION_PDF)
+  async getInspectionPdfByTaskAssignment(@Payload() payload: { task_assignment_id: string }) {
+    return this.inspectionService.getInspectionPdfByTaskAssignment(payload.task_assignment_id);
+  }
+
+  @MessagePattern(INSPECTIONS_PATTERN.GET_BUILDING_AREA_FROM_SCHEDULE)
+  async getBuildingAreaFromSchedule(@Payload() payload: { schedule_job_id: string }) {
+    return this.inspectionService.getBuildingAreaFromSchedule(payload.schedule_job_id);
+  }
+
+  @MessagePattern({ cmd: 'verify-leader-and-area' })
+  async verifyLeaderAndArea(@Payload() payload: { employee_id: string, task_id: string }) {
+    return this.inspectionService.verifyLeaderAndArea(payload.employee_id, payload.task_id);
+  }
 }

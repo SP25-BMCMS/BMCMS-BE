@@ -69,6 +69,22 @@ export class InspectionService implements OnModuleInit {
   }
 
   /**
+   * Get pre-signed URL with content disposition for an S3 object
+   * @param fileKey The S3 object key
+   * @param contentDisposition Content-Disposition header value
+   * @returns A pre-signed URL for accessing the object with specified content disposition
+   */
+  async getPreSignedUrlWithDisposition(fileKey: string, contentDisposition: string): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucketName,
+      Key: fileKey,
+      ResponseContentDisposition: contentDisposition
+    })
+
+    return getSignedUrl(this.s3, command, { expiresIn: 3600 }) // URL expires after 1 hour
+  }
+
+  /**
    * Extract S3 file key from full URL
    * @param url Full S3 URL
    * @returns The file key part
@@ -99,7 +115,7 @@ export class InspectionService implements OnModuleInit {
       )
     } catch (error) {
       throw new HttpException(
-        'Inspection not found with the given task assignment ID = ' +
+        'Không tìm thấy báo cáo với ID nhiệm vụ được gán = ' +
         task_assignment_id,
         HttpStatus.NOT_FOUND,
       )
@@ -128,7 +144,7 @@ export class InspectionService implements OnModuleInit {
       })
     } catch (error) {
       throw new HttpException(
-        'Inspection not found with the given crack ID = ' + crack_id,
+        'Không tìm thấy báo cáo với ID vết nứt = ' + crack_id,
         HttpStatus.NOT_FOUND,
       )
     }
@@ -136,15 +152,13 @@ export class InspectionService implements OnModuleInit {
 
   async GetAllInspections() {
     try {
-      // Gọi microservice và trả về kết quả trực tiếp
-      // Không cần xử lý pre-signed URL nữa vì đã được xử lý ở microservice
       const response = await firstValueFrom(
         this.inspectionClient.send(INSPECTIONS_PATTERN.GET, {})
           .pipe(
             timeout(10000),
             catchError(err => {
               throw new HttpException(
-                'Error retrieving all inspections',
+                'Lỗi khi lấy danh sách báo cáo',
                 HttpStatus.INTERNAL_SERVER_ERROR,
               )
             })
@@ -154,7 +168,7 @@ export class InspectionService implements OnModuleInit {
       return response;
     } catch (error) {
       throw new HttpException(
-        'Error retrieving all inspections',
+        'Lỗi khi lấy danh sách báo cáo',
         HttpStatus.INTERNAL_SERVER_ERROR,
       )
     }
@@ -192,12 +206,12 @@ export class InspectionService implements OnModuleInit {
 
           console.log(`Grouped files: ${pdfFiles.length} PDF files, ${imageFiles.length} image files`)
 
-          // Handle PDF file upload if provided (take only the first PDF file if multiple are uploaded)
+          // Handle PDF file upload if provided
           if (pdfFiles.length > 0) {
             const pdfFile = pdfFiles[0]
             console.log(`Processing PDF file: ${pdfFile.originalname}, fieldname: ${pdfFile.fieldname}, mimetype: ${pdfFile.mimetype}`)
 
-            // Check if the file is actually a PDF by mimetype or file extension
+            // Check if the file is actually a PDF
             const isPdf = pdfFile.mimetype === 'application/pdf' ||
               pdfFile.originalname.toLowerCase().endsWith('.pdf');
 
@@ -205,49 +219,45 @@ export class InspectionService implements OnModuleInit {
               console.error(`Error: Non-PDF file uploaded through pdfFile field: ${pdfFile.originalname}, mimetype: ${pdfFile.mimetype}`);
               return new ApiResponse(
                 false,
-                'Invalid file type for PDF upload. Only PDF files are allowed in the pdfFile field.',
+                'Loại tệp không hợp lệ cho tải lên PDF. Chỉ chấp nhận tệp PDF trong trường pdfFile.',
                 null
               );
             }
 
-            // Generate a unique filename with timestamp and original extension
+            // Generate a unique filename
             const fileExt = pdfFile.originalname.split('.').pop()
             const uniqueFileName = `inspections/reports/${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`
 
             try {
-              // Upload the PDF file directly to S3
+              // Upload the PDF file
               const command = new PutObjectCommand({
                 Bucket: this.bucketName,
                 Key: uniqueFileName,
                 Body: pdfFile.buffer,
-                ContentType: 'application/pdf'  // Always set PDF content type
+                ContentType: 'application/pdf'
               })
 
               await this.s3.send(command)
 
-              // Store the full S3 URL, not just the file key
               const s3BaseUrl = `https://${this.bucketName}.s3.amazonaws.com/`
               pdfUrl = s3BaseUrl + uniqueFileName
               console.log('PDF uploaded successfully, URL:', pdfUrl)
             } catch (uploadError) {
               console.error('Error uploading PDF to S3:', uploadError)
-              // Continue without PDF
             }
           } else {
             console.log('No PDF files to process')
           }
 
-          // Handle image files upload if any
+          // Handle image files
           if (imageFiles.length > 0) {
             console.log(`Processing ${imageFiles.length} image files`)
 
-            // Convert file buffers to base64 for transport over RabbitMQ
             const processedFiles = imageFiles.map(file => ({
               ...file,
               buffer: file.buffer.toString('base64')
             }))
 
-            // Call the crack service to upload the images
             const uploadResponse = await firstValueFrom(
               this.crackClient.send(
                 { cmd: 'upload-inspection-images' },
@@ -256,7 +266,7 @@ export class InspectionService implements OnModuleInit {
                 timeout(30000),
                 catchError(err => {
                   console.error('Error uploading images:', err)
-                  return of(new ApiResponse(false, 'Error uploading images', null))
+                  return of(new ApiResponse(false, 'Lỗi khi tải lên hình ảnh', null))
                 })
               )
             )
@@ -266,7 +276,6 @@ export class InspectionService implements OnModuleInit {
               console.log(`Successfully uploaded ${imageUrls.length} images:`, imageUrls)
             } else {
               console.error('Image upload failed:', uploadResponse)
-              // Continue without images
             }
           } else {
             console.log('No image files to process')
@@ -278,37 +287,32 @@ export class InspectionService implements OnModuleInit {
           console.log(`- PDF: ${pdfUrl ? 'Uploaded successfully' : 'None'}`)
         } catch (error) {
           console.error('Error in file upload process:', error)
-          // Continue without files
         }
       }
 
-      // This ensures only the authenticated user's ID is used and includes image URLs
       const updatedDto = {
         ...dto,
-        inspected_by: userId, // Override any value in the DTO with the authenticated user's ID
-        image_urls: imageUrls, // Add the image URLs from S3
-        uploadFile: pdfUrl, // Add the PDF URL from S3
-        location_details: {
-          // Add location details
-          // This is a placeholder and should be replaced with actual implementation
-          // For example, you can use the buildingClient to fetch location details
-          // or manually add location details
-        }
+        inspected_by: userId,
+        image_urls: imageUrls,
+        uploadFile: pdfUrl,
+        location_details: {}
       }
 
-      // Create the inspection
+      if (dto.repairMaterials) {
+        console.log('Repair materials provided:', dto.repairMaterials);
+      }
+
       const response = await firstValueFrom(
         this.inspectionClient.send(INSPECTIONS_PATTERN.CREATE, updatedDto)
           .pipe(
-            timeout(10000),
+            timeout(100000),
             catchError(err => {
-              // Format error message from the microservice
-              let errorMsg = 'Error creating inspection'
+              let errorMsg = 'Lỗi khi tạo báo cáo'
               if (err.message) {
                 if (err.message.includes('Leader')) {
-                  errorMsg = 'Only Staff can create inspections'
+                  errorMsg = 'Chỉ nhân viên mới có thể tạo báo cáo'
                 } else if (err.message.includes('task assignment')) {
-                  errorMsg = 'Task assignment not found'
+                  errorMsg = 'Không tìm thấy nhiệm vụ được gán'
                 }
               }
               return of(new ApiResponse(false, errorMsg, null))
@@ -316,12 +320,10 @@ export class InspectionService implements OnModuleInit {
           )
       )
 
-      // If inspection was created successfully, create a LocationDetail
       if (response.isSuccess && response.data) {
         try {
           const inspection = response.data
 
-          // Get the buildingDetailId from task_assignment_id via related tables
           console.log('Retrieving buildingDetailId for task_assignment_id:', dto.task_assignment_id)
           const buildingDetailResponse = await firstValueFrom(
             this.inspectionClient.send(
@@ -336,7 +338,6 @@ export class InspectionService implements OnModuleInit {
             )
           )
 
-          // Default UUID or actual value from query
           let buildingDetailId = '00000000-0000-0000-0000-000000000000'
 
           if (buildingDetailResponse && buildingDetailResponse.isSuccess && buildingDetailResponse.data) {
@@ -346,52 +347,37 @@ export class InspectionService implements OnModuleInit {
             console.warn('Could not retrieve buildingDetailId, using default UUID')
           }
 
-          // Support for multiple locationDetails
           const locationDetails = []
 
-          // Fix additionalLocationDetails format if needed
           let additionalLocDetails: any = dto.additionalLocationDetails
 
-          // Handle case when additionalLocationDetails is undefined, null, or an empty string
           if (!additionalLocDetails || (typeof additionalLocDetails === 'string' && additionalLocDetails.trim() === '')) {
             console.log('additionalLocationDetails is empty or not provided')
             additionalLocDetails = []
           }
-          // Check if additionalLocationDetails exists but isn't an array (common issue with form data)
           else if (!Array.isArray(additionalLocDetails)) {
             try {
-              // Try to parse it if it's a JSON string
               if (typeof additionalLocDetails === 'string') {
-                // Empty JSON array case
                 if (additionalLocDetails.trim() === '[]') {
                   additionalLocDetails = []
                 }
-                // Handle the case where we get a string with multiple objects separated by commas
-                // but without enclosing square brackets
                 const additionalStr = additionalLocDetails as string
 
                 if (additionalStr.trim().startsWith('{') &&
                   (additionalStr.includes('},{') || additionalStr.includes('},{'))) {
                   console.log('Detected multiple JSON objects without array wrapper')
 
-                  // Try to convert to a valid JSON array string by wrapping with square brackets
                   try {
-                    // Special handling for the format "{obj1},{obj2},{obj3}"
-                    // First check if it's already a valid JSON (unlikely but check anyway)
                     try {
                       const tempParsed = JSON.parse(additionalStr)
                       additionalLocDetails = [tempParsed]
                     } catch (e) {
-                      // Not a valid JSON, try to convert it to an array
                       const wrappedJson = '[' + additionalStr + ']'
                       try {
                         additionalLocDetails = JSON.parse(wrappedJson)
                       } catch (e2) {
-                        // Still not valid, try another approach with regex
                         console.log('First attempt failed, trying regex approach')
 
-                        // Split the string into individual JSON objects
-                        // This regex finds objects that start with { and end with }
                         const objectsRegex = /{[^{}]*(?:{[^{}]*}[^{}]*)*}/g
                         const matches = additionalStr.match(objectsRegex)
 
@@ -415,23 +401,19 @@ export class InspectionService implements OnModuleInit {
                     additionalLocDetails = []
                   }
                 } else {
-                  // Regular JSON string, try to parse normally
                   additionalLocDetails = JSON.parse(additionalStr)
                 }
               }
 
-              // If it's still not an array but an object, convert to array
               if (!Array.isArray(additionalLocDetails) && typeof additionalLocDetails === 'object') {
                 additionalLocDetails = [additionalLocDetails]
               }
             } catch (error) {
               console.error('Error parsing additionalLocationDetails:', error)
-              // Default to array if parsing fails
               additionalLocDetails = []
             }
           }
 
-          // Normalize additionalLocationDetails array - fix string elements
           if (Array.isArray(additionalLocDetails)) {
             additionalLocDetails = additionalLocDetails.map(item => {
               if (typeof item === 'string') {
@@ -446,46 +428,37 @@ export class InspectionService implements OnModuleInit {
             }).filter(item => item !== null)
           }
 
-          // If additionalLocationDetails is provided in the DTO, add them
           if (additionalLocDetails && Array.isArray(additionalLocDetails) && additionalLocDetails.length > 0) {
-
-            // Map additional location details to proper format and add to array
             additionalLocDetails.forEach(locationDetail => {
               locationDetails.push({
                 buildingDetailId: locationDetail.buildingDetailId || buildingDetailId,
                 inspection_id: inspection.inspection_id,
-                roomNumber: locationDetail.roomNumber || "Unknown",
+                roomNumber: locationDetail.roomNumber || "Chưa xác định",
                 floorNumber: locationDetail.floorNumber || 1,
-                areaType: this.convertToAreaDetailsType(locationDetail.areaType) || "Other",
-                description: locationDetail.description || "Additional location detail"
+                areaType: this.convertToAreaDetailsType(locationDetail.areaType) || "Khác",
+                description: locationDetail.description || "Chi tiết vị trí bổ sung"
               })
             })
           }
-          // Nếu additionalLocationDetails là mảng rỗng có chủ ý, không tạo mặc định
           else if (additionalLocDetails && Array.isArray(additionalLocDetails) && additionalLocDetails.length === 0) {
             // Không tạo mặc định, giữ mảng rỗng
           }
-          // Trường hợp không có additionalLocationDetails hoặc nó là null/undefined
           else {
             locationDetails.push({
               buildingDetailId: buildingDetailId,
               inspection_id: inspection.inspection_id,
-              roomNumber: "Unknown",
+              roomNumber: "Chưa xác định",
               floorNumber: 1,
-              areaType: "Other",
-              description: "Created from Inspection"
+              areaType: "Khác",
+              description: "Được tạo từ báo cáo"
             })
           }
 
-
-          // Emit separate events for each location detail to avoid duplication
           locationDetails.forEach(detail => {
             this.buildingClient.emit(LOCATIONDETAIL_PATTERN.CREATE, detail)
           })
 
-          // Add locationDetail info to the response ONLY if we have location details
           if (response && response.data && typeof response.data === 'object') {
-            // Create a new object to avoid modifying the original response directly
             const locationDetailsData = locationDetails.map(detail => ({
               inspection_id: detail.inspection_id,
               buildingDetailId: detail.buildingDetailId,
@@ -495,7 +468,6 @@ export class InspectionService implements OnModuleInit {
               description: detail.description
             }));
 
-            // Assign the location details to the response data object
             Object.assign(response.data, { locationDetails: locationDetailsData });
           } else {
             console.error('Cannot add locationDetails to response: invalid response structure',
@@ -503,13 +475,12 @@ export class InspectionService implements OnModuleInit {
           }
         } catch (error) {
           console.error('Error in LocationDetail creation process:', error)
-          // Don't fail the whole request if LocationDetail creation fails
         }
       }
 
       return response
     } catch (error) {
-      return new ApiResponse(false, `Error creating inspection: ${error.message}`, null)
+      return new ApiResponse(false, `Lỗi khi tạo báo cáo: ${error.message}`, null)
     }
   }
 
@@ -519,7 +490,7 @@ export class InspectionService implements OnModuleInit {
         this.inspectionClient.send(INSPECTIONS_PATTERN.CHANGE_STATUS, dto)
       )
     } catch (error) {
-      return new ApiResponse(false, 'Error changing inspection status', error.message)
+      return new ApiResponse(false, 'Lỗi khi thay đổi trạng thái báo cáo', error.message)
     }
   }
 
@@ -529,19 +500,16 @@ export class InspectionService implements OnModuleInit {
         this.inspectionClient.send(INSPECTIONS_PATTERN.ADD_IMAGE, dto)
       )
     } catch (error) {
-      return new ApiResponse(false, 'Error adding image', error.message)
+      return new ApiResponse(false, 'Lỗi khi thêm hình ảnh', error.message)
     }
   }
 
   async getInspectionDetails(inspection_id: string): Promise<ApiResponse<any>> {
     try {
-      // Gọi microservice và trả về kết quả trực tiếp
-      // Không cần xử lý pre-signed URL nữa vì đã được xử lý ở microservice
       const response = await firstValueFrom(
         this.inspectionClient.send(INSPECTIONS_PATTERN.GET_DETAILS, inspection_id)
       )
 
-      // Nếu cần, tạo pre-signed URL cho uploadFile nếu có
       if (response.isSuccess && response.data && response.data.uploadFile) {
         try {
           const fileKey = this.extractFileKey(response.data.uploadFile)
@@ -553,19 +521,16 @@ export class InspectionService implements OnModuleInit {
 
       return response;
     } catch (error) {
-      return new ApiResponse(false, 'Error getting inspection details', error.message)
+      return new ApiResponse(false, 'Lỗi khi lấy chi tiết báo cáo', error.message)
     }
   }
 
   async getInspectionById(inspection_id: string): Promise<any> {
     try {
-      // Gọi microservice và trả về kết quả trực tiếp
-      // Không cần xử lý pre-signed URL nữa vì đã được xử lý ở microservice
       const response = await firstValueFrom(
         this.inspectionClient.send(INSPECTIONS_PATTERN.GET_BY_ID, { inspection_id })
       )
 
-      // Tạo pre-signed URL cho uploadFile nếu có
       if (response.isSuccess && response.data && response.data.uploadFile) {
         try {
           const fileKey = this.extractFileKey(response.data.uploadFile)
@@ -579,18 +544,14 @@ export class InspectionService implements OnModuleInit {
     } catch (error) {
       return {
         isSuccess: false,
-        message: 'Error getting inspection',
+        message: 'Lỗi khi lấy thông tin báo cáo',
         data: error.message
       }
     }
   }
 
-  // Helper method to validate that a user is Staff
   private async validateUserIsStaff(userId: string): Promise<ApiResponse<any>> {
     try {
-      // Use the gRPC UserService to get user info
-
-      // Use the correctly initialized userService from OnModuleInit
       const userInfo = await firstValueFrom(
         this.userService.getUserInfo({ userId, username: '' })
           .pipe(
@@ -602,48 +563,40 @@ export class InspectionService implements OnModuleInit {
           )
       )
 
-
       if (!userInfo) {
         console.error('User info is null or undefined')
-        return new ApiResponse(false, 'Failed to retrieve user information', null)
+        return new ApiResponse(false, 'Không thể lấy thông tin người dùng', null)
       }
 
-      // Check if user has role Staff
       const role = userInfo.role
 
       if (role !== 'Staff') {
         return new ApiResponse(
           false,
-          `Only Staff can create inspections. Current role: ${role}`,
+          `Chỉ nhân viên mới có thể tạo báo cáo. Vai trò hiện tại: ${role}`,
           null
         )
       }
 
-      return new ApiResponse(true, 'User is a Staff', { userId })
+      return new ApiResponse(true, 'Người dùng là nhân viên', { userId })
     } catch (error) {
       console.error('Error in validateUserIsStaff:', error)
-      return new ApiResponse(false, `Error validating user role: ${error.message}`, null)
+      return new ApiResponse(false, `Lỗi khi xác thực vai trò người dùng: ${error.message}`, null)
     }
   }
 
-  // Helper method to convert string to AreaDetailsType enum
   private convertToAreaDetailsType(areaType?: string): string {
-    if (!areaType) return "Other"
+    if (!areaType) return "Khác"
 
-    // Normalize the input (lowercase, remove spaces)
     const normalized = areaType.toLowerCase().trim()
 
-    // Map to enum values
-    if (normalized.includes('floor')) return "Floor"
-    if (normalized.includes('wall')) return "Wall"
-    if (normalized.includes('ceiling')) return "Ceiling"
-    if (normalized.includes('column')) return "column"
+    if (normalized.includes('floor')) return "Sàn"
+    if (normalized.includes('wall')) return "Tường"
+    if (normalized.includes('ceiling')) return "Trần"
+    if (normalized.includes('column')) return "Cột"
 
-    // Default to Other
-    return "Other"
+    return "Khác"
   }
-
-  // Add new methods for updating isPrivateAsset and report_status
 
   async updateInspectionPrivateAsset(
     inspection_id: string,
@@ -662,7 +615,7 @@ export class InspectionService implements OnModuleInit {
         throw error;
       }
       throw new HttpException(
-        'Failed to update inspection private asset status',
+        'Lỗi khi cập nhật trạng thái tài sản riêng của báo cáo',
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
@@ -681,13 +634,13 @@ export class InspectionService implements OnModuleInit {
           timeout(10000),
           catchError(err => {
             console.error('Error updating inspection report status:', err);
-            return of(new ApiResponse(false, 'Error updating inspection report status', null));
+            return of(new ApiResponse(false, 'Lỗi khi cập nhật trạng thái báo cáo', null));
           })
         )
       );
     } catch (error) {
       console.error('Error in updateInspectionReportStatus:', error);
-      return new ApiResponse(false, 'Error updating inspection report status', null);
+      return new ApiResponse(false, 'Lỗi khi cập nhật trạng thái báo cáo', null);
     }
   }
 
@@ -701,13 +654,13 @@ export class InspectionService implements OnModuleInit {
             timeout(10000),
             catchError(err => {
               console.error('Error updating inspection report status by manager:', err);
-              return of(new ApiResponse(false, 'Error updating inspection report status by manager', null));
+              return of(new ApiResponse(false, 'Lỗi khi cập nhật trạng thái báo cáo bởi quản lý', null));
             })
           )
       );
     } catch (error) {
       console.error('Error in updateInspectionReportStatusByManager:', error);
-      return new ApiResponse(false, 'Error updating inspection report status by manager', null);
+      return new ApiResponse(false, 'Lỗi khi cập nhật trạng thái báo cáo bởi quản lý', null);
     }
   }
 
@@ -719,13 +672,122 @@ export class InspectionService implements OnModuleInit {
             timeout(10000),
             catchError(err => {
               console.error('Error getting building detail ID from task assignment:', err);
-              return of(new ApiResponse(false, 'Error getting building detail ID from task assignment', null));
+              return of(new ApiResponse(false, 'Lỗi khi lấy ID chi tiết tòa nhà từ nhiệm vụ được gán', null));
             })
           )
       );
     } catch (error) {
       console.error('Error in getBuildingDetailIdFromTaskAssignment:', error);
-      return new ApiResponse(false, 'Error getting building detail ID from task assignment', null);
+      return new ApiResponse(false, 'Lỗi khi lấy ID chi tiết tòa nhà từ nhiệm vụ được gán', null);
+    }
+  }
+
+  async getInspectionPdfByTaskAssignment(task_assignment_id: string): Promise<ApiResponse<any>> {
+    try {
+      // 1. Check if task assignment exists and has status = Confirmed
+      const taskAssignmentResponse = await firstValueFrom(
+        this.inspectionClient.send(
+          INSPECTIONS_PATTERN.GET_TASK_ASSIGNMENT_DETAILS,
+          { task_assignment_id }
+        ).pipe(
+          timeout(10000),
+          catchError(err => {
+            console.error('Error getting task assignment details:', err);
+            return of(new ApiResponse(false, 'Lỗi khi lấy chi tiết nhiệm vụ được gán', null));
+          })
+        )
+      );
+
+      if (!taskAssignmentResponse.isSuccess || !taskAssignmentResponse.data) {
+        return new ApiResponse(false, 'Không tìm thấy nhiệm vụ được gán', null);
+      }
+
+      const taskAssignment = taskAssignmentResponse.data;
+
+      // Check if task assignment status is Confirmed
+      if (taskAssignment.status !== 'Confirmed') {
+        return new ApiResponse(
+          false,
+          `Nhiệm vụ được gán phải ở trạng thái Confirmed. Trạng thái hiện tại: ${taskAssignment.status}`,
+          null
+        );
+      }
+
+      // 2. Get verification of leader role and area match in one call
+      const leaderVerificationResponse = await firstValueFrom(
+        this.inspectionClient.send(
+          { cmd: 'verify-leader-and-area' },
+          {
+            employee_id: taskAssignment.employee_id,
+            task_id: taskAssignment.task_id
+          }
+        ).pipe(
+          timeout(10000),
+          catchError(err => {
+            console.error('Error verifying leader and area match:', err);
+            return of(new ApiResponse(false, 'Lỗi khi xác thực trưởng nhóm và khu vực', null));
+          })
+        )
+      );
+
+      if (!leaderVerificationResponse.isSuccess) {
+        return new ApiResponse(
+          false,
+          leaderVerificationResponse.message || 'Lỗi khi xác thực trưởng nhóm và khu vực',
+          null
+        );
+      }
+
+      // 3. Get inspection with uploadFile if all checks pass
+      const inspectionResponse = await firstValueFrom(
+        this.inspectionClient.send(
+          INSPECTIONS_PATTERN.GET_INSPECTION_PDF,
+          { task_assignment_id }
+        ).pipe(
+          timeout(10000),
+          catchError(err => {
+            console.error('Error getting inspection PDF:', err);
+            return of(new ApiResponse(false, 'Lỗi khi lấy tệp PDF của báo cáo', null));
+          })
+        )
+      );
+
+      if (!inspectionResponse.isSuccess || !inspectionResponse.data) {
+        return new ApiResponse(false, 'Không tìm thấy tệp PDF cho báo cáo này', null);
+      }
+
+      // If a PDF URL exists, generate a pre-signed URL
+      if (inspectionResponse.data.uploadFile) {
+        try {
+          const fileKey = this.extractFileKey(inspectionResponse.data.uploadFile);
+          const fileName = fileKey.split('/').pop(); // Extract the filename
+
+          // Generate both view and download URLs
+          const viewUrl = await this.getPreSignedUrlWithDisposition(fileKey, 'inline');
+          const downloadUrl = await this.getPreSignedUrlWithDisposition(fileKey, `attachment; filename="${fileName}"`);
+
+          // Update the response with both URLs
+          inspectionResponse.data.viewUrl = viewUrl;
+          inspectionResponse.data.downloadUrl = downloadUrl;
+          inspectionResponse.data.uploadFile = viewUrl; // Keep original field for backward compatibility
+        } catch (error) {
+          console.error(`Error getting pre-signed URLs for PDF file:`, error);
+          // Keep original URL as fallback
+        }
+      }
+
+      return new ApiResponse(
+        true,
+        'Tệp PDF báo cáo được tìm thấy và khu vực khớp',
+        inspectionResponse.data
+      );
+    } catch (error) {
+      console.error('Error in getInspectionPdfByTaskAssignment:', error);
+      return new ApiResponse(
+        false,
+        `Lỗi khi lấy tệp PDF báo cáo: ${error.message}`,
+        null
+      );
     }
   }
 }

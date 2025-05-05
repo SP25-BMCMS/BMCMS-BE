@@ -61,7 +61,7 @@ export class ResidentsController {
         return {
           success: true,
           isSuccess: true,
-          message: 'No apartments found',
+          message: 'Không tìm thấy căn hộ nào',
           data: []
         };
       }
@@ -70,7 +70,7 @@ export class ResidentsController {
       const response = {
         success: true,
         isSuccess: true,
-        message: result.message || 'Success',
+        message: result.message || 'Thành công',
         data: filteredData.map(item => {
           // Đảm bảo user data đầy đủ
           if (!item.userId) console.warn('Missing userId in response item');
@@ -96,7 +96,7 @@ export class ResidentsController {
       return {
         success: false,
         isSuccess: false,
-        message: error.message || 'Error retrieving apartments',
+        message: error.message || 'Lỗi khi lấy danh sách căn hộ',
         data: []
       };
     }
@@ -126,7 +126,7 @@ export class ResidentsController {
       return {
         isSuccess: false,
         success: false,
-        message: error.message || 'Error retrieving apartment',
+        message: error.message || 'Lỗi khi lấy thông tin căn hộ',
         data: null
       };
     }

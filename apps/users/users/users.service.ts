@@ -27,6 +27,7 @@ import { GrpcMethod } from '@nestjs/microservices'
 import { PaginationParams } from '@app/contracts/Pagination/pagination.dto'
 import { PrismaClient as TasksPrismaClient } from '@prisma/client-Task'
 import { PrismaClient as TasksPrismaClientSchedule } from '@prisma/client-schedule'
+import { log } from 'console'
 
 const BUILDINGS_CLIENT = 'BUILDINGS_CLIENT'
 const CRACKS_CLIENT = 'CRACKS_CLIENT'
@@ -55,7 +56,7 @@ export class UsersService {
     if (!user)
       throw new RpcException({
         statusCode: 401,
-        message: 'Incorrect phone number or password',
+        message: 'Số điện thoại hoặc mật khẩu không chính xác',
       })
     return user
   }
@@ -65,7 +66,7 @@ export class UsersService {
     if (!user)
       throw new RpcException({
         statusCode: 401,
-        message: 'Incorrect phone number or password',
+        message: 'Số điện thoại hoặc mật khẩu không chính xác',
       })
     return user
   }
@@ -75,7 +76,7 @@ export class UsersService {
     if (!user)
       throw new RpcException({
         statusCode: 401,
-        message: 'Email does not exist',
+        message: 'Email không tồn tại',
       })
     return user
   }
@@ -97,7 +98,7 @@ export class UsersService {
     if (!userRaw)
       throw new RpcException({
         statusCode: 401,
-        message: 'StaffId not found',
+        message: 'Không tìm thấy nhân viên',
       })
 
     // Create a formatted response to avoid duplicate fields
@@ -168,7 +169,7 @@ export class UsersService {
                       'Error communicating with building service:',
                       err,
                     )
-                    throw new Error('Building service unavailable')
+                    throw new Error('Dịch vụ tòa nhà không khả dụng')
                   }),
                 ),
             )
@@ -181,7 +182,7 @@ export class UsersService {
             ) {
               return new ApiResponse(
                 false,
-                `Building with ID ${apartment.buildingDetailId} not found`,
+                `Không tìm thấy tòa nhà với ID ${apartment.buildingDetailId}`,
                 null,
               )
             }
@@ -189,7 +190,7 @@ export class UsersService {
             console.error('Error validating building:', error)
             return new ApiResponse(
               false,
-              error.message || 'Error validating building',
+              error.message || 'Lỗi khi xác thực tòa nhà',
               null,
             )
           }
@@ -203,7 +204,7 @@ export class UsersService {
       })
 
       if (existingUser) {
-        return new ApiResponse(false, 'Username or Email already exists', null)
+        return new ApiResponse(false, 'Tên đăng nhập hoặc Email đã tồn tại', null)
       }
 
       const hashedPassword = await bcrypt.hash(userData.password, 10)
@@ -278,7 +279,7 @@ export class UsersService {
         },
       })
 
-      return new ApiResponse(true, 'User has been created successfully', {
+      return new ApiResponse(true, 'Người dùng đã được tạo thành công', {
         userId: fullUser?.userId,
         username: fullUser?.username,
         email: fullUser?.email,
@@ -305,7 +306,7 @@ export class UsersService {
       })
     } catch (error) {
       console.error('🔥 Lỗi trong UsersService:', error)
-      return new ApiResponse(false, 'Unknown error when creating user', null)
+      return new ApiResponse(false, 'Lỗi không xác định khi tạo người dùng', null)
     }
   }
 
@@ -315,7 +316,7 @@ export class UsersService {
   ): Promise<UserDto> {
     const user = await this.getUserById(userId)
     if (!user)
-      throw new RpcException({ statusCode: 404, message: 'User not found' })
+      throw new RpcException({ statusCode: 404, message: 'Không tìm thấy người dùng' })
 
     // Validate building IDs if apartments are being updated
     if (data.apartments && data.apartments.length > 0) {
@@ -339,7 +340,7 @@ export class UsersService {
                   )
                   throw new RpcException({
                     statusCode: HttpStatus.SERVICE_UNAVAILABLE,
-                    message: 'Building service unavailable',
+                    message: 'Dịch vụ tòa nhà không khả dụng',
                   })
                 }),
               ),
@@ -348,7 +349,7 @@ export class UsersService {
           if (buildingResponse.statusCode === 404 || !buildingResponse.exists) {
             throw new RpcException({
               statusCode: HttpStatus.NOT_FOUND,
-              message: `Building with ID ${apartment.buildingDetailId} not found`,
+              message: `Không tìm thấy tòa nhà với ID ${apartment.buildingDetailId}`,
             })
           }
         } catch (error) {
@@ -357,7 +358,7 @@ export class UsersService {
           }
           throw new RpcException({
             statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-            message: error.message || 'Error validating building',
+            message: error.message || 'Lỗi khi xác thực tòa nhà',
           })
         }
       }
@@ -398,7 +399,7 @@ export class UsersService {
 
   async deleteUser(userId: string): Promise<{ message: string }> {
     await this.prisma.user.delete({ where: { userId } })
-    return { message: 'User deleted successfully' }
+    return { message: ' đã xóa người dùng thành công' }
   }
 
   async getAllUsers(): Promise<{ users: UserDto[] }> {
@@ -421,11 +422,8 @@ export class UsersService {
         case 'Technician':
           positionNameEnum = PositionName.Technician
           break
-        case 'Janitor':
-          positionNameEnum = PositionName.Janitor
-          break
-        case 'Maintenance_Technician':
-          positionNameEnum = PositionName.Maintenance_Technician
+        case 'Manager':
+          positionNameEnum = PositionName.Manager
           break
         default:
           // For unsupported position names, use Leader as default
@@ -443,7 +441,7 @@ export class UsersService {
 
       return {
         isSuccess: true,
-        message: 'Working Position created successfully',
+        message: 'Vị trí công việc đã được tạo thành công',
         data: {
           positionId: newPosition.positionId,
           // Return the string representation of the position name
@@ -455,7 +453,7 @@ export class UsersService {
       console.error('🔥 Error creating working position:', error)
       throw new RpcException({
         statusCode: HttpStatus.BAD_REQUEST,
-        message: 'Failed to create working position',
+        message: 'Không thể tạo vị trí công việc',
       })
     }
   }
@@ -480,7 +478,7 @@ export class UsersService {
       console.error('Error fetching working positions:', error)
       throw new RpcException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: 'Failed to fetch working positions',
+        message: 'Không thể lấy danh sách vị trí công việc',
       })
     }
   }
@@ -491,36 +489,56 @@ export class UsersService {
     data: {
       positionId: string
       positionName: string
+      positionNameLabel?: string
       description?: string
     } | null
   }> {
     try {
+      console.log(`[users.service] Getting working position with ID: ${data.positionId}`);
+
+      if (!data.positionId) {
+        return {
+          isSuccess: false,
+          message: 'ID vị trí công việc không được cung cấp',
+          data: null
+        };
+      }
+
       const position = await this.prisma.workingPosition.findUnique({
         where: { positionId: data.positionId },
-      })
+      });
+
+      console.log(`[users.service] Working position found:`, position);
 
       if (!position) {
-        throw new RpcException({
-          statusCode: HttpStatus.NOT_FOUND,
-          message: 'Working Position not found',
-        })
+        return {
+          isSuccess: false,
+          message: 'Không tìm thấy vị trí công việc',
+          data: null
+        };
       }
+
+      // Convert the enum value to string and add user-friendly label
+      const positionName = position.positionName.toString();
 
       return {
         isSuccess: true,
-        message: 'Working Position retrieved successfully',
+        message: 'Lấy thông tin vị trí công việc thành công',
         data: {
           positionId: position.positionId,
-          positionName: position.positionName.toString(),
+          positionName: positionName,
+          positionNameLabel: this.getPositionNameLabel(positionName),
           description: position.description,
         },
-      }
+      };
     } catch (error) {
-      console.error('Error fetching working position:', error)
-      throw new RpcException({
-        statusCode: HttpStatus.BAD_REQUEST,
-        message: 'Failed to retrieve working position',
-      })
+      console.error('[users.service] Error fetching working position:', error);
+
+      return {
+        isSuccess: false,
+        message: `Lỗi khi lấy thông tin vị trí công việc: ${error.message}`,
+        data: null
+      };
     }
   }
 
@@ -540,7 +558,7 @@ export class UsersService {
 
       return {
         isSuccess: true,
-        message: 'Working Position deleted successfully',
+        message: 'Đã xóa vị trí công việc thành công',
         data: {
           positionId: deletedPosition.positionId,
           positionName: deletedPosition.positionName.toString(),
@@ -551,7 +569,7 @@ export class UsersService {
       console.error('Error deleting working position:', error)
       throw new RpcException({
         statusCode: HttpStatus.BAD_REQUEST,
-        message: 'Failed to delete working position',
+        message: 'Không thể xóa vị trí công việc',
       })
     }
   }
@@ -572,7 +590,7 @@ export class UsersService {
               console.error('❌ Error contacting Building Microservice:', err)
               throw new RpcException({
                 statusCode: HttpStatus.SERVICE_UNAVAILABLE,
-                message: 'Building Microservice is not responding',
+                message: 'Dịch vụ quản lý tòa nhà không phản hồi',
               })
             }),
           ),
@@ -584,7 +602,7 @@ export class UsersService {
         )
         throw new RpcException({
           statusCode: HttpStatus.NOT_FOUND,
-          message: `Area '${data.area}' does not exist in Building Microservice`,
+          message: `Khu vực '${data.area}' không tồn tại trong hệ thống quản lý tòa nhà`,
         })
       }
 
@@ -600,7 +618,7 @@ export class UsersService {
 
       return {
         isSuccess: true,
-        message: 'Department created successfully',
+        message: 'Tạo phòng ban thành công',
         data: {
           departmentId: newDepartment.departmentId,
           departmentName: newDepartment.departmentName,
@@ -617,7 +635,7 @@ export class UsersService {
 
       throw new RpcException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: error.message || 'Unexpected error creating department',
+        message: error.message || 'Lỗi không xác định khi tạo phòng ban',
       })
     }
   }
@@ -672,7 +690,7 @@ export class UsersService {
       })
 
       if (!user) {
-        return { isSuccess: false, message: 'Resident not found', data: [] }
+        return { isSuccess: false, message: 'Không tìm thấy cư dân', data: [] }
       }
 
       // Xử lý các căn hộ của người dùng song song
@@ -695,13 +713,13 @@ export class UsersService {
 
       return {
         isSuccess: true,
-        message: 'Success',
+        message: 'Thành công',
         data: apartmentsWithBuildings,
       }
     } catch (error) {
       return {
         isSuccess: false,
-        message: 'Failed to retrieve apartments',
+        message: 'Không thể lấy danh sách căn hộ',
         data: [],
       }
     }
@@ -785,7 +803,7 @@ export class UsersService {
       if (!staffMembers || staffMembers.length === 0) {
         return {
           isSuccess: true,
-          message: 'No staff members found',
+          message: 'Không tìm thấy nhân viên nào',
           data: [],
           pagination: {
             total: 0,
@@ -801,27 +819,29 @@ export class UsersService {
         const { password, ...userWithoutPassword } = staff
         return {
           ...userWithoutPassword,
+          roleLabel: this.getRoleLabel(staff.role),
+          genderLabel: this.getGenderLabel(staff.gender),
+          accountStatusLabel: this.getAccountStatusLabel(staff.accountStatus),
           dateOfBirth: staff.dateOfBirth
             ? staff.dateOfBirth.toISOString()
             : null,
           userDetails: staff.userDetails
             ? {
               ...staff.userDetails,
+              staffStatusLabel: this.getStaffStatusLabel(staff.userDetails.staffStatus),
               position: staff.userDetails.position
                 ? {
                   positionId: staff.userDetails.position.positionId,
-                  positionName:
-                    staff.userDetails.position.positionName.toString(),
+                  positionName: staff.userDetails.position.positionName.toString(),
+                  positionNameLabel: this.getPositionNameLabel(staff.userDetails.position.positionName.toString()),
                   description: staff.userDetails.position.description || '',
                 }
                 : null,
               department: staff.userDetails.department
                 ? {
                   departmentId: staff.userDetails.department.departmentId,
-                  departmentName:
-                    staff.userDetails.department.departmentName,
-                  description:
-                    staff.userDetails.department.description || '',
+                  departmentName: staff.userDetails.department.departmentName,
+                  description: staff.userDetails.department.description || '',
                   area: staff.userDetails.department.area || '',
                 }
                 : null,
@@ -832,7 +852,7 @@ export class UsersService {
 
       return {
         isSuccess: true,
-        message: 'Successfully retrieved staff members',
+        message: 'Lấy danh sách nhân viên thành công',
         data: staffData as unknown as UserDto[],
         pagination: {
           total: totalCount,
@@ -845,7 +865,7 @@ export class UsersService {
       console.error('Error fetching staff members:', error)
       throw new RpcException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: 'Failed to fetch staff members',
+        message: 'Không thể lấy danh sách nhân viên',
       })
     }
   }
@@ -869,7 +889,7 @@ export class UsersService {
       if (!user) {
         return {
           isSuccess: false,
-          message: 'Resident not found',
+          message: 'Không tìm thấy cư dân',
           data: null
         }
       }
@@ -890,7 +910,7 @@ export class UsersService {
           .join(', ')
         return {
           isSuccess: false,
-          message: `Resident already owns the following apartments: ${duplicateNames}`,
+          message: `Cư dân đã sở hữu các căn hộ sau: ${duplicateNames}`,
           data: null
         }
       }
@@ -920,7 +940,7 @@ export class UsersService {
           if (!buildingDetailResponse.exists) {
             return {
               isSuccess: false,
-              message: `Building with ID ${apartment.buildingDetailId} not found`,
+              message: `Không tìm thấy tòa nhà với ID ${apartment.buildingDetailId}`,
               data: null
             }
           }
@@ -1045,7 +1065,7 @@ export class UsersService {
 
       return {
         isSuccess: true,
-        message: 'Apartments updated successfully',
+        message: 'Cập nhật căn hộ thành công',
         data: {
           userId: updatedUser.userId,
           username: updatedUser.username,
@@ -1055,7 +1075,7 @@ export class UsersService {
     } catch (error) {
       return {
         isSuccess: false,
-        message: error.message || 'Error updating apartments',
+        message: error.message || 'Lỗi khi cập nhật căn hộ',
         data: null,
       }
     }
@@ -1074,7 +1094,7 @@ export class UsersService {
       if (!user) {
         return {
           isSuccess: false,
-          message: `User with ID: ${userId} not found`,
+          message: `Không tìm thấy người dùng với ID: ${userId}`,
           data: null,
         }
       }
@@ -1112,14 +1132,14 @@ export class UsersService {
 
       return {
         isSuccess: true,
-        message: `Account status updated to ${accountStatus}`,
+        message: `Trạng thái tài khoản đã được cập nhật thành ${accountStatus}`,
         data: formattedResponse,
       }
     } catch (error) {
       console.error('Error updating account status:', error)
       return {
         isSuccess: false,
-        message: `Error updating account status: ${error.message}`,
+        message: `Lỗi khi cập nhật trạng thái tài khoản: ${error.message}`,
         data: null,
       }
     }
@@ -1138,11 +1158,11 @@ export class UsersService {
           }
         }
       })
-
+      console.log(`[users[users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service][users.service].service] Staff: ${JSON.stringify(staff)}`)
       if (!staff || !staff.userDetails?.department) {
         return {
           isSuccess: false,
-          message: 'Staff not found or no department assigned',
+          message: 'Không tìm thấy nhân viên hoặc chưa được phân phòng ban',
           isMatch: false
         }
       }
@@ -1151,10 +1171,10 @@ export class UsersService {
       const crackReportResponse = await firstValueFrom(
         this.cracksClient.send(CRACK_PATTERN.GET_CRACK_REPORT, crackReportId)
           .pipe(
-            timeout(5000),
+            timeout(15000),
             catchError((err) => {
               console.error('Error getting crack report:', err)
-              return of({ isSuccess: false, message: 'Error getting crack report', data: null })
+              return of({ isSuccess: false, message: 'Lỗi khi lấy báo cáo nứt', data: null })
             })
           )
       )
@@ -1162,7 +1182,7 @@ export class UsersService {
       if (!crackReportResponse || !crackReportResponse.isSuccess || !crackReportResponse.data || crackReportResponse.data.length === 0) {
         return {
           isSuccess: false,
-          message: 'Crack report not found',
+          message: 'Không tìm thấy báo cáo nứt',
           isMatch: false
         }
       }
@@ -1173,7 +1193,7 @@ export class UsersService {
       const buildingResponse = await firstValueFrom(
         this.buildingsClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID, { buildingDetailId: crackReport.buildingDetailId })
           .pipe(
-            timeout(5000),
+            timeout(15000),
             catchError((err) => {
               console.error('Error getting building details:', err)
               return of({ statusCode: 404, data: null })
@@ -1184,7 +1204,7 @@ export class UsersService {
       if (!buildingResponse || buildingResponse.statusCode !== 200) {
         return {
           isSuccess: false,
-          message: 'Building not found',
+          message: 'Không tìm thấy tòa nhà',
           isMatch: false
         }
       }
@@ -1193,7 +1213,7 @@ export class UsersService {
       const areaResponse = await firstValueFrom(
         this.buildingsClient.send(AREAS_PATTERN.GET_BY_ID, { areaId: buildingResponse.data.building.area.areaId })
           .pipe(
-            timeout(5000),
+            timeout(15000),
             catchError((err) => {
               return of({ statusCode: 404, data: null })
             })
@@ -1203,7 +1223,7 @@ export class UsersService {
       if (!areaResponse || areaResponse.statusCode !== 200) {
         return {
           isSuccess: false,
-          message: 'Area not found',
+          message: 'Không tìm thấy khu vực',
           isMatch: false
         }
       }
@@ -1223,14 +1243,14 @@ export class UsersService {
       return {
         isSuccess: true,
         message: isMatch
-          ? `Staff from area ${staffAreaName} matches the area ${areaName} of the task`
-          : `Staff from area ${staffAreaName} does not match the area ${areaName} of the task`,
-        isMatch
+          ? `Nhân viên từ khu vực ${staffAreaName} phù hợp với khu vực ${areaName} của công việc`
+          : `Nhân viên từ khu vực ${staffAreaName} không phù hợp với khu vực ${areaName} của công việc`,
+        isMatch: isMatch
       }
     } catch (error) {
       return {
         isSuccess: false,
-        message: 'Error checking area match',
+        message: 'Lỗi khi kiểm tra khu vực',
         isMatch: false
       }
     }
@@ -1242,16 +1262,20 @@ export class UsersService {
     email: string
     phone: string
     role: string
+    roleLabel: string
     dateOfBirth: string | null
     gender: string | null
+    genderLabel: string | null
     userDetails?: {
       positionId: string | null
       departmentId: string | null
       staffStatus: string | null
+      staffStatusLabel: string | null
       image: string | null
       position?: {
         positionId: string
         positionName: string
+        positionNameLabel: string
         description: string | null
       } | null
       department?: {
@@ -1262,6 +1286,7 @@ export class UsersService {
       } | null
     } | null
     accountStatus: string
+    accountStatusLabel: string
   }> {
     try {
       const { userId, username } = data
@@ -1298,7 +1323,7 @@ export class UsersService {
         console.log(`User not found for userId: ${userId} or username: ${username}`)
         throw new RpcException({
           statusCode: 404,
-          message: 'User not found',
+          message: 'Không tìm thấy người dùng',
         })
       }
 
@@ -1381,17 +1406,24 @@ export class UsersService {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        roleLabel: this.getRoleLabel(user.role),
         dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString() : null,
         gender: user.gender,
+        genderLabel: this.getGenderLabel(user.gender),
         userDetails: user.userDetails ? {
           positionId: user.userDetails.positionId,
           departmentId: user.userDetails.departmentId,
           staffStatus: user.userDetails.staffStatus,
+          staffStatusLabel: this.getStaffStatusLabel(user.userDetails.staffStatus),
           image: user.userDetails.image,
-          position: positionDetails,
+          position: positionDetails ? {
+            ...positionDetails,
+            positionNameLabel: this.getPositionNameLabel(positionDetails.positionName)
+          } : null,
           department: departmentDetails
         } : null,
-        accountStatus: user.accountStatus
+        accountStatus: user.accountStatus,
+        accountStatusLabel: this.getAccountStatusLabel(user.accountStatus)
       }
 
       return response
@@ -1401,12 +1433,57 @@ export class UsersService {
       }
       throw new RpcException({
         statusCode: 500,
-        message: error.message || 'Error retrieving user information',
+        message: error.message || 'Lỗi khi lấy thông tin người dùng',
       })
     }
   }
 
-  async getDepartmentById(departmentId: string): Promise<{
+  // Helper methods to get labels
+  private getRoleLabel(role: string): string {
+    const roleLabels = {
+      'Admin': 'Quản trị viên',
+      'Manager': 'Quản lý',
+      'Resident': 'Cư dân',
+      'Staff': 'Nhân viên'
+    };
+    return roleLabels[role] || role;
+  }
+
+  private getGenderLabel(gender: string): string {
+    const genderLabels = {
+      'Male': 'Nam',
+      'Female': 'Nữ',
+      'Other': 'Khác'
+    };
+    return genderLabels[gender] || gender;
+  }
+
+  private getStaffStatusLabel(status: string): string {
+    const statusLabels = {
+      'Active': 'Đang hoạt động',
+      'Inactive': 'Không hoạt động'
+    };
+    return statusLabels[status] || status;
+  }
+
+  private getPositionNameLabel(position: string): string {
+    const positionLabels = {
+      'Leader': 'Trưởng nhóm',
+      'Technician': 'Kỹ thuật viên',
+      'Manager': 'Quản lý'
+    };
+    return positionLabels[position] || position;
+  }
+
+  private getAccountStatusLabel(status: string): string {
+    const statusLabels = {
+      'Active': 'Đang hoạt động',
+      'Inactive': 'Không hoạt động'
+    };
+    return statusLabels[status] || status;
+  }
+
+  async getDepartmentById(data: { departmentId: string }): Promise<{
     isSuccess: boolean
     message: string
     data: {
@@ -1417,28 +1494,51 @@ export class UsersService {
     } | null
   }> {
     try {
+      const departmentId = data.departmentId;
+      console.log(`[users.service] Getting department with ID: ${departmentId}`);
+
+      if (!departmentId) {
+        console.log(`[users.service] Department ID not provided`);
+        return {
+          isSuccess: false,
+          message: 'ID phòng ban không được cung cấp',
+          data: null
+        };
+      }
+
       // Kiểm tra schema đầu tiên
-      const departmentModel = this.prisma.department
-      if (departmentModel) {
-        try {
-          // Thử lấy toàn bộ danh sách departments để kiểm tra kết nối
-          const allDepartments = await this.prisma.department.findMany({ take: 5 })
-        } catch (dbError) {
-          // Handle error silently
-        }
+      const departmentModel = this.prisma.department;
+      if (!departmentModel) {
+        console.error(`[users.service] Department model not found in prisma client`);
+        return {
+          isSuccess: false,
+          message: 'Lỗi cấu hình hệ thống: Không tìm thấy model phòng ban',
+          data: null
+        };
+      }
+
+      try {
+        // Thử lấy toàn bộ danh sách departments để kiểm tra kết nối
+        const allDepartments = await this.prisma.department.findMany({ take: 5 });
+        console.log(`[users.service] Database connection check: Found ${allDepartments.length} departments`);
+      } catch (dbError) {
+        console.error(`[users.service] Database connection error:`, dbError);
+        // Continue with single query despite connection issue
       }
 
       // Tiếp tục với truy vấn chính
       const department = await this.prisma.department.findUnique({
         where: { departmentId }
-      })
+      });
+
+      console.log(`[users.service] Department query result:`, department);
 
       if (!department) {
         return {
           isSuccess: false,
-          message: 'Department not found',
+          message: 'Không tìm thấy phòng ban',
           data: null
-        }
+        };
       }
 
       const responseData = {
@@ -1446,19 +1546,22 @@ export class UsersService {
         departmentName: department.departmentName,
         description: department.description || '',
         area: department.area || ''
-      }
+      };
+
+      console.log(`[users.service] Department data to return:`, responseData);
 
       return {
         isSuccess: true,
-        message: 'Department retrieved successfully',
+        message: 'Lấy thông tin phòng ban thành công',
         data: responseData
-      }
+      };
     } catch (error) {
+      console.error(`[users.service] Error getting department:`, error);
       return {
         isSuccess: false,
-        message: error.message || 'Error retrieving department',
+        message: error.message || 'Lỗi khi lấy thông tin phòng ban',
         data: null
-      }
+      };
     }
   }
 
@@ -1486,7 +1589,7 @@ export class UsersService {
       if (!staff) {
         return {
           isSuccess: false,
-          message: 'Staff does not exist or is not a Staff/Manager',
+          message: 'Nhân viên không tồn tại hoặc không phải là nhân viên/quản lý',
           data: null
         }
       }
@@ -1499,7 +1602,7 @@ export class UsersService {
       if (!department) {
         return {
           isSuccess: false,
-          message: 'Department does not exist',
+          message: 'Phòng ban không tồn tại',
           data: null
         }
       }
@@ -1512,7 +1615,7 @@ export class UsersService {
       if (!position) {
         return {
           isSuccess: false,
-          message: 'Working position does not exist',
+          message: 'Vị trí công việc không tồn tại',
           data: null
         }
       }
@@ -1558,7 +1661,7 @@ export class UsersService {
       // Prepare response
       return {
         isSuccess: true,
-        message: 'Department and working position updated successfully',
+        message: 'Cập nhật phòng ban và vị trí công việc thành công',
         data: {
           staffId: staff.userId,
           username: staff.username,
@@ -1582,7 +1685,7 @@ export class UsersService {
     } catch (error) {
       return {
         isSuccess: false,
-        message: `Error updating department and working position: ${error.message}`,
+        message: `Lỗi khi cập nhật phòng ban và vị trí công việc: ${error.message}`,
         data: null
       }
     }
@@ -1620,7 +1723,7 @@ export class UsersService {
       if (!staff) {
         return {
           isSuccess: false,
-          message: `Staff not found (${data.staffId})`,
+          message: `Không tìm thấy nhân viên (${data.staffId})`,
           isMatch: false,
           statusCode: 404
         }
@@ -1629,7 +1732,7 @@ export class UsersService {
       if (!staff.userDetails) {
         return {
           isSuccess: false,
-          message: 'Staff has not been assigned a department and working position',
+          message: 'Nhân viên chưa được phân công phòng ban và vị trí công việc',
           isMatch: false
         }
       }
@@ -1637,7 +1740,7 @@ export class UsersService {
       if (!staff.userDetails.position) {
         return {
           isSuccess: false,
-          message: 'Staff has not been assigned a working position',
+          message: 'Nhân viên chưa được phân công vị trí công việc',
           isMatch: false
         }
       }
@@ -1645,16 +1748,16 @@ export class UsersService {
       if (!staff.userDetails.department) {
         return {
           isSuccess: false,
-          message: 'Staff has not been assigned a department',
+          message: 'Nhân viên chưa được phân công phòng ban',
           isMatch: false
         }
       }
 
-      // Check if staff is a Maintenance Technician
-      if (staff.userDetails.position.positionName !== 'Maintenance_Technician') {
+      // Check if staff is a Leader
+      if (staff.userDetails.position.positionName !== PositionName.Leader) {
         return {
           isSuccess: false,
-          message: `Only maintenance technicians (Maintenance Technician) can perform this task. Current position: ${staff.userDetails.position.positionName}`,
+          message: `Chỉ trưởng nhóm (Leader) mới có thể thực hiện nhiệm vụ này. Vị trí hiện tại: ${staff.userDetails.position.positionName}`,
           isMatch: false
         }
       }
@@ -1675,7 +1778,7 @@ export class UsersService {
       if (!scheduleJob) {
         return {
           isSuccess: false,
-          message: `Schedule job with ID: ${data.scheduleJobId} not found`,
+          message: `Không tìm thấy lịch công việc với ID: ${data.scheduleJobId}`,
           isMatch: false,
           statusCode: 404
         }
@@ -1688,7 +1791,7 @@ export class UsersService {
       if (!scheduleJob.buildingDetailId) {
         return {
           isSuccess: false,
-          message: 'Schedule job does not have building information',
+          message: 'Lịch công việc không có thông tin tòa nhà',
           isMatch: false
         }
       }
@@ -1781,7 +1884,6 @@ export class UsersService {
           )
 
           console.log(`[users.service] Area response:`, JSON.stringify(areaResponse))
-
           // Kiểm tra xem có lấy được thông tin area không
           if (!areaResponse || areaResponse.statusCode !== 200 || !areaResponse.data) {
             return {
@@ -1824,15 +1926,15 @@ export class UsersService {
       return {
         isSuccess: true,
         message: isMatch
-          ? `Staff from area ${staffAreaName} matches the area ${areaName} of the task`
-          : `Staff from area ${staffAreaName} does not match the area ${areaName} of the task`,
-        isMatch
+          ? `Nhân viên từ khu vực ${staffAreaName} phù hợp với khu vực ${areaName} của công việc`
+          : `Nhân viên từ khu vực ${staffAreaName} không phù hợp với khu vực ${areaName} của công việc`,
+        isMatch: isMatch
       }
     } catch (error) {
       console.error(`[users.service] Error in checkStaffAreaMatchWithScheduleJob:`, error)
       return {
         isSuccess: false,
-        message: `Error when checking area: ${error.message}`,
+        message: `Lỗi khi kiểm tra khu vực: ${error.message}`,
         isMatch: false
       }
     }
@@ -1851,14 +1953,14 @@ export class UsersService {
       if (!user) {
         return {
           isSuccess: false,
-          message: 'User not found',
+          message: 'Không tìm thấy người dùng',
           data: null,
         }
       }
 
       return {
         isSuccess: true,
-        message: 'User retrieved successfully',
+        message: 'Lấy thông tin người dùng thành công',
         data: {
           userId: user.userId,
           username: user.username,
@@ -1867,7 +1969,7 @@ export class UsersService {
     } catch (error) {
       throw new RpcException({
         statusCode: 500,
-        message: 'Error retrieving user details',
+        message: 'Lỗi khi lấy thông tin chi tiết người dùng',
       })
     }
   }
@@ -1909,3 +2011,4 @@ export class UsersService {
     }
   }
 }
+

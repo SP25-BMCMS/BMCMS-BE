@@ -1,7 +1,8 @@
 import { Module, ValidationPipe } from '@nestjs/common';
-import { APP_PIPE } from '@nestjs/core';
+import { APP_PIPE, APP_INTERCEPTOR } from '@nestjs/core';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MaterialModule } from './Material/Material.module';
+import { EnumLabelInterceptor } from './common/interceptors/enum-label.interceptor';
 // ...other imports
 
 @Module({
@@ -16,6 +17,10 @@ import { MaterialModule } from './Material/Material.module';
                 transform: true,
                 transformOptions: { enableImplicitConversion: true }
             }),
+        },
+        {
+            provide: APP_INTERCEPTOR,
+            useClass: EnumLabelInterceptor,
         },
         // ...other providers
     ],

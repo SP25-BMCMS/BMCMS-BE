@@ -16,13 +16,13 @@ export class DepartmentsService {
 
       return new ApiResponse(
         true,
-        'All departments retrieved successfully',
+        'Lấy tất cả phòng ban thành công',
         departments
       )
     } catch (error) {
       return new ApiResponse(
         false,
-        'Failed to retrieve departments',
+        'Không thể lấy danh sách phòng ban',
         null
       )
     }

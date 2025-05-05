@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { IsEnum, IsOptional } from 'class-validator'
+import { IsEnum, IsOptional, IsString } from 'class-validator'
 import { DeviceType, Frequency, MaintenanceBasis } from '@prisma/client-schedule'
 
 export class UpdateMaintenanceCycleDto {
@@ -32,4 +32,22 @@ export class UpdateMaintenanceCycleDto {
     required: false,
   })
   basis?: MaintenanceBasis
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({
+    description: 'User ID or name who updated the maintenance cycle',
+    example: 'user123',
+    required: false,
+  })
+  updated_by?: string
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({
+    description: 'Reason for updating the maintenance cycle',
+    example: 'Updated frequency based on new manufacturer guidelines',
+    required: false,
+  })
+  reason?: string
 } 
