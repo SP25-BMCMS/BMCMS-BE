@@ -73,11 +73,7 @@ export class NotificationsController {
 
   @EventPattern('send_otp_message')
   async handleSendOtpMessage(data: { email: string }) {
-    this.logger.warn(`[MessagePattern] This handler is disabled to prevent duplicate OTP emails. Using EventPattern instead.`)
-    return {
-      success: false,
-      message: 'This message pattern is disabled. Please use event pattern for sending OTP emails.'
-    }
+    return await this.otpService.createOTP(data.email)
   }
 
   @EventPattern('verify_otp')
