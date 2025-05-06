@@ -1130,9 +1130,26 @@ export class TaskAssignmentsService {
         doc.fillColor('black')
         yPos += 30 // Move below header
 
-        // Logo placeholder (placed on the right side of header)
-        doc.rect(CONTENT_WIDTH - 70, PAGE_MARGIN + 5, 80, 50).stroke()
-        doc.text('Logo', CONTENT_WIDTH - 50, PAGE_MARGIN + 25)
+        // Logo (placed on the right side of header)
+        try {
+          const path = require('path');
+
+          // Use the correct path to logo.jpg
+          const logoPath = path.join(process.cwd(), 'libs', 'contracts', 'src', 'logo', 'logo.jpg');
+          console.log('Loading logo from:', logoPath);
+
+          // Vẽ logo với kích thước phù hợp
+          doc.image(logoPath, CONTENT_WIDTH - 70, PAGE_MARGIN + 5, {
+            fit: [80, 50],
+            align: 'center',
+            valign: 'center'
+          });
+        } catch (error) {
+          console.error('Error loading logo:', error);
+          // Fallback nếu có lỗi khi đọc file
+          doc.rect(CONTENT_WIDTH - 70, PAGE_MARGIN + 5, 80, 50).stroke();
+          doc.fontSize(10).text('BMCMS', CONTENT_WIDTH - 50, PAGE_MARGIN + 25, { align: 'center' });
+        }
 
         // Section: Crack report information
         yPos += 10
@@ -1157,7 +1174,7 @@ export class TaskAssignmentsService {
 
         // Left column
         doc.text('Người báo cáo:', PAGE_MARGIN, yPos)
-        doc.text(reportby, PAGE_MARGIN + 90, yPos)
+        doc.text(reportby, PAGE_MARGIN + 110, yPos)
         yPos += LINE_HEIGHT
 
         doc.text('Ngày báo cáo:', PAGE_MARGIN, yPos)
@@ -1413,7 +1430,9 @@ export class TaskAssignmentsService {
                   ).join('\n')
 
                   // Format the total cost
-                  totalCost = `${inspection.total_cost.toLocaleString('vi-VN')} VND`
+                  totalCost = inspection.total_cost && !isNaN(inspection.total_cost)
+                    ? `${Number(inspection.total_cost).toLocaleString('vi-VN')} VND`
+                    : 'N/A'
                 }
 
                 // Calculate how many rows of images we'll need (2 images per row)
@@ -1540,13 +1559,18 @@ export class TaskAssignmentsService {
                     }
                   )
 
-                // Estimated cost - move it even further right to avoid overlap with materials
+                // Chi phí - cải thiện căn chỉnh
+                const costLabelX = PAGE_MARGIN + CONTENT_WIDTH - 170;
+                const costValueX = PAGE_MARGIN + CONTENT_WIDTH - 100;
+
+                // Estimated cost - hiển thị label với vị trí cố định
                 doc.fontSize(10).font('VietnameseFont', 'bold')
                   .fillColor('#000000')
-                  .text('Chi phí:', detailsX + detailsWidth - 90, yPos + 70)
+                  .text('Chi phí:', costLabelX, yPos + 70, { align: 'right', width: 60 })
 
+                // Hiển thị giá trị tiền với vị trí cố định và căn phải
                 doc.fontSize(10).fillColor('#d32f2f').font('VietnameseFont', 'bold')
-                  .text(totalCost, detailsX + detailsWidth - 50, yPos + 70)
+                  .text(totalCost, costValueX, yPos + 70, { align: 'right', width: 90 })
 
                 // Position images precisely based on material content
                 // Giảm khoảng cách giữa phần materials và ảnh, phụ thuộc vào số lượng material
@@ -1655,21 +1679,27 @@ export class TaskAssignmentsService {
         doc.fillColor('black')
         yPos += LINE_HEIGHT + 5
 
-        // Display cost information with more emphasis
+        // Cải thiện căn chỉnh phần tổng kết chi phí
+        const summaryLabelWidth = 150;
+        const summaryValueWidth = 120;
+        const summaryLabelX = PAGE_MARGIN + 20;
+        const summaryValueX = PAGE_MARGIN + 200;
+
+        // Display cost information with more emphasis and better alignment
         doc.fontSize(12)
           .fillColor('#333333')
-          .text(`Tổng chi phí dự kiến:`, PAGE_MARGIN + 20, yPos)
+          .text(`Tổng chi phí dự kiến:`, summaryLabelX, yPos, { align: 'left', width: summaryLabelWidth })
         doc.fontSize(12)
           .fillColor('#d32f2f')
-          .text(`${estimatedCost.toLocaleString('vi-VN')} VND`, PAGE_MARGIN + 200, yPos)
+          .text(`${estimatedCost.toLocaleString('vi-VN')} VND`, summaryValueX, yPos, { align: 'right', width: summaryValueWidth })
         yPos += LINE_HEIGHT + 5
 
         doc.fontSize(12)
           .fillColor('#333333')
-          .text(`Tổng chi phí thực tế:`, PAGE_MARGIN + 20, yPos)
+          .text(`Tổng chi phí thực tế:`, summaryLabelX, yPos, { align: 'left', width: summaryLabelWidth })
         doc.fontSize(12)
           .fillColor('#d32f2f')
-          .text(`${actualCost.toLocaleString('vi-VN')} VND`, PAGE_MARGIN + 200, yPos)
+          .text(`${actualCost.toLocaleString('vi-VN')} VND`, summaryValueX, yPos, { align: 'right', width: summaryValueWidth })
         yPos += LINE_HEIGHT + 15
 
         // Calculate signature section positioning
