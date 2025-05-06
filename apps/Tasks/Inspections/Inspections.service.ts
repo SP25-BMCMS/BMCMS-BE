@@ -50,7 +50,7 @@ interface DepartmentByIdRequest {
 
 // Định nghĩa CRACK_PATTERNS cho pattern get-crack-detail-by-id
 const CRACK_PATTERNS = {
-  GET_DETAILS: { pattern: 'get-crack-report-by-id' }
+  GET_DETAILS: { cmd: 'get-crack-report-by-id' }
 }
 
 @Injectable()
@@ -788,11 +788,35 @@ export class InspectionsService implements OnModuleInit {
       // 3. If crack_id exists, get crack info
       if (task.crack_id) {
         console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ task.crack_id:", task.crack_id)
-        const crackInfo = await firstValueFrom(
-          this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
-        )
-        result.crackInfo = crackInfo
-        console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ crackInfo:", crackInfo)
+        try {
+          console.log("Trying to get crack info...")
+          const crackInfo = await firstValueFrom(
+            this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
+          )
+          result.crackInfo = crackInfo
+          console.log("✅ Successfully retrieved crack info:")
+          console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ crackInfo:", crackInfo)
+        } catch (error) {
+          console.error("❌ Failed to get crack info for crack_id:", task.crack_id)
+          console.error("Error details:", error)
+          
+          // Thử phương án thay thế với định dạng khác
+          try {
+            console.log("Attempting alternative method to get crack info...")
+            const crackInfo = await firstValueFrom(
+              this.crackClient.send(
+                { cmd: 'get-crack-report-by-id' }, 
+                task.crack_id
+              )
+            )
+            result.crackInfo = crackInfo
+            console.log("✅ Successfully retrieved crack info with alternative method")
+          } catch (fallbackError) {
+            console.error("❌ Alternative method also failed:", fallbackError)
+            // Optionally set a default or error state
+            result.crackInfo = { error: "Failed to retrieve crack information" }
+          }
+        }
 
         // Process crack images if they exist
         if (result.crackInfo && result.crackInfo.data) {
