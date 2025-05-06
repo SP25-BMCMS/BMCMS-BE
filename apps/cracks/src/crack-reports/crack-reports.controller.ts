@@ -41,6 +41,7 @@ export class CrackReportsController {
 
   @MessagePattern({ cmd: 'get-crack-report-by-id' })
   async getCrackReportById(@Payload() crackId: string) {
+    console.log("🚀 ~ CrackReportsController ~ getCrackReportById ~ crackId:", crackId)
     return await this.crackReportsService.findById(crackId)
   }
 

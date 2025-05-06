@@ -50,7 +50,7 @@ interface DepartmentByIdRequest {
 
 // Định nghĩa CRACK_PATTERNS cho pattern get-crack-detail-by-id
 const CRACK_PATTERNS = {
-  GET_DETAILS: { pattern: 'get-crack-report-by-id' }
+  GET_DETAILS: { cmd: 'get-crack-report-by-id' }
 }
 
 @Injectable()
@@ -152,6 +152,13 @@ export class InspectionsService implements OnModuleInit {
     try {
       const inspections = await this.prisma.inspection.findMany({
         where: { task_assignment_id },
+        include: {
+          taskAssignment: {
+            include: {
+              task: true
+            }
+          }
+        }
       })
 
       if (inspections.length === 0) {
@@ -163,12 +170,96 @@ export class InspectionsService implements OnModuleInit {
         }
       }
 
-      // Xử lý presignedUrl cho mỗi inspection
+      // Lấy thông tin chung về task và crack_id từ inspection đầu tiên
+      const task = inspections[0].taskAssignment.task;
+      let crackInfo = null;
+
+      // Nếu task có crack_id, lấy thông tin crack một lần duy nhất
+      if (task && task.crack_id) {
+        console.log(`Getting crack info for task_id: ${task.task_id}, crack_id: ${task.crack_id}`)
+        try {
+          console.log("Trying to get crack info...")
+          crackInfo = await firstValueFrom(
+            this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
+          )
+          console.log("✅ Successfully retrieved crack info")
+          
+          // Process crack images if they exist
+          if (crackInfo && crackInfo.data) {
+            const crackData = crackInfo.data
+
+            // Process crack main image if it exists
+            if (crackData.photoUrl) {
+              try {
+                const fileKey = this.extractFileKey(crackData.photoUrl)
+                crackData.photoUrl = await this.getPreSignedUrl(fileKey)
+              } catch (error) {
+                console.error(`Error getting pre-signed URL for crack photo:`, error)
+              }
+            }
+
+            // Process crack detail images if they exist
+            if (crackData.crackDetails && Array.isArray(crackData.crackDetails)) {
+              for (const detail of crackData.crackDetails) {
+                if (detail.photoUrl) {
+                  try {
+                    const fileKey = this.extractFileKey(detail.photoUrl)
+                    detail.photoUrl = await this.getPreSignedUrl(fileKey)
+                  } catch (error) {
+                    console.error(`Error getting pre-signed URL for crack detail photo:`, error)
+                  }
+                }
+
+                if (detail.aiDetectionUrl) {
+                  try {
+                    const fileKey = this.extractFileKey(detail.aiDetectionUrl)
+                    detail.aiDetectionUrl = await this.getPreSignedUrl(fileKey)
+                  } catch (error) {
+                    console.error(`Error getting pre-signed URL for AI detection image:`, error)
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("❌ Failed to get crack info for crack_id:", task.crack_id)
+          console.error("Error details:", error)
+          
+          // Thử phương án thay thế với định dạng khác
+          try {
+            console.log("Attempting alternative method to get crack info...")
+            crackInfo = await firstValueFrom(
+              this.crackClient.send(
+                { cmd: 'get-crack-report-by-id' }, 
+                task.crack_id
+              )
+            )
+            console.log("✅ Successfully retrieved crack info with alternative method")
+          } catch (fallbackError) {
+            console.error("❌ Alternative method also failed:", fallbackError)
+            // Optionally set a default or error state
+            crackInfo = { error: "Failed to retrieve crack information" }
+          }
+        }
+      }
+
+      // Kết quả sẽ trả về
+      const result = [];
+
+      // Xử lý từng inspection
       for (const inspection of inspections) {
+        // Tạo bản sao và thêm crackInfo vào
+        const inspectionData: any = { ...inspection };
+        
+        // Thêm thông tin crack nếu có
+        if (crackInfo) {
+          inspectionData.crackInfo = crackInfo;
+        }
+        
         // Process image URLs
-        if (inspection.image_urls && inspection.image_urls.length > 0) {
-          inspection.image_urls = await Promise.all(
-            inspection.image_urls.map(async (url: string) => {
+        if (inspectionData.image_urls && inspectionData.image_urls.length > 0) {
+          inspectionData.image_urls = await Promise.all(
+            inspectionData.image_urls.map(async (url: string) => {
               try {
                 const fileKey = this.extractFileKey(url)
                 return await this.getPreSignedUrl(fileKey)
@@ -181,21 +272,23 @@ export class InspectionsService implements OnModuleInit {
         }
 
         // Process PDF file URL if exists
-        if (inspection.uploadFile) {
+        if (inspectionData.uploadFile) {
           try {
-            const fileKey = this.extractFileKey(inspection.uploadFile)
-            inspection.uploadFile = await this.getPreSignedUrl(fileKey)
+            const fileKey = this.extractFileKey(inspectionData.uploadFile)
+            inspectionData.uploadFile = await this.getPreSignedUrl(fileKey)
           } catch (error) {
             console.error(`Error getting pre-signed URL for PDF file:`, error)
             // Keep original URL as fallback
           }
         }
+        
+        result.push(inspectionData)
       }
 
       return {
         statusCode: 200,
         message: 'Lấy danh sách báo cáo thành công',
-        data: inspections,
+        data: result,
       }
     } catch (error) {
       throw new RpcException({
@@ -788,11 +881,35 @@ export class InspectionsService implements OnModuleInit {
       // 3. If crack_id exists, get crack info
       if (task.crack_id) {
         console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ task.crack_id:", task.crack_id)
-        const crackInfo = await firstValueFrom(
-          this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
-        )
-        result.crackInfo = crackInfo
-        console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ crackInfo:", crackInfo)
+        try {
+          console.log("Trying to get crack info...")
+          const crackInfo = await firstValueFrom(
+            this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
+          )
+          result.crackInfo = crackInfo
+          console.log("✅ Successfully retrieved crack info:")
+          console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ crackInfo:", crackInfo)
+        } catch (error) {
+          console.error("❌ Failed to get crack info for crack_id:", task.crack_id)
+          console.error("Error details:", error)
+          
+          // Thử phương án thay thế với định dạng khác
+          try {
+            console.log("Attempting alternative method to get crack info...")
+            const crackInfo = await firstValueFrom(
+              this.crackClient.send(
+                { cmd: 'get-crack-report-by-id' }, 
+                task.crack_id
+              )
+            )
+            result.crackInfo = crackInfo
+            console.log("✅ Successfully retrieved crack info with alternative method")
+          } catch (fallbackError) {
+            console.error("❌ Alternative method also failed:", fallbackError)
+            // Optionally set a default or error state
+            result.crackInfo = { error: "Failed to retrieve crack information" }
+          }
+        }
 
         // Process crack images if they exist
         if (result.crackInfo && result.crackInfo.data) {

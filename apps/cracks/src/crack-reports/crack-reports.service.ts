@@ -600,6 +600,7 @@ export class CrackReportsService {
   }
 
   async findById(crackReportId: string) {
+    console.log("🚀 ~ CrackReportsService ~ findById ~ crackReportId:", crackReportId)
     const report = await this.prismaService.crackReport.findUnique({
       where: { crackReportId },
       include: {
