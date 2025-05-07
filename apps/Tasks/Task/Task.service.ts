@@ -1920,4 +1920,124 @@ export class TaskService {
       });
     }
   }
+
+  async getLatestTaskAssignment(taskId: string) {
+    try {
+      // Step 1: Verify the task exists
+      const task = await this.prisma.task.findUnique({
+        where: { task_id: taskId }
+      });
+
+      if (!task) {
+        throw new RpcException({
+          statusCode: 404,
+          message: `Không tìm thấy nhiệm vụ với ID ${taskId}`
+        });
+      }
+
+      // Step 2: Get the latest task assignment with status 'Verified'
+      const latestAssignment = await this.prisma.taskAssignment.findFirst({
+        where: {
+          task_id: taskId,
+          status: 'Verified' // Filter for Verified status
+        },
+        orderBy: { created_at: 'desc' },
+        include: {
+          inspections: {
+            include: {
+              repairMaterials: true
+            }
+          }
+        }
+      });
+
+      if (!latestAssignment) {
+        return new ApiResponse(false, 'Không tìm thấy phân công nhiệm vụ đã được xác thực cho nhiệm vụ này', null);
+      }
+
+      // Step 3: Get crack report info if available
+      let crackRecord = null;
+      let locationDetail = null;
+
+      if (task.crack_id) {
+        try {
+          const crackResponse = await this.callCrackService(
+            CRACK_PATTERNS.GET_DETAILS,
+            task.crack_id
+          );
+
+          if (crackResponse && crackResponse.isSuccess && crackResponse.data) {
+            crackRecord = crackResponse.data;
+
+            // Extract location details from crack report if available
+            if (crackResponse.data.length > 0 && crackResponse.data[0].locationDetail) {
+              locationDetail = crackResponse.data[0].locationDetail;
+            }
+          }
+        } catch (error) {
+          console.error(`Error fetching crack info for task ${taskId}:`, error);
+          // Continue execution even if crack info fetch fails
+        }
+      }
+
+      // Step 4: If there's a schedule job, get its location details
+      if (!locationDetail && task.schedule_job_id) {
+        try {
+          const scheduleJobResponse = await firstValueFrom(
+            this.scheduleClient.send(SCHEDULEJOB_PATTERN.GET_BY_ID, { schedule_job_id: task.schedule_job_id }).pipe(
+              timeout(15000),
+              catchError(err => {
+                console.error(`Error fetching schedule job info for task ${taskId}:`, err);
+                return of(null);
+              })
+            )
+          );
+
+          if (scheduleJobResponse && scheduleJobResponse.data && scheduleJobResponse.data.buildingDetailId) {
+            // Get building detail information to use as location
+            const buildingDetailResponse = await firstValueFrom(
+              this.buildingsClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID,
+                { buildingDetailId: scheduleJobResponse.data.buildingDetailId }
+              ).pipe(
+                timeout(10000),
+                catchError(err => {
+                  console.error(`Error fetching building detail:`, err);
+                  return of(null);
+                })
+              )
+            );
+
+            if (buildingDetailResponse && buildingDetailResponse.data) {
+              locationDetail = {
+                buildingDetail: buildingDetailResponse.data,
+                buildingDetailId: scheduleJobResponse.data.buildingDetailId
+              };
+            }
+          }
+        } catch (error) {
+          console.error(`Error getting location details for schedule job:`, error);
+          // Continue execution even if schedule info fetch fails
+        }
+      }
+
+      // Step 5: Return the complete response
+      return new ApiResponse(true, 'Lấy thông tin phân công nhiệm vụ đã xác thực thành công', {
+        task,
+        taskAssignment: latestAssignment,
+        crackRecord,
+        locationDetail
+      });
+    } catch (error) {
+      console.error('[TaskService] Error in getLatestTaskAssignment:', error);
+
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      throw new RpcException({
+        statusCode: 500,
+        message: `Lỗi khi lấy thông tin phân công nhiệm vụ: ${error.message}`
+      });
+    }
+  }
 }

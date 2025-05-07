@@ -154,4 +154,17 @@ export class TasksController {
       throw error;
     }
   }
+
+  @MessagePattern(TASKS_PATTERN.GET_LATEST_ASSIGNMENT)
+  async getLatestTaskAssignment(@Payload() payload: { taskId: string }) {
+    console.log('Received get-latest-task-assignment request with taskId:', payload.taskId);
+    try {
+      const result = await this.taskService.getLatestTaskAssignment(payload.taskId);
+      console.log('getLatestTaskAssignment completed');
+      return result;
+    } catch (error) {
+      console.error('Error in getLatestTaskAssignment controller:', error);
+      throw error;
+    }
+  }
 }

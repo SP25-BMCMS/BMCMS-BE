@@ -10,6 +10,7 @@ export const TASKS_PATTERN = {
     NOTIFICATION_THANKS_TO_RESIDENT: { cmd: 'notification-thanks-to-resident' },
     GET_BY_TYPE: { cmd: 'get-tasks-by-type' },
     COMPLETE_AND_REVIEW: 'complete_task_and_review',
-    DELETE_AND_RELATED: 'delete_task_and_related'
+    DELETE_AND_RELATED: 'delete_task_and_related',
+    GET_LATEST_ASSIGNMENT: 'get_latest_task_assignment'
 }
 

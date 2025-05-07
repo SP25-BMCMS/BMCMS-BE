@@ -419,4 +419,51 @@ export class TaskController {
       );
     }
   }
+
+  @Get('task/:task_id/latest-assignment')
+  @ApiOperation({ summary: 'Get the latest verified task assignment with related data' })
+  @ApiParam({ name: 'task_id', description: 'Task ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns the latest verified task assignment with inspections, repair materials, location details, and crack record',
+    schema: {
+      type: 'object',
+      properties: {
+        isSuccess: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Lấy thông tin phân công nhiệm vụ đã xác thực thành công' },
+        data: {
+          type: 'object',
+          properties: {
+            task: { type: 'object', description: 'Task information' },
+            taskAssignment: {
+              type: 'object',
+              description: 'Latest verified task assignment with inspections and repair materials',
+              properties: {
+                status: { type: 'string', example: 'Verified', description: 'Only returns assignments with Verified status' }
+              }
+            },
+            crackRecord: { type: 'object', description: 'Crack report data if applicable', nullable: true },
+            locationDetail: { type: 'object', description: 'Location details if available', nullable: true }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Task or verified assignment not found' })
+  @ApiResponse({ status: 400, description: 'Invalid task ID' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async getLatestTaskAssignment(@Param('task_id') task_id: string) {
+    try {
+      return this.taskService.getLatestTaskAssignment(task_id);
+    } catch (error) {
+      console.error('Error in getLatestTaskAssignment controller:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Error retrieving verified task assignment',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

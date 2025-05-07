@@ -25,6 +25,7 @@ import { AREAS_PATTERN } from '@app/contracts/Areas/Areas.patterns'
 import { SCHEDULEJOB_PATTERN } from '@app/contracts/schedulejob/schedulejob.patterns'
 import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
 import { WORKLOG_PATTERN } from '@app/contracts/Worklog/Worklog.patterns'
+import { TASKS_PATTERN } from '@app/contracts/tasks/task.patterns'
 
 const USERS_CLIENT = 'USERS_CLIENT'
 // Define interface for the User service
@@ -1268,6 +1269,30 @@ export class InspectionsService implements OnModuleInit {
           }
         }
 
+        // Call COMPLETE_AND_REVIEW to update task status
+        try {
+          const taskId = task.task_id;
+          console.log(`[InspectionService] Calling COMPLETE_AND_REVIEW pattern for task: ${taskId}`);
+
+          await firstValueFrom(
+            this.taskClient.send(
+              TASKS_PATTERN.COMPLETE_AND_REVIEW,
+              { taskId }
+            ).pipe(
+              timeout(10000),
+              catchError(error => {
+                console.error(`[InspectionService] Error calling COMPLETE_AND_REVIEW: ${error.message}`);
+                return of({ isSuccess: false, message: error.message });
+              })
+            )
+          );
+
+          console.log(`[InspectionService] Successfully called COMPLETE_AND_REVIEW for task: ${taskId}`);
+        } catch (error) {
+          console.error(`[InspectionService] Failed to call COMPLETE_AND_REVIEW: ${error.message}`);
+          // Continue with the process even if this update fails
+        }
+
         return new ApiResponse(
           true,
           'Tạo báo cáo thành công',
@@ -1387,6 +1412,30 @@ export class InspectionsService implements OnModuleInit {
             console.error('Error updating statuses after inspection creation:', error);
             // Don't fail the overall operation if this update fails
           }
+        }
+
+        // Call COMPLETE_AND_REVIEW to update task status
+        try {
+          const taskId = task.task_id;
+          console.log(`[InspectionService] Calling COMPLETE_AND_REVIEW pattern for task: ${taskId}`);
+
+          await firstValueFrom(
+            this.taskClient.send(
+              TASKS_PATTERN.COMPLETE_AND_REVIEW,
+              { taskId }
+            ).pipe(
+              timeout(10000),
+              catchError(error => {
+                console.error(`[InspectionService] Error calling COMPLETE_AND_REVIEW: ${error.message}`);
+                return of({ isSuccess: false, message: error.message });
+              })
+            )
+          );
+
+          console.log(`[InspectionService] Successfully called COMPLETE_AND_REVIEW for task: ${taskId}`);
+        } catch (error) {
+          console.error(`[InspectionService] Failed to call COMPLETE_AND_REVIEW: ${error.message}`);
+          // Continue with the process even if this update fails
         }
 
         return new ApiResponse(

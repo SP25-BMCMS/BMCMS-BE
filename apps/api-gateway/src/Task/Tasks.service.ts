@@ -644,6 +644,64 @@ export class TaskService {
     }
   }
 
+  async getLatestTaskAssignment(taskId: string) {
+    try {
+      // Validate taskId
+      if (!taskId) {
+        throw new HttpException(
+          'Task ID is required',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      console.log(`[TaskService] Getting latest verified task assignment for task ID: ${taskId}`);
+
+      // Call the Task microservice
+      return await firstValueFrom(
+        this.taskClient.send(
+          TASKS_PATTERN.GET_LATEST_ASSIGNMENT,
+          { taskId }
+        ).pipe(
+          timeout(15000), // 15 second timeout as we're fetching data from multiple sources
+          catchError(error => {
+            console.error('Error from task microservice:', error);
+
+            // Check if the error is a "not found" error
+            if (error.message && (
+              error.message.includes('không tìm thấy') ||
+              error.message.includes('not found')
+            )) {
+              throw new HttpException(
+                error.message || 'Task or verified assignment not found',
+                HttpStatus.NOT_FOUND
+              );
+            }
+
+            throw new HttpException(
+              error.message || 'Failed to get latest verified task assignment',
+              error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR
+            );
+          })
+        )
+      );
+    } catch (error) {
+      console.error('Error in getLatestTaskAssignment service:', error);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: error.message || 'Failed to get latest verified task assignment',
+          error: 'Task Assignment Fetch Failed'
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   // async createRepairMaterial(createRepairMaterialDto: CreateRepairMaterialDto) {
   //   try {
   //     return await this.taskClient.send(
