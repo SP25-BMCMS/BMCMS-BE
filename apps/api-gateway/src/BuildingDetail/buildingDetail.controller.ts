@@ -12,6 +12,7 @@ import {
   Req,
   UseGuards,
   Query,
+  HttpException,
 } from '@nestjs/common';
 import { BuildingDetailService } from './buildingDetail.service';
 import { catchError, NotFoundError } from 'rxjs';
@@ -30,7 +31,7 @@ import {
 @Controller('buildingdetails')
 @ApiTags('building-details')
 export class BuildingDetailController {
-  constructor(private BuildingsService: BuildingDetailService) {}
+  constructor(private BuildingsService: BuildingDetailService) { }
 
   @Get()
   @ApiOperation({ summary: 'Get all building details with pagination' })
@@ -98,14 +99,23 @@ export class BuildingDetailController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete a building detail' })
-  @ApiParam({ name: 'id', description: 'Building detail ID' })
+  @ApiOperation({ summary: 'Delete a building detail and all related data' })
+  @ApiParam({ name: 'id', description: 'Building detail ID to delete' })
   @ApiResponse({
     status: 200,
-    description: 'Building detail deleted successfully',
+    description: 'Building detail and all related entities (location details, devices, technical records, maintenance histories, and crack records) deleted successfully'
   })
   @ApiResponse({ status: 404, description: 'Building detail not found' })
+  @ApiResponse({ status: 500, description: 'Server error during deletion process' })
+  @HttpCode(HttpStatus.OK)
   async deleteBuilding(@Param('id') id: string) {
-    return this.BuildingsService.deleteBuildingDetail(id);
+    try {
+      return await this.BuildingsService.deleteBuildingDetail(id);
+    } catch (error) {
+      throw new HttpException(
+        `Error deleting building detail: ${error.message}`,
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 }

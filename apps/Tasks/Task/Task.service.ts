@@ -292,27 +292,205 @@ export class TaskService {
     }
   }
 
+  async deleteTaskAndRelated(task_id: string) {
+    try {
+      // Check if task exists
+      const task = await this.prisma.task.findUnique({
+        where: { task_id },
+        include: {
+          taskAssignments: {
+            include: {
+              inspections: {
+                include: {
+                  repairMaterials: true
+                }
+              }
+            }
+          },
+          workLogs: true,
+          feedbacks: true
+        }
+      });
+
+      if (!task) {
+        return new ApiResponse(false, `Không tìm thấy nhiệm vụ với ID ${task_id}`, null);
+      }
+
+      console.log(`[TaskService] Deleting task ${task_id} with ${task.taskAssignments.length} assignments, ${task.workLogs.length} work logs, and ${task.feedbacks.length} feedbacks`);
+
+      // Use a transaction to ensure data consistency
+      return await this.prisma.$transaction(async (tx) => {
+        // Track statistics for what we've deleted
+        let inspectionCount = 0;
+        let repairMaterialCount = 0;
+
+        // First handle all the dependencies in the correct order
+        if (task.taskAssignments.length > 0) {
+          // 1. First, get all inspection IDs
+          const inspections = task.taskAssignments.flatMap(assignment => assignment.inspections || []);
+          inspectionCount = inspections.length;
+
+          if (inspectionCount > 0) {
+            console.log(`[TaskService] Found ${inspectionCount} inspection records related to task assignments`);
+
+            // 2. Delete all repair materials first
+            for (const inspection of inspections) {
+              if (inspection.repairMaterials && inspection.repairMaterials.length > 0) {
+                await tx.repairMaterial.deleteMany({
+                  where: {
+                    inspection_id: inspection.inspection_id
+                  }
+                });
+                repairMaterialCount += inspection.repairMaterials.length;
+              }
+            }
+            console.log(`[TaskService] Deleted ${repairMaterialCount} repair materials`);
+
+            // 3. Now delete all inspections
+            const inspectionIds = inspections.map(insp => insp.inspection_id);
+            await tx.inspection.deleteMany({
+              where: {
+                inspection_id: {
+                  in: inspectionIds
+                }
+              }
+            });
+            console.log(`[TaskService] Deleted ${inspectionCount} inspection records`);
+          }
+
+          // 4. Delete all task assignments
+          await tx.taskAssignment.deleteMany({
+            where: { task_id }
+          });
+          console.log(`[TaskService] Deleted ${task.taskAssignments.length} task assignments`);
+        }
+
+        // 5. Delete all WorkLogs related to this task
+        if (task.workLogs.length > 0) {
+          await tx.workLog.deleteMany({
+            where: { task_id }
+          });
+          console.log(`[TaskService] Deleted ${task.workLogs.length} work logs`);
+        }
+
+        // 6. Delete all Feedbacks related to this task
+        if (task.feedbacks.length > 0) {
+          await tx.feedback.deleteMany({
+            where: { task_id }
+          });
+          console.log(`[TaskService] Deleted ${task.feedbacks.length} feedbacks`);
+        }
+
+        // 7. Finally delete the Task itself
+        const deletedTask = await tx.task.delete({
+          where: { task_id }
+        });
+        console.log(`[TaskService] Deleted task ${task_id}`);
+
+        // 8. Handle related entities in other services if needed
+        let crackUpdated = false;
+        let scheduleJobUpdated = false;
+
+        // 8a. If task has a crack_id, update the crack report status
+        if (task.crack_id) {
+          try {
+            console.log(`[TaskService] Attempting to update crack report ${task.crack_id} status to Pending`);
+
+            const crackUpdateResponse = await this.callCrackService(
+              { cmd: 'update-crack-report-for-all-status' },
+              {
+                crackReportId: task.crack_id,
+                dto: {
+                  status: 'Pending',
+                  suppressNotification: true
+                }
+              }
+            );
+
+            if (crackUpdateResponse && crackUpdateResponse.isSuccess) {
+              crackUpdated = true;
+              console.log(`[TaskService] Updated crack report ${task.crack_id} status to Pending`);
+            }
+          } catch (error) {
+            console.error(`[TaskService] Error updating crack report status: ${error.message}`);
+            // Continue even if this fails
+          }
+        }
+
+        // 8b. If task has a schedule_job_id, update the schedule job status
+        if (task.schedule_job_id) {
+          try {
+            console.log(`[TaskService] Attempting to update schedule job ${task.schedule_job_id} status to Pending`);
+
+            const scheduleUpdateResponse = await firstValueFrom(
+              this.scheduleClient.send(
+                SCHEDULEJOB_PATTERN.UPDATE_STATUS,
+                {
+                  schedulejobs_id: task.schedule_job_id,
+                  status: 'Pending'
+                }
+              ).pipe(
+                timeout(10000),
+                catchError(err => {
+                  console.error(`[TaskService] Error updating schedule job status: ${err.message}`);
+                  return of({ isSuccess: false });
+                })
+              )
+            );
+
+            if (scheduleUpdateResponse && scheduleUpdateResponse.isSuccess) {
+              scheduleJobUpdated = true;
+              console.log(`[TaskService] Updated schedule job ${task.schedule_job_id} status to Pending`);
+            }
+          } catch (error) {
+            console.error(`[TaskService] Error updating schedule job status: ${error.message}`);
+            // Continue even if this fails
+          }
+        }
+
+        return new ApiResponse(true, 'Nhiệm vụ và tất cả dữ liệu liên quan đã được xóa thành công', {
+          task: deletedTask,
+          relatedData: {
+            inspections: inspectionCount,
+            repairMaterials: repairMaterialCount,
+            taskAssignments: task.taskAssignments.length,
+            workLogs: task.workLogs.length,
+            feedbacks: task.feedbacks.length,
+            crackReportUpdated: crackUpdated,
+            scheduleJobUpdated: scheduleJobUpdated
+          }
+        });
+      }, {
+        timeout: 30000, // 30 second timeout
+        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted
+      });
+    } catch (error) {
+      console.error(`[TaskService] Error during task deletion: ${error.message}`, error);
+
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        // Check for specific Prisma errors
+        if (error.code === 'P2025') {
+          return new ApiResponse(false, 'Không tìm thấy nhiệm vụ để xóa', null);
+        }
+        if (error.code === 'P2023') {
+          return new ApiResponse(false, 'Định dạng ID không hợp lệ', null);
+        }
+        if (error.code === 'P2003') {
+          // Extract the constraint name from the error message
+          const constraintMatch = error.message.match(/`([^`]+)`/g);
+          const constraintName = constraintMatch ? constraintMatch[constraintMatch.length - 1] : 'unknown constraint';
+          return new ApiResponse(false, `Không thể xóa do ràng buộc khóa ngoại: ${constraintName}. Cần xóa các bản ghi tham chiếu trước.`, null);
+        }
+      }
+
+      throw new RpcException({
+        statusCode: 500,
+        message: `Xóa nhiệm vụ thất bại: ${error.message}`
+      });
+    }
+  }
+
   // async changeTaskStatus(task_id: string, changeTaskStatusDto: ChangeTaskStatusDto) {
-  //   try {
-  //     const updatedTask = await this.prisma.task.update({
-  //       where: { task_id },
-  //       data: {
-  //         status: changeTaskStatusDto.status,
-  //       },
-  //     });
-  //     return {
-  //       statusCode: 200,
-  //       message: 'Task status updated successfully',
-  //       data: updatedTask,
-  //     };
-  //   } catch (error) {
-  //     console.error("Error updating task status:", error);  // Lo
-  //     throw new RpcException({
-  //       statusCode: 400,
-  //       message: 'Error updating task status',
-  //     });
-  //   }
-  // }
   async changeTaskStatus(task_id: string, changeTaskStatusDto: string) {
     console.log('🚀 ~ TaskService ~ changeTaskStatus ~ task_id:', task_id)
     try {

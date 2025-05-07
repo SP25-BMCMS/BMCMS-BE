@@ -19,6 +19,7 @@ import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns';
 import { NotificationType } from '@app/contracts/notifications/notification.dto';
 import { GetTasksByTypeDto } from '@app/contracts/tasks/get-tasks-by-type.dto';
+import { timeout } from 'rxjs';
 
 // import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto'
 // import { buildingsDto } from '@app/contracts/buildings/buildings.dto'
@@ -74,6 +75,117 @@ export class TaskService {
       throw new HttpException(
         'Error occurred while deleting task',
         HttpStatus.NOT_FOUND,
+      );
+    }
+  }
+
+  async deleteTaskAndRelated(task_id: string) {
+    try {
+      if (!task_id) {
+        throw new HttpException(
+          'Task ID is required',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      console.log(`[TaskService] Attempting to delete task and related data for ID: ${task_id}`);
+
+      const response = await firstValueFrom(
+        this.taskClient.send(
+          TASKS_PATTERN.DELETE_AND_RELATED,
+          { task_id }
+        ).pipe(
+          timeout(35000), // 35 second timeout (longer for complex deletion)
+          catchError(err => {
+            console.error(`[TaskService] Error from task microservice:`, err);
+
+            // Check for specific error messages
+            const errorMessage = err.message || 'Unknown error';
+
+            if (errorMessage.includes('not found') || errorMessage.includes('không tìm thấy')) {
+              throw new HttpException(
+                {
+                  statusCode: HttpStatus.NOT_FOUND,
+                  message: errorMessage,
+                  error: 'Not Found'
+                },
+                HttpStatus.NOT_FOUND
+              );
+            }
+
+            if (errorMessage.includes('UUID') || errorMessage.includes('định dạng')) {
+              throw new HttpException(
+                {
+                  statusCode: HttpStatus.BAD_REQUEST,
+                  message: errorMessage,
+                  error: 'Bad Request'
+                },
+                HttpStatus.BAD_REQUEST
+              );
+            }
+
+            throw new HttpException(
+              {
+                statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                message: errorMessage,
+                error: 'Internal Server Error'
+              },
+              HttpStatus.INTERNAL_SERVER_ERROR
+            );
+          })
+        )
+      );
+
+      // If response is ApiResponse format with isSuccess flag
+      if (response.hasOwnProperty('isSuccess')) {
+        if (!response.isSuccess) {
+          // Map error status appropriately
+          let statusCode = HttpStatus.BAD_REQUEST;
+          if (response.message && (response.message.includes('không tìm thấy') ||
+            response.message.includes('not found'))) {
+            statusCode = HttpStatus.NOT_FOUND;
+          }
+
+          throw new HttpException(
+            {
+              statusCode: statusCode,
+              message: response.message,
+              error: statusCode === HttpStatus.NOT_FOUND ? 'Not Found' : 'Bad Request'
+            },
+            statusCode
+          );
+        }
+
+        return response;
+      }
+
+      return response;
+    } catch (error) {
+      console.error('[TaskService] Error in deleteTaskAndRelated:', error);
+
+      // If the error is already an HttpException, just rethrow it
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // Determine appropriate status code
+      let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+      const errorMessage = error.message || 'Error occurred while deleting task and related data';
+
+      if (errorMessage.includes('không tìm thấy') || errorMessage.includes('not found')) {
+        statusCode = HttpStatus.NOT_FOUND;
+      } else if (errorMessage.includes('UUID') || errorMessage.includes('định dạng')) {
+        statusCode = HttpStatus.BAD_REQUEST;
+      }
+
+      throw new HttpException(
+        {
+          statusCode: statusCode,
+          message: errorMessage,
+          error: statusCode === HttpStatus.NOT_FOUND ? 'Not Found' :
+            statusCode === HttpStatus.BAD_REQUEST ? 'Bad Request' : 'Internal Server Error'
+        },
+        statusCode
       );
     }
   }

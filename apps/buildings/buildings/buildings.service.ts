@@ -372,19 +372,96 @@ export class BuildingsService {
   // Delete a building by buildingId
   async deleteBuilding(buildingId: string) {
     try {
-      const deletedBuilding = await this.prisma.building.delete({
+      // Check if building exists
+      const building = await this.prisma.building.findUnique({
         where: { buildingId },
-      })
+        include: {
+          buildingDetails: {
+            include: {
+              locationDetails: true,
+              device: true
+            }
+          }
+        }
+      });
 
-      return {
-        statusCode: 200,
-        message: 'Xóa tòa nhà thành công',
-        data: deletedBuilding,
+      if (!building) {
+        return {
+          statusCode: 404,
+          message: 'Không tìm thấy tòa nhà với ID đã cung cấp',
+        }
       }
+
+      // Start a transaction to ensure data consistency
+      return await this.prisma.$transaction(async (tx) => {
+        // 1. Delete all CrackRecords related to LocationDetails
+        for (const buildingDetail of building.buildingDetails) {
+          for (const location of buildingDetail.locationDetails) {
+            await tx.crackRecord.deleteMany({
+              where: { locationDetailId: location.locationDetailId }
+            });
+          }
+
+          // 2. Delete all TechnicalRecords and MaintenanceHistory related to Devices
+          for (const device of buildingDetail.device) {
+            await tx.technicalRecord.deleteMany({
+              where: { device_id: device.device_id }
+            });
+
+            await tx.maintenanceHistory.deleteMany({
+              where: { device_id: device.device_id }
+            });
+          }
+
+          // 3. Delete all Devices related to BuildingDetail
+          await tx.device.deleteMany({
+            where: { buildingDetailId: buildingDetail.buildingDetailId }
+          });
+
+          // 4. Delete all LocationDetails related to BuildingDetail
+          await tx.locationDetail.deleteMany({
+            where: { buildingDetailId: buildingDetail.buildingDetailId }
+          });
+        }
+
+        // 5. Delete all BuildingDetails related to Building
+        await tx.buildingDetail.deleteMany({
+          where: { buildingId }
+        });
+
+        // 6. Finally delete the Building itself
+        const deletedBuilding = await tx.building.delete({
+          where: { buildingId }
+        });
+
+        return {
+          statusCode: 200,
+          message: 'Xóa tòa nhà và tất cả dữ liệu liên quan thành công',
+          data: deletedBuilding,
+        }
+      });
     } catch (error) {
+      console.error('Error during building deletion:', error);
+
+      if (error instanceof PrismaClientKnownRequestError) {
+        // Handle specific Prisma errors
+        if (error.code === 'P2025') {
+          return {
+            statusCode: 404,
+            message: 'Không tìm thấy tòa nhà',
+          }
+        }
+        if (error.code === 'P2023') {
+          return {
+            statusCode: 400,
+            message: 'Định dạng ID không hợp lệ',
+          }
+        }
+      }
+
       throw new RpcException({
-        statusCode: 400,
-        message: 'Xóa tòa nhà thất bại' + error.message,
+        statusCode: 500,
+        message: `Xóa tòa nhà thất bại: ${error.message}`,
       })
     }
   }

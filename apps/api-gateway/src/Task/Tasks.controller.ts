@@ -91,6 +91,60 @@ export class TaskController {
     return this.taskService.deleteTask(task_id);
   }
 
+  @Delete('task/:task_id/cascade')
+  @ApiOperation({
+    summary: 'Delete a task and all related data',
+    description: 'Performs a cascading delete of a task and all related records including task assignments, work logs, and feedback. Also updates related crack reports and schedule jobs to Pending status.'
+  })
+  @ApiParam({ name: 'task_id', description: 'Task ID to delete' })
+  @ApiResponse({
+    status: 200,
+    description: 'Task and all related data deleted successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        isSuccess: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Nhiệm vụ và tất cả dữ liệu liên quan đã được xóa thành công' },
+        data: {
+          type: 'object',
+          properties: {
+            task: { type: 'object', description: 'Deleted task data' },
+            relatedData: {
+              type: 'object',
+              properties: {
+                taskAssignments: { type: 'number', example: 2, description: 'Number of task assignments deleted' },
+                workLogs: { type: 'number', example: 3, description: 'Number of work logs deleted' },
+                feedbacks: { type: 'number', example: 1, description: 'Number of feedback entries deleted' },
+                crackReportUpdated: { type: 'boolean', example: true, description: 'Whether crack report was updated' },
+                scheduleJobUpdated: { type: 'boolean', example: true, description: 'Whether schedule job was updated' }
+              }
+            }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  @ApiResponse({ status: 400, description: 'Bad request - Invalid task ID format' })
+  @ApiResponse({ status: 500, description: 'Internal server error during deletion process' })
+  @HttpCode(HttpStatus.OK)
+  async deleteTaskAndRelated(@Param('task_id') task_id: string) {
+    try {
+      return await this.taskService.deleteTaskAndRelated(task_id);
+    } catch (error) {
+      console.error('Error in deleteTaskAndRelated controller:', error);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        `Error deleting task and related data: ${error.message}`,
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   @Put('task/:task_id/status')
   @ApiOperation({ summary: 'Change task status' })
   @ApiParam({ name: 'task_id', description: 'Task ID' })

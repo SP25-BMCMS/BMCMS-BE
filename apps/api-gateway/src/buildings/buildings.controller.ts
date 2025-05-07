@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  HttpException,
   NotFoundException,
   Param,
   Post,
@@ -200,8 +201,21 @@ export class BuildingsController {
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Delete a building and all related data' })
+  @ApiParam({ name: 'id', description: 'Building ID to delete' })
+  @ApiResponse({ status: 200, description: 'Building and related data deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Building not found' })
+  @ApiResponse({ status: 500, description: 'Server error during deletion process' })
+  @HttpCode(HttpStatus.OK)
   async deleteBuilding(@Param('id') id: string) {
-    return this.buildingsService.deleteBuilding(id)
+    try {
+      return await this.buildingsService.deleteBuilding(id)
+    } catch (error) {
+      throw new HttpException(
+        `Error deleting building: ${error.message}`,
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR
+      )
+    }
   }
 
   @Get(':id/residents')

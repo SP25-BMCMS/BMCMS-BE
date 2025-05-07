@@ -33,6 +33,19 @@ export class TasksController {
     return this.taskService.deleteTask(payload.task_id);
   }
 
+  @MessagePattern(TASKS_PATTERN.DELETE_AND_RELATED)
+  async deleteTaskAndRelated(@Payload() payload: { task_id: string }) {
+    console.log('Received delete-task-and-related request with taskId:', payload.task_id);
+    try {
+      const result = await this.taskService.deleteTaskAndRelated(payload.task_id);
+      console.log('deleteTaskAndRelated completed with result:', JSON.stringify(result));
+      return result;
+    } catch (error) {
+      console.error('Error in deleteTaskAndRelated controller:', error);
+      throw error;
+    }
+  }
+
   // @MessagePattern(TASKS_PATTERN.CHANGE_STATUS)
   // async changeTaskStatus(@Payload() payload: { taskid ,ChangeTaskStatusDto}) {
   //   return this.taskService.changeTaskStatus(payload.taskid, payload.ChangeTaskStatusDto);
