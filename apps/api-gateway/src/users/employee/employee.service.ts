@@ -393,15 +393,15 @@ export class EmployeeService implements OnModuleInit {
     }
   }
 
-  async getAllStaffByDepartmentType(staffId: string, departmentType: string) {
+  async getAllStaffByDepartmentType(staffId: string, deviceType: string) {
     try {
-      console.log('Calling gRPC method GetAllStaffByDepartmentType with staffId:', staffId, 'and departmentType:', departmentType);
+      console.log('Calling gRPC method GetAllStaffByDepartmentType with staffId:', staffId, 'and deviceType:', deviceType);
 
       // Basic validation
-      if (!staffId || !departmentType) {
+      if (!staffId || !deviceType) {
         return {
           isSuccess: false,
-          message: 'Staff ID and Department Type are required',
+          message: 'Staff ID and Device Type are required',
           data: [],
           pagination: {
             total: 0,
@@ -411,6 +411,10 @@ export class EmployeeService implements OnModuleInit {
           }
         };
       }
+
+      // Map DeviceType to DepartmentType
+      const departmentType = this.mapDeviceTypeToDepartmentType(deviceType);
+      console.log('Mapped deviceType to departmentType:', deviceType, '->', departmentType);
 
       const response = await lastValueFrom(
         this.userService.getAllStaffByDepartmentType({ staffId, departmentType })
@@ -447,6 +451,32 @@ export class EmployeeService implements OnModuleInit {
         }
       };
     }
+  }
+
+  /**
+   * Maps DeviceType enum values to corresponding DepartmentType enum values
+   * @param deviceType The DeviceType enum value to map
+   * @returns The corresponding DepartmentType enum value
+   */
+  private mapDeviceTypeToDepartmentType(deviceType: string): string {
+    // Define the mapping between DeviceType and DepartmentType
+    const mapping = {
+      'Elevator': 'ElevatorEngineering',
+      'FireProtection': 'FireSafetyEngineering',
+      'FireExtinguisher': 'FireSafetyEngineering',
+      'Electrical': 'ElectricalEngineering',
+      'Generator': 'ElectricalEngineering',
+      'Lighting': 'ElectricalEngineering',
+      'Plumbing': 'WaterEngineering',
+      'HVAC': 'AirConditioningEngineering',
+      'CCTV': 'CCTVEngineering',
+      'AutomaticDoor': 'ElectricalEngineering',
+      'BuildingStructure': 'StructuralEngineering',
+      'Other': 'StructuralEngineering'
+    };
+
+    // Return the mapped value or default to StructuralEngineering if not found
+    return mapping[deviceType] || 'StructuralEngineering';
   }
 
   // Public method to test getDepartment directly

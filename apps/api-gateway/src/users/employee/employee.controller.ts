@@ -540,18 +540,18 @@ export class EmployeeController {
     }
   }
 
-  @Get('staff-by-department-type/:departmentType')
-  @ApiOperation({ summary: 'Get all staff members by department type in the same area as the authenticated staff leader' })
+  @Get('staff-by-department-type/:deviceType')
+  @ApiOperation({ summary: 'Get all staff members by device type in the same area as the authenticated staff leader' })
   @ApiBearerAuth('access-token')
   @UseGuards(PassportJwtAuthGuard)
   @ApiResponse({
     status: 200,
-    description: 'Successfully retrieved staff members by department type',
+    description: 'Successfully retrieved staff members by device type',
     schema: {
       type: 'object',
       properties: {
         isSuccess: { type: 'boolean', example: true },
-        message: { type: 'string', example: 'Successfully retrieved staff members by department type' },
+        message: { type: 'string', example: 'Successfully retrieved staff members by device type' },
         data: {
           type: 'array',
           items: {
@@ -605,10 +605,10 @@ export class EmployeeController {
   })
   @ApiResponse({ status: 400, description: 'Invalid request parameters' })
   @ApiResponse({ status: 401, description: 'Unauthorized or not a staff leader' })
-  @ApiResponse({ status: 404, description: 'No staff members found with the specified department type in the area' })
+  @ApiResponse({ status: 404, description: 'No staff members found with the specified device type in the area' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   async getAllStaffByDepartmentType(
-    @Param('departmentType') departmentType: string,
+    @Param('deviceType') deviceType: string,
     @Req() req: any,
     @Res() res: any
   ) {
@@ -617,17 +617,17 @@ export class EmployeeController {
       console.log('Request headers:', req.headers);
       console.log('Request user object:', req.user);
       console.log('Auth token:', req.headers.authorization);
-      console.log('Department Type:', departmentType);
+      console.log('Device Type:', deviceType);
 
       // Extract staffId from JWT token in the request based on the JwtStrategy
       // JwtStrategy returns { userId, username, role }
       const staffId = req.user?.userId;
       console.log('Extracted staffId:', staffId);
 
-      if (!staffId || !departmentType) {
+      if (!staffId || !deviceType) {
         return res.status(HttpStatus.BAD_REQUEST).json({
           isSuccess: false,
-          message: 'Authentication required and Department Type must be provided',
+          message: 'Authentication required and Device Type must be provided',
           data: [],
           pagination: {
             total: 0,
@@ -638,7 +638,7 @@ export class EmployeeController {
         });
       }
 
-      const response = await this.employeeService.getAllStaffByDepartmentType(staffId, departmentType);
+      const response = await this.employeeService.getAllStaffByDepartmentType(staffId, deviceType);
 
       if (!response.isSuccess) {
         return res.status(HttpStatus.NOT_FOUND).json(response);
@@ -648,7 +648,7 @@ export class EmployeeController {
     } catch (error) {
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         isSuccess: false,
-        message: 'Failed to retrieve staff members by department type',
+        message: 'Failed to retrieve staff members by device type',
         data: [],
         pagination: {
           total: 0,

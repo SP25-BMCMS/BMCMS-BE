@@ -899,6 +899,28 @@ export class CrackReportsService {
           },
         })
 
+        // Step 6: Send notification to the staff member
+        try {
+          const notificationForStaff = {
+            title: 'Nhiệm vụ mới được giao',
+            content: `Bạn được giao nhiệm vụ xử lý vết nứt tại vị trí "${existingReport.position}"${buildingDetailInfo ? ` - Tòa nhà: ${buildingText}` : ''}.`,
+            type: NotificationType.SYSTEM,
+            userId: staffId,
+            link: `/tasks/${createTaskResponse.data.task_id}`,
+            relatedId: createTaskResponse.data.task_id
+          }
+
+          this.logger.log(`Sending notification to staff ${staffId} about new task assignment`)
+          this.logger.log(`Notification data: ${JSON.stringify(notificationForStaff)}`)
+
+          // Emit notification without waiting for response
+          this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, notificationForStaff)
+          this.logger.log('Notification to staff emitted successfully')
+        } catch (notifyError) {
+          this.logger.error(`Error sending notification to staff: ${notifyError.message}`)
+          // Continue execution even if notification fails
+        }
+
         // Return success response with all data
         return new ApiResponse(
           true,
