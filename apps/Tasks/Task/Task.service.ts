@@ -20,6 +20,7 @@ import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
 import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
 import { GetTasksByTypeDto } from '@app/contracts/tasks/get-tasks-by-type.dto'
 import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
+import { NotificationType } from '@app/contracts/notifications/notification.dto'
 
 const CRACK_PATTERNS = {
   GET_DETAILS: { cmd: 'get-crack-report-by-id' }
@@ -1435,11 +1436,48 @@ export class TaskService {
       let crackReportUpdated = false;
       let scheduleJobUpdated = false;
       let responseMessage = 'Đã cập nhật trạng thái nhiệm vụ thành Hoàn thành';
+      let buildingDetailId = null;
+      let buildingManagerId = null;
+      let notificationSent = false;
+      let notificationTitle = '';
+      let notificationContent = '';
+      let entityType = '';
+      let entityId = '';
 
       // Step 4a: Update crack report if it exists
       if (task.crack_id) {
         try {
           console.log(`[TaskService] Updating crack report ${task.crack_id} status to Reviewing`);
+          const crackResponse = await this.callCrackService(
+            CRACK_PATTERNS.GET_DETAILS,
+            task.crack_id
+          );
+
+          // Try to get buildingDetailId from crack report
+          let crackLocation = "Không xác định";
+          let buildingName = "tòa nhà";
+
+          if (crackResponse && crackResponse.isSuccess && crackResponse.data && crackResponse.data.length > 0) {
+            const crackReport = crackResponse.data[0];
+            buildingDetailId = crackReport.buildingDetailId;
+            entityType = 'crack';
+            entityId = task.crack_id;
+
+            // Extract location information if available
+            if (crackReport.position) {
+              crackLocation = crackReport.position;
+            } else if (crackReport.locationDetail && crackReport.locationDetail.description) {
+              crackLocation = crackReport.locationDetail.description;
+            }
+
+            // Try to get building name
+            if (crackReport.buildingDetail && crackReport.buildingDetail.name) {
+              buildingName = crackReport.buildingDetail.name;
+            }
+
+            console.log(`[TaskService] Found buildingDetailId ${buildingDetailId} from crack report`);
+          }
+
           const crackUpdateResponse = await this.callCrackService(
             { cmd: 'update-crack-report-for-all-status' },
             {
@@ -1455,6 +1493,8 @@ export class TaskService {
             crackReportUpdated = true;
             responseMessage += ' và báo cáo vết nứt thành Đang xem xét';
             console.log(`[TaskService] Successfully updated crack report ${task.crack_id} to Reviewing`);
+            notificationTitle = `Xét duyệt sửa chữa vết nứt tại ${crackLocation}`;
+            notificationContent = `Công việc sửa chữa vết nứt tại ${crackLocation} ở ${buildingName} đã được hoàn thành và đang chờ bạn xét duyệt. Nhân viên kỹ thuật đã xác nhận hoàn thành công việc và cập nhật trạng thái. Vui lòng xem xét và phê duyệt báo cáo.`;
           } else {
             console.warn(`[TaskService] Failed to update crack report status: ${crackUpdateResponse?.message || 'Unknown error'}`);
           }
@@ -1468,6 +1508,93 @@ export class TaskService {
       if (task.schedule_job_id) {
         try {
           console.log(`[TaskService] Updating schedule job ${task.schedule_job_id} status to Reviewing`);
+
+          // Get schedule job to get buildingDetailId
+          let scheduleName = "Bảo trì định kỳ";
+          let scheduleDate = "gần đây";
+          let buildingName = "tòa nhà";
+          let deviceType = "";
+
+          const scheduleJobResponse = await firstValueFrom(
+            this.scheduleClient.send(
+              SCHEDULEJOB_PATTERN.GET_BY_ID,
+              { schedule_job_id: task.schedule_job_id }
+            ).pipe(
+              timeout(10000),
+              catchError(err => {
+                console.error(`Error getting schedule job ${task.schedule_job_id}:`, err);
+                return of(null);
+              })
+            )
+          );
+
+          if (scheduleJobResponse && scheduleJobResponse.data) {
+            buildingDetailId = scheduleJobResponse.data.buildingDetailId;
+            entityType = 'schedule';
+            entityId = task.schedule_job_id;
+
+            // Get schedule name and date if available
+            if (scheduleJobResponse.data.schedule && scheduleJobResponse.data.schedule.schedule_name) {
+              scheduleName = scheduleJobResponse.data.schedule.schedule_name;
+            }
+
+            // Get device type if available
+            if (scheduleJobResponse.data.schedule && scheduleJobResponse.data.schedule.cycle &&
+              scheduleJobResponse.data.schedule.cycle.device_type) {
+              deviceType = scheduleJobResponse.data.schedule.cycle.device_type;
+              // Convert enum to human-readable text if it's a device type
+              switch (deviceType) {
+                case 'Elevator': deviceType = 'thang máy'; break;
+                case 'FireProtection': deviceType = 'hệ thống phòng cháy chữa cháy'; break;
+                case 'Electrical': deviceType = 'hệ thống điện'; break;
+                case 'Plumbing': deviceType = 'hệ thống nước'; break;
+                case 'HVAC': deviceType = 'hệ thống HVAC'; break;
+                case 'Lighting': deviceType = 'hệ thống chiếu sáng'; break;
+                default: deviceType = 'thiết bị'; break;
+              }
+            }
+
+            // Format date for better display
+            if (scheduleJobResponse.data.run_date) {
+              const runDate = new Date(scheduleJobResponse.data.run_date);
+              scheduleDate = runDate.toLocaleDateString('vi-VN', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              });
+            }
+
+            // Try to get building information with a separate call if we have buildingDetailId
+            if (buildingDetailId) {
+              try {
+                const buildingDetailResponse = await firstValueFrom(
+                  this.buildingsClient.send(
+                    BUILDINGDETAIL_PATTERN.GET_BY_ID,
+                    { buildingDetailId }
+                  ).pipe(
+                    timeout(5000),
+                    catchError(err => {
+                      console.error(`Error getting building detail ${buildingDetailId}:`, err);
+                      return of(null);
+                    })
+                  )
+                );
+
+                if (buildingDetailResponse && buildingDetailResponse.data) {
+                  if (buildingDetailResponse.data.name) {
+                    buildingName = buildingDetailResponse.data.name;
+                  } else if (buildingDetailResponse.data.building && buildingDetailResponse.data.building.name) {
+                    buildingName = buildingDetailResponse.data.building.name;
+                  }
+                }
+              } catch (error) {
+                console.error(`Error getting building details: ${error.message}`);
+              }
+            }
+
+            console.log(`[TaskService] Found buildingDetailId ${buildingDetailId} from schedule job`);
+          }
+
           const scheduleUpdateResponse = await firstValueFrom(
             this.scheduleClient.send(
               SCHEDULEJOB_PATTERN.UPDATE_STATUS,
@@ -1491,6 +1618,13 @@ export class TaskService {
             scheduleJobUpdated = true;
             responseMessage += ' và lịch công việc thành Đang xem xét';
             console.log(`[TaskService] Successfully updated schedule job ${task.schedule_job_id} to Reviewing`);
+
+            // Create specific title and content with collected information
+            let titlePrefix = deviceType ? `Bảo trì ${deviceType}` : scheduleName;
+            notificationTitle = `Xét duyệt ${titlePrefix} tại ${buildingName}`;
+
+            let contentDevice = deviceType ? `${deviceType}` : "các thiết bị";
+            notificationContent = `Công việc "${scheduleName}" cho ${contentDevice} tại ${buildingName} (ngày ${scheduleDate}) đã được nhân viên kỹ thuật hoàn thành. Vui lòng xem xét và phê duyệt báo cáo bảo trì để hoàn tất quy trình.`;
           } else {
             console.warn(`[TaskService] Failed to update schedule job status: ${scheduleUpdateResponse?.message || 'Unknown error'}`);
           }
@@ -1500,6 +1634,90 @@ export class TaskService {
         }
       }
 
+      // Step 5: Send notification to building manager if we found a buildingDetailId
+      if (buildingDetailId) {
+        try {
+          console.log(`[TaskService] Getting building information for buildingDetailId: ${buildingDetailId}`);
+
+          // Get building detail to find building
+          const buildingDetailResponse = await firstValueFrom(
+            this.buildingsClient.send(
+              BUILDINGDETAIL_PATTERN.GET_BY_ID,
+              { buildingDetailId }
+            ).pipe(
+              timeout(10000),
+              catchError(err => {
+                console.error(`Error getting building detail ${buildingDetailId}:`, err);
+                return of(null);
+              })
+            )
+          );
+
+          if (buildingDetailResponse && buildingDetailResponse.data) {
+            const buildingId = buildingDetailResponse.data.buildingId;
+
+            if (buildingId) {
+              console.log(`[TaskService] Getting building with ID: ${buildingId}`);
+
+              // Get building to find manager_id
+              const buildingResponse = await firstValueFrom(
+                this.buildingsClient.send(
+                  BUILDINGS_PATTERN.GET_BY_ID,
+                  { buildingId }
+                ).pipe(
+                  timeout(10000),
+                  catchError(err => {
+                    console.error(`Error getting building ${buildingId}:`, err);
+                    return of(null);
+                  })
+                )
+              );
+
+              if (buildingResponse && buildingResponse.data && buildingResponse.data.manager_id) {
+                buildingManagerId = buildingResponse.data.manager_id;
+                console.log(`[TaskService] Found building manager ID: ${buildingManagerId}`);
+
+                // If we have both a manager ID and notification content, send the notification
+                if (notificationTitle && notificationContent) {
+                  console.log(`[TaskService] Sending notification to building manager ${buildingManagerId}`);
+
+                  const notificationData = {
+                    userId: buildingManagerId,
+                    title: notificationTitle,
+                    content: notificationContent,
+                    type: NotificationType.SYSTEM,
+                    relatedId: entityId,
+                    link: entityType === 'crack' ? `/crack-reports/${entityId}` : `/schedule-jobs/${entityId}`
+                  };
+
+                  await firstValueFrom(
+                    this.notificationsClient.emit(
+                      NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION,
+                      notificationData
+                    )
+                  );
+
+                  notificationSent = true;
+                  console.log(`[TaskService] Notification sent to building manager ${buildingManagerId}`);
+                  responseMessage += ` và đã gửi thông báo đến quản lý tòa nhà`;
+                }
+              } else {
+                console.warn(`[TaskService] Building has no manager or could not retrieve building data`);
+              }
+            } else {
+              console.warn(`[TaskService] Building detail has no associated building`);
+            }
+          } else {
+            console.warn(`[TaskService] Could not retrieve building detail information`);
+          }
+        } catch (error) {
+          console.error(`[TaskService] Error sending notification to building manager:`, error);
+          // Continue execution even if notification fails
+        }
+      } else {
+        console.warn(`[TaskService] No buildingDetailId found, cannot send notification to building manager`);
+      }
+
       // Return success response with details
       return new ApiResponse(true, responseMessage, {
         taskId,
@@ -1507,7 +1725,9 @@ export class TaskService {
         crackReportId: task.crack_id || null,
         crackReportUpdated,
         scheduleJobId: task.schedule_job_id || null,
-        scheduleJobUpdated
+        scheduleJobUpdated,
+        buildingManagerId,
+        notificationSent
       });
     } catch (error) {
       console.error('[TaskService] Error in completeTaskAndReview:', error);
