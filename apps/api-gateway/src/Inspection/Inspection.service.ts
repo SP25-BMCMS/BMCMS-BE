@@ -1015,10 +1015,10 @@ export class InspectionService implements OnModuleInit {
       const taskAssignment = taskAssignmentResponse.data;
 
       // Check if task assignment status is Confirmed
-      if (taskAssignment.status !== 'Confirmed') {
+      if (taskAssignment.status !== 'Verified') {
         return new ApiResponse(
           false,
-          `Nhiệm vụ được gán phải ở trạng thái Confirmed. Trạng thái hiện tại: ${taskAssignment.status}`,
+          `Nhiệm vụ được gán phải ở trạng thái Verified. Trạng thái hiện tại: ${taskAssignment.status}`,
           null
         );
       }
