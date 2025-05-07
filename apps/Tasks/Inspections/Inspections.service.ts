@@ -183,7 +183,7 @@ export class InspectionsService implements OnModuleInit {
             this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
           )
           console.log("✅ Successfully retrieved crack info")
-          
+
           // Process crack images if they exist
           if (crackInfo && crackInfo.data) {
             const crackData = crackInfo.data
@@ -224,13 +224,13 @@ export class InspectionsService implements OnModuleInit {
         } catch (error) {
           console.error("❌ Failed to get crack info for crack_id:", task.crack_id)
           console.error("Error details:", error)
-          
+
           // Thử phương án thay thế với định dạng khác
           try {
             console.log("Attempting alternative method to get crack info...")
             crackInfo = await firstValueFrom(
               this.crackClient.send(
-                { cmd: 'get-crack-report-by-id' }, 
+                { cmd: 'get-crack-report-by-id' },
                 task.crack_id
               )
             )
@@ -250,12 +250,12 @@ export class InspectionsService implements OnModuleInit {
       for (const inspection of inspections) {
         // Tạo bản sao và thêm crackInfo vào
         const inspectionData: any = { ...inspection };
-        
+
         // Thêm thông tin crack nếu có
         if (crackInfo) {
           inspectionData.crackInfo = crackInfo;
         }
-        
+
         // Process image URLs
         if (inspectionData.image_urls && inspectionData.image_urls.length > 0) {
           inspectionData.image_urls = await Promise.all(
@@ -281,7 +281,7 @@ export class InspectionsService implements OnModuleInit {
             // Keep original URL as fallback
           }
         }
-        
+
         result.push(inspectionData)
       }
 
@@ -661,43 +661,100 @@ export class InspectionsService implements OnModuleInit {
         // If warranty is expired and we have a crackId, update the crack report status and create worklog
         if (isWarrantyExpired && crackId) {
           try {
-            // 1. Update CrackReport status to WaitingConfirm
-            await firstValueFrom(
+            // First get the current crack report status
+            console.log(`[DEBUG] Checking crack report status for crackId: ${crackId}`);
+            const crackReportResponse = await firstValueFrom(
               this.crackClient.send(
-                { cmd: 'update-crack-report-for-all-status' },
-                {
-                  crackReportId: crackId,
-                  dto: { status: 'WaitingConfirm' }
-                }
+                { cmd: 'get-crack-report-by-id' },
+                crackId
               ).pipe(
                 catchError(error => {
-                  console.error('Error updating crack report status:', error);
-                  return of({ isSuccess: false, message: error.message });
+                  console.error('Error getting crack report details:', error);
+                  return of({ isSuccess: false, data: null });
                 })
               )
             );
 
-            // 2. Create worklog with WAIT_FOR_DEPOSIT status
-            if (task.task_id) {
+            // Log the entire response to see its structure
+            console.log(`[DEBUG] Crack report response:`, JSON.stringify(crackReportResponse, null, 2));
+
+            // Check if we can update the status based on current status
+            let currentStatus = null;
+            if (crackReportResponse?.data) {
+              // Handle case when data is an array
+              if (Array.isArray(crackReportResponse.data) && crackReportResponse.data.length > 0) {
+                currentStatus = crackReportResponse.data[0].status;
+                console.log(`[DEBUG] Found status in data array: ${currentStatus}`);
+              } else if (crackReportResponse.data.status) {
+                // Direct status in data object
+                currentStatus = crackReportResponse.data.status;
+                console.log(`[DEBUG] Found direct status in data: ${currentStatus}`);
+              } else if (typeof crackReportResponse.data === 'object') {
+                // Try to find status in different property of data
+                currentStatus = crackReportResponse.data.ReportStatus;
+                console.log(`[DEBUG] Tried alternate property (ReportStatus): ${currentStatus}`);
+              }
+            }
+
+            console.log(`[DEBUG] Extracted current status: ${currentStatus}`);
+            const allowedStatusesForUpdate = ['Pending', 'InProgress', 'Reviewing'];
+
+            console.log(`[DEBUG] Checking if ${currentStatus} is in allowed statuses: ${allowedStatusesForUpdate.join(', ')}`);
+            console.log(`[DEBUG] Status comparison result: ${allowedStatusesForUpdate.includes(currentStatus)}`);
+
+            // Updated condition with more robust checking
+            const shouldUpdateStatus =
+              crackReportResponse?.isSuccess &&
+              currentStatus &&
+              (allowedStatusesForUpdate.includes(currentStatus) ||
+                allowedStatusesForUpdate.map(s => s.toLowerCase()).includes(currentStatus.toLowerCase()));
+
+            console.log(`[DEBUG] Should update status: ${shouldUpdateStatus}`);
+
+            if (shouldUpdateStatus) {
+              console.log(`[DEBUG] Updating crack report status to WaitingConfirm`);
+              // 1. Update CrackReport status to WaitingConfirm
               await firstValueFrom(
-                this.taskClient.send(
-                  WORKLOG_PATTERN.CREATE,
+                this.crackClient.send(
+                  { cmd: 'update-crack-report-for-all-status' },
                   {
-                    task_id: task.task_id,
-                    title: 'Chờ đặt cọc từ cư dân',
-                    description: 'Tòa nhà đã hết hạn bảo hành, cần cư dân đặt cọc trước khi tiếp tục',
-                    status: 'WAIT_FOR_DEPOSIT'
+                    crackReportId: crackId,
+                    dto: { status: 'WaitingConfirm' }
                   }
                 ).pipe(
                   catchError(error => {
-                    console.error('Error creating worklog:', error);
+                    console.error('Error updating crack report status:', error);
                     return of({ isSuccess: false, message: error.message });
                   })
                 )
               );
-            }
 
-            console.log(`Successfully updated statuses due to expired warranty. CrackId: ${crackId}, TaskId: ${task.task_id}`);
+              // 2. Create worklog with WAIT_FOR_DEPOSIT status
+              if (task.task_id) {
+                console.log(`[DEBUG] Creating worklog for task: ${task.task_id}`);
+                await firstValueFrom(
+                  this.taskClient.send(
+                    WORKLOG_PATTERN.CREATE,
+                    {
+                      task_id: task.task_id,
+                      title: 'Chờ đặt cọc từ cư dân',
+                      description: 'Tòa nhà đã hết hạn bảo hành, cần cư dân đặt cọc trước khi tiếp tục',
+                      status: 'WAIT_FOR_DEPOSIT'
+                    }
+                  ).pipe(
+                    catchError(error => {
+                      console.error('Error creating worklog:', error);
+                      return of({ isSuccess: false, message: error.message });
+                    })
+                  )
+                );
+                console.log(`[DEBUG] Worklog created successfully`);
+              }
+
+              console.log(`Successfully updated statuses due to expired warranty. CrackId: ${crackId}, TaskId: ${task.task_id}`);
+            } else {
+              console.log(`[DEBUG] Not updating status because current status is not in allowed list or response was not successful`);
+            }
           } catch (error) {
             console.error('Error updating statuses after inspection creation:', error);
             // Don't fail the overall operation if this update fails
@@ -725,43 +782,100 @@ export class InspectionsService implements OnModuleInit {
         // If warranty is expired and we have a crackId, update the crack report status and create worklog
         if (isWarrantyExpired && crackId) {
           try {
-            // 1. Update CrackReport status to WaitingConfirm
-            await firstValueFrom(
+            // First get the current crack report status
+            console.log(`[DEBUG] Checking crack report status for crackId: ${crackId}`);
+            const crackReportResponse = await firstValueFrom(
               this.crackClient.send(
-                { cmd: 'update-crack-report-for-all-status' },
-                {
-                  crackReportId: crackId,
-                  dto: { status: 'WaitingConfirm' }
-                }
+                { cmd: 'get-crack-report-by-id' },
+                crackId
               ).pipe(
                 catchError(error => {
-                  console.error('Error updating crack report status:', error);
-                  return of({ isSuccess: false, message: error.message });
+                  console.error('Error getting crack report details:', error);
+                  return of({ isSuccess: false, data: null });
                 })
               )
             );
 
-            // 2. Create worklog with WAIT_FOR_DEPOSIT status
-            if (task.task_id) {
+            // Log the entire response to see its structure
+            console.log(`[DEBUG] Crack report response:`, JSON.stringify(crackReportResponse, null, 2));
+
+            // Check if we can update the status based on current status
+            let currentStatus = null;
+            if (crackReportResponse?.data) {
+              // Handle case when data is an array
+              if (Array.isArray(crackReportResponse.data) && crackReportResponse.data.length > 0) {
+                currentStatus = crackReportResponse.data[0].status;
+                console.log(`[DEBUG] Found status in data array: ${currentStatus}`);
+              } else if (crackReportResponse.data.status) {
+                // Direct status in data object
+                currentStatus = crackReportResponse.data.status;
+                console.log(`[DEBUG] Found direct status in data: ${currentStatus}`);
+              } else if (typeof crackReportResponse.data === 'object') {
+                // Try to find status in different property of data
+                currentStatus = crackReportResponse.data.ReportStatus;
+                console.log(`[DEBUG] Tried alternate property (ReportStatus): ${currentStatus}`);
+              }
+            }
+
+            console.log(`[DEBUG] Extracted current status: ${currentStatus}`);
+            const allowedStatusesForUpdate = ['Pending', 'InProgress', 'Reviewing'];
+
+            console.log(`[DEBUG] Checking if ${currentStatus} is in allowed statuses: ${allowedStatusesForUpdate.join(', ')}`);
+            console.log(`[DEBUG] Status comparison result: ${allowedStatusesForUpdate.includes(currentStatus)}`);
+
+            // Updated condition with more robust checking
+            const shouldUpdateStatus =
+              crackReportResponse?.isSuccess &&
+              currentStatus &&
+              (allowedStatusesForUpdate.includes(currentStatus) ||
+                allowedStatusesForUpdate.map(s => s.toLowerCase()).includes(currentStatus.toLowerCase()));
+
+            console.log(`[DEBUG] Should update status: ${shouldUpdateStatus}`);
+
+            if (shouldUpdateStatus) {
+              console.log(`[DEBUG] Updating crack report status to WaitingConfirm`);
+              // 1. Update CrackReport status to WaitingConfirm
               await firstValueFrom(
-                this.taskClient.send(
-                  WORKLOG_PATTERN.CREATE,
+                this.crackClient.send(
+                  { cmd: 'update-crack-report-for-all-status' },
                   {
-                    task_id: task.task_id,
-                    title: 'Chờ đặt cọc từ cư dân',
-                    description: 'Tòa nhà đã hết hạn bảo hành, cần cư dân đặt cọc trước khi tiếp tục',
-                    status: 'WAIT_FOR_DEPOSIT'
+                    crackReportId: crackId,
+                    dto: { status: 'WaitingConfirm' }
                   }
                 ).pipe(
                   catchError(error => {
-                    console.error('Error creating worklog:', error);
+                    console.error('Error updating crack report status:', error);
                     return of({ isSuccess: false, message: error.message });
                   })
                 )
               );
-            }
 
-            console.log(`Successfully updated statuses due to expired warranty. CrackId: ${crackId}, TaskId: ${task.task_id}`);
+              // 2. Create worklog with WAIT_FOR_DEPOSIT status
+              if (task.task_id) {
+                console.log(`[DEBUG] Creating worklog for task: ${task.task_id}`);
+                await firstValueFrom(
+                  this.taskClient.send(
+                    WORKLOG_PATTERN.CREATE,
+                    {
+                      task_id: task.task_id,
+                      title: 'Chờ đặt cọc từ cư dân',
+                      description: 'Tòa nhà đã hết hạn bảo hành, cần cư dân đặt cọc trước khi tiếp tục',
+                      status: 'WAIT_FOR_DEPOSIT'
+                    }
+                  ).pipe(
+                    catchError(error => {
+                      console.error('Error creating worklog:', error);
+                      return of({ isSuccess: false, message: error.message });
+                    })
+                  )
+                );
+                console.log(`[DEBUG] Worklog created successfully`);
+              }
+
+              console.log(`Successfully updated statuses due to expired warranty. CrackId: ${crackId}, TaskId: ${task.task_id}`);
+            } else {
+              console.log(`[DEBUG] Not updating status because current status is not in allowed list or response was not successful`);
+            }
           } catch (error) {
             console.error('Error updating statuses after inspection creation:', error);
             // Don't fail the overall operation if this update fails
@@ -892,13 +1006,13 @@ export class InspectionsService implements OnModuleInit {
         } catch (error) {
           console.error("❌ Failed to get crack info for crack_id:", task.crack_id)
           console.error("Error details:", error)
-          
+
           // Thử phương án thay thế với định dạng khác
           try {
             console.log("Attempting alternative method to get crack info...")
             const crackInfo = await firstValueFrom(
               this.crackClient.send(
-                { cmd: 'get-crack-report-by-id' }, 
+                { cmd: 'get-crack-report-by-id' },
                 task.crack_id
               )
             )
@@ -1348,7 +1462,7 @@ export class InspectionsService implements OnModuleInit {
         return new ApiResponse(false, 'Nhân viên chưa được gán vị trí công việc', null);
       }
 
-      if (!isLeader) {
+      if (isLeader) {
         return new ApiResponse(false, 'Nhân viên phải có vị trí là Leader', null);
       }
 
