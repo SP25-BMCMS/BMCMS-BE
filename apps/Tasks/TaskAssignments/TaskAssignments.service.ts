@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { ClientGrpc, ClientProxy, RpcException } from '@nestjs/microservices'
-import { AssignmentStatus, PrismaClient } from '@prisma/client-Task'
+import { AssignmentStatus, PrismaClient, Status } from '@prisma/client-Task'
 import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create-taskAssigment.dto'
 import { UpdateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/update.taskAssigment'
 import { PrismaService } from '../../users/prisma/prisma.service'
@@ -15,7 +15,7 @@ import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import * as https from 'https'
 import axios from 'axios'
-import { catchError } from 'rxjs/operators'
+import { catchError, timeout } from 'rxjs/operators'
 import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
 import { NotificationType } from '@app/contracts/notifications/notification.dto'
 import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
@@ -1855,7 +1855,111 @@ export class TaskAssignmentsService {
         }
       })
 
-      // 5. Return the updated task assignment and the new worklog
+      // 5. Special handling for Unverified status
+      if (payload.status === AssignmentStatus.Unverified) {
+        this.logger.log(`Special handling for Unverified status on assignment ${payload.assignment_id}`);
+
+        try {
+          // Update the Task status to Completed
+          await this.prisma.task.update({
+            where: { task_id: taskAssignment.task_id },
+            data: { status: Status.Completed }
+          });
+
+          this.logger.log(`Updated Task ${taskAssignment.task_id} status to Completed`);
+
+          // Get crack report ID from the task
+          if (taskAssignment.task?.crack_id) {
+            const crackId = taskAssignment.task.crack_id;
+            this.logger.log(`Found related crack report: ${crackId}`);
+
+            try {
+              // Update the CrackReport status to Rejected
+              const crackReportResult = await firstValueFrom(
+                this.crackClient.send(
+                  { cmd: 'update-crack-report-for-all-status' },
+                  {
+                    crackReportId: crackId,
+                    dto: {
+                      status: 'Rejected',
+                      suppressNotification: false
+                    }
+                  }
+                ).pipe(
+                  timeout(10000),
+                  catchError(error => {
+                    this.logger.error(`Error updating crack report status: ${error.message}`);
+                    return of(null);
+                  })
+                )
+              );
+
+              if (crackReportResult) {
+                this.logger.log(`Updated CrackReport ${crackId} status to Rejected`);
+
+                // Get the resident ID (reportedBy) from the crack report
+                try {
+                  const crackReportDetails = await firstValueFrom(
+                    this.crackClient.send(
+                      { cmd: 'get-crack-report-by-id' },
+                      crackId
+                    ).pipe(
+                      catchError(error => {
+                        this.logger.error(`Error getting crack report details: ${error.message}`);
+                        return of(null);
+                      })
+                    )
+                  );
+
+                  if (crackReportDetails?.data && crackReportDetails.data[0]?.reportedBy?.userId) {
+                    const residentId = crackReportDetails.data[0].reportedBy.userId;
+                    this.logger.log(`Found resident ID: ${residentId}`);
+
+                    // Send notification to the resident
+                    this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, {
+                      userId: residentId,
+                      title: 'Báo cáo vết nứt không được xác nhận',
+                      content: 'Báo cáo vết nứt của bạn không được xác nhận. Lưu ý rằng nếu báo cáo bị từ chối 2 lần, tính năng báo cáo vết nứt sẽ tạm thời bị khóa.',
+                      type: NotificationType.SYSTEM,
+                      relatedId: crackId,
+                      link: `/crack-reports/${crackId}`
+                    });
+
+                    this.logger.log(`Sent notification to resident ${residentId}`);
+
+                    // Send an additional warning notification about account restrictions
+                    setTimeout(() => {
+                      this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, {
+                        userId: residentId,
+                        title: 'CẢNH BÁO: Nguy cơ bị khóa tính năng báo cáo vết nứt',
+                        content: 'CẢNH BÁO QUAN TRỌNG: Báo cáo vết nứt của bạn đã bị từ chối. Nếu bạn có 2 báo cáo bị từ chối, hệ thống sẽ tự động khóa tính năng báo cáo vết nứt của tài khoản bạn. Vui lòng đảm bảo báo cáo của bạn chính xác và có hình ảnh rõ ràng.',
+                        type: NotificationType.SYSTEM,
+                        relatedId: `${crackId}-warning`,
+                        link: `/user-guide/crack-reporting-guidelines`
+                      });
+
+                      this.logger.log(`Sent warning notification about potential account restriction to ${residentId}`);
+                    }, 2000); // Send after 2 seconds to ensure they're separate notifications
+                  } else {
+                    this.logger.warn(`Could not find resident ID in crack report data`);
+                  }
+                } catch (err) {
+                  this.logger.error(`Error in resident notification process: ${err.message}`);
+                }
+              }
+            } catch (err) {
+              this.logger.error(`Error updating crack report: ${err.message}`);
+            }
+          } else {
+            this.logger.warn(`No crack_id found for task ${taskAssignment.task_id}`);
+          }
+        } catch (err) {
+          this.logger.error(`Error handling Unverified case: ${err.message}`);
+          // Continue execution even if this special handling fails
+        }
+      }
+
+      // 6. Return the updated task assignment and the new worklog
       return {
         success: true,
         message: 'Task assignment status updated and worklog created successfully',
