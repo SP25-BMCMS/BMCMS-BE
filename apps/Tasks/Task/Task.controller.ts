@@ -128,4 +128,17 @@ export class TasksController {
       throw error;
     }
   }
+
+  @MessagePattern(TASKS_PATTERN.COMPLETE_AND_REVIEW)
+  async completeTaskAndReview(@Payload() payload: { taskId: string }) {
+    console.log('Received complete-task-and-review request with taskId:', payload.taskId);
+    try {
+      const result = await this.taskService.completeTaskAndReview(payload.taskId);
+      console.log('completeTaskAndReview completed with result:', JSON.stringify(result));
+      return result;
+    } catch (error) {
+      console.error('Error in completeTaskAndReview controller:', error);
+      throw error;
+    }
+  }
 }

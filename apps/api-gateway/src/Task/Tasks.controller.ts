@@ -321,13 +321,13 @@ export class TaskController {
       // Thêm log chi tiết hơn để xác nhận thông tin người dùng
       console.log('[TaskController] req.user structure:', JSON.stringify(req.user, null, 2));
       console.log('[TaskController] Request headers:', JSON.stringify(req.headers, null, 2));
-      
+
       // Use authenticated user ID as manager ID if not provided in query
       if (!query.managerId && req.user) {
         // Truy cập userId theo cấu trúc đúng của đối tượng user
         // Có thể là req.user.userId, req.user.id, req.user.sub tùy theo cấu hình JWT
         const userId = req.user.userId || req.user.id || req.user.sub;
-        
+
         if (userId) {
           query.managerId = userId;
           console.log(`Using authenticated user ID as manager ID: ${query.managerId}`);
@@ -337,11 +337,32 @@ export class TaskController {
       } else if (!query.managerId) {
         console.log('No managerId provided and user is not authenticated');
       }
-      
+
       return this.taskService.getTasksByType(query);
     } catch (error) {
       console.error('Error in getTasksByType controller:', error);
       throw new Error(`Failed to get tasks: ${error.message}`);
+    }
+  }
+
+  @Post('task/:task_id/complete-and-review')
+  @ApiOperation({ summary: 'Set task to Completed and update related entities to Reviewing' })
+  @ApiParam({ name: 'task_id', description: 'Task ID' })
+  @ApiResponse({ status: 200, description: 'Task and related entities updated successfully' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async completeTaskAndReview(@Param('task_id') task_id: string) {
+    try {
+      return this.taskService.completeTaskAndReview(task_id);
+    } catch (error) {
+      console.error('Error in completeTaskAndReview controller:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Error while updating task status',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }

@@ -491,6 +491,47 @@ export class TaskService {
     }
   }
 
+  async completeTaskAndReview(taskId: string) {
+    try {
+      return await firstValueFrom(
+        this.taskClient.send(
+          TASKS_PATTERN.COMPLETE_AND_REVIEW,
+          { taskId }
+        ).pipe(
+          catchError(error => {
+            console.error('Error from task microservice:', error);
+            // If error has status code, use it, otherwise use 500
+            const statusCode = error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR;
+
+            throw new HttpException(
+              {
+                statusCode,
+                message: error.message || 'Failed to complete task and update related entities',
+                error: 'Task Update Failed'
+              },
+              statusCode
+            );
+          })
+        )
+      );
+    } catch (error) {
+      console.error('Error in completeTaskAndReview service:', error);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: error.message || 'Failed to complete task and update to reviewing',
+          error: 'Task Update Failed'
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   // async createRepairMaterial(createRepairMaterialDto: CreateRepairMaterialDto) {
   //   try {
   //     return await this.taskClient.send(

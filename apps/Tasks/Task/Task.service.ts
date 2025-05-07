@@ -1229,7 +1229,7 @@ export class TaskService {
             // Extract all building detail IDs from the buildings
             const buildingDetails = buildingsResponse.data.flatMap(building => building.buildingDetails || []);
             buildingDetailIds = buildingDetails.map(detail => detail.buildingDetailId);
-            
+
             console.log(`Found ${buildingDetailIds.length} building details for manager ${managerId}`);
           } else {
             console.warn(`No buildings found for manager ${managerId}`);
@@ -1351,16 +1351,16 @@ export class TaskService {
         filteredTasks = tasks.filter(task => {
           // Check if the task has building information in crackInfo or schedulesjobInfo
           const taskAny = task as any; // Cast to any to access dynamic properties
-          const hasBuildingInCrackInfo = taskAny.crackInfo?.data?.some?.(report => 
+          const hasBuildingInCrackInfo = taskAny.crackInfo?.data?.some?.(report =>
             report.buildingDetailId && buildingDetailIds.includes(report.buildingDetailId)
           );
-          
-          const hasBuildingInScheduleJob = taskAny.schedulesjobInfo?.data?.buildingDetailId && 
+
+          const hasBuildingInScheduleJob = taskAny.schedulesjobInfo?.data?.buildingDetailId &&
             buildingDetailIds.includes(taskAny.schedulesjobInfo.data.buildingDetailId);
-            
+
           return hasBuildingInCrackInfo || hasBuildingInScheduleJob;
         });
-        
+
         console.log(`Filtered ${tasks.length} tasks to ${filteredTasks.length} tasks for manager ${managerId}`);
       }
 
@@ -1380,6 +1380,145 @@ export class TaskService {
       throw new RpcException({
         statusCode: 500,
         message: `Lỗi khi lấy danh sách nhiệm vụ: ${error.message}`,
+      });
+    }
+  }
+
+  async completeTaskAndReview(taskId: string) {
+    try {
+      // Step 1: Verify the task exists
+      const task = await this.prisma.task.findUnique({
+        where: { task_id: taskId },
+        include: {
+          taskAssignments: true // Include task assignments to check their status
+        }
+      });
+
+      if (!task) {
+        throw new RpcException({
+          statusCode: 404,
+          message: `Không tìm thấy nhiệm vụ với ID ${taskId}`
+        });
+      }
+
+      // Step 2: Check if any task assignment has a status that prevents completion
+      // Check if task has assignments and validate their statuses
+      if (task.taskAssignments && task.taskAssignments.length > 0) {
+        // Create array of invalid status enum values
+        const invalidStatuses = [
+          'Unverified',
+          'InFixing',
+          'Fixed'
+        ];
+
+        const invalidAssignments = task.taskAssignments.filter(
+          assignment => invalidStatuses.includes(assignment.status)
+        );
+
+        if (invalidAssignments.length > 0) {
+          const statusLabels = invalidAssignments.map(a => a.status).join(', ');
+          throw new RpcException({
+            statusCode: 400,
+            message: `Không thể hoàn thành nhiệm vụ vì có phân công đang trong trạng thái: ${statusLabels}`
+          });
+        }
+      }
+
+      // Step 3: Update the task status to Completed
+      console.log(`[TaskService] Updating task ${taskId} status to Completed`);
+      const updatedTask = await this.prisma.task.update({
+        where: { task_id: taskId },
+        data: { status: Status.Completed }
+      });
+
+      // Step 4: Determine if we need to update a crack report or schedule job
+      let crackReportUpdated = false;
+      let scheduleJobUpdated = false;
+      let responseMessage = 'Đã cập nhật trạng thái nhiệm vụ thành Hoàn thành';
+
+      // Step 4a: Update crack report if it exists
+      if (task.crack_id) {
+        try {
+          console.log(`[TaskService] Updating crack report ${task.crack_id} status to Reviewing`);
+          const crackUpdateResponse = await this.callCrackService(
+            { cmd: 'update-crack-report-for-all-status' },
+            {
+              crackReportId: task.crack_id,
+              dto: {
+                status: 'Reviewing',
+                suppressNotification: true // Prevent automatic notifications
+              }
+            }
+          );
+
+          if (crackUpdateResponse && crackUpdateResponse.isSuccess) {
+            crackReportUpdated = true;
+            responseMessage += ' và báo cáo vết nứt thành Đang xem xét';
+            console.log(`[TaskService] Successfully updated crack report ${task.crack_id} to Reviewing`);
+          } else {
+            console.warn(`[TaskService] Failed to update crack report status: ${crackUpdateResponse?.message || 'Unknown error'}`);
+          }
+        } catch (error) {
+          console.error(`[TaskService] Error updating crack report ${task.crack_id}:`, error);
+          // Continue even if crack update fails
+        }
+      }
+
+      // Step 4b: Update schedule job if it exists
+      if (task.schedule_job_id) {
+        try {
+          console.log(`[TaskService] Updating schedule job ${task.schedule_job_id} status to Reviewing`);
+          const scheduleUpdateResponse = await firstValueFrom(
+            this.scheduleClient.send(
+              SCHEDULEJOB_PATTERN.UPDATE_STATUS,
+              {
+                schedulejobs_id: task.schedule_job_id,
+                status: 'Reviewing'
+              }
+            ).pipe(
+              timeout(10000),
+              catchError(err => {
+                console.error(`Error updating schedule job ${task.schedule_job_id}:`, err);
+                return of({
+                  isSuccess: false,
+                  message: `Failed to update schedule job: ${err.message}`
+                });
+              })
+            )
+          );
+
+          if (scheduleUpdateResponse && scheduleUpdateResponse.isSuccess) {
+            scheduleJobUpdated = true;
+            responseMessage += ' và lịch công việc thành Đang xem xét';
+            console.log(`[TaskService] Successfully updated schedule job ${task.schedule_job_id} to Reviewing`);
+          } else {
+            console.warn(`[TaskService] Failed to update schedule job status: ${scheduleUpdateResponse?.message || 'Unknown error'}`);
+          }
+        } catch (error) {
+          console.error(`[TaskService] Error updating schedule job ${task.schedule_job_id}:`, error);
+          // Continue even if schedule job update fails
+        }
+      }
+
+      // Return success response with details
+      return new ApiResponse(true, responseMessage, {
+        taskId,
+        taskStatus: 'Completed',
+        crackReportId: task.crack_id || null,
+        crackReportUpdated,
+        scheduleJobId: task.schedule_job_id || null,
+        scheduleJobUpdated
+      });
+    } catch (error) {
+      console.error('[TaskService] Error in completeTaskAndReview:', error);
+
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      throw new RpcException({
+        statusCode: 500,
+        message: `Lỗi khi cập nhật nhiệm vụ: ${error.message}`
       });
     }
   }
