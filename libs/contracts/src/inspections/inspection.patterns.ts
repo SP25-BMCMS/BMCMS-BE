@@ -1,6 +1,7 @@
 export const INSPECTIONS_PATTERN = {
   GET: 'get_all_inspections', // Define the pattern here
   CREATE: 'create_inspection',
+  CREATE_ACTUAL_COST: 'create_inspection_actual_cost',
   UPDATE: 'update_inspection',
   DELELTE: 'delete_inspection',
   GET_BY_ID_Task_Assignment: 'get_by_task_assignment_id',

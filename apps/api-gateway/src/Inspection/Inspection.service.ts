@@ -484,6 +484,316 @@ export class InspectionService implements OnModuleInit {
     }
   }
 
+  async createInspectionActualCost(
+    dto: CreateInspectionDto,
+    userId: string,
+    files?: Express.Multer.File[]
+  ): Promise<ApiResponse<Inspection>> {
+    try {
+      // First, verify if the user has Staff role
+      const userResponse = await this.validateUserIsStaff(userId)
+
+      if (!userResponse.isSuccess) {
+        return userResponse
+      }
+
+      // If files are provided, upload them to S3 via Crack service
+      let imageUrls: string[] = []
+      let pdfUrl: string = null
+
+      if (files && files.length > 0) {
+        try {
+          // Log detailed file information for debugging
+          console.log('======= FILE PROCESSING STARTED =======')
+          console.log(`Total files received: ${files.length}`)
+          files.forEach((file, index) => {
+            console.log(`File ${index + 1}: ${file.originalname}, fieldname: ${file.fieldname}, mimetype: ${file.mimetype}, size: ${file.size} bytes`)
+          })
+
+          // Group files by their origins
+          const pdfFiles = files.filter(file => file.fieldname === 'pdfFile')
+          const imageFiles = files.filter(file => file.fieldname === 'files')
+
+          console.log(`Grouped files: ${pdfFiles.length} PDF files, ${imageFiles.length} image files`)
+
+          // Handle PDF file upload if provided
+          if (pdfFiles.length > 0) {
+            const pdfFile = pdfFiles[0]
+            console.log(`Processing PDF file: ${pdfFile.originalname}, fieldname: ${pdfFile.fieldname}, mimetype: ${pdfFile.mimetype}`)
+
+            // Check if the file is actually a PDF
+            const isPdf = pdfFile.mimetype === 'application/pdf' ||
+              pdfFile.originalname.toLowerCase().endsWith('.pdf');
+
+            if (!isPdf) {
+              console.error(`Error: Non-PDF file uploaded through pdfFile field: ${pdfFile.originalname}, mimetype: ${pdfFile.mimetype}`);
+              return new ApiResponse(
+                false,
+                'Loại tệp không hợp lệ cho tải lên PDF. Chỉ chấp nhận tệp PDF trong trường pdfFile.',
+                null
+              );
+            }
+
+            // Generate a unique filename
+            const fileExt = pdfFile.originalname.split('.').pop()
+            const uniqueFileName = `inspections/reports/${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`
+
+            try {
+              // Upload the PDF file
+              const command = new PutObjectCommand({
+                Bucket: this.bucketName,
+                Key: uniqueFileName,
+                Body: pdfFile.buffer,
+                ContentType: 'application/pdf'
+              })
+
+              await this.s3.send(command)
+
+              const s3BaseUrl = `https://${this.bucketName}.s3.amazonaws.com/`
+              pdfUrl = s3BaseUrl + uniqueFileName
+              console.log('PDF uploaded successfully, URL:', pdfUrl)
+            } catch (uploadError) {
+              console.error('Error uploading PDF to S3:', uploadError)
+            }
+          } else {
+            console.log('No PDF files to process')
+          }
+
+          // Handle image files
+          if (imageFiles.length > 0) {
+            console.log(`Processing ${imageFiles.length} image files`)
+
+            const processedFiles = imageFiles.map(file => ({
+              ...file,
+              buffer: file.buffer.toString('base64')
+            }))
+
+            const uploadResponse = await firstValueFrom(
+              this.crackClient.send(
+                { cmd: 'upload-inspection-images' },
+                { files: processedFiles }
+              ).pipe(
+                timeout(30000),
+                catchError(err => {
+                  console.error('Error uploading images:', err)
+                  return of(new ApiResponse(false, 'Lỗi khi tải lên hình ảnh', null))
+                })
+              )
+            )
+
+            if (uploadResponse.isSuccess && uploadResponse.data && uploadResponse.data.InspectionImage) {
+              imageUrls = uploadResponse.data.InspectionImage
+              console.log(`Successfully uploaded ${imageUrls.length} images:`, imageUrls)
+            } else {
+              console.error('Image upload failed:', uploadResponse)
+            }
+          } else {
+            console.log('No image files to process')
+          }
+
+          console.log('======= FILE PROCESSING FINISHED =======')
+          console.log('Final results:')
+          console.log(`- Images: ${imageUrls.length > 0 ? imageUrls.length + ' files uploaded' : 'None'}`)
+          console.log(`- PDF: ${pdfUrl ? 'Uploaded successfully' : 'None'}`)
+        } catch (error) {
+          console.error('Error in file upload process:', error)
+        }
+      }
+
+      const updatedDto = {
+        ...dto,
+        inspected_by: userId,
+        image_urls: imageUrls,
+        uploadFile: pdfUrl,
+        location_details: {}
+      }
+
+      if (dto.repairMaterials) {
+        console.log('Repair materials provided:', dto.repairMaterials);
+      }
+
+      const response = await firstValueFrom(
+        this.inspectionClient.send(INSPECTIONS_PATTERN.CREATE_ACTUAL_COST, updatedDto)
+          .pipe(
+            timeout(100000),
+            catchError(err => {
+              let errorMsg = 'Lỗi khi tạo báo cáo'
+              if (err.message) {
+                if (err.message.includes('Leader')) {
+                  errorMsg = 'Chỉ nhân viên mới có thể tạo báo cáo'
+                } else if (err.message.includes('task assignment')) {
+                  errorMsg = 'Không tìm thấy nhiệm vụ được gán'
+                }
+              }
+              return of(new ApiResponse(false, errorMsg, null))
+            })
+          )
+      )
+
+      if (response.isSuccess && response.data) {
+        try {
+          const inspection = response.data
+
+          console.log('Retrieving buildingDetailId for task_assignment_id:', dto.task_assignment_id)
+          const buildingDetailResponse = await firstValueFrom(
+            this.inspectionClient.send(
+              { cmd: 'get-building-detail-id-from-task-assignment' },
+              { task_assignment_id: dto.task_assignment_id }
+            ).pipe(
+              timeout(10000),
+              catchError(err => {
+                console.error('Error getting buildingDetailId:', err)
+                return of({ isSuccess: false, data: null })
+              })
+            )
+          )
+
+          let buildingDetailId = '00000000-0000-0000-0000-000000000000'
+
+          if (buildingDetailResponse && buildingDetailResponse.isSuccess && buildingDetailResponse.data) {
+            buildingDetailId = buildingDetailResponse.data.buildingDetailId
+            console.log('Retrieved buildingDetailId:', buildingDetailId)
+          } else {
+            console.warn('Could not retrieve buildingDetailId, using default UUID')
+          }
+
+          const locationDetails = []
+
+          let additionalLocDetails: any = dto.additionalLocationDetails
+
+          if (!additionalLocDetails || (typeof additionalLocDetails === 'string' && additionalLocDetails.trim() === '')) {
+            console.log('additionalLocationDetails is empty or not provided')
+            additionalLocDetails = []
+          }
+          else if (!Array.isArray(additionalLocDetails)) {
+            try {
+              if (typeof additionalLocDetails === 'string') {
+                if (additionalLocDetails.trim() === '[]') {
+                  additionalLocDetails = []
+                }
+                const additionalStr = additionalLocDetails as string
+
+                if (additionalStr.trim().startsWith('{') &&
+                  (additionalStr.includes('},{') || additionalStr.includes('},{'))) {
+                  console.log('Detected multiple JSON objects without array wrapper')
+
+                  try {
+                    try {
+                      const tempParsed = JSON.parse(additionalStr)
+                      additionalLocDetails = [tempParsed]
+                    } catch (e) {
+                      const wrappedJson = '[' + additionalStr + ']'
+                      try {
+                        additionalLocDetails = JSON.parse(wrappedJson)
+                      } catch (e2) {
+                        console.log('First attempt failed, trying regex approach')
+
+                        const objectsRegex = /{[^{}]*(?:{[^{}]*}[^{}]*)*}/g
+                        const matches = additionalStr.match(objectsRegex)
+
+                        if (matches && matches.length > 0) {
+                          additionalLocDetails = matches.map(obj => {
+                            try {
+                              return JSON.parse(obj)
+                            } catch (parseErr) {
+                              console.error('Error parsing individual object:', parseErr)
+                              return null
+                            }
+                          }).filter(obj => obj !== null)
+                        } else {
+                          console.error('No JSON objects found with regex')
+                          additionalLocDetails = []
+                        }
+                      }
+                    }
+                  } catch (objError) {
+                    console.error('Error processing multiple JSON objects:', objError)
+                    additionalLocDetails = []
+                  }
+                } else {
+                  additionalLocDetails = JSON.parse(additionalStr)
+                }
+              }
+
+              if (!Array.isArray(additionalLocDetails) && typeof additionalLocDetails === 'object') {
+                additionalLocDetails = [additionalLocDetails]
+              }
+            } catch (error) {
+              console.error('Error parsing additionalLocationDetails:', error)
+              additionalLocDetails = []
+            }
+          }
+
+          if (Array.isArray(additionalLocDetails)) {
+            additionalLocDetails = additionalLocDetails.map(item => {
+              if (typeof item === 'string') {
+                try {
+                  return JSON.parse(item)
+                } catch (e) {
+                  console.error('Failed to parse location detail item:', e)
+                  return null
+                }
+              }
+              return item
+            }).filter(item => item !== null)
+          }
+
+          if (additionalLocDetails && Array.isArray(additionalLocDetails) && additionalLocDetails.length > 0) {
+            additionalLocDetails.forEach(locationDetail => {
+              locationDetails.push({
+                buildingDetailId: locationDetail.buildingDetailId || buildingDetailId,
+                inspection_id: inspection.inspection_id,
+                roomNumber: locationDetail.roomNumber || "Chưa xác định",
+                floorNumber: locationDetail.floorNumber || 1,
+                areaType: this.convertToAreaDetailsType(locationDetail.areaType) || "Khác",
+                description: locationDetail.description || "Chi tiết vị trí bổ sung"
+              })
+            })
+          }
+          else if (additionalLocDetails && Array.isArray(additionalLocDetails) && additionalLocDetails.length === 0) {
+            // Không tạo mặc định, giữ mảng rỗng
+          }
+          else {
+            locationDetails.push({
+              buildingDetailId: buildingDetailId,
+              inspection_id: inspection.inspection_id,
+              roomNumber: "Chưa xác định",
+              floorNumber: 1,
+              areaType: "Khác",
+              description: "Được tạo từ báo cáo"
+            })
+          }
+
+          locationDetails.forEach(detail => {
+            this.buildingClient.emit(LOCATIONDETAIL_PATTERN.CREATE, detail)
+          })
+
+          if (response && response.data && typeof response.data === 'object') {
+            const locationDetailsData = locationDetails.map(detail => ({
+              inspection_id: detail.inspection_id,
+              buildingDetailId: detail.buildingDetailId,
+              roomNumber: detail.roomNumber,
+              floorNumber: detail.floorNumber,
+              areaType: detail.areaType,
+              description: detail.description
+            }));
+
+            Object.assign(response.data, { locationDetails: locationDetailsData });
+          } else {
+            console.error('Cannot add locationDetails to response: invalid response structure',
+              response ? typeof response.data : 'response is null')
+          }
+        } catch (error) {
+          console.error('Error in LocationDetail creation process:', error)
+        }
+      }
+
+      return response
+    } catch (error) {
+      return new ApiResponse(false, `Lỗi khi tạo báo cáo: ${error.message}`, null)
+    }
+  }
+
   async changeStatus(dto: ChangeInspectionStatusDto): Promise<ApiResponse<Inspection>> {
     try {
       return await firstValueFrom(
