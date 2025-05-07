@@ -1,6 +1,7 @@
-import { Controller, Get, HttpStatus, Res, Param, Query } from '@nestjs/common';
+import { Controller, Get, HttpStatus, Res, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { EmployeeService } from './employee.service';
-import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiQuery, ApiResponse, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { PassportJwtAuthGuard } from '../../guards/passport-jwt-guard';
 
 @ApiTags('Employee')
 @Controller('employee')
@@ -528,6 +529,126 @@ export class EmployeeController {
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         isSuccess: false,
         message: 'Failed to retrieve staff leaders',
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
+      });
+    }
+  }
+
+  @Get('staff-by-department-type/:departmentType')
+  @ApiOperation({ summary: 'Get all staff members by department type in the same area as the authenticated staff leader' })
+  @ApiBearerAuth('access-token')
+  @UseGuards(PassportJwtAuthGuard)
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully retrieved staff members by department type',
+    schema: {
+      type: 'object',
+      properties: {
+        isSuccess: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Successfully retrieved staff members by department type' },
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              userId: { type: 'string' },
+              username: { type: 'string' },
+              email: { type: 'string' },
+              phone: { type: 'string' },
+              role: { type: 'string', enum: ['Admin', 'Manager', 'Staff'] },
+              dateOfBirth: { type: 'string', format: 'date-time', nullable: true },
+              gender: { type: 'string', nullable: true },
+              accountStatus: { type: 'string', enum: ['Active', 'Inactive'] },
+              userDetails: {
+                type: 'object',
+                properties: {
+                  position: {
+                    type: 'object',
+                    properties: {
+                      positionId: { type: 'string' },
+                      positionName: { type: 'string' },
+                      description: { type: 'string' }
+                    }
+                  },
+                  department: {
+                    type: 'object',
+                    properties: {
+                      departmentId: { type: 'string' },
+                      departmentName: { type: 'string' },
+                      departmentType: { type: 'string' },
+                      description: { type: 'string' },
+                      area: { type: 'string' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        pagination: {
+          type: 'object',
+          properties: {
+            total: { type: 'number', example: 5 },
+            page: { type: 'number', example: 1 },
+            limit: { type: 'number', example: 10 },
+            totalPages: { type: 'number', example: 1 }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Invalid request parameters' })
+  @ApiResponse({ status: 401, description: 'Unauthorized or not a staff leader' })
+  @ApiResponse({ status: 404, description: 'No staff members found with the specified department type in the area' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async getAllStaffByDepartmentType(
+    @Param('departmentType') departmentType: string,
+    @Req() req: any,
+    @Res() res: any
+  ) {
+    try {
+      // Add debugging to see what's in the request
+      console.log('Request headers:', req.headers);
+      console.log('Request user object:', req.user);
+      console.log('Auth token:', req.headers.authorization);
+      console.log('Department Type:', departmentType);
+
+      // Extract staffId from JWT token in the request based on the JwtStrategy
+      // JwtStrategy returns { userId, username, role }
+      const staffId = req.user?.userId;
+      console.log('Extracted staffId:', staffId);
+
+      if (!staffId || !departmentType) {
+        return res.status(HttpStatus.BAD_REQUEST).json({
+          isSuccess: false,
+          message: 'Authentication required and Department Type must be provided',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        });
+      }
+
+      const response = await this.employeeService.getAllStaffByDepartmentType(staffId, departmentType);
+
+      if (!response.isSuccess) {
+        return res.status(HttpStatus.NOT_FOUND).json(response);
+      }
+
+      return res.status(HttpStatus.OK).json(response);
+    } catch (error) {
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        isSuccess: false,
+        message: 'Failed to retrieve staff members by department type',
         data: [],
         pagination: {
           total: 0,

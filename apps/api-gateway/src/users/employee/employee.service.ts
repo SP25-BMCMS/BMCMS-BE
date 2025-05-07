@@ -393,6 +393,62 @@ export class EmployeeService implements OnModuleInit {
     }
   }
 
+  async getAllStaffByDepartmentType(staffId: string, departmentType: string) {
+    try {
+      console.log('Calling gRPC method GetAllStaffByDepartmentType with staffId:', staffId, 'and departmentType:', departmentType);
+
+      // Basic validation
+      if (!staffId || !departmentType) {
+        return {
+          isSuccess: false,
+          message: 'Staff ID and Department Type are required',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
+      const response = await lastValueFrom(
+        this.userService.getAllStaffByDepartmentType({ staffId, departmentType })
+      );
+
+      if (!response || !response.isSuccess) {
+        console.log('Received error response from gRPC:', response);
+        return {
+          isSuccess: false,
+          message: response?.message || 'Failed to retrieve staff members',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
+      console.log('Received successful response from gRPC for staff members by department type');
+      return response;
+    } catch (error) {
+      console.error('Error in getAllStaffByDepartmentType:', error);
+      return {
+        isSuccess: false,
+        message: 'Service unavailable',
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
+      };
+    }
+  }
+
   // Public method to test getDepartment directly
 
 }

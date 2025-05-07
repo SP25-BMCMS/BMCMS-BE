@@ -773,6 +773,145 @@ export class EmployeesService {
     }
   }
 
+  async getAllStaffByDepartmentType(staffId: string, departmentType: string) {
+    try {
+      // Step 1: Validate if the user is a staff leader
+      const staffLeader = await this.prisma.userDetails.findFirst({
+        where: {
+          userId: staffId,
+          position: {
+            positionName: 'Leader'
+          }
+        },
+        include: {
+          department: true
+        }
+      });
+
+      if (!staffLeader || !staffLeader.department) {
+        return {
+          isSuccess: false,
+          message: 'Không tìm thấy trưởng nhóm hoặc người này không phải là trưởng nhóm',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
+      // Get the leader's area
+      const leaderArea = staffLeader.department.area;
+      if (!leaderArea) {
+        return {
+          isSuccess: false,
+          message: 'Không tìm thấy thông tin khu vực của trưởng nhóm',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
+      // Step 2: Find all staff in the same area with the specified department type
+      const staffMembers = await this.prisma.user.findMany({
+        where: {
+          role: 'Staff',
+          userDetails: {
+            department: {
+              area: leaderArea,
+              departmentType: departmentType as any
+            }
+          }
+        },
+        include: {
+          userDetails: {
+            include: {
+              position: true,
+              department: true
+            }
+          }
+        }
+      });
+
+      if (!staffMembers || staffMembers.length === 0) {
+        return {
+          isSuccess: false,
+          message: `Không tìm thấy nhân viên nào thuộc loại phòng ban ${departmentType} trong khu vực ${leaderArea}`,
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
+      // Transform the data to match the expected response format
+      const transformedData = staffMembers.map(staff => {
+        const { password, ...userWithoutPassword } = staff;
+        return {
+          ...userWithoutPassword,
+          dateOfBirth: staff.dateOfBirth
+            ? staff.dateOfBirth.toISOString()
+            : null,
+          userDetails: staff.userDetails
+            ? {
+              ...staff.userDetails,
+              position: staff.userDetails.position
+                ? {
+                  positionId: staff.userDetails.position.positionId,
+                  positionName: staff.userDetails.position.positionName.toString(),
+                  description: staff.userDetails.position.description || '',
+                }
+                : null,
+              department: staff.userDetails.department
+                ? {
+                  departmentId: staff.userDetails.department.departmentId,
+                  departmentName: staff.userDetails.department.departmentName,
+                  departmentType: staff.userDetails.department.departmentType,
+                  description: staff.userDetails.department.description || '',
+                  area: staff.userDetails.department.area || '',
+                }
+                : null,
+            }
+            : null,
+        };
+      });
+
+      return {
+        isSuccess: true,
+        message: `Lấy danh sách nhân viên thuộc loại phòng ban ${departmentType} trong khu vực ${leaderArea} thành công`,
+        data: transformedData,
+        pagination: {
+          total: transformedData.length,
+          page: 1,
+          limit: transformedData.length,
+          totalPages: 1
+        }
+      };
+    } catch (error) {
+      console.error('Error in getAllStaffByDepartmentType:', error);
+      return {
+        isSuccess: false,
+        message: 'Không thể lấy danh sách nhân viên. Đã xảy ra lỗi cơ sở dữ liệu.',
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
+      };
+    }
+  }
+
   findAll() {
     return `Hành động này trả về tất cả nhân viên`;
   }

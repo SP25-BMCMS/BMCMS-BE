@@ -94,6 +94,32 @@ export class EmployeesController {
     }
   }
 
+  @GrpcMethod('UserService', 'GetAllStaffByDepartmentType')
+  async getAllStaffByDepartmentType(@Payload() request: { staffId: string, departmentType: string }) {
+    try {
+      console.log('Received gRPC request for GetAllStaffByDepartmentType:', request);
+      const result = await this.employeesService.getAllStaffByDepartmentType(
+        request.staffId,
+        request.departmentType
+      );
+      console.log('Sending gRPC response for GetAllStaffByDepartmentType');
+      return result;
+    } catch (error) {
+      console.error('Error in gRPC GetAllStaffByDepartmentType:', error);
+      return {
+        isSuccess: false,
+        message: error.message || 'Dịch vụ không khả dụng',
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
+      };
+    }
+  }
+
   @Get()
   findAll() {
     return this.employeesService.findAll();
