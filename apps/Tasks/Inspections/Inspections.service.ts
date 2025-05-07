@@ -148,6 +148,21 @@ export class InspectionsService implements OnModuleInit {
     }
   }
 
+  /**
+   * Get pre-signed URL for an S3 object with content disposition for downloading
+   * @param fileKey The S3 object key
+   * @returns A pre-signed URL for downloading the object
+   */
+  async getPreSignedDownloadUrl(fileKey: string): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucketName,
+      Key: fileKey,
+      ResponseContentDisposition: 'attachment; filename="' + fileKey.split('/').pop() + '"',
+    });
+
+    return getSignedUrl(this.s3, command, { expiresIn: 86400 }) // URL expires after 24 hours
+  }
+
   async GetInspectionByTaskAssignmentId(task_assignment_id: string) {
     try {
       const inspections = await this.prisma.inspection.findMany({
@@ -1462,7 +1477,7 @@ export class InspectionsService implements OnModuleInit {
         return new ApiResponse(false, 'Nhân viên chưa được gán vị trí công việc', null);
       }
 
-      if (isLeader) {
+      if (!isLeader) {
         return new ApiResponse(false, 'Nhân viên phải có vị trí là Leader', null);
       }
 
@@ -1896,8 +1911,8 @@ export class InspectionsService implements OnModuleInit {
 
   async getInspectionPdfByTaskAssignment(task_assignment_id: string): Promise<ApiResponse<any>> {
     try {
-      // Find the most recent inspection for this task assignment
-      const inspection = await this.prisma.inspection.findFirst({
+      // Find all inspections for this task assignment
+      const inspections = await this.prisma.inspection.findMany({
         where: {
           task_assignment_id: task_assignment_id
         },
@@ -1910,15 +1925,37 @@ export class InspectionsService implements OnModuleInit {
         }
       });
 
-      if (!inspection) {
+      if (inspections.length === 0) {
         return new ApiResponse(false, 'Không tìm thấy báo cáo cho nhiệm vụ được gán này', null);
       }
 
-      if (!inspection.uploadFile) {
-        return new ApiResponse(false, 'Không tìm thấy tệp PDF cho báo cáo này', null);
-      }
+      // Process each inspection to add pre-signed URLs
+      const processedInspections = await Promise.all(
+        inspections.map(async (inspection) => {
+          if (inspection.uploadFile) {
+            try {
+              const fileKey = this.extractFileKey(inspection.uploadFile);
+              // Get view URL (no content-disposition)
+              const viewUrl = await this.getPreSignedUrl(fileKey);
+              // Get download URL (with content-disposition: attachment)
+              const downloadUrl = await this.getPreSignedDownloadUrl(fileKey);
 
-      return new ApiResponse(true, 'Lấy tệp PDF báo cáo thành công', inspection);
+              return {
+                ...inspection,
+                downloadUrl,
+                viewUrl
+              };
+            } catch (error) {
+              this.logger.error(`Error getting pre-signed URL for ${inspection.uploadFile}:`, error);
+              // Return the inspection without downloadUrl if there's an error
+              return inspection;
+            }
+          }
+          return inspection;
+        })
+      );
+
+      return new ApiResponse(true, 'Lấy tệp PDF báo cáo thành công', processedInspections);
     } catch (error) {
       this.logger.error(`Error in getInspectionPdfByTaskAssignment: ${error.message}`, error.stack);
       return new ApiResponse(false, `Lỗi khi lấy tệp PDF báo cáo: ${error.message}`, null);
