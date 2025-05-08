@@ -1434,7 +1434,7 @@ export class ScheduleService {
           // Create the schedule with Vietnamese name and description
           const schedule = await this.prisma.schedule.create({
             data: {
-              schedule_name: `Bảo trì ${deviceTypeVi} - ${startDate.toISOString().slice(0, 10)}`,
+              schedule_name: `Bảo trì ${deviceTypeVi}`,
               description: `Lịch bảo trì ${frequencyVi} được tạo cho ${deviceTypeVi}`,
               cycle_id: maintenanceCycle.cycle_id,
               start_date: startDate,

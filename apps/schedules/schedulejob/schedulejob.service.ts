@@ -37,13 +37,35 @@ export class ScheduleJobsService {
         ? createScheduleJobDto.schedule_id
         : null;
 
+      // If there's a valid schedule ID, fetch the parent schedule to get start_date and end_date
+      let parentScheduleDates = { start_date: null, end_date: null };
+      if (validScheduleId) {
+        const parentSchedule = await this.prismaService.schedule.findUnique({
+          where: { schedule_id: validScheduleId },
+          select: { start_date: true, end_date: true }
+        });
+
+        if (parentSchedule) {
+          parentScheduleDates = {
+            start_date: parentSchedule.start_date,
+            end_date: parentSchedule.end_date
+          };
+        }
+      }
+
+      // Ensure we always have a status value (default to 'Pending' if not provided)
+      const status = createScheduleJobDto.status || 'Pending';
+
       const newScheduleJob = await this.prismaService.scheduleJob.create({
         data: {
           schedule_id: validScheduleId,
           run_date: createScheduleJobDto.run_date,
-          status: createScheduleJobDto.status,
+          status: status, // Use the status variable with default value
           buildingDetailId: createScheduleJobDto.buildingDetailId,
           inspection_id: createScheduleJobDto.inspectionId,
+          // Set start_date and end_date from parent schedule
+          start_date: parentScheduleDates.start_date,
+          end_date: parentScheduleDates.end_date,
         },
       })
       // Map buildingDetailId to building_id to match ScheduleJobResponseDto
@@ -202,11 +224,14 @@ export class ScheduleJobsService {
       if (updatedScheduleJob.schedule_id && status === 'Completed') {
         const scheduleJobs = await this.prismaService.scheduleJob.findMany({
           where: {
-            schedule_id: updatedScheduleJob.schedule_id
+            schedule_id: updatedScheduleJob.schedule_id,
+            status: {
+              not: 'Cancel' // Exclude cancelled jobs
+            }
           },
         });
 
-        // If all jobs are completed, update the parent schedule's status
+        // If all non-canceled jobs are completed, update the parent schedule's status to Completed
         const allJobsCompleted = scheduleJobs.length > 0 && scheduleJobs.every(job => job.status === 'Completed');
 
         if (allJobsCompleted) {
@@ -235,6 +260,7 @@ export class ScheduleJobsService {
       })
     }
   }
+
   async updateScheduleJob(
     schedule_job_id: string,
     updateData: Partial<UpdateScheduleJobDto>, // Partial allows updating only the fields provided
@@ -256,11 +282,14 @@ export class ScheduleJobsService {
       if (updatedScheduleJob.schedule_id && updateData.status === 'Completed') {
         const scheduleJobs = await this.prismaService.scheduleJob.findMany({
           where: {
-            schedule_id: updatedScheduleJob.schedule_id
+            schedule_id: updatedScheduleJob.schedule_id,
+            status: {
+              not: 'Cancel' // Exclude cancelled jobs
+            }
           },
         });
 
-        // If all jobs are completed, update the parent schedule's status
+        // If all non-canceled jobs are completed, update the parent schedule's status to Completed
         const allJobsCompleted = scheduleJobs.length > 0 && scheduleJobs.every(job => job.status === 'Completed');
 
         if (allJobsCompleted) {
