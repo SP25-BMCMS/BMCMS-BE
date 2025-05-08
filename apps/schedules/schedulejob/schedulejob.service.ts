@@ -198,6 +198,26 @@ export class ScheduleJobsService {
         },
       })
 
+      // Check if all schedule jobs for this schedule are completed
+      if (updatedScheduleJob.schedule_id && status === 'Completed') {
+        const scheduleJobs = await this.prismaService.scheduleJob.findMany({
+          where: {
+            schedule_id: updatedScheduleJob.schedule_id
+          },
+        });
+
+        // If all jobs are completed, update the parent schedule's status
+        const allJobsCompleted = scheduleJobs.length > 0 && scheduleJobs.every(job => job.status === 'Completed');
+
+        if (allJobsCompleted) {
+          // Update the parent schedule status to Completed
+          await this.prismaService.schedule.update({
+            where: { schedule_id: updatedScheduleJob.schedule_id },
+            data: { schedule_status: 'Completed' },
+          });
+        }
+      }
+
       const responseDto: ScheduleJobResponseDto = {
         ...updatedScheduleJob,
         building_id: updatedScheduleJob.buildingDetailId,
@@ -231,6 +251,26 @@ export class ScheduleJobsService {
           buildingDetailId: updateData.building_id,
         },
       })
+
+      // Check if all schedule jobs for this schedule are completed
+      if (updatedScheduleJob.schedule_id && updateData.status === 'Completed') {
+        const scheduleJobs = await this.prismaService.scheduleJob.findMany({
+          where: {
+            schedule_id: updatedScheduleJob.schedule_id
+          },
+        });
+
+        // If all jobs are completed, update the parent schedule's status
+        const allJobsCompleted = scheduleJobs.length > 0 && scheduleJobs.every(job => job.status === 'Completed');
+
+        if (allJobsCompleted) {
+          // Update the parent schedule status to Completed
+          await this.prismaService.schedule.update({
+            where: { schedule_id: updatedScheduleJob.schedule_id },
+            data: { schedule_status: 'Completed' },
+          });
+        }
+      }
 
       const responseDto: ScheduleJobResponseDto = {
         ...updatedScheduleJob,
