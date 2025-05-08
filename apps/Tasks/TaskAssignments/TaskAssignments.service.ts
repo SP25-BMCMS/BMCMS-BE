@@ -1753,6 +1753,7 @@ export class TaskAssignmentsService {
       // 3. Generate appropriate worklog title and description based on status
       let worklog_title = ''
       let worklog_description = ''
+      let skipWorklogCreation = false;
 
       // Determine the appropriate worklog status and title/description based on the task assignment status
       let worklogStatus
@@ -1763,10 +1764,70 @@ export class TaskAssignmentsService {
           worklog_description = 'Nhiệm vụ đã được phân công và đang chờ kiểm tra.'
           break
         case 'Verified':
-          worklogStatus = 'WAIT_FOR_DEPOSIT'
-          worklog_title = 'Nhiệm vụ đã được xác minh'
-          worklog_description = 'Nhiệm vụ đã được xác minh và đang chờ đặt cọc.'
-          break
+          // For Verified status, we need to check the building's warranty date
+          this.logger.log(`Checking warranty for task assignment: ${payload.assignment_id}`);
+
+          let buildingId = null;
+          // Try to get building ID from task's crack info
+          if (taskAssignment.task?.crack_id) {
+            try {
+              const crackInfo = await firstValueFrom(
+                this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, taskAssignment.task.crack_id)
+              );
+
+              if (crackInfo?.data?.[0]?.buildingId) {
+                buildingId = crackInfo.data[0].buildingId;
+                this.logger.log(`Found building ID from crack data: ${buildingId}`);
+              }
+            } catch (error) {
+              this.logger.error(`Error fetching crack info: ${error.message}`);
+            }
+          }
+
+          // If we have a building ID, check its warranty date
+          if (buildingId) {
+            try {
+              const buildingData = await firstValueFrom(
+                this.buildingsClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId })
+              );
+
+              if (buildingData?.data?.Warranty_date) {
+                const warrantyDate = new Date(buildingData.data.Warranty_date);
+                const currentDate = new Date();
+
+                this.logger.log(`Building warranty date: ${warrantyDate}, Current date: ${currentDate}`);
+
+                if (warrantyDate > currentDate) {
+                  // Building is still under warranty, skip worklog creation
+                  this.logger.log(`Building ${buildingId} is still under warranty, skipping worklog creation`);
+                  skipWorklogCreation = true;
+                } else {
+                  // Building warranty has expired, create WAIT_FOR_DEPOSIT worklog
+                  this.logger.log(`Building ${buildingId} warranty has expired, creating WAIT_FOR_DEPOSIT worklog`);
+                  worklogStatus = 'WAIT_FOR_DEPOSIT'
+                  worklog_title = 'Nhiệm vụ đã được xác minh'
+                  worklog_description = 'Nhiệm vụ đã được xác minh và đang chờ đặt cọc.'
+                }
+              } else {
+                this.logger.warn(`No warranty date found for building ${buildingId}, defaulting to create worklog`);
+                worklogStatus = 'WAIT_FOR_DEPOSIT'
+                worklog_title = 'Nhiệm vụ đã được xác minh'
+                worklog_description = 'Nhiệm vụ đã được xác minh và đang chờ đặt cọc.'
+              }
+            } catch (error) {
+              this.logger.error(`Error checking building warranty: ${error.message}`);
+              // Default behavior if there's an error checking the warranty
+              worklogStatus = 'WAIT_FOR_DEPOSIT'
+              worklog_title = 'Nhiệm vụ đã được xác minh'
+              worklog_description = 'Nhiệm vụ đã được xác minh và đang chờ đặt cọc.'
+            }
+          } else {
+            this.logger.warn(`No building ID found for task ${taskAssignment.task_id}, defaulting to create worklog`);
+            worklogStatus = 'WAIT_FOR_DEPOSIT'
+            worklog_title = 'Nhiệm vụ đã được xác minh'
+            worklog_description = 'Nhiệm vụ đã được xác minh và đang chờ đặt cọc.'
+          }
+          break;
         case 'InFixing':
           worklogStatus = 'EXECUTE_CRACKS'
           worklog_title = 'Nhiệm vụ đang được sửa chữa'
@@ -1803,15 +1864,18 @@ export class TaskAssignmentsService {
           worklog_description = `Trạng thái nhiệm vụ đã được cập nhật thành ${payload.status}.`
       }
 
-      // 4. Create a worklog entry for this status change
-      const newWorkLog = await this.prisma.workLog.create({
-        data: {
-          task_id: taskAssignment.task_id, // Use the task_id from the task assignment
-          title: worklog_title,
-          description: worklog_description,
-          status: worklogStatus
-        }
-      })
+      // 4. Create a worklog entry for this status change (if not skipped)
+      let newWorkLog = null;
+      if (!skipWorklogCreation) {
+        newWorkLog = await this.prisma.workLog.create({
+          data: {
+            task_id: taskAssignment.task_id, // Use the task_id from the task assignment
+            title: worklog_title,
+            description: worklog_description,
+            status: worklogStatus
+          }
+        });
+      }
 
       // 5. Special handling for Unverified status
       if (payload.status === AssignmentStatus.Unverified) {
