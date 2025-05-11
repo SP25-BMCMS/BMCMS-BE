@@ -733,6 +733,8 @@ export class CracksController {
   })
   @ApiResponse({ status: 404, description: 'Crack report not found' })
   async getCrackReportById(@Param('id') id: string) {
+    console.log("🚀 ~ CrackReportsController ~ getCrackReportById ~ crackId:", id)
+
     return firstValueFrom(
       this.crackService.send({ cmd: 'get-crack-report-by-id' }, id).pipe(
         catchError((err) => {

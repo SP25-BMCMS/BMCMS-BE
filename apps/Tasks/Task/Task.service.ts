@@ -20,6 +20,7 @@ import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
 import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
 import { GetTasksByTypeDto } from '@app/contracts/tasks/get-tasks-by-type.dto'
 import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
+import { NotificationType } from '@app/contracts/notifications/notification.dto'
 
 const CRACK_PATTERNS = {
   GET_DETAILS: { cmd: 'get-crack-report-by-id' }
@@ -291,27 +292,205 @@ export class TaskService {
     }
   }
 
+  async deleteTaskAndRelated(task_id: string) {
+    try {
+      // Check if task exists
+      const task = await this.prisma.task.findUnique({
+        where: { task_id },
+        include: {
+          taskAssignments: {
+            include: {
+              inspections: {
+                include: {
+                  repairMaterials: true
+                }
+              }
+            }
+          },
+          workLogs: true,
+          feedbacks: true
+        }
+      });
+
+      if (!task) {
+        return new ApiResponse(false, `Không tìm thấy nhiệm vụ với ID ${task_id}`, null);
+      }
+
+      console.log(`[TaskService] Deleting task ${task_id} with ${task.taskAssignments.length} assignments, ${task.workLogs.length} work logs, and ${task.feedbacks.length} feedbacks`);
+
+      // Use a transaction to ensure data consistency
+      return await this.prisma.$transaction(async (tx) => {
+        // Track statistics for what we've deleted
+        let inspectionCount = 0;
+        let repairMaterialCount = 0;
+
+        // First handle all the dependencies in the correct order
+        if (task.taskAssignments.length > 0) {
+          // 1. First, get all inspection IDs
+          const inspections = task.taskAssignments.flatMap(assignment => assignment.inspections || []);
+          inspectionCount = inspections.length;
+
+          if (inspectionCount > 0) {
+            console.log(`[TaskService] Found ${inspectionCount} inspection records related to task assignments`);
+
+            // 2. Delete all repair materials first
+            for (const inspection of inspections) {
+              if (inspection.repairMaterials && inspection.repairMaterials.length > 0) {
+                await tx.repairMaterial.deleteMany({
+                  where: {
+                    inspection_id: inspection.inspection_id
+                  }
+                });
+                repairMaterialCount += inspection.repairMaterials.length;
+              }
+            }
+            console.log(`[TaskService] Deleted ${repairMaterialCount} repair materials`);
+
+            // 3. Now delete all inspections
+            const inspectionIds = inspections.map(insp => insp.inspection_id);
+            await tx.inspection.deleteMany({
+              where: {
+                inspection_id: {
+                  in: inspectionIds
+                }
+              }
+            });
+            console.log(`[TaskService] Deleted ${inspectionCount} inspection records`);
+          }
+
+          // 4. Delete all task assignments
+          await tx.taskAssignment.deleteMany({
+            where: { task_id }
+          });
+          console.log(`[TaskService] Deleted ${task.taskAssignments.length} task assignments`);
+        }
+
+        // 5. Delete all WorkLogs related to this task
+        if (task.workLogs.length > 0) {
+          await tx.workLog.deleteMany({
+            where: { task_id }
+          });
+          console.log(`[TaskService] Deleted ${task.workLogs.length} work logs`);
+        }
+
+        // 6. Delete all Feedbacks related to this task
+        if (task.feedbacks.length > 0) {
+          await tx.feedback.deleteMany({
+            where: { task_id }
+          });
+          console.log(`[TaskService] Deleted ${task.feedbacks.length} feedbacks`);
+        }
+
+        // 7. Finally delete the Task itself
+        const deletedTask = await tx.task.delete({
+          where: { task_id }
+        });
+        console.log(`[TaskService] Deleted task ${task_id}`);
+
+        // 8. Handle related entities in other services if needed
+        let crackUpdated = false;
+        let scheduleJobUpdated = false;
+
+        // 8a. If task has a crack_id, update the crack report status
+        if (task.crack_id) {
+          try {
+            console.log(`[TaskService] Attempting to update crack report ${task.crack_id} status to Pending`);
+
+            const crackUpdateResponse = await this.callCrackService(
+              { cmd: 'update-crack-report-for-all-status' },
+              {
+                crackReportId: task.crack_id,
+                dto: {
+                  status: 'Pending',
+                  suppressNotification: true
+                }
+              }
+            );
+
+            if (crackUpdateResponse && crackUpdateResponse.isSuccess) {
+              crackUpdated = true;
+              console.log(`[TaskService] Updated crack report ${task.crack_id} status to Pending`);
+            }
+          } catch (error) {
+            console.error(`[TaskService] Error updating crack report status: ${error.message}`);
+            // Continue even if this fails
+          }
+        }
+
+        // 8b. If task has a schedule_job_id, update the schedule job status
+        if (task.schedule_job_id) {
+          try {
+            console.log(`[TaskService] Attempting to update schedule job ${task.schedule_job_id} status to Pending`);
+
+            const scheduleUpdateResponse = await firstValueFrom(
+              this.scheduleClient.send(
+                SCHEDULEJOB_PATTERN.UPDATE_STATUS,
+                {
+                  schedulejobs_id: task.schedule_job_id,
+                  status: 'Pending'
+                }
+              ).pipe(
+                timeout(10000),
+                catchError(err => {
+                  console.error(`[TaskService] Error updating schedule job status: ${err.message}`);
+                  return of({ isSuccess: false });
+                })
+              )
+            );
+
+            if (scheduleUpdateResponse && scheduleUpdateResponse.isSuccess) {
+              scheduleJobUpdated = true;
+              console.log(`[TaskService] Updated schedule job ${task.schedule_job_id} status to Pending`);
+            }
+          } catch (error) {
+            console.error(`[TaskService] Error updating schedule job status: ${error.message}`);
+            // Continue even if this fails
+          }
+        }
+
+        return new ApiResponse(true, 'Nhiệm vụ và tất cả dữ liệu liên quan đã được xóa thành công', {
+          task: deletedTask,
+          relatedData: {
+            inspections: inspectionCount,
+            repairMaterials: repairMaterialCount,
+            taskAssignments: task.taskAssignments.length,
+            workLogs: task.workLogs.length,
+            feedbacks: task.feedbacks.length,
+            crackReportUpdated: crackUpdated,
+            scheduleJobUpdated: scheduleJobUpdated
+          }
+        });
+      }, {
+        timeout: 30000, // 30 second timeout
+        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted
+      });
+    } catch (error) {
+      console.error(`[TaskService] Error during task deletion: ${error.message}`, error);
+
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        // Check for specific Prisma errors
+        if (error.code === 'P2025') {
+          return new ApiResponse(false, 'Không tìm thấy nhiệm vụ để xóa', null);
+        }
+        if (error.code === 'P2023') {
+          return new ApiResponse(false, 'Định dạng ID không hợp lệ', null);
+        }
+        if (error.code === 'P2003') {
+          // Extract the constraint name from the error message
+          const constraintMatch = error.message.match(/`([^`]+)`/g);
+          const constraintName = constraintMatch ? constraintMatch[constraintMatch.length - 1] : 'unknown constraint';
+          return new ApiResponse(false, `Không thể xóa do ràng buộc khóa ngoại: ${constraintName}. Cần xóa các bản ghi tham chiếu trước.`, null);
+        }
+      }
+
+      throw new RpcException({
+        statusCode: 500,
+        message: `Xóa nhiệm vụ thất bại: ${error.message}`
+      });
+    }
+  }
+
   // async changeTaskStatus(task_id: string, changeTaskStatusDto: ChangeTaskStatusDto) {
-  //   try {
-  //     const updatedTask = await this.prisma.task.update({
-  //       where: { task_id },
-  //       data: {
-  //         status: changeTaskStatusDto.status,
-  //       },
-  //     });
-  //     return {
-  //       statusCode: 200,
-  //       message: 'Task status updated successfully',
-  //       data: updatedTask,
-  //     };
-  //   } catch (error) {
-  //     console.error("Error updating task status:", error);  // Lo
-  //     throw new RpcException({
-  //       statusCode: 400,
-  //       message: 'Error updating task status',
-  //     });
-  //   }
-  // }
   async changeTaskStatus(task_id: string, changeTaskStatusDto: string) {
     console.log('🚀 ~ TaskService ~ changeTaskStatus ~ task_id:', task_id)
     try {
@@ -1229,7 +1408,7 @@ export class TaskService {
             // Extract all building detail IDs from the buildings
             const buildingDetails = buildingsResponse.data.flatMap(building => building.buildingDetails || []);
             buildingDetailIds = buildingDetails.map(detail => detail.buildingDetailId);
-            
+
             console.log(`Found ${buildingDetailIds.length} building details for manager ${managerId}`);
           } else {
             console.warn(`No buildings found for manager ${managerId}`);
@@ -1351,16 +1530,16 @@ export class TaskService {
         filteredTasks = tasks.filter(task => {
           // Check if the task has building information in crackInfo or schedulesjobInfo
           const taskAny = task as any; // Cast to any to access dynamic properties
-          const hasBuildingInCrackInfo = taskAny.crackInfo?.data?.some?.(report => 
+          const hasBuildingInCrackInfo = taskAny.crackInfo?.data?.some?.(report =>
             report.buildingDetailId && buildingDetailIds.includes(report.buildingDetailId)
           );
-          
-          const hasBuildingInScheduleJob = taskAny.schedulesjobInfo?.data?.buildingDetailId && 
+
+          const hasBuildingInScheduleJob = taskAny.schedulesjobInfo?.data?.buildingDetailId &&
             buildingDetailIds.includes(taskAny.schedulesjobInfo.data.buildingDetailId);
-            
+
           return hasBuildingInCrackInfo || hasBuildingInScheduleJob;
         });
-        
+
         console.log(`Filtered ${tasks.length} tasks to ${filteredTasks.length} tasks for manager ${managerId}`);
       }
 
@@ -1380,6 +1559,484 @@ export class TaskService {
       throw new RpcException({
         statusCode: 500,
         message: `Lỗi khi lấy danh sách nhiệm vụ: ${error.message}`,
+      });
+    }
+  }
+
+  async completeTaskAndReview(taskId: string) {
+    try {
+      // Step 1: Verify the task exists
+      const task = await this.prisma.task.findUnique({
+        where: { task_id: taskId },
+        include: {
+          taskAssignments: true // Include task assignments to check their status
+        }
+      });
+
+      if (!task) {
+        throw new RpcException({
+          statusCode: 404,
+          message: `Không tìm thấy nhiệm vụ với ID ${taskId}`
+        });
+      }
+
+      // Step 2: Check if any task assignment has a status that prevents completion
+      // Check if task has assignments and validate their statuses
+      if (task.taskAssignments && task.taskAssignments.length > 0) {
+        // Create array of invalid status enum values
+        const invalidStatuses = [
+          'Unverified',
+          'InFixing',
+          'Fixed'
+        ];
+
+        const invalidAssignments = task.taskAssignments.filter(
+          assignment => invalidStatuses.includes(assignment.status)
+        );
+
+        if (invalidAssignments.length > 0) {
+          const statusLabels = invalidAssignments.map(a => a.status).join(', ');
+          throw new RpcException({
+            statusCode: 400,
+            message: `Không thể hoàn thành nhiệm vụ vì có phân công đang trong trạng thái: ${statusLabels}`
+          });
+        }
+      }
+
+      // Step 3: Update the task status to Completed
+      console.log(`[TaskService] Updating task ${taskId} status to Completed`);
+      const updatedTask = await this.prisma.task.update({
+        where: { task_id: taskId },
+        data: { status: Status.Completed }
+      });
+
+      // Step 4: Determine if we need to update a crack report or schedule job
+      let crackReportUpdated = false;
+      let scheduleJobUpdated = false;
+      let responseMessage = 'Đã cập nhật trạng thái nhiệm vụ thành Hoàn thành';
+      let buildingDetailId = null;
+      let buildingManagerId = null;
+      let notificationSent = false;
+      let notificationTitle = '';
+      let notificationContent = '';
+      let entityType = '';
+      let entityId = '';
+
+      // Step 4a: Update crack report if it exists
+      if (task.crack_id) {
+        try {
+          console.log(`[TaskService] Updating crack report ${task.crack_id} status to Reviewing`);
+          const crackResponse = await this.callCrackService(
+            CRACK_PATTERNS.GET_DETAILS,
+            task.crack_id
+          );
+
+          // Try to get buildingDetailId from crack report
+          let crackLocation = "Không xác định";
+          let buildingName = "tòa nhà";
+
+          if (crackResponse && crackResponse.isSuccess && crackResponse.data && crackResponse.data.length > 0) {
+            const crackReport = crackResponse.data[0];
+            buildingDetailId = crackReport.buildingDetailId;
+            entityType = 'crack';
+            entityId = task.crack_id;
+
+            // Extract location information if available
+            if (crackReport.position) {
+              crackLocation = crackReport.position;
+            } else if (crackReport.locationDetail && crackReport.locationDetail.description) {
+              crackLocation = crackReport.locationDetail.description;
+            }
+
+            // Try to get building name
+            if (crackReport.buildingDetail && crackReport.buildingDetail.name) {
+              buildingName = crackReport.buildingDetail.name;
+            }
+
+            console.log(`[TaskService] Found buildingDetailId ${buildingDetailId} from crack report`);
+          }
+
+          const crackUpdateResponse = await this.callCrackService(
+            { cmd: 'update-crack-report-for-all-status' },
+            {
+              crackReportId: task.crack_id,
+              dto: {
+                status: 'Reviewing',
+                suppressNotification: true // Prevent automatic notifications
+              }
+            }
+          );
+
+          if (crackUpdateResponse && crackUpdateResponse.isSuccess) {
+            crackReportUpdated = true;
+            responseMessage += ' và báo cáo vết nứt thành Đang xem xét';
+            console.log(`[TaskService] Successfully updated crack report ${task.crack_id} to Reviewing`);
+            notificationTitle = `Xét duyệt sửa chữa vết nứt tại ${crackLocation}`;
+            notificationContent = `Công việc sửa chữa vết nứt tại ${crackLocation} ở ${buildingName} đã được hoàn thành và đang chờ bạn xét duyệt. Nhân viên kỹ thuật đã xác nhận hoàn thành công việc và cập nhật trạng thái. Vui lòng xem xét và phê duyệt báo cáo.`;
+          } else {
+            console.warn(`[TaskService] Failed to update crack report status: ${crackUpdateResponse?.message || 'Unknown error'}`);
+          }
+        } catch (error) {
+          console.error(`[TaskService] Error updating crack report ${task.crack_id}:`, error);
+          // Continue even if crack update fails
+        }
+      }
+
+      // Step 4b: Update schedule job if it exists
+      if (task.schedule_job_id) {
+        try {
+          console.log(`[TaskService] Updating schedule job ${task.schedule_job_id} status to Reviewing`);
+
+          // Get schedule job to get buildingDetailId
+          let scheduleName = "Bảo trì định kỳ";
+          let scheduleDate = "gần đây";
+          let buildingName = "tòa nhà";
+          let deviceType = "";
+
+          const scheduleJobResponse = await firstValueFrom(
+            this.scheduleClient.send(
+              SCHEDULEJOB_PATTERN.GET_BY_ID,
+              { schedule_job_id: task.schedule_job_id }
+            ).pipe(
+              timeout(10000),
+              catchError(err => {
+                console.error(`Error getting schedule job ${task.schedule_job_id}:`, err);
+                return of(null);
+              })
+            )
+          );
+
+          if (scheduleJobResponse && scheduleJobResponse.data) {
+            buildingDetailId = scheduleJobResponse.data.buildingDetailId;
+            entityType = 'schedule';
+            entityId = task.schedule_job_id;
+
+            // Get schedule name and date if available
+            if (scheduleJobResponse.data.schedule && scheduleJobResponse.data.schedule.schedule_name) {
+              scheduleName = scheduleJobResponse.data.schedule.schedule_name;
+            }
+
+            // Get device type if available
+            if (scheduleJobResponse.data.schedule && scheduleJobResponse.data.schedule.cycle &&
+              scheduleJobResponse.data.schedule.cycle.device_type) {
+              deviceType = scheduleJobResponse.data.schedule.cycle.device_type;
+              // Convert enum to human-readable text if it's a device type
+              switch (deviceType) {
+                case 'Elevator': deviceType = 'thang máy'; break;
+                case 'FireProtection': deviceType = 'hệ thống phòng cháy chữa cháy'; break;
+                case 'Electrical': deviceType = 'hệ thống điện'; break;
+                case 'Plumbing': deviceType = 'hệ thống nước'; break;
+                case 'HVAC': deviceType = 'hệ thống HVAC'; break;
+                case 'Lighting': deviceType = 'hệ thống chiếu sáng'; break;
+                default: deviceType = 'thiết bị'; break;
+              }
+            }
+
+            // Format date for better display
+            if (scheduleJobResponse.data.run_date) {
+              const runDate = new Date(scheduleJobResponse.data.run_date);
+              scheduleDate = runDate.toLocaleDateString('vi-VN', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              });
+            }
+
+            // Try to get building information with a separate call if we have buildingDetailId
+            if (buildingDetailId) {
+              try {
+                const buildingDetailResponse = await firstValueFrom(
+                  this.buildingsClient.send(
+                    BUILDINGDETAIL_PATTERN.GET_BY_ID,
+                    { buildingDetailId }
+                  ).pipe(
+                    timeout(5000),
+                    catchError(err => {
+                      console.error(`Error getting building detail ${buildingDetailId}:`, err);
+                      return of(null);
+                    })
+                  )
+                );
+
+                if (buildingDetailResponse && buildingDetailResponse.data) {
+                  if (buildingDetailResponse.data.name) {
+                    buildingName = buildingDetailResponse.data.name;
+                  } else if (buildingDetailResponse.data.building && buildingDetailResponse.data.building.name) {
+                    buildingName = buildingDetailResponse.data.building.name;
+                  }
+                }
+              } catch (error) {
+                console.error(`Error getting building details: ${error.message}`);
+              }
+            }
+
+            console.log(`[TaskService] Found buildingDetailId ${buildingDetailId} from schedule job`);
+          }
+
+          const scheduleUpdateResponse = await firstValueFrom(
+            this.scheduleClient.send(
+              SCHEDULEJOB_PATTERN.UPDATE_STATUS,
+              {
+                schedulejobs_id: task.schedule_job_id,
+                status: 'Reviewing'
+              }
+            ).pipe(
+              timeout(10000),
+              catchError(err => {
+                console.error(`Error updating schedule job ${task.schedule_job_id}:`, err);
+                return of({
+                  isSuccess: false,
+                  message: `Failed to update schedule job: ${err.message}`
+                });
+              })
+            )
+          );
+
+          if (scheduleUpdateResponse && scheduleUpdateResponse.isSuccess) {
+            scheduleJobUpdated = true;
+            responseMessage += ' và lịch công việc thành Đang xem xét';
+            console.log(`[TaskService] Successfully updated schedule job ${task.schedule_job_id} to Reviewing`);
+
+            // Create specific title and content with collected information
+            let titlePrefix = deviceType ? `Bảo trì ${deviceType}` : scheduleName;
+            notificationTitle = `Xét duyệt ${titlePrefix} tại ${buildingName}`;
+
+            let contentDevice = deviceType ? `${deviceType}` : "các thiết bị";
+            notificationContent = `Công việc "${scheduleName}" cho ${contentDevice} tại ${buildingName} (ngày ${scheduleDate}) đã được nhân viên kỹ thuật hoàn thành. Vui lòng xem xét và phê duyệt báo cáo bảo trì để hoàn tất quy trình.`;
+          } else {
+            console.warn(`[TaskService] Failed to update schedule job status: ${scheduleUpdateResponse?.message || 'Unknown error'}`);
+          }
+        } catch (error) {
+          console.error(`[TaskService] Error updating schedule job ${task.schedule_job_id}:`, error);
+          // Continue even if schedule job update fails
+        }
+      }
+
+      // Step 5: Send notification to building manager if we found a buildingDetailId
+      if (buildingDetailId) {
+        try {
+          console.log(`[TaskService] Getting building information for buildingDetailId: ${buildingDetailId}`);
+
+          // Get building detail to find building
+          const buildingDetailResponse = await firstValueFrom(
+            this.buildingsClient.send(
+              BUILDINGDETAIL_PATTERN.GET_BY_ID,
+              { buildingDetailId }
+            ).pipe(
+              timeout(10000),
+              catchError(err => {
+                console.error(`Error getting building detail ${buildingDetailId}:`, err);
+                return of(null);
+              })
+            )
+          );
+
+          if (buildingDetailResponse && buildingDetailResponse.data) {
+            const buildingId = buildingDetailResponse.data.buildingId;
+
+            if (buildingId) {
+              console.log(`[TaskService] Getting building with ID: ${buildingId}`);
+
+              // Get building to find manager_id
+              const buildingResponse = await firstValueFrom(
+                this.buildingsClient.send(
+                  BUILDINGS_PATTERN.GET_BY_ID,
+                  { buildingId }
+                ).pipe(
+                  timeout(10000),
+                  catchError(err => {
+                    console.error(`Error getting building ${buildingId}:`, err);
+                    return of(null);
+                  })
+                )
+              );
+
+              if (buildingResponse && buildingResponse.data && buildingResponse.data.manager_id) {
+                buildingManagerId = buildingResponse.data.manager_id;
+                console.log(`[TaskService] Found building manager ID: ${buildingManagerId}`);
+
+                // If we have both a manager ID and notification content, send the notification
+                if (notificationTitle && notificationContent) {
+                  console.log(`[TaskService] Sending notification to building manager ${buildingManagerId}`);
+
+                  const notificationData = {
+                    userId: buildingManagerId,
+                    title: notificationTitle,
+                    content: notificationContent,
+                    type: NotificationType.SYSTEM,
+                    relatedId: entityId,
+                    link: entityType === 'crack' ? `/crack-reports/${entityId}` : `/schedule-jobs/${entityId}`
+                  };
+
+                  await firstValueFrom(
+                    this.notificationsClient.emit(
+                      NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION,
+                      notificationData
+                    )
+                  );
+
+                  notificationSent = true;
+                  console.log(`[TaskService] Notification sent to building manager ${buildingManagerId}`);
+                  responseMessage += ` và đã gửi thông báo đến quản lý tòa nhà`;
+                }
+              } else {
+                console.warn(`[TaskService] Building has no manager or could not retrieve building data`);
+              }
+            } else {
+              console.warn(`[TaskService] Building detail has no associated building`);
+            }
+          } else {
+            console.warn(`[TaskService] Could not retrieve building detail information`);
+          }
+        } catch (error) {
+          console.error(`[TaskService] Error sending notification to building manager:`, error);
+          // Continue execution even if notification fails
+        }
+      } else {
+        console.warn(`[TaskService] No buildingDetailId found, cannot send notification to building manager`);
+      }
+
+      // Return success response with details
+      return new ApiResponse(true, responseMessage, {
+        taskId,
+        taskStatus: 'Completed',
+        crackReportId: task.crack_id || null,
+        crackReportUpdated,
+        scheduleJobId: task.schedule_job_id || null,
+        scheduleJobUpdated,
+        buildingManagerId,
+        notificationSent
+      });
+    } catch (error) {
+      console.error('[TaskService] Error in completeTaskAndReview:', error);
+
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      throw new RpcException({
+        statusCode: 500,
+        message: `Lỗi khi cập nhật nhiệm vụ: ${error.message}`
+      });
+    }
+  }
+
+  async getLatestTaskAssignment(taskId: string) {
+    try {
+      // Step 1: Verify the task exists
+      const task = await this.prisma.task.findUnique({
+        where: { task_id: taskId }
+      });
+
+      if (!task) {
+        throw new RpcException({
+          statusCode: 404,
+          message: `Không tìm thấy nhiệm vụ với ID ${taskId}`
+        });
+      }
+
+      // Step 2: Get the latest task assignment with status 'Verified'
+      const latestAssignment = await this.prisma.taskAssignment.findFirst({
+        where: {
+          task_id: taskId,
+          status: 'Verified' // Filter for Verified status
+        },
+        orderBy: { created_at: 'desc' },
+        include: {
+          inspections: {
+            include: {
+              repairMaterials: true
+            }
+          }
+        }
+      });
+
+      if (!latestAssignment) {
+        return new ApiResponse(false, 'Không tìm thấy phân công nhiệm vụ đã được xác thực cho nhiệm vụ này', null);
+      }
+
+      // Step 3: Get crack report info if available
+      let crackRecord = null;
+      let locationDetail = null;
+
+      if (task.crack_id) {
+        try {
+          const crackResponse = await this.callCrackService(
+            CRACK_PATTERNS.GET_DETAILS,
+            task.crack_id
+          );
+
+          if (crackResponse && crackResponse.isSuccess && crackResponse.data) {
+            crackRecord = crackResponse.data;
+
+            // Extract location details from crack report if available
+            if (crackResponse.data.length > 0 && crackResponse.data[0].locationDetail) {
+              locationDetail = crackResponse.data[0].locationDetail;
+            }
+          }
+        } catch (error) {
+          console.error(`Error fetching crack info for task ${taskId}:`, error);
+          // Continue execution even if crack info fetch fails
+        }
+      }
+
+      // Step 4: If there's a schedule job, get its location details
+      if (!locationDetail && task.schedule_job_id) {
+        try {
+          const scheduleJobResponse = await firstValueFrom(
+            this.scheduleClient.send(SCHEDULEJOB_PATTERN.GET_BY_ID, { schedule_job_id: task.schedule_job_id }).pipe(
+              timeout(15000),
+              catchError(err => {
+                console.error(`Error fetching schedule job info for task ${taskId}:`, err);
+                return of(null);
+              })
+            )
+          );
+
+          if (scheduleJobResponse && scheduleJobResponse.data && scheduleJobResponse.data.buildingDetailId) {
+            // Get building detail information to use as location
+            const buildingDetailResponse = await firstValueFrom(
+              this.buildingsClient.send(BUILDINGDETAIL_PATTERN.GET_BY_ID,
+                { buildingDetailId: scheduleJobResponse.data.buildingDetailId }
+              ).pipe(
+                timeout(10000),
+                catchError(err => {
+                  console.error(`Error fetching building detail:`, err);
+                  return of(null);
+                })
+              )
+            );
+
+            if (buildingDetailResponse && buildingDetailResponse.data) {
+              locationDetail = {
+                buildingDetail: buildingDetailResponse.data,
+                buildingDetailId: scheduleJobResponse.data.buildingDetailId
+              };
+            }
+          }
+        } catch (error) {
+          console.error(`Error getting location details for schedule job:`, error);
+          // Continue execution even if schedule info fetch fails
+        }
+      }
+
+      // Step 5: Return the complete response
+      return new ApiResponse(true, 'Lấy thông tin phân công nhiệm vụ đã xác thực thành công', {
+        task,
+        taskAssignment: latestAssignment,
+        crackRecord,
+        locationDetail
+      });
+    } catch (error) {
+      console.error('[TaskService] Error in getLatestTaskAssignment:', error);
+
+      if (error instanceof RpcException) {
+        throw error;
+      }
+
+      throw new RpcException({
+        statusCode: 500,
+        message: `Lỗi khi lấy thông tin phân công nhiệm vụ: ${error.message}`
       });
     }
   }

@@ -73,11 +73,7 @@ export class NotificationsController {
 
   @EventPattern('send_otp_message')
   async handleSendOtpMessage(data: { email: string }) {
-    this.logger.warn(`[MessagePattern] This handler is disabled to prevent duplicate OTP emails. Using EventPattern instead.`)
-    return {
-      success: false,
-      message: 'This message pattern is disabled. Please use event pattern for sending OTP emails.'
-    }
+    return await this.otpService.createOTP(data.email)
   }
 
   @EventPattern('verify_otp')
@@ -134,44 +130,7 @@ export class NotificationsController {
     deduplicationKey?: string
     deduplicationWindow?: number
   }) {
-    try {
-      this.logger.log(`[EventPattern] Received maintenance email request for: ${data.to}, building: ${data.buildingName}, time: ${new Date().toISOString()}`)
-
-      // Add deduplication key if not provided
-      if (!data.deduplicationKey) {
-        // Ensure we have a valid date
-        let dateStr: string;
-        try {
-          dateStr = data.maintenanceDate instanceof Date
-            ? data.maintenanceDate.toISOString()
-            : new Date(data.maintenanceDate).toISOString();
-        } catch (e) {
-          this.logger.warn(`Invalid maintenance date, using current date: ${e.message}`);
-          dateStr = new Date().toISOString();
-        }
-
-        data.deduplicationKey = `maintenance-${data.to}-${data.buildingName}-${dateStr.split('T')[0]}`;
-      }
-
-      // Log the deduplication key for debugging
-      this.logger.debug(`Using deduplication key: ${data.deduplicationKey}`);
-
-      const result = await this.emailService.sendMaintenanceEmail(data)
-      if (!result) {
-        this.logger.error('Failed to send maintenance email to:', data.to)
-        throw new Error('Failed to send maintenance email')
-      }
-
-      return { success: true, message: 'Maintenance email sent successfully' }
-    } catch (error) {
-      this.logger.error(`Error sending maintenance email: ${error.message}`, error.stack)
-      // Return a proper error response instead of throwing
-      return {
-        success: false,
-        message: `Failed to send maintenance email: ${error.message}`,
-        error: error.stack
-      }
-    }
+    return await this.emailService.sendMaintenanceEmail(data)
   }
 
   @EventPattern(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION)

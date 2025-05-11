@@ -172,16 +172,44 @@ export class BuildingsService {
   // Delete a building by ID
   async deleteBuilding(buildingId: string) {
     try {
-      const deletedBuilding = await this.buildingsClient.send(
+      if (!buildingId) {
+        throw new HttpException(
+          'Building ID is required',
+          HttpStatus.BAD_REQUEST,
+        )
+      }
+
+      console.log(`[BuildingsService] Attempting to delete building with ID: ${buildingId}`);
+
+      const deletedBuildingObservable = this.buildingsClient.send(
         BUILDINGS_PATTERN.DELETE,
-        { buildingId },
-      )
-      return deletedBuilding
+        { buildingId }
+      );
+
+      const response = await firstValueFrom(deletedBuildingObservable);
+
+      // Handle different response statuses from the microservice
+      if (response.statusCode === 404) {
+        throw new HttpException(
+          response.message || 'Building not found',
+          HttpStatus.NOT_FOUND
+        );
+      }
+
+      return response;
     } catch (error) {
+      console.error('[BuildingsService] Error in deleteBuilding:', error);
+
+      // If it's already an HttpException, rethrow it
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // Otherwise, create a new HttpException
       throw new HttpException(
-        'Error occurred while deleting building.',
-        HttpStatus.NOT_FOUND,
-      )
+        error.message || 'Error occurred while deleting building and related data',
+        error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 

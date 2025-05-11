@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { ClientGrpc, ClientProxy, RpcException } from '@nestjs/microservices'
-import { AssignmentStatus, PrismaClient } from '@prisma/client-Task'
+import { AssignmentStatus, PrismaClient, Status } from '@prisma/client-Task'
 import { CreateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/create-taskAssigment.dto'
 import { UpdateTaskAssignmentDto } from 'libs/contracts/src/taskAssigment/update.taskAssigment'
 import { PrismaService } from '../../users/prisma/prisma.service'
@@ -15,7 +15,7 @@ import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import * as https from 'https'
 import axios from 'axios'
-import { catchError } from 'rxjs/operators'
+import { catchError, timeout } from 'rxjs/operators'
 import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns'
 import { NotificationType } from '@app/contracts/notifications/notification.dto'
 import { BUILDINGS_PATTERN } from '@app/contracts/buildings/buildings.patterns'
@@ -952,67 +952,90 @@ export class TaskAssignmentsService {
         }
       }
 
-      // 3. Calculate estimated cost - tổng total_cost những taskAssignment có status === Verified
-      let estimatedCost = 0
-
+      // 3. Collect all inspections from verified task assignments
+      let allVerifiedInspections = []
       for (const assignment of task.taskAssignments) {
         if (assignment.status === AssignmentStatus.Verified) {
-          for (const inspection of assignment.inspections) {
-            estimatedCost += Number(inspection.total_cost) || 0
+          if (assignment.inspections && assignment.inspections.length > 0) {
+            // Add inspections from this verified task assignment
+            allVerifiedInspections = [...allVerifiedInspections, ...assignment.inspections]
           }
         }
       }
 
-      console.log('Calculated estimated cost (Verified):', estimatedCost)
+      console.log(`Found ${allVerifiedInspections.length} inspections from verified assignments`)
 
-      // 4. Calculate actual cost - tổng total_cost những taskAssignment có status === Confirmed
+      // Sort inspections by created_at in descending order (newest first)
+      allVerifiedInspections.sort((a, b) => {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      })
+
+      // 4. Calculate estimated and actual costs
+      let estimatedCost = 0
       let actualCost = 0
       let costDetails = []
 
-      for (const assignment of task.taskAssignments) {
-        if (assignment.status === AssignmentStatus.Confirmed) {
-          for (const inspection of assignment.inspections) {
-            actualCost += Number(inspection.total_cost) || 0
+      if (allVerifiedInspections.length > 0) {
+        // Get the most recent inspection (first after sorting)
+        const mostRecentInspection = allVerifiedInspections[0]
+        actualCost = Number(mostRecentInspection.total_cost) || 0
+        console.log('Most recent inspection date:', mostRecentInspection.created_at)
+        console.log('Actual cost (from most recent inspection):', actualCost)
 
-            // Get material details for the report
-            if (inspection.repairMaterials && inspection.repairMaterials.length > 0) {
-              inspection.repairMaterials.forEach(material => {
-                // Lấy tên vật liệu từ bảng material nếu có
-                const materialName = material.material?.name || 'Unknown Material'
+        // Get material details for the report from most recent inspection
+        if (mostRecentInspection.repairMaterials && mostRecentInspection.repairMaterials.length > 0) {
+          mostRecentInspection.repairMaterials.forEach(material => {
+            // Get material name from the material table if available
+            const materialName = material.material?.name || 'Unknown Material'
 
-                costDetails.push({
-                  name: `Material Name: ${materialName}`,
-                  quantity: material.quantity,
-                  unitCost: Number(material.unit_cost),
-                  totalCost: Number(material.total_cost)
-                })
-              })
-            }
-          }
+            costDetails.push({
+              name: `Material Name: ${materialName}`,
+              quantity: material.quantity,
+              unitCost: Number(material.unit_cost),
+              totalCost: Number(material.total_cost)
+            })
+          })
         }
+
+        // Calculate estimated cost (sum of all inspections except the most recent one)
+        for (let i = 1; i < allVerifiedInspections.length; i++) {
+          estimatedCost += Number(allVerifiedInspections[i].total_cost) || 0
+        }
+
+        console.log('Estimated cost (sum of other inspections):', estimatedCost)
       }
 
-      console.log('Calculated actual cost (Confirmed):', actualCost)
       console.log('Cost details count:', costDetails.length)
 
-      // Log the first inspection with materials for debugging
-      for (const assignment of task.taskAssignments) {
-        for (const inspection of assignment.inspections) {
-          if (inspection.repairMaterials && inspection.repairMaterials.length > 0) {
-            console.log('First inspection with materials:', inspection.inspection_id)
-            console.log('Complete materials list:', JSON.stringify(inspection.repairMaterials, null, 2))
-            break
-          }
+      // Log inspection details for debugging
+      if (allVerifiedInspections.length > 0) {
+        console.log('All inspection dates and costs:')
+        allVerifiedInspections.forEach((inspection, index) => {
+          console.log(`Inspection ${index + 1}: ID=${inspection.inspection_id}, Date=${inspection.created_at}, Cost=${inspection.total_cost}`)
+        })
+
+        // Log materials for the most recent inspection
+        if (allVerifiedInspections[0].repairMaterials &&
+          allVerifiedInspections[0].repairMaterials.length > 0) {
+          console.log('Most recent inspection materials:', allVerifiedInspections[0].inspection_id)
+          console.log('Materials list:', JSON.stringify(allVerifiedInspections[0].repairMaterials, null, 2))
         }
       }
+
+      // Final cost summary
+      console.log('FINAL COST SUMMARY:')
+      console.log(`Actual cost (newest inspection): ${actualCost.toLocaleString('vi-VN')} VND`)
+      console.log(`Estimated cost (sum of other inspections): ${estimatedCost.toLocaleString('vi-VN')} VND`)
+      // Không hiển thị total cost nữa
 
       // 5. Generate PDF
       try {
         console.log('Generating PDF...')
+        // Truyền estimated cost và actual cost với đúng thứ tự
         const pdfBuffer = await this.generateCostPdf(task, estimatedCost, actualCost, true, costDetails, crackInfo)
         console.log('PDF generated successfully, buffer size:', pdfBuffer.length)
 
-        // 6. Return base64 encoded PDF
+        // 7. Return base64 encoded PDF
         return {
           success: true,
           message: 'Cost PDF report generated successfully',
@@ -1130,9 +1153,26 @@ export class TaskAssignmentsService {
         doc.fillColor('black')
         yPos += 30 // Move below header
 
-        // Logo placeholder (placed on the right side of header)
-        doc.rect(CONTENT_WIDTH - 70, PAGE_MARGIN + 5, 80, 50).stroke()
-        doc.text('Logo', CONTENT_WIDTH - 50, PAGE_MARGIN + 25)
+        // Logo (placed on the right side of header)
+        try {
+          const path = require('path');
+
+          // Use the correct path to logo.jpg
+          const logoPath = path.join(process.cwd(), 'libs', 'contracts', 'src', 'logo', 'logo.jpg');
+          console.log('Loading logo from:', logoPath);
+
+          // Vẽ logo với kích thước phù hợp
+          doc.image(logoPath, CONTENT_WIDTH - 70, PAGE_MARGIN + 5, {
+            fit: [80, 50],
+            align: 'center',
+            valign: 'center'
+          });
+        } catch (error) {
+          console.error('Error loading logo:', error);
+          // Fallback nếu có lỗi khi đọc file
+          doc.rect(CONTENT_WIDTH - 70, PAGE_MARGIN + 5, 80, 50).stroke();
+          doc.fontSize(10).text('BMCMS', CONTENT_WIDTH - 50, PAGE_MARGIN + 25, { align: 'center' });
+        }
 
         // Section: Crack report information
         yPos += 10
@@ -1157,7 +1197,7 @@ export class TaskAssignmentsService {
 
         // Left column
         doc.text('Người báo cáo:', PAGE_MARGIN, yPos)
-        doc.text(reportby, PAGE_MARGIN + 90, yPos)
+        doc.text(reportby, PAGE_MARGIN + 110, yPos)
         yPos += LINE_HEIGHT
 
         doc.text('Ngày báo cáo:', PAGE_MARGIN, yPos)
@@ -1277,12 +1317,12 @@ export class TaskAssignmentsService {
           doc.fontSize(10).text('Ngày phát hiện: Không có', PAGE_MARGIN, yPos)
         }
 
-        // Section: Inspection Images - reduce spacing from previous section
-        yPos += 40 // Reduced from SECTION_SPACING (20)
+        // Jump directly to inspection images section without any gap
+        yPos += 20
         doc.fontSize(14)
           .fillColor('#000000')
           .text('Hình ảnh kiểm tra', PAGE_MARGIN, yPos, { underline: true })
-        yPos += LINE_HEIGHT + 10 // Reduced by 5
+        yPos += LINE_HEIGHT + 5
 
         // Status order priority (for sorting)
         const statusOrder = {
@@ -1373,7 +1413,7 @@ export class TaskAssignmentsService {
 
               if (imageUrls.length > 0) {
                 // Get materials information if available
-                let materialsText = 'No materials information'
+                let materialsText = 'Không có thông tin vật liệu'
                 let totalCost = 'N/A'
                 let materialCount = 0
 
@@ -1413,7 +1453,9 @@ export class TaskAssignmentsService {
                   ).join('\n')
 
                   // Format the total cost
-                  totalCost = `${inspection.total_cost.toLocaleString('vi-VN')} VND`
+                  totalCost = inspection.total_cost && !isNaN(inspection.total_cost)
+                    ? `${Number(inspection.total_cost).toLocaleString('vi-VN')} VND`
+                    : 'N/A'
                 }
 
                 // Calculate how many rows of images we'll need (2 images per row)
@@ -1426,9 +1468,12 @@ export class TaskAssignmentsService {
                 // Calculate the initial container height based on content
                 let containerBaseHeight = 100 // Base height for header and description
 
-                // Tính toán chính xác vị trí của ảnh dựa trên số lượng material
-                // Nếu không có material thì khoảng cách sẽ bé hơn
-                const materialSpace = materialCount > 0 ? 15 + materialCount * 20 : 10
+                // Define detail positioning variables early
+                const detailsX = PAGE_MARGIN + 10;
+                const detailsWidth = CONTENT_WIDTH - 20;
+
+                // Calculate material spacing based on count
+                let materialSpacing = materialCount > 0 ? 15 + materialCount * 25 : 10
 
                 // Calculate the exact height needed for images
                 const imagesHeight = imageRows * rowHeight
@@ -1439,11 +1484,22 @@ export class TaskAssignmentsService {
                   imagesInLastRow = imagesPerRow // If last row is full
                 }
 
-                // Final container height: base + materials + images + small buffer
-                const estimatedHeight = 20 + materialSpace + imagesHeight + 30
+                // Add a background to make ALL materials visible with stronger contrast
+                const materialsBoxHeight = materialCount * 30 + 20 // Additional padding
+                if (materialCount > 0) {
+                  // Create a light background for the materials section to ensure it's visible
+                  doc.rect(detailsX, yPos + 75, detailsWidth - 120, materialsBoxHeight)
+                    .fillAndStroke('#f9f9f9', '#e0e0e0')
+
+                  // Ensure we allocate enough space based on actual material count
+                  materialSpacing = Math.max(materialSpacing, materialsBoxHeight + 20);
+                }
+
+                // Final container height calculation with improved spacing
+                const estimatedHeight = 20 + materialSpacing + imagesHeight + 60
                 const containerHeight = estimatedHeight
 
-                console.log(`Container sizing: base=100, materials=${materialSpace}, images=${imagesHeight}, total=${containerHeight}`)
+                console.log(`Container sizing: base=100, materials=${materialSpacing}, images=${imagesHeight}, total=${containerHeight}`)
 
                 // Check if this inspection will fit on current page, if not add a new page
                 if (yPos + containerHeight > 900) {
@@ -1496,10 +1552,6 @@ export class TaskAssignmentsService {
                 )
 
                 // Add inspection description and details at the top - more compact layout
-                const detailsX = PAGE_MARGIN + 10
-                const detailsWidth = CONTENT_WIDTH - 20
-
-                // Description title
                 doc.fontSize(10).font('VietnameseFont', 'bold') // Reduced font size
                   .fillColor('#000000')
                   .text('Mô tả:', detailsX, yPos + 25) // Reduced vertical space
@@ -1518,11 +1570,6 @@ export class TaskAssignmentsService {
                   .fillColor('#000000')
                   .text('Vật liệu:', detailsX, yPos + 60) // Reduced vertical space
 
-                // Add a background to make ALL materials visible with stronger contrast
-                const materialsBoxHeight = materialCount * 30 + 20 // Additional padding
-                if (materialCount > 0) {
-                }
-
                 // Set text color explicitly to BLACK before drawing text
                 doc.fontSize(10).font('VietnameseFont', 'normal')
                   .fillColor('#000000')
@@ -1540,17 +1587,22 @@ export class TaskAssignmentsService {
                     }
                   )
 
-                // Estimated cost - move it even further right to avoid overlap with materials
+                // Chi phí - cải thiện căn chỉnh
+                const costLabelX = PAGE_MARGIN + CONTENT_WIDTH - 170;
+                const costValueX = PAGE_MARGIN + CONTENT_WIDTH - 100;
+
+                // Estimated cost - hiển thị label với vị trí cố định
                 doc.fontSize(10).font('VietnameseFont', 'bold')
                   .fillColor('#000000')
-                  .text('Chi phí:', detailsX + detailsWidth - 90, yPos + 70)
+                  .text('Chi phí:', costLabelX, yPos + 70, { align: 'right', width: 60 })
 
+                // Hiển thị giá trị tiền với vị trí cố định và căn phải
                 doc.fontSize(10).fillColor('#d32f2f').font('VietnameseFont', 'bold')
-                  .text(totalCost, detailsX + detailsWidth - 50, yPos + 70)
+                  .text(totalCost, costValueX, yPos + 70, { align: 'right', width: 90 })
 
                 // Position images precisely based on material content
-                // Giảm khoảng cách giữa phần materials và ảnh, phụ thuộc vào số lượng material
-                const imageBaseY = yPos + 50 + materialSpace // Vị trí bắt đầu của ảnh sau phần materials
+                // Calculate a proper vertical starting position for images that won't overlap with materials
+                const imageBaseY = yPos + 80 + (materialCount > 0 ? materialSpacing : 20);
                 const imageWidth = (CONTENT_WIDTH - 50) / imagesPerRow // Width of each image
                 const imageHeight = 120 // Height of each image
                 const imageHorizontalSpacing = 10 // Space between images horizontally
@@ -1598,53 +1650,34 @@ export class TaskAssignmentsService {
               }
             }
           } else {
-            // No task assignments found - smaller message box
+            // No images found in any task assignment - show only one message
             imageContentAdded = true
             doc.rect(PAGE_MARGIN, yPos, CONTENT_WIDTH, 70).fillAndStroke('#FFFFFF', '#cccccc')
-            doc.fontSize(12).text('No task assignments available', PAGE_MARGIN + CONTENT_WIDTH / 2 - 80, yPos + 30)
-            yPos += 80 // Reduced from 110
+            doc.fontSize(12).text('Không có hình ảnh kiểm tra', PAGE_MARGIN + CONTENT_WIDTH / 2 - 80, yPos + 30)
+            yPos += 80
           }
         } else {
-          // No task assignments found - smaller message box
+          // No task assignments at all - show only one message
           imageContentAdded = true
           doc.rect(PAGE_MARGIN, yPos, CONTENT_WIDTH, 70).fillAndStroke('#FFFFFF', '#cccccc')
-          doc.fontSize(12).text('No task assignments available', PAGE_MARGIN + CONTENT_WIDTH / 2 - 80, yPos + 30)
-          yPos += 80 // Reduced from 110
-        }
-
-        // Check if we have any content yet - if not, add a default "No Data" message
-        if (!imageContentAdded) {
-          // There's a large empty space, which means no real content was added
-          doc.rect(PAGE_MARGIN, yPos, CONTENT_WIDTH, 80).fillAndStroke('#f9f9f9', '#cccccc')
-
-          // Add a warning symbol
-          doc.fontSize(20).fillColor('#FF9800')
-          doc.text('⚠', PAGE_MARGIN + CONTENT_WIDTH / 2 - 10, yPos + 15, { align: 'center' })
-
-          // Add explanatory text
-          doc.fontSize(12).fillColor('#333333')
-          doc.text('No inspection images available for this report',
-            PAGE_MARGIN + 20,
-            yPos + 40,
-            { align: 'center', width: CONTENT_WIDTH - 40 })
-
-          yPos += 90 // Smaller message box
+          doc.fontSize(12).text('Không có kiểm tra nào', PAGE_MARGIN + CONTENT_WIDTH / 2 - 80, yPos + 30)
+          yPos += 80
         }
 
         // Now output the final Cost Summary section on a new page if needed
-        const costSummaryHeight = LINE_HEIGHT * 6 // Approximate height for cost summary section
+        const costSummaryHeight = LINE_HEIGHT * 4 // Reduced from LINE_HEIGHT * 6 to remove empty space
 
         // Check if there's enough space for the Cost Summary
         if (yPos + costSummaryHeight > 700) {
           // Not enough space, add a new page
           doc.addPage()
           yPos = PAGE_MARGIN + 10 // Reduced top margin
+        } else {
+          // Just add minimal spacing if on the same page
+          yPos += 5 // Minimal spacing instead of a full divider
         }
 
-        // Add a divider line
-        doc.moveTo(PAGE_MARGIN, yPos).lineTo(PAGE_MARGIN + CONTENT_WIDTH, yPos).stroke('#cccccc')
-        yPos += 15
-
+        // Remove divider line and reduce spacing
         // Cost summary section with background
         doc.rect(PAGE_MARGIN, yPos, CONTENT_WIDTH, costSummaryHeight).fillAndStroke('#f8f8f8', '#cccccc')
 
@@ -1655,76 +1688,30 @@ export class TaskAssignmentsService {
         doc.fillColor('black')
         yPos += LINE_HEIGHT + 5
 
-        // Display cost information with more emphasis
+        // Cải thiện căn chỉnh phần tổng kết chi phí
+        const summaryLabelWidth = 150;
+        const summaryValueWidth = 120;
+        const summaryLabelX = PAGE_MARGIN + 20;
+        const summaryValueX = PAGE_MARGIN + 200;
+
+        // Display cost information with more emphasis and better alignment
         doc.fontSize(12)
           .fillColor('#333333')
-          .text(`Tổng chi phí dự kiến:`, PAGE_MARGIN + 20, yPos)
+          .text(`Tổng chi phí dự kiến:`, summaryLabelX, yPos, { align: 'left', width: summaryLabelWidth })
         doc.fontSize(12)
           .fillColor('#d32f2f')
-          .text(`${estimatedCost.toLocaleString('vi-VN')} VND`, PAGE_MARGIN + 200, yPos)
+          .text(`${estimatedCost.toLocaleString('vi-VN')} VND`, summaryValueX, yPos, { align: 'right', width: summaryValueWidth })
         yPos += LINE_HEIGHT + 5
 
         doc.fontSize(12)
           .fillColor('#333333')
-          .text(`Tổng chi phí thực tế:`, PAGE_MARGIN + 20, yPos)
+          .text(`Tổng chi phí thực tế:`, summaryLabelX, yPos, { align: 'left', width: summaryLabelWidth })
         doc.fontSize(12)
           .fillColor('#d32f2f')
-          .text(`${actualCost.toLocaleString('vi-VN')} VND`, PAGE_MARGIN + 200, yPos)
-        yPos += LINE_HEIGHT + 15
+          .text(`${actualCost.toLocaleString('vi-VN')} VND`, summaryValueX, yPos, { align: 'right', width: summaryValueWidth })
+        yPos += LINE_HEIGHT + 5
 
-        // Calculate signature section positioning
-        const footerHeight = 120 // Height needed for the footer content (reduced from 150)
-        const pageBottom = 770 // Bottom position of the page
-        const remainingSpace = pageBottom - yPos
-        const idealFooterGap = 50 // Ideal gap between cost summary and signatures
-
-        // Calculate the optimal Y position for the footer
-        let footerY
-
-        if (remainingSpace < footerHeight + idealFooterGap) {
-          // Not enough room for footer with ideal gap, add a new page
-          doc.addPage()
-          footerY = PAGE_MARGIN + 100 // Position footer at nice height on new page
-        } else if (remainingSpace > footerHeight + 150) {
-          // Too much empty space, position footer at a reasonable distance
-          footerY = yPos + idealFooterGap
-        } else {
-          // Just enough space, center the footer in the remaining space
-          footerY = yPos + (remainingSpace - footerHeight) / 2
-        }
-
-        // Add date line
-        doc.fontSize(10)
-          .fillColor('#000000')
-          .text(`Hồ Chí Minh, ngày ${new Date().getDate()} tháng ${new Date().getMonth() + 1} năm ${new Date().getFullYear()}`,
-            PAGE_MARGIN,
-            footerY, // Use calculated footer position
-            { align: 'right', width: CONTENT_WIDTH })
-
-        // Signatures section with clear spacing
-        const sigWidth = 100
-        const sigMargin = (CONTENT_WIDTH - (sigWidth * 3)) / 4
-        const sigY = footerY + 20
-
-        // Add a background for signature section
-        doc.rect(PAGE_MARGIN, sigY, CONTENT_WIDTH, 100).fillAndStroke('#f5f5f5', '#cccccc')
-
-        // Manager signature
-        doc.fillColor('#000000').fontSize(10).font('VietnameseFont', 'bold')
-        doc.text('Chữ ký quản lý', PAGE_MARGIN + sigMargin, sigY + 10, { align: 'center', width: sigWidth })
-        doc.rect(PAGE_MARGIN + sigMargin, sigY + 30, sigWidth, 50).fillAndStroke('#FFFFFF', '#000000')
-
-        // Leader signature
-        doc.fillColor('#000000').fontSize(10).font('VietnameseFont', 'bold')
-        doc.text('Chữ ký trưởng nhóm', PAGE_MARGIN + sigMargin * 2 + sigWidth, sigY + 10, { align: 'center', width: sigWidth })
-        doc.rect(PAGE_MARGIN + sigMargin * 2 + sigWidth, sigY + 30, sigWidth, 50).fillAndStroke('#FFFFFF', '#000000')
-
-        // Resident signature
-        doc.fillColor('#000000').fontSize(10).font('VietnameseFont', 'bold')
-        doc.text('Chữ ký cư dân', PAGE_MARGIN + sigMargin * 3 + sigWidth * 2, sigY + 10, { align: 'center', width: sigWidth })
-        doc.rect(PAGE_MARGIN + sigMargin * 3 + sigWidth * 2, sigY + 30, sigWidth, 50).fillAndStroke('#FFFFFF', '#000000')
-
-
+        // Remove the date section completely
         // Reset fill color for remaining content
         doc.fillColor('black')
 
@@ -1737,6 +1724,7 @@ export class TaskAssignmentsService {
       }
     })
   }
+
 
   async updateTaskAssignmentStatusToCreateWorklog(payload: {
     assignment_id: string
@@ -1765,6 +1753,7 @@ export class TaskAssignmentsService {
       // 3. Generate appropriate worklog title and description based on status
       let worklog_title = ''
       let worklog_description = ''
+      let skipWorklogCreation = false;
 
       // Determine the appropriate worklog status and title/description based on the task assignment status
       let worklogStatus
@@ -1775,10 +1764,70 @@ export class TaskAssignmentsService {
           worklog_description = 'Nhiệm vụ đã được phân công và đang chờ kiểm tra.'
           break
         case 'Verified':
-          worklogStatus = 'WAIT_FOR_DEPOSIT'
-          worklog_title = 'Nhiệm vụ đã được xác minh'
-          worklog_description = 'Nhiệm vụ đã được xác minh và đang chờ đặt cọc.'
-          break
+          // For Verified status, we need to check the building's warranty date
+          this.logger.log(`Checking warranty for task assignment: ${payload.assignment_id}`);
+
+          let buildingId = null;
+          // Try to get building ID from task's crack info
+          if (taskAssignment.task?.crack_id) {
+            try {
+              const crackInfo = await firstValueFrom(
+                this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, taskAssignment.task.crack_id)
+              );
+
+              if (crackInfo?.data?.[0]?.buildingId) {
+                buildingId = crackInfo.data[0].buildingId;
+                this.logger.log(`Found building ID from crack data: ${buildingId}`);
+              }
+            } catch (error) {
+              this.logger.error(`Error fetching crack info: ${error.message}`);
+            }
+          }
+
+          // If we have a building ID, check its warranty date
+          if (buildingId) {
+            try {
+              const buildingData = await firstValueFrom(
+                this.buildingsClient.send(BUILDINGS_PATTERN.GET_BY_ID, { buildingId })
+              );
+
+              if (buildingData?.data?.Warranty_date) {
+                const warrantyDate = new Date(buildingData.data.Warranty_date);
+                const currentDate = new Date();
+
+                this.logger.log(`Building warranty date: ${warrantyDate}, Current date: ${currentDate}`);
+
+                if (warrantyDate > currentDate) {
+                  // Building is still under warranty, skip worklog creation
+                  this.logger.log(`Building ${buildingId} is still under warranty, skipping worklog creation`);
+                  skipWorklogCreation = true;
+                } else {
+                  // Building warranty has expired, create WAIT_FOR_DEPOSIT worklog
+                  this.logger.log(`Building ${buildingId} warranty has expired, creating WAIT_FOR_DEPOSIT worklog`);
+                  worklogStatus = 'WAIT_FOR_DEPOSIT'
+                  worklog_title = 'Nhiệm vụ đã được xác minh'
+                  worklog_description = 'Nhiệm vụ đã được xác minh và đang chờ đặt cọc.'
+                }
+              } else {
+                this.logger.warn(`No warranty date found for building ${buildingId}, defaulting to create worklog`);
+                worklogStatus = 'WAIT_FOR_DEPOSIT'
+                worklog_title = 'Nhiệm vụ đã được xác minh'
+                worklog_description = 'Nhiệm vụ đã được xác minh và đang chờ đặt cọc.'
+              }
+            } catch (error) {
+              this.logger.error(`Error checking building warranty: ${error.message}`);
+              // Default behavior if there's an error checking the warranty
+              worklogStatus = 'WAIT_FOR_DEPOSIT'
+              worklog_title = 'Nhiệm vụ đã được xác minh'
+              worklog_description = 'Nhiệm vụ đã được xác minh và đang chờ đặt cọc.'
+            }
+          } else {
+            this.logger.warn(`No building ID found for task ${taskAssignment.task_id}, defaulting to create worklog`);
+            worklogStatus = 'WAIT_FOR_DEPOSIT'
+            worklog_title = 'Nhiệm vụ đã được xác minh'
+            worklog_description = 'Nhiệm vụ đã được xác minh và đang chờ đặt cọc.'
+          }
+          break;
         case 'InFixing':
           worklogStatus = 'EXECUTE_CRACKS'
           worklog_title = 'Nhiệm vụ đang được sửa chữa'
@@ -1815,17 +1864,124 @@ export class TaskAssignmentsService {
           worklog_description = `Trạng thái nhiệm vụ đã được cập nhật thành ${payload.status}.`
       }
 
-      // 4. Create a worklog entry for this status change
-      const newWorkLog = await this.prisma.workLog.create({
-        data: {
-          task_id: taskAssignment.task_id, // Use the task_id from the task assignment
-          title: worklog_title,
-          description: worklog_description,
-          status: worklogStatus
-        }
-      })
+      // 4. Create a worklog entry for this status change (if not skipped)
+      let newWorkLog = null;
+      if (!skipWorklogCreation) {
+        newWorkLog = await this.prisma.workLog.create({
+          data: {
+            task_id: taskAssignment.task_id, // Use the task_id from the task assignment
+            title: worklog_title,
+            description: worklog_description,
+            status: worklogStatus
+          }
+        });
+      }
 
-      // 5. Return the updated task assignment and the new worklog
+      // 5. Special handling for Unverified status
+      if (payload.status === AssignmentStatus.Unverified) {
+        this.logger.log(`Special handling for Unverified status on assignment ${payload.assignment_id}`);
+
+        try {
+          // Update the Task status to Completed
+          await this.prisma.task.update({
+            where: { task_id: taskAssignment.task_id },
+            data: { status: Status.Completed }
+          });
+
+          this.logger.log(`Updated Task ${taskAssignment.task_id} status to Completed`);
+
+          // Get crack report ID from the task
+          if (taskAssignment.task?.crack_id) {
+            const crackId = taskAssignment.task.crack_id;
+            this.logger.log(`Found related crack report: ${crackId}`);
+
+            try {
+              // Update the CrackReport status to Rejected
+              const crackReportResult = await firstValueFrom(
+                this.crackClient.send(
+                  { cmd: 'update-crack-report-for-all-status' },
+                  {
+                    crackReportId: crackId,
+                    dto: {
+                      status: 'Rejected',
+                      suppressNotification: false
+                    }
+                  }
+                ).pipe(
+                  timeout(10000),
+                  catchError(error => {
+                    this.logger.error(`Error updating crack report status: ${error.message}`);
+                    return of(null);
+                  })
+                )
+              );
+
+              if (crackReportResult) {
+                this.logger.log(`Updated CrackReport ${crackId} status to Rejected`);
+
+                // Get the resident ID (reportedBy) from the crack report
+                try {
+                  const crackReportDetails = await firstValueFrom(
+                    this.crackClient.send(
+                      { cmd: 'get-crack-report-by-id' },
+                      crackId
+                    ).pipe(
+                      catchError(error => {
+                        this.logger.error(`Error getting crack report details: ${error.message}`);
+                        return of(null);
+                      })
+                    )
+                  );
+
+                  if (crackReportDetails?.data && crackReportDetails.data[0]?.reportedBy?.userId) {
+                    const residentId = crackReportDetails.data[0].reportedBy.userId;
+                    this.logger.log(`Found resident ID: ${residentId}`);
+
+                    // Send notification to the resident
+                    this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, {
+                      userId: residentId,
+                      title: 'Báo cáo vết nứt không được xác nhận',
+                      content: 'Báo cáo vết nứt của bạn không được xác nhận. Lưu ý rằng nếu báo cáo bị từ chối 2 lần, tính năng báo cáo vết nứt sẽ tạm thời bị khóa.',
+                      type: NotificationType.SYSTEM,
+                      relatedId: crackId,
+                      link: `/crack-reports/${crackId}`
+                    });
+
+                    this.logger.log(`Sent notification to resident ${residentId}`);
+
+                    // Send an additional warning notification about account restrictions
+                    setTimeout(() => {
+                      this.notificationsClient.emit(NOTIFICATIONS_PATTERN.CREATE_NOTIFICATION, {
+                        userId: residentId,
+                        title: 'CẢNH BÁO: Nguy cơ bị khóa tính năng báo cáo vết nứt',
+                        content: 'CẢNH BÁO QUAN TRỌNG: Báo cáo vết nứt của bạn đã bị từ chối. Nếu bạn có 2 báo cáo bị từ chối, hệ thống sẽ tự động khóa tính năng báo cáo vết nứt của tài khoản bạn. Vui lòng đảm bảo báo cáo của bạn chính xác và có hình ảnh rõ ràng.',
+                        type: NotificationType.SYSTEM,
+                        relatedId: `${crackId}-warning`,
+                        link: `/user-guide/crack-reporting-guidelines`
+                      });
+
+                      this.logger.log(`Sent warning notification about potential account restriction to ${residentId}`);
+                    }, 2000); // Send after 2 seconds to ensure they're separate notifications
+                  } else {
+                    this.logger.warn(`Could not find resident ID in crack report data`);
+                  }
+                } catch (err) {
+                  this.logger.error(`Error in resident notification process: ${err.message}`);
+                }
+              }
+            } catch (err) {
+              this.logger.error(`Error updating crack report: ${err.message}`);
+            }
+          } else {
+            this.logger.warn(`No crack_id found for task ${taskAssignment.task_id}`);
+          }
+        } catch (err) {
+          this.logger.error(`Error handling Unverified case: ${err.message}`);
+          // Continue execution even if this special handling fails
+        }
+      }
+
+      // 6. Return the updated task assignment and the new worklog
       return {
         success: true,
         message: 'Task assignment status updated and worklog created successfully',

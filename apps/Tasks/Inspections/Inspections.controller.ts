@@ -63,6 +63,16 @@ export class InspectionsController {
     return this.inspectionService.createInspection(dto)
   }
 
+
+  @Post()
+  @ApiOperation({ summary: 'Create a new inspection' })
+  @ApiBody({ type: CreateInspectionDto })
+  @ApiResponse({ status: 201, description: 'Inspection created successfully', type: ApiResponseDto })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @MessagePattern(INSPECTIONS_PATTERN.CREATE_ACTUAL_COST)
+  async createInspectionActualCost(@Payload() dto: CreateInspectionDto): Promise<ApiResponseDto<Inspection>> {
+    return this.inspectionService.createInspectionActualCost(dto)
+  }
   // @MessagePattern(INSPECTIONS_PATTERN.CHANGE_STATUS)
   // async changeStatus(@Payload() dto: ChangeInspectionStatusDto): Promise<ApiResponseDto<Inspection>> {
   //   return this.inspectionService.changeStatus(dto);

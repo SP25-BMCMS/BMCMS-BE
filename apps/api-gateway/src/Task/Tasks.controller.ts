@@ -91,6 +91,60 @@ export class TaskController {
     return this.taskService.deleteTask(task_id);
   }
 
+  @Delete('task/:task_id/cascade')
+  @ApiOperation({
+    summary: 'Delete a task and all related data',
+    description: 'Performs a cascading delete of a task and all related records including task assignments, work logs, and feedback. Also updates related crack reports and schedule jobs to Pending status.'
+  })
+  @ApiParam({ name: 'task_id', description: 'Task ID to delete' })
+  @ApiResponse({
+    status: 200,
+    description: 'Task and all related data deleted successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        isSuccess: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Nhiệm vụ và tất cả dữ liệu liên quan đã được xóa thành công' },
+        data: {
+          type: 'object',
+          properties: {
+            task: { type: 'object', description: 'Deleted task data' },
+            relatedData: {
+              type: 'object',
+              properties: {
+                taskAssignments: { type: 'number', example: 2, description: 'Number of task assignments deleted' },
+                workLogs: { type: 'number', example: 3, description: 'Number of work logs deleted' },
+                feedbacks: { type: 'number', example: 1, description: 'Number of feedback entries deleted' },
+                crackReportUpdated: { type: 'boolean', example: true, description: 'Whether crack report was updated' },
+                scheduleJobUpdated: { type: 'boolean', example: true, description: 'Whether schedule job was updated' }
+              }
+            }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  @ApiResponse({ status: 400, description: 'Bad request - Invalid task ID format' })
+  @ApiResponse({ status: 500, description: 'Internal server error during deletion process' })
+  @HttpCode(HttpStatus.OK)
+  async deleteTaskAndRelated(@Param('task_id') task_id: string) {
+    try {
+      return await this.taskService.deleteTaskAndRelated(task_id);
+    } catch (error) {
+      console.error('Error in deleteTaskAndRelated controller:', error);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        `Error deleting task and related data: ${error.message}`,
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   @Put('task/:task_id/status')
   @ApiOperation({ summary: 'Change task status' })
   @ApiParam({ name: 'task_id', description: 'Task ID' })
@@ -321,13 +375,13 @@ export class TaskController {
       // Thêm log chi tiết hơn để xác nhận thông tin người dùng
       console.log('[TaskController] req.user structure:', JSON.stringify(req.user, null, 2));
       console.log('[TaskController] Request headers:', JSON.stringify(req.headers, null, 2));
-      
+
       // Use authenticated user ID as manager ID if not provided in query
       if (!query.managerId && req.user) {
         // Truy cập userId theo cấu trúc đúng của đối tượng user
         // Có thể là req.user.userId, req.user.id, req.user.sub tùy theo cấu hình JWT
         const userId = req.user.userId || req.user.id || req.user.sub;
-        
+
         if (userId) {
           query.managerId = userId;
           console.log(`Using authenticated user ID as manager ID: ${query.managerId}`);
@@ -337,11 +391,79 @@ export class TaskController {
       } else if (!query.managerId) {
         console.log('No managerId provided and user is not authenticated');
       }
-      
+
       return this.taskService.getTasksByType(query);
     } catch (error) {
       console.error('Error in getTasksByType controller:', error);
       throw new Error(`Failed to get tasks: ${error.message}`);
+    }
+  }
+
+  @Post('task/:task_id/complete-and-review')
+  @ApiOperation({ summary: 'Set task to Completed and update related entities to Reviewing' })
+  @ApiParam({ name: 'task_id', description: 'Task ID' })
+  @ApiResponse({ status: 200, description: 'Task and related entities updated successfully' })
+  @ApiResponse({ status: 404, description: 'Task not found' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async completeTaskAndReview(@Param('task_id') task_id: string) {
+    try {
+      return this.taskService.completeTaskAndReview(task_id);
+    } catch (error) {
+      console.error('Error in completeTaskAndReview controller:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Error while updating task status',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('task/:task_id/latest-assignment')
+  @ApiOperation({ summary: 'Get the latest verified task assignment with related data' })
+  @ApiParam({ name: 'task_id', description: 'Task ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns the latest verified task assignment with inspections, repair materials, location details, and crack record',
+    schema: {
+      type: 'object',
+      properties: {
+        isSuccess: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Lấy thông tin phân công nhiệm vụ đã xác thực thành công' },
+        data: {
+          type: 'object',
+          properties: {
+            task: { type: 'object', description: 'Task information' },
+            taskAssignment: {
+              type: 'object',
+              description: 'Latest verified task assignment with inspections and repair materials',
+              properties: {
+                status: { type: 'string', example: 'Verified', description: 'Only returns assignments with Verified status' }
+              }
+            },
+            crackRecord: { type: 'object', description: 'Crack report data if applicable', nullable: true },
+            locationDetail: { type: 'object', description: 'Location details if available', nullable: true }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 404, description: 'Task or verified assignment not found' })
+  @ApiResponse({ status: 400, description: 'Invalid task ID' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async getLatestTaskAssignment(@Param('task_id') task_id: string) {
+    try {
+      return this.taskService.getLatestTaskAssignment(task_id);
+    } catch (error) {
+      console.error('Error in getLatestTaskAssignment controller:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Error retrieving verified task assignment',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }

@@ -33,6 +33,19 @@ export class TasksController {
     return this.taskService.deleteTask(payload.task_id);
   }
 
+  @MessagePattern(TASKS_PATTERN.DELETE_AND_RELATED)
+  async deleteTaskAndRelated(@Payload() payload: { task_id: string }) {
+    console.log('Received delete-task-and-related request with taskId:', payload.task_id);
+    try {
+      const result = await this.taskService.deleteTaskAndRelated(payload.task_id);
+      console.log('deleteTaskAndRelated completed with result:', JSON.stringify(result));
+      return result;
+    } catch (error) {
+      console.error('Error in deleteTaskAndRelated controller:', error);
+      throw error;
+    }
+  }
+
   // @MessagePattern(TASKS_PATTERN.CHANGE_STATUS)
   // async changeTaskStatus(@Payload() payload: { taskid ,ChangeTaskStatusDto}) {
   //   return this.taskService.changeTaskStatus(payload.taskid, payload.ChangeTaskStatusDto);
@@ -125,6 +138,32 @@ export class TasksController {
       return result;
     } catch (error) {
       console.error('Error in getTasksByType controller:', error);
+      throw error;
+    }
+  }
+
+  @MessagePattern(TASKS_PATTERN.COMPLETE_AND_REVIEW)
+  async completeTaskAndReview(@Payload() payload: { taskId: string }) {
+    console.log('Received complete-task-and-review request with taskId:', payload.taskId);
+    try {
+      const result = await this.taskService.completeTaskAndReview(payload.taskId);
+      console.log('completeTaskAndReview completed with result:', JSON.stringify(result));
+      return result;
+    } catch (error) {
+      console.error('Error in completeTaskAndReview controller:', error);
+      throw error;
+    }
+  }
+
+  @MessagePattern(TASKS_PATTERN.GET_LATEST_ASSIGNMENT)
+  async getLatestTaskAssignment(@Payload() payload: { taskId: string }) {
+    console.log('Received get-latest-task-assignment request with taskId:', payload.taskId);
+    try {
+      const result = await this.taskService.getLatestTaskAssignment(payload.taskId);
+      console.log('getLatestTaskAssignment completed');
+      return result;
+    } catch (error) {
+      console.error('Error in getLatestTaskAssignment controller:', error);
       throw error;
     }
   }

@@ -147,4 +147,16 @@ export interface UserInterface {
       totalPages: number;
     };
   }>;
+
+  getAllStaffByDepartmentType(data: { staffId: string; departmentType: string }): Observable<{
+    isSuccess: boolean;
+    message: string;
+    data: any[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }>;
 }

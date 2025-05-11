@@ -19,6 +19,7 @@ import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 import { NOTIFICATIONS_PATTERN } from '@app/contracts/notifications/notifications.patterns';
 import { NotificationType } from '@app/contracts/notifications/notification.dto';
 import { GetTasksByTypeDto } from '@app/contracts/tasks/get-tasks-by-type.dto';
+import { timeout } from 'rxjs';
 
 // import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto'
 // import { buildingsDto } from '@app/contracts/buildings/buildings.dto'
@@ -74,6 +75,117 @@ export class TaskService {
       throw new HttpException(
         'Error occurred while deleting task',
         HttpStatus.NOT_FOUND,
+      );
+    }
+  }
+
+  async deleteTaskAndRelated(task_id: string) {
+    try {
+      if (!task_id) {
+        throw new HttpException(
+          'Task ID is required',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      console.log(`[TaskService] Attempting to delete task and related data for ID: ${task_id}`);
+
+      const response = await firstValueFrom(
+        this.taskClient.send(
+          TASKS_PATTERN.DELETE_AND_RELATED,
+          { task_id }
+        ).pipe(
+          timeout(35000), // 35 second timeout (longer for complex deletion)
+          catchError(err => {
+            console.error(`[TaskService] Error from task microservice:`, err);
+
+            // Check for specific error messages
+            const errorMessage = err.message || 'Unknown error';
+
+            if (errorMessage.includes('not found') || errorMessage.includes('không tìm thấy')) {
+              throw new HttpException(
+                {
+                  statusCode: HttpStatus.NOT_FOUND,
+                  message: errorMessage,
+                  error: 'Not Found'
+                },
+                HttpStatus.NOT_FOUND
+              );
+            }
+
+            if (errorMessage.includes('UUID') || errorMessage.includes('định dạng')) {
+              throw new HttpException(
+                {
+                  statusCode: HttpStatus.BAD_REQUEST,
+                  message: errorMessage,
+                  error: 'Bad Request'
+                },
+                HttpStatus.BAD_REQUEST
+              );
+            }
+
+            throw new HttpException(
+              {
+                statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+                message: errorMessage,
+                error: 'Internal Server Error'
+              },
+              HttpStatus.INTERNAL_SERVER_ERROR
+            );
+          })
+        )
+      );
+
+      // If response is ApiResponse format with isSuccess flag
+      if (response.hasOwnProperty('isSuccess')) {
+        if (!response.isSuccess) {
+          // Map error status appropriately
+          let statusCode = HttpStatus.BAD_REQUEST;
+          if (response.message && (response.message.includes('không tìm thấy') ||
+            response.message.includes('not found'))) {
+            statusCode = HttpStatus.NOT_FOUND;
+          }
+
+          throw new HttpException(
+            {
+              statusCode: statusCode,
+              message: response.message,
+              error: statusCode === HttpStatus.NOT_FOUND ? 'Not Found' : 'Bad Request'
+            },
+            statusCode
+          );
+        }
+
+        return response;
+      }
+
+      return response;
+    } catch (error) {
+      console.error('[TaskService] Error in deleteTaskAndRelated:', error);
+
+      // If the error is already an HttpException, just rethrow it
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // Determine appropriate status code
+      let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
+      const errorMessage = error.message || 'Error occurred while deleting task and related data';
+
+      if (errorMessage.includes('không tìm thấy') || errorMessage.includes('not found')) {
+        statusCode = HttpStatus.NOT_FOUND;
+      } else if (errorMessage.includes('UUID') || errorMessage.includes('định dạng')) {
+        statusCode = HttpStatus.BAD_REQUEST;
+      }
+
+      throw new HttpException(
+        {
+          statusCode: statusCode,
+          message: errorMessage,
+          error: statusCode === HttpStatus.NOT_FOUND ? 'Not Found' :
+            statusCode === HttpStatus.BAD_REQUEST ? 'Bad Request' : 'Internal Server Error'
+        },
+        statusCode
       );
     }
   }
@@ -488,6 +600,105 @@ export class TaskService {
     } catch (error) {
       console.error('Error in getTasksByType service:', error);
       throw error;
+    }
+  }
+
+  async completeTaskAndReview(taskId: string) {
+    try {
+      return await firstValueFrom(
+        this.taskClient.send(
+          TASKS_PATTERN.COMPLETE_AND_REVIEW,
+          { taskId }
+        ).pipe(
+          catchError(error => {
+            console.error('Error from task microservice:', error);
+            // If error has status code, use it, otherwise use 500
+            const statusCode = error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR;
+
+            throw new HttpException(
+              {
+                statusCode,
+                message: error.message || 'Failed to complete task and update related entities',
+                error: 'Task Update Failed'
+              },
+              statusCode
+            );
+          })
+        )
+      );
+    } catch (error) {
+      console.error('Error in completeTaskAndReview service:', error);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: error.message || 'Failed to complete task and update to reviewing',
+          error: 'Task Update Failed'
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async getLatestTaskAssignment(taskId: string) {
+    try {
+      // Validate taskId
+      if (!taskId) {
+        throw new HttpException(
+          'Task ID is required',
+          HttpStatus.BAD_REQUEST
+        );
+      }
+
+      console.log(`[TaskService] Getting latest verified task assignment for task ID: ${taskId}`);
+
+      // Call the Task microservice
+      return await firstValueFrom(
+        this.taskClient.send(
+          TASKS_PATTERN.GET_LATEST_ASSIGNMENT,
+          { taskId }
+        ).pipe(
+          timeout(15000), // 15 second timeout as we're fetching data from multiple sources
+          catchError(error => {
+            console.error('Error from task microservice:', error);
+
+            // Check if the error is a "not found" error
+            if (error.message && (
+              error.message.includes('không tìm thấy') ||
+              error.message.includes('not found')
+            )) {
+              throw new HttpException(
+                error.message || 'Task or verified assignment not found',
+                HttpStatus.NOT_FOUND
+              );
+            }
+
+            throw new HttpException(
+              error.message || 'Failed to get latest verified task assignment',
+              error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR
+            );
+          })
+        )
+      );
+    } catch (error) {
+      console.error('Error in getLatestTaskAssignment service:', error);
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: error.message || 'Failed to get latest verified task assignment',
+          error: 'Task Assignment Fetch Failed'
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 

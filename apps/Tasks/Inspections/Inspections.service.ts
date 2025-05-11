@@ -25,6 +25,7 @@ import { AREAS_PATTERN } from '@app/contracts/Areas/Areas.patterns'
 import { SCHEDULEJOB_PATTERN } from '@app/contracts/schedulejob/schedulejob.patterns'
 import { BUILDINGDETAIL_PATTERN } from '@app/contracts/BuildingDetails/buildingdetails.patterns'
 import { WORKLOG_PATTERN } from '@app/contracts/Worklog/Worklog.patterns'
+import { TASKS_PATTERN } from '@app/contracts/tasks/task.patterns'
 
 const USERS_CLIENT = 'USERS_CLIENT'
 // Define interface for the User service
@@ -50,7 +51,7 @@ interface DepartmentByIdRequest {
 
 // Định nghĩa CRACK_PATTERNS cho pattern get-crack-detail-by-id
 const CRACK_PATTERNS = {
-  GET_DETAILS: { pattern: 'get-crack-report-by-id' }
+  GET_DETAILS: { cmd: 'get-crack-report-by-id' }
 }
 
 @Injectable()
@@ -148,10 +149,32 @@ export class InspectionsService implements OnModuleInit {
     }
   }
 
+  /**
+   * Get pre-signed URL for an S3 object with content disposition for downloading
+   * @param fileKey The S3 object key
+   * @returns A pre-signed URL for downloading the object
+   */
+  async getPreSignedDownloadUrl(fileKey: string): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucketName,
+      Key: fileKey,
+      ResponseContentDisposition: 'attachment; filename="' + fileKey.split('/').pop() + '"',
+    });
+
+    return getSignedUrl(this.s3, command, { expiresIn: 86400 }) // URL expires after 24 hours
+  }
+
   async GetInspectionByTaskAssignmentId(task_assignment_id: string) {
     try {
       const inspections = await this.prisma.inspection.findMany({
         where: { task_assignment_id },
+        include: {
+          taskAssignment: {
+            include: {
+              task: true
+            }
+          }
+        }
       })
 
       if (inspections.length === 0) {
@@ -163,12 +186,96 @@ export class InspectionsService implements OnModuleInit {
         }
       }
 
-      // Xử lý presignedUrl cho mỗi inspection
+      // Lấy thông tin chung về task và crack_id từ inspection đầu tiên
+      const task = inspections[0].taskAssignment.task;
+      let crackInfo = null;
+
+      // Nếu task có crack_id, lấy thông tin crack một lần duy nhất
+      if (task && task.crack_id) {
+        console.log(`Getting crack info for task_id: ${task.task_id}, crack_id: ${task.crack_id}`)
+        try {
+          console.log("Trying to get crack info...")
+          crackInfo = await firstValueFrom(
+            this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
+          )
+          console.log("✅ Successfully retrieved crack info")
+
+          // Process crack images if they exist
+          if (crackInfo && crackInfo.data) {
+            const crackData = crackInfo.data
+
+            // Process crack main image if it exists
+            if (crackData.photoUrl) {
+              try {
+                const fileKey = this.extractFileKey(crackData.photoUrl)
+                crackData.photoUrl = await this.getPreSignedUrl(fileKey)
+              } catch (error) {
+                console.error(`Error getting pre-signed URL for crack photo:`, error)
+              }
+            }
+
+            // Process crack detail images if they exist
+            if (crackData.crackDetails && Array.isArray(crackData.crackDetails)) {
+              for (const detail of crackData.crackDetails) {
+                if (detail.photoUrl) {
+                  try {
+                    const fileKey = this.extractFileKey(detail.photoUrl)
+                    detail.photoUrl = await this.getPreSignedUrl(fileKey)
+                  } catch (error) {
+                    console.error(`Error getting pre-signed URL for crack detail photo:`, error)
+                  }
+                }
+
+                if (detail.aiDetectionUrl) {
+                  try {
+                    const fileKey = this.extractFileKey(detail.aiDetectionUrl)
+                    detail.aiDetectionUrl = await this.getPreSignedUrl(fileKey)
+                  } catch (error) {
+                    console.error(`Error getting pre-signed URL for AI detection image:`, error)
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("❌ Failed to get crack info for crack_id:", task.crack_id)
+          console.error("Error details:", error)
+
+          // Thử phương án thay thế với định dạng khác
+          try {
+            console.log("Attempting alternative method to get crack info...")
+            crackInfo = await firstValueFrom(
+              this.crackClient.send(
+                { cmd: 'get-crack-report-by-id' },
+                task.crack_id
+              )
+            )
+            console.log("✅ Successfully retrieved crack info with alternative method")
+          } catch (fallbackError) {
+            console.error("❌ Alternative method also failed:", fallbackError)
+            // Optionally set a default or error state
+            crackInfo = { error: "Failed to retrieve crack information" }
+          }
+        }
+      }
+
+      // Kết quả sẽ trả về
+      const result = [];
+
+      // Xử lý từng inspection
       for (const inspection of inspections) {
+        // Tạo bản sao và thêm crackInfo vào
+        const inspectionData: any = { ...inspection };
+
+        // Thêm thông tin crack nếu có
+        if (crackInfo) {
+          inspectionData.crackInfo = crackInfo;
+        }
+
         // Process image URLs
-        if (inspection.image_urls && inspection.image_urls.length > 0) {
-          inspection.image_urls = await Promise.all(
-            inspection.image_urls.map(async (url: string) => {
+        if (inspectionData.image_urls && inspectionData.image_urls.length > 0) {
+          inspectionData.image_urls = await Promise.all(
+            inspectionData.image_urls.map(async (url: string) => {
               try {
                 const fileKey = this.extractFileKey(url)
                 return await this.getPreSignedUrl(fileKey)
@@ -181,21 +288,23 @@ export class InspectionsService implements OnModuleInit {
         }
 
         // Process PDF file URL if exists
-        if (inspection.uploadFile) {
+        if (inspectionData.uploadFile) {
           try {
-            const fileKey = this.extractFileKey(inspection.uploadFile)
-            inspection.uploadFile = await this.getPreSignedUrl(fileKey)
+            const fileKey = this.extractFileKey(inspectionData.uploadFile)
+            inspectionData.uploadFile = await this.getPreSignedUrl(fileKey)
           } catch (error) {
             console.error(`Error getting pre-signed URL for PDF file:`, error)
             // Keep original URL as fallback
           }
         }
+
+        result.push(inspectionData)
       }
 
       return {
         statusCode: 200,
         message: 'Lấy danh sách báo cáo thành công',
-        data: inspections,
+        data: result,
       }
     } catch (error) {
       throw new RpcException({
@@ -447,7 +556,7 @@ export class InspectionsService implements OnModuleInit {
       // Parse repairMaterials if it's a string
       let repairMaterialsArray: RepairMaterialDto[] = [];
       try {
-        const repairMaterials = dto.repairMaterials as string | RepairMaterialDto[]
+        const repairMaterials = dto.repairMaterials as string | RepairMaterialDto[] | any
 
         // Handle empty string or undefined
         if (!repairMaterials || (typeof repairMaterials === 'string' && repairMaterials.trim() === '')) {
@@ -465,8 +574,500 @@ export class InspectionsService implements OnModuleInit {
           }
         } else if (Array.isArray(repairMaterials)) {
           repairMaterialsArray = repairMaterials
+        } else if (typeof repairMaterials === 'object' && repairMaterials !== null) {
+          // Handle the case when it's a single object (not in an array)
+          repairMaterialsArray = [repairMaterials];
+          console.log('Converting single object to array:', repairMaterialsArray);
         } else {
           throw new Error('Định dạng vật liệu sửa chữa không hợp lệ')
+        }
+
+        // Make sure it's always an array at this point
+        if (!Array.isArray(repairMaterialsArray)) {
+          repairMaterialsArray = Array.isArray(repairMaterialsArray) ? repairMaterialsArray : [repairMaterialsArray];
+        }
+      } catch (error) {
+        console.error('Error parsing repairMaterials:', error)
+        return new ApiResponse(false, 'Định dạng vật liệu sửa chữa không hợp lệ', null)
+      }
+
+      // Validate all materials and calculate total cost
+      let totalCost = 0
+
+      // Skip validation if no repair materials
+      if (repairMaterialsArray.length > 0) {
+        const materialValidations = await Promise.all(
+          repairMaterialsArray.map(async (repairMaterial) => {
+            const materialResponse = await firstValueFrom(
+              this.taskClient.send(
+                MATERIAL_PATTERN.GET_MATERIAL_BY_ID,
+                repairMaterial.materialId
+              ).pipe(
+                timeout(10000),
+                catchError(err => {
+                  console.error('Error getting material info:', err)
+                  return of(new ApiResponse(false, 'Lỗi khi lấy thông tin vật liệu', null))
+                })
+              )
+            )
+
+            if (!materialResponse || !materialResponse.isSuccess || !materialResponse.data) {
+              throw new Error(`Không tìm thấy vật liệu hoặc lỗi khi lấy thông tin vật liệu với ID: ${repairMaterial.materialId}`)
+            }
+
+            const material = materialResponse.data
+
+            // Check if there's enough stock
+            if (material.stock_quantity < repairMaterial.quantity) {
+              throw new Error(`Không đủ số lượng tồn kho cho vật liệu ${material.name}. Số lượng hiện có: ${material.stock_quantity}, Yêu cầu: ${repairMaterial.quantity}`)
+            }
+
+            // Calculate cost for this material
+            const unitCost = Number(material.unit_price)
+            const materialTotalCost = unitCost * repairMaterial.quantity
+            totalCost += materialTotalCost
+
+            return {
+              material,
+              repairMaterial,
+              unitCost,
+              materialTotalCost
+            }
+          })
+        )
+
+        // Create inspection and repair materials in a transaction
+        const result = await this.prisma.$transaction(async (prisma) => {
+          // Create the inspection
+          const inspection = await prisma.inspection.create({
+            data: {
+              task_assignment_id: dto.task_assignment_id,
+              inspected_by: dto.inspected_by,
+              image_urls: dto.image_urls || [],
+              description: dto.description || "",
+              total_cost: totalCost,
+              uploadFile: dto.uploadFile || null,
+            },
+          })
+
+          // Create all repair materials
+          const repairMaterials = await Promise.all(
+            materialValidations.map(async (validation) => {
+              const repairMaterial = await prisma.repairMaterial.create({
+                data: {
+                  inspection_id: inspection.inspection_id,
+                  material_id: validation.repairMaterial.materialId,
+                  quantity: validation.repairMaterial.quantity,
+                  unit_cost: validation.unitCost,
+                  total_cost: validation.materialTotalCost,
+                },
+              })
+
+              // Removed: Update material stock (decrement) logic
+
+              return repairMaterial
+            })
+          )
+
+          return {
+            ...inspection,
+            repairMaterials,
+          }
+        })
+
+        // If warranty is expired and we have a crackId, update the crack report status and create worklog
+        if (isWarrantyExpired && crackId) {
+          try {
+            // First get the current crack report status
+            console.log(`[DEBUG] Checking crack report status for crackId: ${crackId}`);
+            const crackReportResponse = await firstValueFrom(
+              this.crackClient.send(
+                { cmd: 'get-crack-report-by-id' },
+                crackId
+              ).pipe(
+                catchError(error => {
+                  console.error('Error getting crack report details:', error);
+                  return of({ isSuccess: false, data: null });
+                })
+              )
+            );
+
+            // Log the entire response to see its structure
+            console.log(`[DEBUG] Crack report response:`, JSON.stringify(crackReportResponse, null, 2));
+
+            // Check if we can update the status based on current status
+            let currentStatus = null;
+            if (crackReportResponse?.data) {
+              // Handle case when data is an array
+              if (Array.isArray(crackReportResponse.data) && crackReportResponse.data.length > 0) {
+                currentStatus = crackReportResponse.data[0].status;
+                console.log(`[DEBUG] Found status in data array: ${currentStatus}`);
+              } else if (crackReportResponse.data.status) {
+                // Direct status in data object
+                currentStatus = crackReportResponse.data.status;
+                console.log(`[DEBUG] Found direct status in data: ${currentStatus}`);
+              } else if (typeof crackReportResponse.data === 'object') {
+                // Try to find status in different property of data
+                currentStatus = crackReportResponse.data.ReportStatus;
+                console.log(`[DEBUG] Tried alternate property (ReportStatus): ${currentStatus}`);
+              }
+            }
+
+            console.log(`[DEBUG] Extracted current status: ${currentStatus}`);
+            const allowedStatusesForUpdate = ['Pending', 'InProgress', 'Reviewing'];
+
+            console.log(`[DEBUG] Checking if ${currentStatus} is in allowed statuses: ${allowedStatusesForUpdate.join(', ')}`);
+            console.log(`[DEBUG] Status comparison result: ${allowedStatusesForUpdate.includes(currentStatus)}`);
+
+            // Updated condition with more robust checking
+            const shouldUpdateStatus =
+              crackReportResponse?.isSuccess &&
+              currentStatus &&
+              (allowedStatusesForUpdate.includes(currentStatus) ||
+                allowedStatusesForUpdate.map(s => s.toLowerCase()).includes(currentStatus.toLowerCase()));
+
+            console.log(`[DEBUG] Should update status: ${shouldUpdateStatus}`);
+
+            if (shouldUpdateStatus) {
+              console.log(`[DEBUG] Updating crack report status to WaitingConfirm`);
+              // 1. Update CrackReport status to WaitingConfirm
+              await firstValueFrom(
+                this.crackClient.send(
+                  { cmd: 'update-crack-report-for-all-status' },
+                  {
+                    crackReportId: crackId,
+                    dto: { status: 'WaitingConfirm' }
+                  }
+                ).pipe(
+                  catchError(error => {
+                    console.error('Error updating crack report status:', error);
+                    return of({ isSuccess: false, message: error.message });
+                  })
+                )
+              );
+
+              // 2. Create worklog with WAIT_FOR_DEPOSIT status
+              if (task.task_id) {
+                console.log(`[DEBUG] Creating worklog for task: ${task.task_id}`);
+                await firstValueFrom(
+                  this.taskClient.send(
+                    WORKLOG_PATTERN.CREATE,
+                    {
+                      task_id: task.task_id,
+                      title: 'Chờ đặt cọc từ cư dân',
+                      description: 'Tòa nhà đã hết hạn bảo hành, cần cư dân đặt cọc trước khi tiếp tục',
+                      status: 'WAIT_FOR_DEPOSIT'
+                    }
+                  ).pipe(
+                    catchError(error => {
+                      console.error('Error creating worklog:', error);
+                      return of({ isSuccess: false, message: error.message });
+                    })
+                  )
+                );
+                console.log(`[DEBUG] Worklog created successfully`);
+              }
+
+              console.log(`Successfully updated statuses due to expired warranty. CrackId: ${crackId}, TaskId: ${task.task_id}`);
+            } else {
+              console.log(`[DEBUG] Not updating status because current status is not in allowed list or response was not successful`);
+            }
+          } catch (error) {
+            console.error('Error updating statuses after inspection creation:', error);
+            // Don't fail the overall operation if this update fails
+          }
+        }
+
+        return new ApiResponse(
+          true,
+          'Tạo báo cáo thành công',
+          result
+        )
+      } else {
+        // No repair materials, just create the inspection
+        const inspection = await this.prisma.inspection.create({
+          data: {
+            task_assignment_id: dto.task_assignment_id,
+            inspected_by: dto.inspected_by,
+            image_urls: dto.image_urls || [],
+            description: dto.description || "",
+            total_cost: 0,
+            uploadFile: dto.uploadFile || null,
+          },
+        })
+
+        // If warranty is expired and we have a crackId, update the crack report status and create worklog
+        if (isWarrantyExpired && crackId) {
+          try {
+            // First get the current crack report status
+            console.log(`[DEBUG] Checking crack report status for crackId: ${crackId}`);
+            const crackReportResponse = await firstValueFrom(
+              this.crackClient.send(
+                { cmd: 'get-crack-report-by-id' },
+                crackId
+              ).pipe(
+                catchError(error => {
+                  console.error('Error getting crack report details:', error);
+                  return of({ isSuccess: false, data: null });
+                })
+              )
+            );
+
+            // Log the entire response to see its structure
+            console.log(`[DEBUG] Crack report response:`, JSON.stringify(crackReportResponse, null, 2));
+
+            // Check if we can update the status based on current status
+            let currentStatus = null;
+            if (crackReportResponse?.data) {
+              // Handle case when data is an array
+              if (Array.isArray(crackReportResponse.data) && crackReportResponse.data.length > 0) {
+                currentStatus = crackReportResponse.data[0].status;
+                console.log(`[DEBUG] Found status in data array: ${currentStatus}`);
+              } else if (crackReportResponse.data.status) {
+                // Direct status in data object
+                currentStatus = crackReportResponse.data.status;
+                console.log(`[DEBUG] Found direct status in data: ${currentStatus}`);
+              } else if (typeof crackReportResponse.data === 'object') {
+                // Try to find status in different property of data
+                currentStatus = crackReportResponse.data.ReportStatus;
+                console.log(`[DEBUG] Tried alternate property (ReportStatus): ${currentStatus}`);
+              }
+            }
+
+            console.log(`[DEBUG] Extracted current status: ${currentStatus}`);
+            const allowedStatusesForUpdate = ['Pending', 'InProgress', 'Reviewing'];
+
+            console.log(`[DEBUG] Checking if ${currentStatus} is in allowed statuses: ${allowedStatusesForUpdate.join(', ')}`);
+            console.log(`[DEBUG] Status comparison result: ${allowedStatusesForUpdate.includes(currentStatus)}`);
+
+            // Updated condition with more robust checking
+            const shouldUpdateStatus =
+              crackReportResponse?.isSuccess &&
+              currentStatus &&
+              (allowedStatusesForUpdate.includes(currentStatus) ||
+                allowedStatusesForUpdate.map(s => s.toLowerCase()).includes(currentStatus.toLowerCase()));
+
+            console.log(`[DEBUG] Should update status: ${shouldUpdateStatus}`);
+
+            if (shouldUpdateStatus) {
+              console.log(`[DEBUG] Updating crack report status to WaitingConfirm`);
+              // 1. Update CrackReport status to WaitingConfirm
+              await firstValueFrom(
+                this.crackClient.send(
+                  { cmd: 'update-crack-report-for-all-status' },
+                  {
+                    crackReportId: crackId,
+                    dto: { status: 'WaitingConfirm' }
+                  }
+                ).pipe(
+                  catchError(error => {
+                    console.error('Error updating crack report status:', error);
+                    return of({ isSuccess: false, message: error.message });
+                  })
+                )
+              );
+
+              // 2. Create worklog with WAIT_FOR_DEPOSIT status
+              if (task.task_id) {
+                console.log(`[DEBUG] Creating worklog for task: ${task.task_id}`);
+                await firstValueFrom(
+                  this.taskClient.send(
+                    WORKLOG_PATTERN.CREATE,
+                    {
+                      task_id: task.task_id,
+                      title: 'Chờ đặt cọc từ cư dân',
+                      description: 'Tòa nhà đã hết hạn bảo hành, cần cư dân đặt cọc trước khi tiếp tục',
+                      status: 'WAIT_FOR_DEPOSIT'
+                    }
+                  ).pipe(
+                    catchError(error => {
+                      console.error('Error creating worklog:', error);
+                      return of({ isSuccess: false, message: error.message });
+                    })
+                  )
+                );
+                console.log(`[DEBUG] Worklog created successfully`);
+              }
+
+              console.log(`Successfully updated statuses due to expired warranty. CrackId: ${crackId}, TaskId: ${task.task_id}`);
+            } else {
+              console.log(`[DEBUG] Not updating status because current status is not in allowed list or response was not successful`);
+            }
+          } catch (error) {
+            console.error('Error updating statuses after inspection creation:', error);
+            // Don't fail the overall operation if this update fails
+          }
+        }
+
+        return new ApiResponse(
+          true,
+          'Tạo báo cáo thành công',
+          inspection
+        )
+      }
+    } catch (error) {
+      console.error('Error in createInspection:', error)
+      return new ApiResponse(false, error.message || 'Lỗi khi tạo báo cáo và vật liệu sửa chữa', null)
+    }
+  }
+
+
+  async createInspectionActualCost(dto: CreateInspectionDto): Promise<ApiResponse<Inspection>> {
+    try {
+      console.log('Received inspection data:', JSON.stringify({
+        ...dto,
+        image_urls: dto.image_urls ? `${dto.image_urls.length} images` : 'none',
+        repairMaterials: dto.repairMaterials ? `received (type: ${typeof dto.repairMaterials})` : 'none'
+      }));
+
+      if (dto.repairMaterials) {
+        if (typeof dto.repairMaterials === 'string') {
+          console.log('repairMaterials string content:', dto.repairMaterials);
+        } else if (Array.isArray(dto.repairMaterials)) {
+          console.log('repairMaterials array length:', dto.repairMaterials.length);
+        }
+      }
+
+      // Check if task assignment exists
+      const taskAssignment = await this.prisma.taskAssignment.findUnique({
+        where: { assignment_id: dto.task_assignment_id },
+        include: {
+          task: true, // Include Task relation
+        }
+      });
+
+      if (!taskAssignment) {
+        return new ApiResponse(false, 'Không tìm thấy nhiệm vụ được phân công', null)
+      }
+
+      // Ensure inspected_by is provided (this should always be set by the API Gateway from the token)
+      if (!dto.inspected_by) {
+        return new ApiResponse(false, 'Không tìm thấy ID người dùng trong token', null)
+      }
+
+      // Verify that the user is a Staff
+      const staffVerification = await this.verifyStaffRole(dto.inspected_by)
+      if (!staffVerification.isSuccess) {
+        return new ApiResponse(
+          false,
+          staffVerification.message,
+          null
+        )
+      }
+
+      // Get the task and crack_id
+      const task = taskAssignment.task;
+      const crackId = task.crack_id;
+
+      // Get building information to check warranty status (only if task has a crack_id)
+      let isWarrantyExpired = false;
+      let buildingDetailId = null;
+
+      if (crackId) {
+        try {
+          // Get building detail ID from crack report
+          const buildingDetailResponse = await firstValueFrom(
+            this.crackClient.send(
+              { cmd: 'get-buildingDetail-by-crack-id' },
+              { crackId }
+            ).pipe(
+              timeout(10000),
+              catchError(err => {
+                console.error('Error getting building detail from crack:', err);
+                return of({ isSuccess: false, data: null });
+              })
+            )
+          );
+
+          if (buildingDetailResponse && buildingDetailResponse.isSuccess && buildingDetailResponse.data) {
+            buildingDetailId = buildingDetailResponse.data.buildingDetailId;
+
+            // Get building information from building service using buildingDetailId
+            if (buildingDetailId) {
+              const buildingResponse = await firstValueFrom(
+                this.buildingsClient.send(
+                  { cmd: 'get-building-from-building-detail' },
+                  { buildingDetailId }
+                ).pipe(
+                  timeout(10000),
+                  catchError(err => {
+                    console.error('Error getting building information:', err);
+                    return of({ isSuccess: false, data: null });
+                  })
+                )
+              );
+
+              if (buildingResponse && buildingResponse.isSuccess && buildingResponse.data) {
+                const building = buildingResponse.data;
+
+                // Log full building object để debug
+                console.log(`Full building object: ${JSON.stringify(building, null, 2)}`);
+
+                // Check if warranty date exists under various possible field names
+                const warrantyDate = building.warrantyDate || building.Warranty_date || building.warranty_date;
+
+                if (warrantyDate) {
+                  const warrantyDateObj = new Date(warrantyDate);
+                  const currentDate = new Date();
+
+                  console.log(`Current date: ${currentDate.toISOString()}`);
+                  console.log(`Warranty date: ${warrantyDateObj.toISOString()}`);
+
+                  isWarrantyExpired = warrantyDateObj < currentDate;
+
+                  console.log(`Building warranty check: warrantyDate=${warrantyDateObj.toISOString()}, currentDate=${currentDate.toISOString()}, isExpired=${isWarrantyExpired}`);
+                } else {
+                  console.log('Building does not have a warranty date (field not found in response), assuming expired');
+                  console.log('Available fields in building object: ' + Object.keys(building).join(', '));
+                  isWarrantyExpired = true; // If no warranty date, assume expired
+                }
+              } else {
+                console.log('Could not get building information, assuming warranty expired');
+                isWarrantyExpired = true; // If can't get building info, assume expired
+              }
+            }
+          } else {
+            console.log('Could not get building detail ID from crack, assuming warranty expired');
+            isWarrantyExpired = true; // If can't get building detail, assume expired
+          }
+        } catch (error) {
+          console.error('Error checking warranty status:', error);
+          // Continue with inspection creation, just log the error
+        }
+      }
+
+      // Parse repairMaterials if it's a string
+      let repairMaterialsArray: RepairMaterialDto[] = [];
+      try {
+        const repairMaterials = dto.repairMaterials as string | RepairMaterialDto[] | any
+
+        // Handle empty string or undefined
+        if (!repairMaterials || (typeof repairMaterials === 'string' && repairMaterials.trim() === '')) {
+          // Set to empty array if empty or not provided
+          repairMaterialsArray = [];
+        } else if (typeof repairMaterials === 'string') {
+          // Handle case where multiple objects are sent as separate strings
+          const repairMaterialsStr = repairMaterials.trim()
+          if (repairMaterialsStr.startsWith('{') && repairMaterialsStr.includes('},{')) {
+            // Format: {obj1},{obj2}
+            repairMaterialsArray = JSON.parse('[' + repairMaterialsStr + ']')
+          } else {
+            // Single object or array
+            repairMaterialsArray = JSON.parse(repairMaterialsStr)
+          }
+        } else if (Array.isArray(repairMaterials)) {
+          repairMaterialsArray = repairMaterials
+        } else if (typeof repairMaterials === 'object' && repairMaterials !== null) {
+          // Handle the case when it's a single object (not in an array)
+          repairMaterialsArray = [repairMaterials];
+          console.log('Converting single object to array:', repairMaterialsArray);
+        } else {
+          throw new Error('Định dạng vật liệu sửa chữa không hợp lệ')
+        }
+
+        // Make sure it's always an array at this point
+        if (!Array.isArray(repairMaterialsArray)) {
+          repairMaterialsArray = Array.isArray(repairMaterialsArray) ? repairMaterialsArray : [repairMaterialsArray];
         }
       } catch (error) {
         console.error('Error parsing repairMaterials:', error)
@@ -568,47 +1169,128 @@ export class InspectionsService implements OnModuleInit {
         // If warranty is expired and we have a crackId, update the crack report status and create worklog
         if (isWarrantyExpired && crackId) {
           try {
-            // 1. Update CrackReport status to WaitingConfirm
-            await firstValueFrom(
+            // First get the current crack report status
+            console.log(`[DEBUG] Checking crack report status for crackId: ${crackId}`);
+            const crackReportResponse = await firstValueFrom(
               this.crackClient.send(
-                { cmd: 'update-crack-report-for-all-status' },
-                {
-                  crackReportId: crackId,
-                  dto: { status: 'WaitingConfirm' }
-                }
+                { cmd: 'get-crack-report-by-id' },
+                crackId
               ).pipe(
                 catchError(error => {
-                  console.error('Error updating crack report status:', error);
-                  return of({ isSuccess: false, message: error.message });
+                  console.error('Error getting crack report details:', error);
+                  return of({ isSuccess: false, data: null });
                 })
               )
             );
 
-            // 2. Create worklog with WAIT_FOR_DEPOSIT status
-            if (task.task_id) {
+            // Log the entire response to see its structure
+            console.log(`[DEBUG] Crack report response:`, JSON.stringify(crackReportResponse, null, 2));
+
+            // Check if we can update the status based on current status
+            let currentStatus = null;
+            if (crackReportResponse?.data) {
+              // Handle case when data is an array
+              if (Array.isArray(crackReportResponse.data) && crackReportResponse.data.length > 0) {
+                currentStatus = crackReportResponse.data[0].status;
+                console.log(`[DEBUG] Found status in data array: ${currentStatus}`);
+              } else if (crackReportResponse.data.status) {
+                // Direct status in data object
+                currentStatus = crackReportResponse.data.status;
+                console.log(`[DEBUG] Found direct status in data: ${currentStatus}`);
+              } else if (typeof crackReportResponse.data === 'object') {
+                // Try to find status in different property of data
+                currentStatus = crackReportResponse.data.ReportStatus;
+                console.log(`[DEBUG] Tried alternate property (ReportStatus): ${currentStatus}`);
+              }
+            }
+
+            console.log(`[DEBUG] Extracted current status: ${currentStatus}`);
+            const allowedStatusesForUpdate = ['Pending', 'InProgress', 'Reviewing'];
+
+            console.log(`[DEBUG] Checking if ${currentStatus} is in allowed statuses: ${allowedStatusesForUpdate.join(', ')}`);
+            console.log(`[DEBUG] Status comparison result: ${allowedStatusesForUpdate.includes(currentStatus)}`);
+
+            // Updated condition with more robust checking
+            const shouldUpdateStatus =
+              crackReportResponse?.isSuccess &&
+              currentStatus &&
+              (allowedStatusesForUpdate.includes(currentStatus) ||
+                allowedStatusesForUpdate.map(s => s.toLowerCase()).includes(currentStatus.toLowerCase()));
+
+            console.log(`[DEBUG] Should update status: ${shouldUpdateStatus}`);
+
+            if (shouldUpdateStatus) {
+              console.log(`[DEBUG] Updating crack report status to WaitingConfirm`);
+              // 1. Update CrackReport status to WaitingConfirm
               await firstValueFrom(
-                this.taskClient.send(
-                  WORKLOG_PATTERN.CREATE,
+                this.crackClient.send(
+                  { cmd: 'update-crack-report-for-all-status' },
                   {
-                    task_id: task.task_id,
-                    title: 'Chờ đặt cọc từ cư dân',
-                    description: 'Tòa nhà đã hết hạn bảo hành, cần cư dân đặt cọc trước khi tiếp tục',
-                    status: 'WAIT_FOR_DEPOSIT'
+                    crackReportId: crackId,
+                    dto: { status: 'WaitingConfirm' }
                   }
                 ).pipe(
                   catchError(error => {
-                    console.error('Error creating worklog:', error);
+                    console.error('Error updating crack report status:', error);
                     return of({ isSuccess: false, message: error.message });
                   })
                 )
               );
-            }
 
-            console.log(`Successfully updated statuses due to expired warranty. CrackId: ${crackId}, TaskId: ${task.task_id}`);
+              // 2. Create worklog with WAIT_FOR_DEPOSIT status
+              if (task.task_id) {
+                console.log(`[DEBUG] Creating worklog for task: ${task.task_id}`);
+                await firstValueFrom(
+                  this.taskClient.send(
+                    WORKLOG_PATTERN.CREATE,
+                    {
+                      task_id: task.task_id,
+                      title: 'Chờ đặt cọc từ cư dân',
+                      description: 'Tòa nhà đã hết hạn bảo hành, cần cư dân đặt cọc trước khi tiếp tục',
+                      status: 'WAIT_FOR_DEPOSIT'
+                    }
+                  ).pipe(
+                    catchError(error => {
+                      console.error('Error creating worklog:', error);
+                      return of({ isSuccess: false, message: error.message });
+                    })
+                  )
+                );
+                console.log(`[DEBUG] Worklog created successfully`);
+              }
+
+              console.log(`Successfully updated statuses due to expired warranty. CrackId: ${crackId}, TaskId: ${task.task_id}`);
+            } else {
+              console.log(`[DEBUG] Not updating status because current status is not in allowed list or response was not successful`);
+            }
           } catch (error) {
             console.error('Error updating statuses after inspection creation:', error);
             // Don't fail the overall operation if this update fails
           }
+        }
+
+        // Call COMPLETE_AND_REVIEW to update task status
+        try {
+          const taskId = task.task_id;
+          console.log(`[InspectionService] Calling COMPLETE_AND_REVIEW pattern for task: ${taskId}`);
+
+          await firstValueFrom(
+            this.taskClient.send(
+              TASKS_PATTERN.COMPLETE_AND_REVIEW,
+              { taskId }
+            ).pipe(
+              timeout(10000),
+              catchError(error => {
+                console.error(`[InspectionService] Error calling COMPLETE_AND_REVIEW: ${error.message}`);
+                return of({ isSuccess: false, message: error.message });
+              })
+            )
+          );
+
+          console.log(`[InspectionService] Successfully called COMPLETE_AND_REVIEW for task: ${taskId}`);
+        } catch (error) {
+          console.error(`[InspectionService] Failed to call COMPLETE_AND_REVIEW: ${error.message}`);
+          // Continue with the process even if this update fails
         }
 
         return new ApiResponse(
@@ -632,47 +1314,128 @@ export class InspectionsService implements OnModuleInit {
         // If warranty is expired and we have a crackId, update the crack report status and create worklog
         if (isWarrantyExpired && crackId) {
           try {
-            // 1. Update CrackReport status to WaitingConfirm
-            await firstValueFrom(
+            // First get the current crack report status
+            console.log(`[DEBUG] Checking crack report status for crackId: ${crackId}`);
+            const crackReportResponse = await firstValueFrom(
               this.crackClient.send(
-                { cmd: 'update-crack-report-for-all-status' },
-                {
-                  crackReportId: crackId,
-                  dto: { status: 'WaitingConfirm' }
-                }
+                { cmd: 'get-crack-report-by-id' },
+                crackId
               ).pipe(
                 catchError(error => {
-                  console.error('Error updating crack report status:', error);
-                  return of({ isSuccess: false, message: error.message });
+                  console.error('Error getting crack report details:', error);
+                  return of({ isSuccess: false, data: null });
                 })
               )
             );
 
-            // 2. Create worklog with WAIT_FOR_DEPOSIT status
-            if (task.task_id) {
+            // Log the entire response to see its structure
+            console.log(`[DEBUG] Crack report response:`, JSON.stringify(crackReportResponse, null, 2));
+
+            // Check if we can update the status based on current status
+            let currentStatus = null;
+            if (crackReportResponse?.data) {
+              // Handle case when data is an array
+              if (Array.isArray(crackReportResponse.data) && crackReportResponse.data.length > 0) {
+                currentStatus = crackReportResponse.data[0].status;
+                console.log(`[DEBUG] Found status in data array: ${currentStatus}`);
+              } else if (crackReportResponse.data.status) {
+                // Direct status in data object
+                currentStatus = crackReportResponse.data.status;
+                console.log(`[DEBUG] Found direct status in data: ${currentStatus}`);
+              } else if (typeof crackReportResponse.data === 'object') {
+                // Try to find status in different property of data
+                currentStatus = crackReportResponse.data.ReportStatus;
+                console.log(`[DEBUG] Tried alternate property (ReportStatus): ${currentStatus}`);
+              }
+            }
+
+            console.log(`[DEBUG] Extracted current status: ${currentStatus}`);
+            const allowedStatusesForUpdate = ['Pending', 'InProgress', 'Reviewing'];
+
+            console.log(`[DEBUG] Checking if ${currentStatus} is in allowed statuses: ${allowedStatusesForUpdate.join(', ')}`);
+            console.log(`[DEBUG] Status comparison result: ${allowedStatusesForUpdate.includes(currentStatus)}`);
+
+            // Updated condition with more robust checking
+            const shouldUpdateStatus =
+              crackReportResponse?.isSuccess &&
+              currentStatus &&
+              (allowedStatusesForUpdate.includes(currentStatus) ||
+                allowedStatusesForUpdate.map(s => s.toLowerCase()).includes(currentStatus.toLowerCase()));
+
+            console.log(`[DEBUG] Should update status: ${shouldUpdateStatus}`);
+
+            if (shouldUpdateStatus) {
+              console.log(`[DEBUG] Updating crack report status to WaitingConfirm`);
+              // 1. Update CrackReport status to WaitingConfirm
               await firstValueFrom(
-                this.taskClient.send(
-                  WORKLOG_PATTERN.CREATE,
+                this.crackClient.send(
+                  { cmd: 'update-crack-report-for-all-status' },
                   {
-                    task_id: task.task_id,
-                    title: 'Chờ đặt cọc từ cư dân',
-                    description: 'Tòa nhà đã hết hạn bảo hành, cần cư dân đặt cọc trước khi tiếp tục',
-                    status: 'WAIT_FOR_DEPOSIT'
+                    crackReportId: crackId,
+                    dto: { status: 'WaitingConfirm' }
                   }
                 ).pipe(
                   catchError(error => {
-                    console.error('Error creating worklog:', error);
+                    console.error('Error updating crack report status:', error);
                     return of({ isSuccess: false, message: error.message });
                   })
                 )
               );
-            }
 
-            console.log(`Successfully updated statuses due to expired warranty. CrackId: ${crackId}, TaskId: ${task.task_id}`);
+              // 2. Create worklog with WAIT_FOR_DEPOSIT status
+              if (task.task_id) {
+                console.log(`[DEBUG] Creating worklog for task: ${task.task_id}`);
+                await firstValueFrom(
+                  this.taskClient.send(
+                    WORKLOG_PATTERN.CREATE,
+                    {
+                      task_id: task.task_id,
+                      title: 'Chờ đặt cọc từ cư dân',
+                      description: 'Tòa nhà đã hết hạn bảo hành, cần cư dân đặt cọc trước khi tiếp tục',
+                      status: 'WAIT_FOR_DEPOSIT'
+                    }
+                  ).pipe(
+                    catchError(error => {
+                      console.error('Error creating worklog:', error);
+                      return of({ isSuccess: false, message: error.message });
+                    })
+                  )
+                );
+                console.log(`[DEBUG] Worklog created successfully`);
+              }
+
+              console.log(`Successfully updated statuses due to expired warranty. CrackId: ${crackId}, TaskId: ${task.task_id}`);
+            } else {
+              console.log(`[DEBUG] Not updating status because current status is not in allowed list or response was not successful`);
+            }
           } catch (error) {
             console.error('Error updating statuses after inspection creation:', error);
             // Don't fail the overall operation if this update fails
           }
+        }
+
+        // Call COMPLETE_AND_REVIEW to update task status
+        try {
+          const taskId = task.task_id;
+          console.log(`[InspectionService] Calling COMPLETE_AND_REVIEW pattern for task: ${taskId}`);
+
+          await firstValueFrom(
+            this.taskClient.send(
+              TASKS_PATTERN.COMPLETE_AND_REVIEW,
+              { taskId }
+            ).pipe(
+              timeout(10000),
+              catchError(error => {
+                console.error(`[InspectionService] Error calling COMPLETE_AND_REVIEW: ${error.message}`);
+                return of({ isSuccess: false, message: error.message });
+              })
+            )
+          );
+
+          console.log(`[InspectionService] Successfully called COMPLETE_AND_REVIEW for task: ${taskId}`);
+        } catch (error) {
+          console.error(`[InspectionService] Failed to call COMPLETE_AND_REVIEW: ${error.message}`);
+          // Continue with the process even if this update fails
         }
 
         return new ApiResponse(
@@ -686,7 +1449,6 @@ export class InspectionsService implements OnModuleInit {
       return new ApiResponse(false, error.message || 'Lỗi khi tạo báo cáo và vật liệu sửa chữa', null)
     }
   }
-
   // async changeStatus(dto: ChangeInspectionStatusDto): Promise<ApiResponse<Inspection>> {
   //   try {
   //     const inspection = await this.prisma.inspection.findUnique({
@@ -788,11 +1550,35 @@ export class InspectionsService implements OnModuleInit {
       // 3. If crack_id exists, get crack info
       if (task.crack_id) {
         console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ task.crack_id:", task.crack_id)
-        const crackInfo = await firstValueFrom(
-          this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
-        )
-        result.crackInfo = crackInfo
-        console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ crackInfo:", crackInfo)
+        try {
+          console.log("Trying to get crack info...")
+          const crackInfo = await firstValueFrom(
+            this.crackClient.send(CRACK_PATTERNS.GET_DETAILS, task.crack_id)
+          )
+          result.crackInfo = crackInfo
+          console.log("✅ Successfully retrieved crack info:")
+          console.log("🚀 ~ InspectionsService ~ getInspectionDetails ~ crackInfo:", crackInfo)
+        } catch (error) {
+          console.error("❌ Failed to get crack info for crack_id:", task.crack_id)
+          console.error("Error details:", error)
+
+          // Thử phương án thay thế với định dạng khác
+          try {
+            console.log("Attempting alternative method to get crack info...")
+            const crackInfo = await firstValueFrom(
+              this.crackClient.send(
+                { cmd: 'get-crack-report-by-id' },
+                task.crack_id
+              )
+            )
+            result.crackInfo = crackInfo
+            console.log("✅ Successfully retrieved crack info with alternative method")
+          } catch (fallbackError) {
+            console.error("❌ Alternative method also failed:", fallbackError)
+            // Optionally set a default or error state
+            result.crackInfo = { error: "Failed to retrieve crack information" }
+          }
+        }
 
         // Process crack images if they exist
         if (result.crackInfo && result.crackInfo.data) {
@@ -1665,8 +2451,8 @@ export class InspectionsService implements OnModuleInit {
 
   async getInspectionPdfByTaskAssignment(task_assignment_id: string): Promise<ApiResponse<any>> {
     try {
-      // Find the most recent inspection for this task assignment
-      const inspection = await this.prisma.inspection.findFirst({
+      // Find all inspections for this task assignment
+      const inspections = await this.prisma.inspection.findMany({
         where: {
           task_assignment_id: task_assignment_id
         },
@@ -1679,15 +2465,37 @@ export class InspectionsService implements OnModuleInit {
         }
       });
 
-      if (!inspection) {
+      if (inspections.length === 0) {
         return new ApiResponse(false, 'Không tìm thấy báo cáo cho nhiệm vụ được gán này', null);
       }
 
-      if (!inspection.uploadFile) {
-        return new ApiResponse(false, 'Không tìm thấy tệp PDF cho báo cáo này', null);
-      }
+      // Process each inspection to add pre-signed URLs
+      const processedInspections = await Promise.all(
+        inspections.map(async (inspection) => {
+          if (inspection.uploadFile) {
+            try {
+              const fileKey = this.extractFileKey(inspection.uploadFile);
+              // Get view URL (no content-disposition)
+              const viewUrl = await this.getPreSignedUrl(fileKey);
+              // Get download URL (with content-disposition: attachment)
+              const downloadUrl = await this.getPreSignedDownloadUrl(fileKey);
 
-      return new ApiResponse(true, 'Lấy tệp PDF báo cáo thành công', inspection);
+              return {
+                ...inspection,
+                downloadUrl,
+                viewUrl
+              };
+            } catch (error) {
+              this.logger.error(`Error getting pre-signed URL for ${inspection.uploadFile}:`, error);
+              // Return the inspection without downloadUrl if there's an error
+              return inspection;
+            }
+          }
+          return inspection;
+        })
+      );
+
+      return new ApiResponse(true, 'Lấy tệp PDF báo cáo thành công', processedInspections);
     } catch (error) {
       this.logger.error(`Error in getInspectionPdfByTaskAssignment: ${error.message}`, error.stack);
       return new ApiResponse(false, `Lỗi khi lấy tệp PDF báo cáo: ${error.message}`, null);

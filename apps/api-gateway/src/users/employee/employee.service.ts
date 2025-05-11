@@ -393,6 +393,92 @@ export class EmployeeService implements OnModuleInit {
     }
   }
 
+  async getAllStaffByDepartmentType(staffId: string, deviceType: string) {
+    try {
+      console.log('Calling gRPC method GetAllStaffByDepartmentType with staffId:', staffId, 'and deviceType:', deviceType);
+
+      // Basic validation
+      if (!staffId || !deviceType) {
+        return {
+          isSuccess: false,
+          message: 'Staff ID and Device Type are required',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
+      // Map DeviceType to DepartmentType
+      const departmentType = this.mapDeviceTypeToDepartmentType(deviceType);
+      console.log('Mapped deviceType to departmentType:', deviceType, '->', departmentType);
+
+      const response = await lastValueFrom(
+        this.userService.getAllStaffByDepartmentType({ staffId, departmentType })
+      );
+
+      if (!response || !response.isSuccess) {
+        console.log('Received error response from gRPC:', response);
+        return {
+          isSuccess: false,
+          message: response?.message || 'Failed to retrieve staff members',
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0
+          }
+        };
+      }
+
+      console.log('Received successful response from gRPC for staff members by department type');
+      return response;
+    } catch (error) {
+      console.error('Error in getAllStaffByDepartmentType:', error);
+      return {
+        isSuccess: false,
+        message: 'Service unavailable',
+        data: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: 10,
+          totalPages: 0
+        }
+      };
+    }
+  }
+
+  /**
+   * Maps DeviceType enum values to corresponding DepartmentType enum values
+   * @param deviceType The DeviceType enum value to map
+   * @returns The corresponding DepartmentType enum value
+   */
+  private mapDeviceTypeToDepartmentType(deviceType: string): string {
+    // Define the mapping between DeviceType and DepartmentType
+    const mapping = {
+      'Elevator': 'ElevatorEngineering',
+      'FireProtection': 'FireSafetyEngineering',
+      'FireExtinguisher': 'FireSafetyEngineering',
+      'Electrical': 'ElectricalEngineering',
+      'Generator': 'ElectricalEngineering',
+      'Lighting': 'ElectricalEngineering',
+      'Plumbing': 'WaterEngineering',
+      'HVAC': 'AirConditioningEngineering',
+      'CCTV': 'CCTVEngineering',
+      'AutomaticDoor': 'ElectricalEngineering',
+      'BuildingStructure': 'StructuralEngineering',
+      'Other': 'StructuralEngineering'
+    };
+
+    // Return the mapped value or default to StructuralEngineering if not found
+    return mapping[deviceType] || 'StructuralEngineering';
+  }
+
   // Public method to test getDepartment directly
 
 }

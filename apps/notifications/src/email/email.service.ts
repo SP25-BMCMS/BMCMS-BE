@@ -108,77 +108,40 @@ export class EmailService {
     deduplicationKey?: string
     deduplicationWindow?: number
   }): Promise<boolean> {
-    try {
-      // Create a unique key for this email
-      const subject = `Thông báo lịch bảo trì - ${data.buildingName}`;
-      const emailKey = this.createEmailKey(data.to, subject, data.deduplicationKey);
-      const customWindowMs = data.deduplicationWindow ? data.deduplicationWindow * 1000 : undefined;
 
-      // Check if we just sent this exact email
-      if (this.isDuplicateEmail(emailKey, customWindowMs)) {
-        this.logger.warn(`Duplicate email detected to: ${data.to} with key: ${emailKey} - skipping send`);
-        return true; // Return true to avoid triggering error flows
-      }
+    // Create a unique key for this email
+    const subject = `Thông báo lịch bảo trì - ${data.buildingName}`;
+    const formattedDate = new Date(data.maintenanceDate).toLocaleDateString('vi-VN', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
 
-      // Mark this email as sent
-      this.recentEmails.set(emailKey, Date.now());
-
-      this.logger.log(`Sending maintenance email to: ${data.to} with key: ${emailKey}`)
-      this.logger.debug(`Maintenance details:`, {
-        building: data.buildingName,
-        date: data.maintenanceDate,
+    return await this.mailerService.sendMail({
+      to: data.to,
+      subject: subject,
+      template: 'maintenance-schedule',
+      context: {
+        residentName: data.residentName,
+        buildingName: data.buildingName,
+        maintenanceDate: formattedDate,
         startTime: data.startTime,
         endTime: data.endTime,
-        type: data.maintenanceType,
-        location: {
-          floor: data.floor,
-          area: data.area,
-          unit: data.unit,
+        maintenanceType: data.maintenanceType,
+        description: data.description || 'Không có mô tả chi tiết',
+        floor: data.floor || 'Không xác định',
+        area: data.area || 'Không xác định',
+        unit: data.unit || 'Không xác định',
+        currentYear: new Date().getFullYear(),
+        contactInfo: {
+          phone: this.configService.get('CONTACT_PHONE', '0123 456 789'),
+          email: this.configService.get('CONTACT_EMAIL', 'management@building.com'),
+          workingHours: '8:00 - 17:00 (Thứ 2 - Thứ 6)',
+          managerName: this.configService.get('CONTACT_MANAGER', 'Người quản lý tòa nhà'),
         },
-        deduplicationKey: data.deduplicationKey,
-        deduplicationWindow: customWindowMs
-      })
-
-      const formattedDate = new Date(data.maintenanceDate).toLocaleDateString('vi-VN', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })
-
-      const result = await this.mailerService.sendMail({
-        to: data.to,
-        subject: subject,
-        template: 'maintenance-schedule',
-        context: {
-          residentName: data.residentName,
-          buildingName: data.buildingName,
-          maintenanceDate: formattedDate,
-          startTime: data.startTime,
-          endTime: data.endTime,
-          maintenanceType: data.maintenanceType,
-          description: data.description || 'Không có mô tả chi tiết',
-          floor: data.floor || 'Không xác định',
-          area: data.area || 'Không xác định',
-          unit: data.unit || 'Không xác định',
-          currentYear: new Date().getFullYear(),
-          contactInfo: {
-            phone: this.configService.get('CONTACT_PHONE', '0123 456 789'),
-            email: this.configService.get('CONTACT_EMAIL', 'management@building.com'),
-            workingHours: '8:00 - 17:00 (Thứ 2 - Thứ 6)',
-            managerName: this.configService.get('CONTACT_MANAGER', 'Người quản lý tòa nhà'),
-          },
-        },
-      })
-
-      this.logger.log(`Maintenance email sent successfully to: ${data.to} with key: ${emailKey}`)
-      this.logger.debug(`Message ID: ${result.messageId}`)
-      return true
-    } catch (error) {
-      this.logger.error(`Failed to send maintenance email to ${data.to}: ${error.message}`)
-      this.logger.error(error.stack)
-      return false
-    }
+      },
+    })
   }
 
   public checkDuplicateEmail(key: string, windowInSeconds: number = 300): boolean {

@@ -585,7 +585,7 @@ export class ScheduleService {
   async triggerAutoMaintenanceSchedule(managerId: string): Promise<ApiResponse<string>> {
     try {
       this.logger.log(`Triggering auto maintenance schedule for manager: ${managerId}`);
-      
+
       // Lấy tất cả các MaintenanceCycle
       const maintenanceCycles = await this.prisma.maintenanceCycle.findMany()
 
@@ -1427,11 +1427,15 @@ export class ScheduleService {
 
           logger.log(`Creating schedule for cycle ${maintenanceCycle.device_type} with duration ${durationDays} days`);
 
-          // Create the schedule
+          // Get Vietnamese translations
+          const deviceTypeVi = this.translateDeviceTypeToVietnamese(maintenanceCycle.device_type);
+          const frequencyVi = this.translateFrequencyToVietnamese(maintenanceCycle.frequency);
+
+          // Create the schedule with Vietnamese name and description
           const schedule = await this.prisma.schedule.create({
             data: {
-              schedule_name: `Bảo trì ${maintenanceCycle.device_type}  - ${startDate.toISOString().slice(0, 10)}`,
-              description: `Lịch bảo trì được tạo cho ${maintenanceCycle.device_type}`,
+              schedule_name: `Bảo trì ${deviceTypeVi}`,
+              description: `Lịch bảo trì ${frequencyVi} được tạo cho ${deviceTypeVi}`,
               cycle_id: maintenanceCycle.cycle_id,
               start_date: startDate,
               end_date: endDate,
@@ -1557,9 +1561,13 @@ export class ScheduleService {
               day: 'numeric'
             });
 
+            // Translate device type and frequency to Vietnamese
+            const deviceTypeVi = this.translateDeviceTypeToVietnamese(scheduleInfo.maintenanceCycle.device_type);
+            const frequencyVi = this.translateFrequencyToVietnamese(scheduleInfo.maintenanceCycle.frequency);
+
             const notificationData = {
-              title: `Lịch bảo trì mới đã tạo cho ${scheduleInfo.maintenanceCycle.device_type}`,
-              content: `Lịch bảo trì "${scheduleInfo.schedule.schedule_name}" đã được tạo từ ${formattedStartDate} đến ${formattedEndDate} cho các tòa nhà: ${buildingNames}.`,
+              title: `Lịch bảo trì mới đã được tạo cho ${deviceTypeVi}`,
+              content: `Lịch bảo trì "${scheduleInfo.schedule.schedule_name}" đã được tạo từ ${formattedStartDate} đến ${formattedEndDate} cho tòa nhà: ${buildingNames}.`,
               type: NotificationType.SYSTEM,
               broadcastToAll: true,
               link: `/schedules/${scheduleInfo.schedule.schedule_id}`,
@@ -1595,7 +1603,8 @@ export class ScheduleService {
           createdSchedules: createdSchedules.map(s => ({
             schedule_id: s.schedule.schedule_id,
             schedule_name: s.schedule.schedule_name,
-            device_type: s.maintenanceCycle.device_type,
+            device_type: this.translateDeviceTypeToVietnamese(s.maintenanceCycle.device_type),
+            frequency: this.translateFrequencyToVietnamese(s.maintenanceCycle.frequency),
             start_date: s.schedule.start_date,
             end_date: s.schedule.end_date,
             jobs_count: s.jobsCount,
@@ -1623,6 +1632,39 @@ export class ScheduleService {
       default: return 3;
     }
   }
+
+  // Helper method to translate device types to Vietnamese
+  private translateDeviceTypeToVietnamese(deviceType: string): string {
+    switch (deviceType) {
+      case 'Elevator': return 'thang máy';
+      case 'FireProtection': return 'hệ thống phòng cháy chữa cháy';
+      case 'Electrical': return 'hệ thống điện';
+      case 'Plumbing': return 'hệ thống cấp thoát nước';
+      case 'HVAC': return 'hệ thống điều hòa thông gió';
+      case 'CCTV': return 'hệ thống camera giám sát';
+      case 'Generator': return 'máy phát điện';
+      case 'Lighting': return 'hệ thống chiếu sáng';
+      case 'AutomaticDoor': return 'cửa tự động';
+      case 'FireExtinguisher': return 'bình chữa cháy';
+      case 'BuildingStructure': return 'kết cấu tòa nhà';
+      case 'Other': return 'thiết bị khác';
+      default: return 'thiết bị';
+    }
+  }
+
+  // Helper method to translate frequency to Vietnamese
+  private translateFrequencyToVietnamese(frequency: string): string {
+    switch (frequency) {
+      case 'Daily': return 'hàng ngày';
+      case 'Weekly': return 'hàng tuần';
+      case 'Monthly': return 'hàng tháng';
+      case 'Quarterly': return 'hàng quý';
+      case 'Yearly': return 'hàng năm';
+      case 'Specific': return 'cụ thể';
+      default: return frequency;
+    }
+  }
+
   async getSchedulesByManagerId(
     managerId: string,
     paginationParams?: PaginationParams,

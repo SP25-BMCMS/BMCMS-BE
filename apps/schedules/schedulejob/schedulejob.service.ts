@@ -37,13 +37,35 @@ export class ScheduleJobsService {
         ? createScheduleJobDto.schedule_id
         : null;
 
+      // If there's a valid schedule ID, fetch the parent schedule to get start_date and end_date
+      let parentScheduleDates = { start_date: null, end_date: null };
+      if (validScheduleId) {
+        const parentSchedule = await this.prismaService.schedule.findUnique({
+          where: { schedule_id: validScheduleId },
+          select: { start_date: true, end_date: true }
+        });
+
+        if (parentSchedule) {
+          parentScheduleDates = {
+            start_date: parentSchedule.start_date,
+            end_date: parentSchedule.end_date
+          };
+        }
+      }
+
+      // Ensure we always have a status value (default to 'Pending' if not provided)
+      const status = createScheduleJobDto.status || 'Pending';
+
       const newScheduleJob = await this.prismaService.scheduleJob.create({
         data: {
           schedule_id: validScheduleId,
           run_date: createScheduleJobDto.run_date,
-          status: createScheduleJobDto.status,
+          status: status, // Use the status variable with default value
           buildingDetailId: createScheduleJobDto.buildingDetailId,
           inspection_id: createScheduleJobDto.inspectionId,
+          // Set start_date and end_date from parent schedule
+          start_date: parentScheduleDates.start_date,
+          end_date: parentScheduleDates.end_date,
         },
       })
       // Map buildingDetailId to building_id to match ScheduleJobResponseDto
@@ -198,6 +220,29 @@ export class ScheduleJobsService {
         },
       })
 
+      // Check if all schedule jobs for this schedule are completed
+      if (updatedScheduleJob.schedule_id && status === 'Completed') {
+        const scheduleJobs = await this.prismaService.scheduleJob.findMany({
+          where: {
+            schedule_id: updatedScheduleJob.schedule_id,
+            status: {
+              not: 'Cancel' // Exclude cancelled jobs
+            }
+          },
+        });
+
+        // If all non-canceled jobs are completed, update the parent schedule's status to Completed
+        const allJobsCompleted = scheduleJobs.length > 0 && scheduleJobs.every(job => job.status === 'Completed');
+
+        if (allJobsCompleted) {
+          // Update the parent schedule status to Completed
+          await this.prismaService.schedule.update({
+            where: { schedule_id: updatedScheduleJob.schedule_id },
+            data: { schedule_status: 'Completed' },
+          });
+        }
+      }
+
       const responseDto: ScheduleJobResponseDto = {
         ...updatedScheduleJob,
         building_id: updatedScheduleJob.buildingDetailId,
@@ -215,6 +260,7 @@ export class ScheduleJobsService {
       })
     }
   }
+
   async updateScheduleJob(
     schedule_job_id: string,
     updateData: Partial<UpdateScheduleJobDto>, // Partial allows updating only the fields provided
@@ -231,6 +277,29 @@ export class ScheduleJobsService {
           buildingDetailId: updateData.building_id,
         },
       })
+
+      // Check if all schedule jobs for this schedule are completed
+      if (updatedScheduleJob.schedule_id && updateData.status === 'Completed') {
+        const scheduleJobs = await this.prismaService.scheduleJob.findMany({
+          where: {
+            schedule_id: updatedScheduleJob.schedule_id,
+            status: {
+              not: 'Cancel' // Exclude cancelled jobs
+            }
+          },
+        });
+
+        // If all non-canceled jobs are completed, update the parent schedule's status to Completed
+        const allJobsCompleted = scheduleJobs.length > 0 && scheduleJobs.every(job => job.status === 'Completed');
+
+        if (allJobsCompleted) {
+          // Update the parent schedule status to Completed
+          await this.prismaService.schedule.update({
+            where: { schedule_id: updatedScheduleJob.schedule_id },
+            data: { schedule_status: 'Completed' },
+          });
+        }
+      }
 
       const responseDto: ScheduleJobResponseDto = {
         ...updatedScheduleJob,
@@ -465,7 +534,7 @@ export class ScheduleJobsService {
         console.log(`Sending email to resident: ${residentName} (${resident.email}) for maintenance from ${startTime} to ${endTime}`);
 
         return firstValueFrom(
-          this.notificationsClient.emit(NOTIFICATIONS_PATTERN.SEND_EMAIL, {
+          this.notificationsClient.emit(NOTIFICATIONS_PATTERN.SEND_MAINTENANCE_SCHEDULE_EMAIL, {
             to: resident.email,
             residentName: residentName,
             buildingName: buildingDetail.name,
@@ -503,7 +572,7 @@ export class ScheduleJobsService {
   async getScheduleJobsByManagerId(managerid: string): Promise<ApiResponse<any>> {
     try {
       console.log(`Getting schedule jobs for manager with ID: ${managerid}`);
-      
+
       // 1. Get all buildings managed by this manager
       const buildingsResponse = await firstValueFrom(
         this.buildingClient.send(BUILDINGS_PATTERN.GET_BY_MANAGER_ID, { managerId: managerid }).pipe(
@@ -527,9 +596,9 @@ export class ScheduleJobsService {
       // 2. Extract all building detail IDs from the buildings
       const buildingDetails = buildingsResponse.data.flatMap(building => building.buildingDetails || []);
       const buildingDetailIds = buildingDetails.map(detail => detail.buildingDetailId);
-      
+
       console.log(`Found ${buildingDetailIds.length} building details for manager ${managerid}`);
-      
+
       if (buildingDetailIds.length === 0) {
         console.warn(`No building details found for manager ${managerid}`);
         return new ApiResponse(false, 'No building details found for buildings managed by this manager', []);
@@ -564,10 +633,10 @@ export class ScheduleJobsService {
       // 4. Create a map of buildingDetailId to buildingDetail and building info for faster lookup
       const buildingDetailMap = new Map();
       const buildingMap = new Map();
-      
+
       buildingDetails.forEach(detail => {
         buildingDetailMap.set(detail.buildingDetailId, detail);
-        
+
         // Find the building for this detail
         const building = buildingsResponse.data.find(b => b.buildingId === detail.buildingId);
         if (building) {
@@ -579,7 +648,7 @@ export class ScheduleJobsService {
       const enhancedJobs = scheduleJobs.map(job => {
         // Find the building detail info from our map
         const buildingDetail = buildingDetailMap.get(job.buildingDetailId);
-        
+
         // Find the building info from our map
         let building = null;
         if (buildingDetail) {

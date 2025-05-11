@@ -47,12 +47,13 @@ model Apartment {
 }
 
 model Department {
-  departmentId   String   @id @default(uuid())
+  departmentId   String          @id @default(uuid())
   departmentName String
   area           String
+  departmentType DepartmentType?
   description    String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   UserDetails UserDetails[]
 }
@@ -92,4 +93,16 @@ enum PositionName {
 enum AccountStatus {
   Active
   Inactive
+}
+
+enum DepartmentType {
+  FireSafetyEngineering
+  ChiefTechnician
+  ElectricalEngineering
+  ElevatorEngineering
+  AirConditioningEngineering
+  CCTVEngineering
+  WaterEngineering
+  StructuralEngineering
+  ManagementBoard
 }

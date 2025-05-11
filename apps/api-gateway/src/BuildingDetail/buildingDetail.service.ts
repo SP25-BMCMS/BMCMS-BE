@@ -3,6 +3,7 @@ import { ClientProxy } from '@nestjs/microservices';
 import { BUILDING_CLIENT } from '../constraints';
 import { BUILDINGDETAIL_PATTERN } from 'libs/contracts/src/BuildingDetails/buildingdetails.patterns';
 import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
+import { firstValueFrom } from 'rxjs';
 // import { CreateBuildingDto } from '@app/contracts/buildings/create-buildings.dto'
 // import { buildingsDto } from '@app/contracts/buildings/buildings.dto'
 // import { catchError, firstValueFrom } from 'rxjs'
@@ -11,7 +12,7 @@ import { PaginationParams } from 'libs/contracts/src/Pagination/pagination.dto';
 export class BuildingDetailService {
   constructor(
     @Inject(BUILDING_CLIENT) private readonly buildingsClient: ClientProxy,
-  ) {}
+  ) { }
 
   // Get all BuildingDetails
   async getBuildingDetails(paginationParams?: PaginationParams) {
@@ -82,15 +83,43 @@ export class BuildingDetailService {
   // Delete BuildingDetail by ID
   async deleteBuildingDetail(buildingDetailId: string) {
     try {
-      const deletedBuildingDetail = await this.buildingsClient.send(
+      if (!buildingDetailId) {
+        throw new HttpException(
+          'Building detail ID is required',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      console.log(`[BuildingDetailService] Attempting to delete building detail with ID: ${buildingDetailId}`);
+
+      const deletedBuildingDetailObservable = this.buildingsClient.send(
         BUILDINGDETAIL_PATTERN.DELETE,
-        { buildingDetailId },
+        { buildingDetailId }
       );
-      return deletedBuildingDetail;
+
+      const response = await firstValueFrom(deletedBuildingDetailObservable);
+
+      // Handle different response statuses from the microservice
+      if (response.statusCode === 404) {
+        throw new HttpException(
+          response.message || 'Building detail not found',
+          HttpStatus.NOT_FOUND
+        );
+      }
+
+      return response;
     } catch (error) {
+      console.error('[BuildingDetailService] Error in deleteBuildingDetail:', error);
+
+      // If it's already an HttpException, rethrow it
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      // Otherwise, create a new HttpException
       throw new HttpException(
-        'Error occurred while deleting building detail.',
-        HttpStatus.NOT_FOUND,
+        error.message || 'Error occurred while deleting building detail and related data',
+        error.statusCode || HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
